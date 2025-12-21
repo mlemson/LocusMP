@@ -5999,6 +5999,17 @@
 			clip-path: none;
 		}
 
+		/* In de mobile bottom bar moet het kaartvlak geen “los panel” zijn.
+		   Dit voorkomt een asymmetrische aflopende rand onder de kaarten. */
+		#bottom-bar #card-choice-zone {
+			background: transparent;
+			border: none;
+			border-radius: 0;
+			box-shadow: none;
+			position: relative;
+			z-index: 0;
+		}
+
 		#card-controls {
 			display: flex;
 			flex-direction: row;
