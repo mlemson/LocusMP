@@ -1137,40 +1137,6 @@
 		}
 
 		/* Zones compacter maken voor betere fit */
-		#yellow-zone,
-		#yellow-zone--placeholder,
-		#purple-zone,
-		#purple-zone--placeholder { 
-			min-width: calc(10 * var(--cell-size) - 10px);
-			max-width: calc(10 * var(--cell-size) + 10px);
-			margin: 2px;
-			padding: 2px;
-			border-radius: 6px;
-			height: auto;
-			min-height: 90px;
-		}
-
-		#red-zone,
-		#red-zone--placeholder {
-			min-width: calc(13 * var(--cell-size));
-			max-width: calc(13 * var(--cell-size) + 20px);
-			margin: 2px;
-			padding: 2px;
-			border-radius: 6px;
-			height: auto;
-			min-height: 60px;
-		}
-
-		#green-zone,
-		#green-zone--placeholder {
-			min-width: calc(13 * var(--cell-size));
-			max-width: calc(13 * var(--cell-size) + 20px);
-			margin: 2px;
-			padding: 2px;
-			border-radius: 6px;
-			min-height: 180px;
-		}
-
 		/* Green grid (lichtgroene binnenste area) beperken (niet tijdens zoom) */
 		body:not(.zoomed-in) #green-grid {
 			min-width: calc(15 * var(--cell-size)) !important;
@@ -1180,15 +1146,6 @@
 		body.zoomed-in #green-grid {
 			min-width: calc(30 * var(--cell-size)) !important;
 			max-width: calc(30 * var(--cell-size) + 20px) !important;
-		}
-
-		#blue-zone,
-		#blue-zone--placeholder { 
-			width: 100px;
-			margin: 2px;
-			padding: 2px;
-			border-radius: 6px;
-			min-height: 800px;
 		}
 
 		/* Mobile: blue is vertically long by design; keep it scrollable but not a giant strip. */
@@ -1234,26 +1191,6 @@
 			max-height: none;
 		}
 
-		#yellow-zone,
-		#yellow-zone--placeholder,
-		#purple-zone,
-		#purple-zone--placeholder { 
-			min-width: calc(10 * var(--cell-size) - 5px);
-			max-width: calc(10 * var(--cell-size) + 15px);
-		}
-
-		#yellow-zone,
-		#yellow-zone--placeholder { 
-			height: auto;
-			min-height: 180px;
-		}
-
-		#purple-zone,
-		#purple-zone--placeholder { 
-			height: auto;
-			min-height: 180px;
-		}
-
 		/* Green grid (lichtgroene binnenste area) beperken (niet tijdens zoom) */
 		body:not(.zoomed-in) #green-grid {
 			min-width: calc(15 * var(--cell-size)) !important;
@@ -1263,11 +1200,6 @@
 		body.zoomed-in #green-grid {
 			min-width: calc(30 * var(--cell-size)) !important;
 			max-width: calc(30 * var(--cell-size) + 20px) !important;
-		}
-
-		#blue-zone,
-		#blue-zone--placeholder { 
-			width: 160px;
 		}
 
 		#blue-zone.zoom-focus {
@@ -1452,11 +1384,6 @@
 			transform: translateX(-50%) scale(var(--board-scale, 0.58));
 			max-height: none;
 			padding: 0;
-		}
-
-		#red-zone{
-			height: auto !important;
-			min-height: 360px !important;
 		}
 
 		#blue-zone.zoom-focus {
@@ -1840,15 +1767,15 @@
 	   Gekleurde vierkantjes die in cellen kunnen verschijnen
 	   Tonen welke kleur/zone de cel vertegenwoordigt
 	*/
-	.symbol { display: inline-block; width: calc(var(--cell-size) * 0.55); height: calc(var(--cell-size) * 0.55); border-radius: 3px; margin: auto; border: 1px solid #444; background-color: #999; }
+	.symbol { display: inline-block; width: 14px; height: 14px; border-radius: 4px; margin: auto; border:2px solid #444; background-color: #999; }
 	.symbol.yellow { background-color: #fff48f; }
 	.symbol.green  { background-color: #69cf57; }
 	.symbol.purple { background-color: #ae7eed; }
 	.symbol.blue   { background-color: #76a0e3; }
 	.symbol.red    { background-color: #ed7e89; }
 	.symbol.trap-symbol {
-	  width: calc(var(--cell-size) * 0.7);
-	  height: calc(var(--cell-size) * 0.7);
+	  width: 18px;
+	  height: 18px;
 	  border-radius: 2px;
 	  background: #656565;
 	  border: none;
@@ -16328,7 +16255,14 @@
 		// Bereken het EXACTE centrum van de gevulde cellen (met 0.5 voor even afmetingen)
 		const filledWidth = (maxX - minX + 1);
 		const filledHeight = (maxY - minY + 1);
-		const cellSize = 26;
+		
+		// Measure actual cell size dynamically
+		let cellSize = 26;
+		const measureEl = document.querySelector('.board .cell');
+		if (measureEl) {
+			cellSize = measureEl.getBoundingClientRect().width + 2; 
+		}
+
 		// Voor 2x2: minX=0, filledWidth=2 → 0 + 2/2 = 1.0 (centrum tussen cel 0 en 1)
 		const centerOffsetX = (minX + filledWidth / 2) * cellSize;
 		const centerOffsetY = (minY + filledHeight / 2) * cellSize;
@@ -16384,7 +16318,13 @@
 		}
 		const filledWidth = (maxX - minX + 1);
 		const filledHeight = (maxY - minY + 1);
-		const cellSize = 26;
+		
+		let cellSize = 26;
+		const measureEl = document.querySelector('.board .cell');
+		if (measureEl) {
+			cellSize = measureEl.getBoundingClientRect().width + 2; 
+		}
+
 		offsetX = (minX + filledWidth / 2) * cellSize;
 		offsetY = (minY + filledHeight / 2) * cellSize;
 	  });
@@ -16439,7 +16379,13 @@ document.addEventListener('keydown', ev => {
 			}
 			const filledWidth = (maxX - minX + 1);
 			const filledHeight = (maxY - minY + 1);
-			const cellSize = 26;
+			
+			let cellSize = 26;
+			const measureEl = document.querySelector('.board .cell');
+			if (measureEl) {
+				cellSize = measureEl.getBoundingClientRect().width + 2; 
+			}
+
 			offsetX = (minX + filledWidth / 2) * cellSize;
 			offsetY = (minY + filledHeight / 2) * cellSize;
 		} else if (selectedShape) {
@@ -17221,6 +17167,8 @@ document.addEventListener('pointermove', ev => {
 		pattern.innerHTML = '';
 		pattern.style.gridTemplateColumns = `repeat(${shape[0].length}, ${cellSize}px)`;
 		pattern.style.gridTemplateRows = `repeat(${shape.length}, ${cellSize}px)`;
+		// Scale the gap with the cell size so mini-previews don't look too spaced out on mobile.
+		pattern.style.gap = `${Math.max(1, Math.round(cellSize * 0.12))}px`;
 		shape.forEach(row => {
 		  row.forEach(cell => {
 			const div = document.createElement('div');
@@ -17257,16 +17205,19 @@ document.addEventListener('pointermove', ev => {
 	function renderBlock(block, shape, color) {
 	  block.innerHTML = '';
 	  block.style.display = 'grid';
-	  block.style.gridTemplateColumns = `repeat(${shape[0].length}, 1fr)`;
-	  block.style.gap = '2px';
-	  const size = 24;
+	  block.style.gridTemplateColumns = `repeat(${shape[0].length}, var(--cell-size))`;
+	  block.style.gridTemplateRows = `repeat(${shape.length}, var(--cell-size))`;
+	  // Use 0px gap because we use margin on cells to match the board's new look
+	  block.style.gap = '0px';
 	  block.style.opacity = '0.8';
 	  const optionalSet = new Set(getOptionalCells(shape).map(({ x, y }) => `${x},${y}`));
 	  
 	  shape.forEach((row, rowIdx) => {
 		row.forEach((cell, colIdx) => {
 			const div = document.createElement('div');
-			div.style.width = div.style.height = size + 'px';
+			div.style.width = 'var(--cell-size)';
+			div.style.height = 'var(--cell-size)';
+			div.style.margin = '0px';
 			div.style.borderRadius = '4px';
 			div.style.boxSizing = 'border-box';
 			const key = `${colIdx},${rowIdx}`;
@@ -24489,59 +24440,121 @@ function showFloatingPreview(shape, color, options = {}) {
 	
   </script>
   <style>
-	/* FINAL OVERRIDES FOR MOBILE LAYOUT */
+	/* FINAL CONSOLIDATED MOBILE LAYOUT (CLEANUP & FIXES) */
 	@media (max-width: 650px) {
-		/* Force Yellow and Purple to be identical width and centered */
-		#yellow-zone, #purple-zone,
-		#yellow-zone--placeholder, #purple-zone--placeholder {
-			width: calc(10 * var(--cell-size)) !important;
-			min-width: calc(10 * var(--cell-size)) !important;
-			max-width: calc(10 * var(--cell-size)) !important;
-			margin: 10px auto !important;
-			box-sizing: content-box !important; /* Ensure padding doesn't shrink content */
-		}
-
-		/* Force Red and Green to be identical width and centered */
-		#red-zone, #green-zone,
+		
+		/* 1. UNIFORM ZONE WIDTHS & CENTERING */
+		/* All zones must have the exact same width based on cell size */
+		#yellow-zone, #purple-zone, #red-zone, #green-zone,
+		#yellow-zone--placeholder, #purple-zone--placeholder,
 		#red-zone--placeholder, #green-zone--placeholder {
-			width: calc(13 * var(--cell-size)) !important;
-			min-width: calc(13 * var(--cell-size)) !important;
-			max-width: calc(13 * var(--cell-size)) !important;
+			/* Wider to accommodate inner grid margins/padding on mobile */
+			width: calc(13 * var(--cell-size) + 40px) !important;
+			min-width: calc(13 * var(--cell-size) + 40px) !important;
+			max-width: calc(13 * var(--cell-size) + 40px) !important;
 			margin: 10px auto !important;
-			box-sizing: content-box !important;
+			box-sizing: border-box !important;
+			display: flex !important;
+			flex-direction: column !important;
+			align-items: center !important;
+			justify-content: flex-start !important;
 		}
 
-		/* Make Green zone taller */
+		/* 2. SYMMETRICAL HEIGHTS */
+		/* Yellow, Purple, and Red MUST have the same dimensions */
+		#yellow-zone, #yellow-zone--placeholder,
+		#purple-zone, #purple-zone--placeholder,
+		#red-zone, #red-zone--placeholder {
+			min-height: 360px !important;
+			height: auto !important;
+		}
+
+		/* Green is the main board, slightly taller */
 		#green-zone, #green-zone--placeholder {
 			min-height: 400px !important;
 		}
 
-		/* Force Cards to be smaller */
+		/* 3. BLUE ZONE CALCULATION */
+		/* Blue Height = Green (400) + Red (360) + Gap (10) = 770px */
+		#blue-zone, #blue-zone--placeholder {
+			min-height: 770px !important;
+			height: 770px !important; /* Force fixed height to match calculation */
+			width: 160px !important; /* Fixed width for blue strip */
+			margin: 10px auto !important;
+		}
+
+		/* 4. CARD & HAND ADJUSTMENTS */
+		/* Force Cards to be slightly larger for visibility */
 		:root {
-			--hand-card-width: 42px !important;
-			--hand-card-height: 65px !important;
+			--hand-card-width: 58px !important;
+			--hand-card-height: 85px !important;
 		}
 
 		#bottom-bar #card-choice-zone .card-option {
-			width: 42px !important;
-			min-width: 42px !important;
-			max-width: 42px !important;
-			min-height: 65px !important;
-			padding: 2px !important;
+			width: 58px !important;
+			min-width: 58px !important;
+			max-width: 58px !important;
+			min-height: 85px !important;
+			padding: 4px !important;
 		}
 
-		/* Force Card Cells to be tiny */
+		/* Force Card Cells to be larger and clearer */
 		#bottom-bar #card-choice-zone .card-option .card-cell,
 		.card-option .card-cell {
-			width: 4px !important;
-			height: 4px !important;
-			border-width: 0.5px !important;
+			width: 10px !important;
+			height: 10px !important;
+			border-width: 1px !important;
+			margin: 0px !important; /* Ensure no margin causes gaps */
 		}
 		
 		/* Adjust card pattern gap */
 		#bottom-bar #card-choice-zone .card-option .card-pattern {
-			gap: 0.5px !important;
+			/* Actual gap is set dynamically in updateCardPattern(..) */
+			display: grid !important;
+		}
+		
+		/* Hamburger Menu: Slightly larger */
+		#menu-toggle {
+			width: 40px !important;
+			height: 40px !important;
+			padding: 8px !important;
+		}
+		#menu-toggle span {
+			width: 18px !important;
 		}
 	}
+
+	/* Zoomed In Uniformity: Force all zoomed zones to be the same size */
+	body.zoomed-in .zone.zoom-focus {
+		width: 90vw !important;
+		height: 65vh !important;
+		max-width: none !important;
+		max-height: none !important;
+		min-width: 0 !important;
+		min-height: 0 !important;
+		overflow: auto !important;
+		position: fixed !important;
+		top: 50% !important;
+		left: 50% !important;
+		transform: translate(-50%, -50%) !important;
+		z-index: 1000 !important;
+		margin: 0 !important;
+	}
+
+	/* 4. Desktop Landscape Fixes */
+	@media (min-width: 900px) {
+		#green-zone, #blue-zone {
+			flex-shrink: 0; /* Prevent shrinking */
+			min-width: calc(13 * var(--cell-size)) !important;
+		}
+		#blue-zone {
+			min-height: 600px; /* Ensure it stays long */
+		}
+		.board {
+			justify-content: center;
+			gap: 20px; /* More space between columns */
+		}
+	}
+
   </style>
 </html>
