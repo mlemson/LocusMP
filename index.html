@@ -14157,18 +14157,41 @@
 		bindMobileZoomResizeHandler();
 		applyMobileZoomSizing(zone);
 		if (zone.id === 'green-zone') {
-			// Always re-center on the start/root cell when opening green zoom.
-			// Double RAF ensures the zoomed container has its final size before centering.
-			requestAnimationFrame(() => requestAnimationFrame(() => resetGreenZoomScroll(zone)));
+			// Restore last scroll position if available, otherwise center on start cell.
+			const savedScrollLeft = zone.dataset.savedScrollLeft;
+			const savedScrollTop = zone.dataset.savedScrollTop;
+			if (savedScrollLeft !== undefined && savedScrollTop !== undefined) {
+				requestAnimationFrame(() => {
+					zone.scrollLeft = parseFloat(savedScrollLeft) || 0;
+					zone.scrollTop = parseFloat(savedScrollTop) || 0;
+				});
+			} else {
+				requestAnimationFrame(() => requestAnimationFrame(() => resetGreenZoomScroll(zone)));
+			}
 		}
 		if (zone.id === 'blue-zone') {
-			requestAnimationFrame(() => resetBlueZoomScroll(zone));
+			// Restore last scroll position if available, otherwise scroll to bottom.
+			const savedScrollLeft = zone.dataset.savedScrollLeft;
+			const savedScrollTop = zone.dataset.savedScrollTop;
+			if (savedScrollLeft !== undefined && savedScrollTop !== undefined) {
+				requestAnimationFrame(() => {
+					zone.scrollLeft = parseFloat(savedScrollLeft) || 0;
+					zone.scrollTop = parseFloat(savedScrollTop) || 0;
+				});
+			} else {
+				requestAnimationFrame(() => resetBlueZoomScroll(zone));
+			}
 		}
 	}
 
 	function closeZoom() {
 		if (!activeZoomZone) return;
 		const zone = activeZoomZone;
+		// Save scroll position for green and blue zones before closing
+		if (zone.id === 'green-zone' || zone.id === 'blue-zone') {
+			zone.dataset.savedScrollLeft = String(zone.scrollLeft);
+			zone.dataset.savedScrollTop = String(zone.scrollTop);
+		}
 		placeholderSyncQueue.delete(zone);
 		zone.classList.remove('zoom-focus');
 		zone.removeAttribute('data-zoom-active');
@@ -24599,28 +24622,31 @@ function showFloatingPreview(shape, color, options = {}) {
 		}
 
 		/* 2. SYMMETRICAL HEIGHTS */
-		/* Blue = 650px reference. Gap = 6px between zones. */
-		/* Column 1: Yellow + gap(6) + Purple = 650 → Yellow = Purple = 322px */
-		#yellow-zone, #yellow-zone--placeholder,
-		#purple-zone, #purple-zone--placeholder {
-			min-height: 322px !important;
-			height: 322px !important;
+		/* Blue = 690px reference. Gap = 6px between zones. */
+		/* Column 1: Yellow + gap(6) + Purple = 690 → Yellow = 342, Purple = 342 */
+		#yellow-zone, #yellow-zone--placeholder {
+			min-height: 342px !important;
+			height: 342px !important;
 		}
-		/* Column 2: Green + gap(6) + Red = 650 → Green = 360, Red = 284 */
+		#purple-zone, #purple-zone--placeholder {
+			min-height: 342px !important;
+			height: 342px !important;
+		}
+		/* Column 2: Green + gap(6) + Red = 690 → Green = 380, Red = 304 */
 		#green-zone, #green-zone--placeholder {
-			min-height: 360px !important;
-			height: 360px !important;
+			min-height: 380px !important;
+			height: 380px !important;
 		}
 		#red-zone, #red-zone--placeholder {
-			min-height: 284px !important;
-			height: 284px !important;
+			min-height: 304px !important;
+			height: 304px !important;
 		}
 
 		/* 3. BLUE ZONE: reference height for column symmetry */
-		/* Blue = 650px. Column 1: 322+6+322=650. Column 2: 360+6+284=650. */
+		/* Blue = 690px. Column 1: 342+6+342=690. Column 2: 380+6+304=690. */
 		#blue-zone, #blue-zone--placeholder {
-			min-height: 650px !important;
-			height: 650px !important;
+			min-height: 690px !important;
+			height: 690px !important;
 			width: 160px !important;
 			margin: 0 !important;
 			padding: 6px !important;
