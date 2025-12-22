@@ -45,6 +45,8 @@
 				overflow-y: hidden;
 				overflow-x: hidden;
 				overscroll-behavior: contain;
+				/* Prevent browser back-navigation on horizontal swipe (iOS Safari, Chrome) */
+				overscroll-behavior-x: none;
 			}
 
 			body {
@@ -24537,7 +24539,8 @@ function showFloatingPreview(shape, color, options = {}) {
 			width: calc(13 * var(--cell-size) + 40px) !important;
 			min-width: calc(13 * var(--cell-size) + 40px) !important;
 			max-width: calc(13 * var(--cell-size) + 40px) !important;
-			margin: 10px auto !important;
+			margin: 0 !important;
+			padding: 6px !important;
 			box-sizing: border-box !important;
 			display: flex !important;
 			flex-direction: column !important;
@@ -24583,30 +24586,44 @@ function showFloatingPreview(shape, color, options = {}) {
 		body.board-scaled .grid { gap: var(--board-grid-gap, 2px) !important; }
 		body.board-scaled .cell { border-radius: 7px !important; }
 
+		/* Mobile: uniform gap between zones in columns, more gap between columns */
+		.board {
+			gap: 8px !important; /* gap between columns */
+		}
+		.column {
+			gap: 6px !important; /* uniform gap between zones */
+		}
+		.zone {
+			margin: 0 !important;
+			padding: 6px !important;
+		}
+
 		/* 2. SYMMETRICAL HEIGHTS */
-		/* Yellow and Purple keep same min-height; Red is shorter since it's a 2×2 layout */
+		/* Blue = 650px reference. Gap = 6px between zones. */
+		/* Column 1: Yellow + gap(6) + Purple = 650 → Yellow = Purple = 322px */
 		#yellow-zone, #yellow-zone--placeholder,
 		#purple-zone, #purple-zone--placeholder {
+			min-height: 322px !important;
+			height: 322px !important;
+		}
+		/* Column 2: Green + gap(6) + Red = 650 → Green = 360, Red = 284 */
+		#green-zone, #green-zone--placeholder {
 			min-height: 360px !important;
-			height: auto !important;
+			height: 360px !important;
 		}
 		#red-zone, #red-zone--placeholder {
-			min-height: 280px !important;
-			height: auto !important;
+			min-height: 284px !important;
+			height: 284px !important;
 		}
 
-		/* Green is the main board, slightly taller */
-		#green-zone, #green-zone--placeholder {
-			min-height: 400px !important;
-		}
-
-		/* 3. BLUE ZONE CALCULATION */
-		/* Blue Height = Green (400) + Red (360) + Gap (10) = 770px */
+		/* 3. BLUE ZONE: reference height for column symmetry */
+		/* Blue = 650px. Column 1: 322+6+322=650. Column 2: 360+6+284=650. */
 		#blue-zone, #blue-zone--placeholder {
-			min-height: 770px !important;
-			/* Don't force fixed height; zoom uses vh sizing and should not inherit a large px height. */
-			width: 160px !important; /* Fixed width for blue strip */
-			margin: 10px auto !important;
+			min-height: 650px !important;
+			height: 650px !important;
+			width: 160px !important;
+			margin: 0 !important;
+			padding: 6px !important;
 		}
 
 		/* 4. CARD & HAND ADJUSTMENTS */
