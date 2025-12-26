@@ -617,7 +617,9 @@
 		}
 
 		body.mobile-sidebar-layout #ml-board-center {
-			flex: 1 1 auto;
+			/* Don't expand to fill all remaining width: keep sidebars close to the board
+			   (fixes "options too far to the sides" on phone landscape). */
+			flex: 0 1 auto;
 			display: flex;
 			flex-direction: column;
 			justify-content: flex-start;
@@ -625,6 +627,13 @@
 			min-width: 0;
 			overflow: hidden;
 			gap: 2px;
+		}
+
+		/* Small-ish desktop landscape: slightly smaller cells so zones fit cleanly. */
+		@media (min-width: 651px) and (orientation: landscape) and (max-height: 760px) {
+			body.desktop-landscape {
+				--cell-size: clamp(16px, 2.2vw, 23px);
+			}
 		}
 
 		/* Compact objective banner in sidebar layout */
@@ -15092,16 +15101,13 @@
 			startCell = greenZone.querySelector('#green-grid .cell.bold-cell:not(.void-cell)') || null;
 		}
 		if (!startCell) return;
-
-		// Use rect-based centering so padding/absolute-positioned cells don't skew the math.
-		const zoneRect = greenZone.getBoundingClientRect();
-		const cellRect = startCell.getBoundingClientRect();
-		const dx = (cellRect.left + cellRect.width / 2) - (zoneRect.left + zoneRect.width / 2);
-		const dy = (cellRect.top + cellRect.height / 2) - (zoneRect.top + zoneRect.height / 2);
+		// Offset-based centering is more stable across resizes/zoom.
 		const maxLeft = Math.max(0, greenZone.scrollWidth - greenZone.clientWidth);
 		const maxTop = Math.max(0, greenZone.scrollHeight - greenZone.clientHeight);
-		greenZone.scrollLeft = Math.max(0, Math.min(maxLeft, greenZone.scrollLeft + dx));
-		greenZone.scrollTop = Math.max(0, Math.min(maxTop, greenZone.scrollTop + dy));
+		const desiredLeft = (startCell.offsetLeft + startCell.offsetWidth / 2) - (greenZone.clientWidth / 2);
+		const desiredTop = (startCell.offsetTop + startCell.offsetHeight / 2) - (greenZone.clientHeight / 2);
+		greenZone.scrollLeft = Math.max(0, Math.min(maxLeft, desiredLeft));
+		greenZone.scrollTop = Math.max(0, Math.min(maxTop, desiredTop));
 	}
 
 	function resetBlueZoomScroll(blueZone) {
@@ -15113,28 +15119,93 @@
 		blueZone.getBoundingClientRect();
 		blueZone.scrollTop = blueZone.scrollHeight;
 
-		// Center on bottom-most active/bold cell.
-		let startCell = null;
+		// Center on the bottom "start" group (prefer bold-cells) at the lowest row.
 		let bestY = -Infinity;
-		let bestX = Infinity;
-		const candidates = Array.from(blueGrid.querySelectorAll('.cell.bold-cell:not(.void-cell), .cell:not(.void-cell)'));
-		for (const cell of candidates) {
-			const x = Number(cell.dataset.x);
+		const allCells = Array.from(blueGrid.querySelectorAll('.cell:not(.void-cell)'));
+		for (const cell of allCells) {
 			const y = Number(cell.dataset.y);
-			if (!Number.isFinite(x) || !Number.isFinite(y)) continue;
-			if (y > bestY || (y === bestY && x < bestX)) {
-				bestY = y;
-				bestX = x;
-				startCell = cell;
-			}
+			if (!Number.isFinite(y)) continue;
+			if (y > bestY) bestY = y;
+		}
+		const bottomRowCells = allCells.filter(c => Number(c.dataset.y) === bestY);
+		const bottomBold = bottomRowCells.filter(c => c.classList.contains('bold-cell'));
+		const anchorCells = bottomBold.length ? bottomBold : bottomRowCells;
+
+		let targetCenter = null;
+		if (anchorCells.length) {
+			const centers = anchorCells.map(c => c.offsetLeft + c.offsetWidth / 2);
+			const minC = Math.min(...centers);
+			const maxC = Math.max(...centers);
+			targetCenter = (minC + maxC) / 2;
 		}
 		const maxLeft = Math.max(0, blueZone.scrollWidth - blueZone.clientWidth);
-		if (startCell) {
-			const desiredLeft = (startCell.offsetLeft + startCell.offsetWidth / 2) - (blueZone.clientWidth / 2);
+		if (targetCenter !== null) {
+			const desiredLeft = targetCenter - (blueZone.clientWidth / 2);
 			blueZone.scrollLeft = Math.max(0, Math.min(maxLeft, desiredLeft));
 		} else {
 			blueZone.scrollLeft = maxLeft > 0 ? Math.round(maxLeft / 2) : 0;
 		}
+	}
+
+	// --- Per-zone scroll memory (normal vs zoom) ---
+	const ZONE_SCROLL_MEMORY = window.__locusZoneScrollMemory || (window.__locusZoneScrollMemory = {});
+	function getZoneScrollMemory(zoneId) {
+		if (!ZONE_SCROLL_MEMORY[zoneId]) {
+			ZONE_SCROLL_MEMORY[zoneId] = {
+				normal: { left: 0, top: 0, initialized: false },
+				zoom: { left: 0, top: 0, initialized: false }
+			};
+		}
+		return ZONE_SCROLL_MEMORY[zoneId];
+	}
+	function getZoneScrollMode(zoneEl) {
+		if (!zoneEl) return 'normal';
+		return (document.body.classList.contains('zoomed-in') && zoneEl.classList.contains('zoom-focus')) ? 'zoom' : 'normal';
+	}
+	function clampZoneScroll(zoneEl) {
+		if (!zoneEl) return;
+		const maxLeft = Math.max(0, zoneEl.scrollWidth - zoneEl.clientWidth);
+		const maxTop = Math.max(0, zoneEl.scrollHeight - zoneEl.clientHeight);
+		zoneEl.scrollLeft = Math.max(0, Math.min(maxLeft, zoneEl.scrollLeft));
+		zoneEl.scrollTop = Math.max(0, Math.min(maxTop, zoneEl.scrollTop));
+	}
+	function ensureZoneScrollTracking(zoneEl) {
+		if (!zoneEl || zoneEl.__scrollTrackingBound) return;
+		zoneEl.__scrollTrackingBound = true;
+		zoneEl.addEventListener('scroll', () => {
+			if (zoneEl.dataset.suppressScrollSave === 'true') return;
+			const zoneId = zoneEl.id;
+			const mode = getZoneScrollMode(zoneEl);
+			const mem = getZoneScrollMemory(zoneId);
+			mem[mode].left = zoneEl.scrollLeft;
+			mem[mode].top = zoneEl.scrollTop;
+			mem[mode].initialized = true;
+		}, { passive: true });
+	}
+	function restoreOrAnchorZoneScroll(zoneEl, anchorFn) {
+		if (!zoneEl) return;
+		ensureZoneScrollTracking(zoneEl);
+		const mem = getZoneScrollMemory(zoneEl.id);
+		const mode = getZoneScrollMode(zoneEl);
+		requestAnimationFrame(() => {
+			zoneEl.dataset.suppressScrollSave = 'true';
+			try {
+				clampZoneScroll(zoneEl);
+				if (mem[mode].initialized) {
+					zoneEl.scrollLeft = mem[mode].left || 0;
+					zoneEl.scrollTop = mem[mode].top || 0;
+					clampZoneScroll(zoneEl);
+				} else if (typeof anchorFn === 'function') {
+					anchorFn(zoneEl);
+					clampZoneScroll(zoneEl);
+					mem[mode].left = zoneEl.scrollLeft;
+					mem[mode].top = zoneEl.scrollTop;
+					mem[mode].initialized = true;
+				}
+			} finally {
+				setTimeout(() => { zoneEl.dataset.suppressScrollSave = 'false'; }, 0);
+			}
+		});
 	}
 
 	// Auto-zoom naar de juiste zone op basis van card kleur
@@ -15261,41 +15332,19 @@
 		bindMobileZoomResizeHandler();
 		applyMobileZoomSizing(zone);
 		if (zone.id === 'green-zone') {
-			// Restore last scroll position if available, otherwise center on start cell.
-			const savedScrollLeft = zone.dataset.savedScrollLeft;
-			const savedScrollTop = zone.dataset.savedScrollTop;
-			if (savedScrollLeft !== undefined && savedScrollTop !== undefined) {
-				requestAnimationFrame(() => {
-					zone.scrollLeft = parseFloat(savedScrollLeft) || 0;
-					zone.scrollTop = parseFloat(savedScrollTop) || 0;
-				});
-			} else {
-				requestAnimationFrame(() => requestAnimationFrame(() => resetGreenZoomScroll(zone)));
-			}
+			// Zoom: first time anchor to start; subsequent opens restore last zoom position.
+			restoreOrAnchorZoneScroll(zone, (z) => resetGreenZoomScroll(z));
 		}
 		if (zone.id === 'blue-zone') {
-			// Restore last scroll position if available, otherwise scroll to bottom.
-			const savedScrollLeft = zone.dataset.savedScrollLeft;
-			const savedScrollTop = zone.dataset.savedScrollTop;
-			if (savedScrollLeft !== undefined && savedScrollTop !== undefined) {
-				requestAnimationFrame(() => {
-					zone.scrollLeft = parseFloat(savedScrollLeft) || 0;
-					zone.scrollTop = parseFloat(savedScrollTop) || 0;
-				});
-			} else {
-				requestAnimationFrame(() => resetBlueZoomScroll(zone));
-			}
+			// Zoom: first time anchor to bottom start; subsequent opens restore last zoom position.
+			restoreOrAnchorZoneScroll(zone, (z) => resetBlueZoomScroll(z));
 		}
 	}
 
 	function closeZoom() {
 		if (!activeZoomZone) return;
 		const zone = activeZoomZone;
-		// Save scroll position for green and blue zones before closing
-		if (zone.id === 'green-zone' || zone.id === 'blue-zone') {
-			zone.dataset.savedScrollLeft = String(zone.scrollLeft);
-			zone.dataset.savedScrollTop = String(zone.scrollTop);
-		}
+		// Scroll memory is handled via scroll listeners; no dataset storage.
 		placeholderSyncQueue.delete(zone);
 		zone.classList.remove('zoom-focus');
 		zone.removeAttribute('data-zoom-active');
@@ -23180,8 +23229,8 @@ function openShopModal(callback) {
 	  const isDesktopPortraitLayout = document.body.classList.contains('desktop-portrait')
 			&& !document.body.classList.contains('mobile-sidebar-layout')
 			&& !document.body.classList.contains('touch-portrait');
-	  // Purple needs a bit more vertical chrome in desktop portrait so it never clips.
-	  const purpleChromePx = isDesktopPortraitLayout ? 34 : 20;
+	  // Purple needs extra vertical chrome so it never clips (header/padding/outline).
+	  const purpleChromePx = isDesktopPortraitLayout ? 40 : 30;
 	  const tallZoneMaxVh = isPortrait ? '52vh' : (isShortHeight ? '65vh' : '85vh');
 	  // Green should be visibly shorter so the rest of the UI fits, but still scrollable.
 	  // User request: make it ~40px shorter.
@@ -23259,37 +23308,9 @@ function openShopModal(callback) {
 		blueGrid.style.margin = '0px';
 		blueGrid.style.justifyContent = 'start';
 		blueGrid.style.transform = '';
-		requestAnimationFrame(() => {
-			// World 2 UX: start at the bottom, and center on the bottom start cell (leftmost active cell on the bottom-most row).
-			if (blueZone.dataset.needsInitialScrollBottom === 'true') {
-				blueZone.scrollTop = blueZone.scrollHeight;
-				blueZone.dataset.needsInitialScrollBottom = 'false';
-			}
-
-			let startCell = null;
-			let bestY = -Infinity;
-			let bestX = Infinity;
-			const candidates = Array.from(blueGrid.querySelectorAll('.cell.bold-cell:not(.void-cell), .cell:not(.void-cell)'));
-			for (const cell of candidates) {
-				const x = Number(cell.dataset.x);
-				const y = Number(cell.dataset.y);
-				if (!Number.isFinite(x) || !Number.isFinite(y)) continue;
-				if (y > bestY || (y === bestY && x < bestX)) {
-					bestY = y;
-					bestX = x;
-					startCell = cell;
-				}
-			}
-
-			const maxLeft = Math.max(0, blueZone.scrollWidth - blueZone.clientWidth);
-			if (startCell) {
-				const desiredLeft = (startCell.offsetLeft + startCell.offsetWidth / 2) - (blueZone.clientWidth / 2);
-				blueZone.scrollLeft = Math.max(0, Math.min(maxLeft, desiredLeft));
-			} else {
-				// Fallback: center overflow.
-				blueZone.scrollLeft = maxLeft > 0 ? Math.round(maxLeft / 2) : 0;
-			}
-		});
+		// World 2: unzoomed blue should start bottom-centered (bold start cells),
+		// and later keep the user's last unzoomed scroll position.
+		restoreOrAnchorZoneScroll(blueZone, (z) => resetBlueZoomScroll(z));
 		enableZoneDragScroll(blueZone, { ignoreSelectors: '#controls,#bottom-bar,#card-choice-zone,.card,.card-option' });
 		console.log(`30a Blue zone: width=${maxWidthPx}px, scroll enabled, maxHeight=${tallZoneMaxVh}`);
 	  }
@@ -23328,40 +23349,26 @@ function openShopModal(callback) {
 	  });
 
 	  requestAnimationFrame(() => {
-		// Desktop portrait request (World 2): make green zone a square (height ~= width).
-		if (greenZone && isDesktopPortraitLayout) {
-			const w = greenZone.getBoundingClientRect().width;
-			if (w > 0) {
-				const target = Math.round(w);
-				greenZone.style.height = `${target}px`;
-				greenZone.style.maxHeight = `${target}px`;
-			}
-		}
-
-		// WORLD 2 green: center the start cell in the visible area (both axes).
-		if (greenGrid && greenZone) {
-			const sx = Number(greenGrid.dataset.startX);
-			const sy = Number(greenGrid.dataset.startY);
-			if (Number.isFinite(sx) && Number.isFinite(sy)) {
-				const startCell = getCell(greenZone, sx, sy);
-				if (startCell) {
-					const zoneRect = greenZone.getBoundingClientRect();
-					const cellRect = startCell.getBoundingClientRect();
-					const dx = (cellRect.left + cellRect.width / 2) - (zoneRect.left + zoneRect.width / 2);
-					const dy = (cellRect.top + cellRect.height / 2) - (zoneRect.top + zoneRect.height / 2);
-					const maxLeft = Math.max(0, greenZone.scrollWidth - greenZone.clientWidth);
-					const maxTop = Math.max(0, greenZone.scrollHeight - greenZone.clientHeight);
-					greenZone.scrollLeft = Math.max(0, Math.min(maxLeft, greenZone.scrollLeft + dx));
-					greenZone.scrollTop = Math.max(0, Math.min(maxTop, greenZone.scrollTop + dy));
-				} else {
-					const targetX = sx * cellSize + cellSize / 2;
-					const targetY = sy * cellSize + cellSize / 2;
-					const desiredLeft = Math.max(0, targetX - greenZone.clientWidth / 2);
-					const desiredTop = Math.max(0, targetY - greenZone.clientHeight / 2);
-					greenZone.scrollLeft = Math.min(desiredLeft, Math.max(0, greenZone.scrollWidth - greenZone.clientWidth));
-					greenZone.scrollTop = Math.min(desiredTop, Math.max(0, greenZone.scrollHeight - greenZone.clientHeight));
+		// World 2: green zone should be square across layouts (height ~= width),
+		// but cap to available vertical room so it never forces clipping.
+		try {
+			const worldInfo = typeof getWorldAndSubLevel === 'function' ? getWorldAndSubLevel(currentLevel) : null;
+			if (worldInfo && worldInfo.world === 2 && greenZone && !document.body.classList.contains('zoomed-in')) {
+				const w = greenZone.getBoundingClientRect().width;
+				if (w > 0) {
+					const cap = Math.max(160,
+						Math.floor(window.innerHeight * (isPortrait ? 0.40 : (isShortHeight ? 0.50 : 0.52))) - 40
+					);
+					const target = Math.round(Math.min(w, cap));
+					greenZone.style.height = `${target}px`;
+					greenZone.style.maxHeight = `${target}px`;
 				}
 			}
+		} catch (_) {}
+
+		// World 2 unzoomed: first time center on green start cell; afterwards keep last scroll.
+		if (greenZone) {
+			restoreOrAnchorZoneScroll(greenZone, (z) => resetGreenZoomScroll(z));
 		}
 	  });
 	}
