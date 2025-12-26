@@ -7775,19 +7775,232 @@
 	transform-origin: top center;
   }
 
-  /* Portrait mode: gebruik bottom layout */
-  body.desktop-portrait #desktop-wrapper {
-	display: flex;
-	flex-wrap: wrap;
-	justify-content: center;
-	align-items: flex-start;
-	gap: 10px;
-	width: 100%;
-	max-width: 100%;
-	margin: 0 auto;
-	padding: 0 10px;
-	box-sizing: border-box;
-	}  #desktop-bottom-left,
+	  /* Portrait mode: stack (objective -> board -> bottom) so nothing ends up off-screen on narrow widths. */
+	  body.desktop-portrait {
+		/* Allow scrolling as a fallback when the viewport is too short for all panels. */
+		overflow-y: auto;
+	  }
+
+	  body.desktop-portrait #desktop-wrapper {
+		display: flex;
+		flex-direction: column;
+		flex-wrap: nowrap;
+		align-items: center;
+		justify-content: flex-start;
+		gap: 10px;
+		width: 100%;
+		max-width: 100%;
+		margin: 0 auto;
+		padding: 12px;
+		box-sizing: border-box;
+		height: calc(100vh - 20px);
+		overflow-y: auto;
+		overflow-x: hidden;
+	  }
+
+	  /* Hide empty sidebars in portrait: JS moves content into #desktop-bottom. */
+	  body.desktop-portrait #desktop-left,
+	  body.desktop-portrait #desktop-right {
+		display: none !important;
+	  }
+
+	  /* Let the board area shrink so the bottom row remains visible inside the fixed-height wrapper. */
+	  body.desktop-portrait #desktop-grids {
+		flex: 1 1 auto;
+		min-height: 0;
+		width: 100%;
+		display: flex;
+		justify-content: center;
+		align-items: flex-start;
+		overflow: hidden;
+	  }
+
+	  body.desktop-portrait #desktop-bottom {
+		flex: 0 0 auto;
+		width: 100%;
+		max-width: 100%;
+	  }
+
+	  /* Narrow desktop portrait (split-screen / iPad-ish): keep bottom UI compact so the board keeps height. */
+	  @media (min-width: 651px) and (max-width: 925px) {
+		body.desktop-portrait #desktop-bottom {
+			flex-wrap: nowrap;
+			justify-content: center;
+			align-items: flex-start;
+			gap: 6px;
+			padding: 0;
+		}
+
+		body.desktop-portrait #desktop-bottom-left {
+			flex: 0 0 92px !important;
+			min-width: 92px !important;
+			max-width: 108px !important;
+		}
+
+		body.desktop-portrait #desktop-bottom-center {
+			flex: 0 0 260px !important;
+			min-width: 240px !important;
+			max-width: 280px !important;
+			align-items: center;
+		}
+
+		body.desktop-portrait #desktop-bottom-buttons {
+			flex: 0 0 auto;
+			min-width: 0;
+			width: auto;
+		}
+
+		body.desktop-portrait #desktop-bottom-right {
+			flex: 0 0 120px !important;
+			min-width: 112px !important;
+			max-width: 132px !important;
+		}
+
+		/* Card panel: remove extra vertical chrome and force a single row of cards. */
+		body.desktop-portrait #card-choice-zone {
+			padding: 8px 10px;
+		}
+		body.desktop-portrait #card-choice-zone h2,
+		body.desktop-portrait #kiesKaartTitel,
+		body.desktop-portrait #card-choice-zone br {
+			display: none !important;
+		}
+		body.desktop-portrait #desktop-bottom-center #card-controls {
+			flex-direction: row;
+			justify-content: center;
+			width: fit-content;
+		}
+		body.desktop-portrait #desktop-bottom-center #card-options {
+			flex-wrap: nowrap;
+			justify-content: center;
+			gap: 8px;
+			width: fit-content;
+		}
+		body.desktop-portrait #desktop-bottom-center .card-option {
+			width: 62px;
+			max-width: 62px;
+			min-height: 102px;
+			padding: 6px 4px;
+			gap: 6px;
+			--preview-cell: 12px;
+		}
+		body.desktop-portrait #desktop-bottom-center .card-option .card-cell {
+			width: 10px;
+			height: 10px;
+		}
+		body.desktop-portrait #desktop-bottom-center .card-label {
+			font-size: 0.58rem;
+			padding: 2px 6px;
+		}
+
+		/* Buttons: smaller footprint in the dedicated portrait button column. */
+		body.desktop-portrait #desktop-bottom-buttons #card-action-buttons {
+			display: flex !important;
+			flex-direction: column;
+			gap: 6px;
+			align-items: center;
+			justify-content: flex-start;
+			margin: 0;
+			padding: 0;
+		}
+		body.desktop-portrait #desktop-bottom-buttons .card-action-btn,
+		body.desktop-portrait #desktop-bottom-buttons .deck-preview {
+			width: 44px;
+			min-width: 44px;
+			max-width: 44px;
+			height: 44px;
+			min-height: 44px;
+			padding: 10px;
+		}
+		body.desktop-portrait #desktop-bottom-buttons .card-action-btn::before {
+			font-size: 1.1rem;
+		}
+		body.desktop-portrait #desktop-bottom-buttons .deck-preview::before {
+			font-size: 1.05rem;
+		}
+		body.desktop-portrait #desktop-bottom-buttons .deck-count {
+			font-size: 0.7rem;
+		}
+
+		/* Scoreboard: compact rows; hide labels (colors already indicate the row). */
+		body.desktop-portrait #scoreboard {
+			padding: 6px 8px;
+		}
+		body.desktop-portrait #scoreboard h2,
+		body.desktop-portrait #scoreboard hr {
+			display: none;
+		}
+		body.desktop-portrait #scoreboard .score-row {
+			font-size: 0.68rem;
+			padding: 2px 4px;
+			gap: 4px;
+		}
+		body.desktop-portrait #scoreboard .score-row .label {
+			display: none;
+		}
+		body.desktop-portrait #scoreboard .score-row .color-box {
+			width: 9px;
+			height: 9px;
+		}
+		body.desktop-portrait #scoreboard .score-total {
+			padding: 2px 4px;
+			gap: 4px;
+		}
+		body.desktop-portrait #scoreboard .score-total .label {
+			display: inline;
+			font-size: 0.62rem;
+			opacity: 0.85;
+		}
+		body.desktop-portrait #scoreboard .score-total .total-score {
+			font-size: 0.86rem;
+		}
+		body.desktop-portrait #scoreboard .score-total {
+			justify-content: space-between;
+		}
+
+		/* Bonus panel: narrower and less vertical chrome. */
+		body.desktop-portrait #bonus-zone {
+			padding: 6px 8px;
+		}
+		body.desktop-portrait #bonus-zone h2,
+		body.desktop-portrait #bonus-zone .bonus-hint {
+			display: none;
+		}
+		body.desktop-portrait .bonus-inventory {
+			gap: 2px;
+		}
+		body.desktop-portrait .bonus-badge {
+			padding: 4px 6px;
+			font-size: 0.58rem;
+		}
+		body.desktop-portrait .bonus-count {
+			font-size: 0.58rem;
+			padding: 2px 5px;
+		}
+
+		/* Coins: stack buy button + counter vertically to save width. */
+		body.desktop-portrait #gold-zone {
+			flex-direction: column;
+			align-items: stretch;
+			justify-content: flex-start;
+			gap: 6px;
+			padding: 6px 8px;
+		}
+		body.desktop-portrait #gold-zone #buy-placement-container {
+			margin-top: 0;
+		}
+		body.desktop-portrait #gold-zone .buy-placement-btn {
+			padding: 6px 8px;
+			max-width: none;
+			width: 100%;
+		}
+		body.desktop-portrait #gold-zone::after {
+			font-size: 0.82rem;
+			text-align: center;
+		}
+	  }
+
+	  #desktop-bottom-left,
 	  #desktop-bottom-center,
 	  #desktop-bottom-buttons,
 	  #desktop-bottom-right {
@@ -24096,10 +24309,14 @@ function showFloatingPreview(shape, color, options = {}) {
 	function scaleBoardForDesktop() {
 		const board = document.getElementById('board');
 		if (!board) return;
+		const boardContainer = board.parentElement;
 		const isDesktop = window.innerWidth > MOBILE_BREAKPOINT;
 		if (!isDesktop) {
 			board.style.removeProperty('transform');
 			board.style.removeProperty('transform-origin');
+			if (boardContainer && boardContainer.id === 'desktop-grids') {
+				boardContainer.style.removeProperty('justify-content');
+			}
 			document.body.classList.remove('board-scaled');
 			return;
 		}
@@ -24116,14 +24333,26 @@ function showFloatingPreview(shape, color, options = {}) {
 		if (!boardWidth || !boardHeight) return;
 
 		const scale = Math.min(availableWidth / boardWidth, availableHeight / boardHeight, 1);
+		const containerWidth = (boardContainer && boardContainer.clientWidth) ? boardContainer.clientWidth : window.innerWidth;
+		const scaledBoardWidth = boardWidth * scale;
+		const offsetX = Math.max((containerWidth - scaledBoardWidth) / 2, 0);
 
 		if (scale < 0.999) {
-			board.style.transform = `scale(${scale})`;
+			// When we scale with CSS transforms, layout width stays unscaled.
+			// If the parent is centered flex, this can push the board off to the left.
+			// Fix by left-aligning layout and translating the scaled board back to center.
+			if (boardContainer && boardContainer.id === 'desktop-grids') {
+				boardContainer.style.justifyContent = 'flex-start';
+			}
+			board.style.transform = `translateX(${offsetX.toFixed(1)}px) scale(${scale})`;
 			board.style.transformOrigin = 'top left';
 			document.body.classList.add('board-scaled');
 		} else {
 			board.style.removeProperty('transform');
 			board.style.removeProperty('transform-origin');
+			if (boardContainer && boardContainer.id === 'desktop-grids') {
+				boardContainer.style.removeProperty('justify-content');
+			}
 			document.body.classList.remove('board-scaled');
 		}
 	}
@@ -24172,17 +24401,16 @@ function showFloatingPreview(shape, color, options = {}) {
 	  const isMobile = window.innerWidth <= MOBILE_BREAKPOINT;
 	  // Bepaal of scherm portrait is (meer hoogte dan breedte)
 	  const isPortrait = window.innerHeight > window.innerWidth;
-	  // Op desktop: portrait = bottom layout, landscape = sidebar layout
-	  const useBottomLayout = isPortrait && !isMobile;
+	  // Desktop: portrait = bottom layout. Daarnaast: bij smalle desktopbreedtes (split-screen/iPad)
+	  // is de landscape sidebar layout te krap; forceer dan ook de bottom layout.
+	  const DESKTOP_NARROW_BREAKPOINT = 925;
+	  const isNarrowDesktop = !isMobile && window.innerWidth <= DESKTOP_NARROW_BREAKPOINT;
+	  const useBottomLayout = !isMobile && (isPortrait || isNarrowDesktop);
 	  
 	  // Add body classes for CSS targeting
 	  if (!isMobile) {
-		  document.body.classList.remove('desktop-portrait', 'desktop-landscape');
-		  if (useBottomLayout) {
-			  document.body.classList.add('desktop-portrait');
-		  } else {
-			  document.body.classList.add('desktop-landscape');
-		  }
+		  document.body.classList.toggle('desktop-portrait', useBottomLayout);
+		  document.body.classList.toggle('desktop-landscape', !useBottomLayout);
 	  } else {
 		  document.body.classList.remove('desktop-portrait', 'desktop-landscape');
 	  }
@@ -24248,8 +24476,9 @@ function showFloatingPreview(shape, color, options = {}) {
 					coins.appendChild(buyPlacementContainer);
 				}
 		
-		// Toggle body class for portrait bottom layout
+		// Toggle body class for portrait bottom layout (keep both flags consistent)
 		document.body.classList.toggle('desktop-portrait', useBottomLayout);
+		document.body.classList.toggle('desktop-landscape', !useBottomLayout);
 		
 		// Create desktop wrapper if not exists
 		let desktopWrapper = document.getElementById('desktop-wrapper');
