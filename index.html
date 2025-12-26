@@ -803,20 +803,20 @@
 		/* Landscape: allow slightly larger cards */
 		@media (orientation: landscape) {
 			body.mobile-sidebar-layout #ml-sidebar-right .card-option {
-				width: 54px;
-				min-height: 60px;
-				padding: 3px;
-				--preview-cell: 8px;
+				width: 58px;
+				min-height: 70px;
+				padding: 4px;
+				--preview-cell: 10px;
 			}
 
 			body.mobile-sidebar-layout #ml-sidebar-right .card-option .card-cell {
-				width: 7px;
-				height: 7px;
+				width: 9px;
+				height: 9px;
 			}
 
 			body.mobile-sidebar-layout #ml-sidebar-right .card-label {
-				font-size: 0.45rem;
-				padding: 1px 3px;
+				font-size: 0.5rem;
+				padding: 2px 4px;
 			}
 		}
 
@@ -8338,16 +8338,16 @@
 			width: fit-content;
 		}
 		body.desktop-portrait #desktop-bottom-center .card-option {
-			width: 54px;
-			max-width: 54px;
-			min-height: 80px;
+			width: 60px;
+			max-width: 60px;
+			min-height: 85px;
 			padding: 4px;
 			gap: 4px;
-			--preview-cell: 10px;
+			--preview-cell: 12px;
 		}
 		body.desktop-portrait #desktop-bottom-center .card-option .card-cell {
-			width: 8px;
-			height: 8px;
+			width: 10px;
+			height: 10px;
 		}
 		body.desktop-portrait #desktop-bottom-center .card-label {
 			font-size: 0.5rem;
@@ -8575,16 +8575,16 @@
 			width: fit-content;
 		}
 		body.desktop-portrait #desktop-bottom-center .card-option {
-			width: 54px;
-			max-width: 54px;
-			min-height: 80px;
+			width: 60px;
+			max-width: 60px;
+			min-height: 85px;
 			padding: 4px;
 			gap: 4px;
-			--preview-cell: 10px;
+			--preview-cell: 12px;
 		}
 		body.desktop-portrait #desktop-bottom-center .card-option .card-cell {
-			width: 8px;
-			height: 8px;
+			width: 10px;
+			height: 10px;
 		}
 		body.desktop-portrait #desktop-bottom-center .card-label {
 			font-size: 0.5rem;
@@ -25503,22 +25503,31 @@ function showFloatingPreview(shape, color, options = {}) {
 	  // Bepaal of scherm portrait is (meer hoogte dan breedte)
 	  const isPortrait = window.matchMedia ? window.matchMedia('(orientation: portrait)').matches : (window.innerHeight > window.innerWidth);
 	  const isLandscapeOrientation = window.matchMedia ? window.matchMedia('(orientation: landscape)').matches : !isPortrait;
-	  // Check for mobile LANDSCAPE sidebar mode only: touch device + landscape + short height
+	  // Check for tablet/mobile LANDSCAPE sidebar mode: touch device + landscape orientation
+	  // Tablets (iPad) in landscape moeten ALTIJD sidebars krijgen, niet bottom bar
 	  // Portrait mobiel moet bottom bar behouden!
-	  const isMobileLandscape = isLandscapeOrientation && isCoarsePointer() && window.innerHeight <= 500 && window.innerWidth > 500;
+	  const isTabletLandscape = isLandscapeOrientation && isCoarsePointer() && window.innerWidth > MOBILE_BREAKPOINT;
+	  const isMobileLandscape = isLandscapeOrientation && isCoarsePointer() && window.innerHeight <= 500 && window.innerWidth > 500 && window.innerWidth <= MOBILE_BREAKPOINT;
+	  const useSidebarLayout = isTabletLandscape || isMobileLandscape;
+	  
 	  // Desktop: portrait = bottom layout. Daarnaast: bij smalle desktopbreedtes (split-screen/iPad)
 	  // is de landscape sidebar layout te krap; forceer dan ook de bottom layout.
+	  // MAAR: tablets (touch devices) in landscape krijgen ALTIJD sidebar layout.
 	  // OOK bij beperkte hoogte (<= 925px) moet portrait mode worden gebruikt om alles te laten passen.
 	  const DESKTOP_NARROW_BREAKPOINT = 925;
 	  const DESKTOP_SHORT_HEIGHT_BREAKPOINT = 925;
-	  const isNarrowDesktop = !isMobile && !isMobileLandscape && window.innerWidth <= DESKTOP_NARROW_BREAKPOINT;
-	  const isShortDesktop = !isMobile && !isMobileLandscape && window.innerHeight <= DESKTOP_SHORT_HEIGHT_BREAKPOINT;
-	  const useBottomLayout = !isMobile && !isMobileLandscape && (isPortrait || isNarrowDesktop || isShortDesktop);
+	  // Narrow/short desktop checks alleen als het GEEN touch device in landscape is
+	  const isNarrowDesktop = !isMobile && !useSidebarLayout && !isCoarsePointer() && window.innerWidth <= DESKTOP_NARROW_BREAKPOINT;
+	  const isShortDesktop = !isMobile && !useSidebarLayout && !isCoarsePointer() && window.innerHeight <= DESKTOP_SHORT_HEIGHT_BREAKPOINT;
+	  // Touch device in portrait desktop mode: voeg class toe voor CSS targeting
+	  const isTouchPortrait = isCoarsePointer() && !useSidebarLayout && isPortrait;
+	  const useBottomLayout = !isMobile && !useSidebarLayout && (isPortrait || isNarrowDesktop || isShortDesktop);
 	  
 	  // Add body classes for CSS targeting
-	  document.body.classList.toggle('mobile-sidebar-layout', isMobileLandscape);
+	  document.body.classList.toggle('mobile-sidebar-layout', useSidebarLayout);
+	  document.body.classList.toggle('touch-portrait', isTouchPortrait);
 	  document.body.classList.remove('mobile-landscape'); // deprecated class
-	  if (!isMobile && !isMobileLandscape) {
+	  if (!isMobile && !useSidebarLayout) {
 		  document.body.classList.toggle('desktop-portrait', useBottomLayout);
 		  document.body.classList.toggle('desktop-landscape', !useBottomLayout);
 	  } else {
@@ -26085,8 +26094,8 @@ function showFloatingPreview(shape, color, options = {}) {
 			min-height: 85px !important;
 			padding: 4px !important;
 			/* Key: keep JS preview sizing and CSS in sync */
-			--preview-cell: 10px;
-			--card-cell-size: 10px;
+			--preview-cell: 14px;
+			--card-cell-size: 14px;
 		}
 		
 		/* Adjust card pattern gap */
