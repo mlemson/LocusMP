@@ -12537,10 +12537,13 @@
 			},
 			{
 				id: 'level-12-bonus-rush',
-				description: 'Level 12: Verzamel 40+ bonuspunten.',
+				description: 'Level 12: Verzamel 40 bonussen.',
 				short: 'Level 12 - Bonus rush',
-				check: scores => scores.bonus >= 40,
-				progress: scores => (scores.bonus >= 40 ? '⭐✔' : `⭐${Math.max(0, scores.bonus)}/40`)
+				check: scores => (scores?.bonusesCollected || 0) >= 40,
+				progress: scores => {
+					const collected = Math.max(0, Math.min(40, (scores?.bonusesCollected || 0)));
+					return `${collected}/40`;
+				}
 			},
 			{
 				id: 'level-12-rainbow',
@@ -25124,7 +25127,7 @@ function showFloatingPreview(shape, color, options = {}) {
 		if (currentHand.length > 0) {
 		  // Next hand: ONLY warn about playable cards (no bonus-only warnings).
 		  const hasPlayableCards = currentHand.some(card => card && isCardPlayable(card));
-		  if (cardsPlayedThisTurn === 0 && hasPlayableCards) {
+		  if (hasPlayableCards) {
 			showDiscardHandConfirm(() => {
 			  discardCurrentHand();
 			  drawNextHand();
@@ -25536,9 +25539,14 @@ function showFloatingPreview(shape, color, options = {}) {
 		if (!board) return;
 		const boardContainer = board.parentElement;
 		const desktopBottom = document.getElementById('desktop-bottom');
+		const desktopWrapper = document.getElementById('desktop-wrapper');
 		const isDesktop = window.innerWidth > MOBILE_BREAKPOINT;
 		const isMobileSidebar = document.body.classList.contains('mobile-sidebar-layout');
 		if (!isDesktop || isMobileSidebar) {
+			if (desktopWrapper) {
+				desktopWrapper.style.removeProperty('transform');
+				desktopWrapper.style.removeProperty('transform-origin');
+			}
 			board.style.removeProperty('transform');
 			board.style.removeProperty('transform-origin');
 			if (boardContainer && boardContainer.id === 'desktop-grids') {
@@ -25551,12 +25559,52 @@ function showFloatingPreview(shape, color, options = {}) {
 			return;
 		}
 
-		// reset inline transform before measuring
+		if (!desktopWrapper) {
+			board.style.removeProperty('transform');
+			board.style.removeProperty('transform-origin');
+			document.body.classList.remove('board-scaled');
+			return;
+		}
+
+		// reset inline transforms before measuring
+		desktopWrapper.style.removeProperty('transform');
+		desktopWrapper.style.removeProperty('transform-origin');
+
+		// Always clear board-only scaling first; we may apply wrapper-level scaling.
 		board.style.removeProperty('transform');
 		board.style.removeProperty('transform-origin');
 
 		const isPortrait = document.body.classList.contains('desktop-portrait');
 		const isLandscape = document.body.classList.contains('desktop-landscape');
+
+		// Desktop-landscape: scale the entire desktop wrapper so board + side UI fit together.
+		if (isLandscape) {
+			if (boardContainer && boardContainer.id === 'desktop-grids') {
+				boardContainer.style.removeProperty('justify-content');
+			}
+			if (desktopBottom) {
+				desktopBottom.style.removeProperty('margin-top');
+			}
+			document.body.classList.remove('board-scaled');
+
+			// The body has padding: 10px on each side.
+			const outerPadding = 20;
+			const availableWidth = Math.max(window.innerWidth - outerPadding, 280);
+			const availableHeight = Math.max(window.innerHeight - outerPadding, 240);
+			const contentWidth = desktopWrapper.scrollWidth;
+			const contentHeight = desktopWrapper.scrollHeight;
+			if (!(contentWidth > 0 && contentHeight > 0)) return;
+
+			const scale = Math.min(availableWidth / contentWidth, availableHeight / contentHeight, 1);
+			if (scale < 0.999) {
+				desktopWrapper.style.transform = `scale(${scale.toFixed(4)})`;
+				desktopWrapper.style.transformOrigin = 'top center';
+			} else {
+				desktopWrapper.style.removeProperty('transform');
+				desktopWrapper.style.removeProperty('transform-origin');
+			}
+			return;
+		}
 		
 		// Calculate sidebar widths for landscape mode
 		let rightSidebarWidth = 0;
