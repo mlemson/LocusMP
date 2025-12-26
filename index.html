@@ -7978,25 +7978,37 @@
 			padding: 2px 5px;
 		}
 
-		/* Coins: stack buy button + counter vertically to save width. */
+		/* Coins: counter + buy button next to each other (under the cards). */
 		body.desktop-portrait #gold-zone {
-			flex-direction: column;
-			align-items: stretch;
-			justify-content: flex-start;
-			gap: 6px;
+			flex-direction: row;
+			align-items: center;
+			justify-content: space-between;
+			gap: 10px;
 			padding: 6px 8px;
 		}
 		body.desktop-portrait #gold-zone #buy-placement-container {
 			margin-top: 0;
+			flex: 0 0 auto;
 		}
 		body.desktop-portrait #gold-zone .buy-placement-btn {
 			padding: 6px 8px;
 			max-width: none;
-			width: 100%;
+			width: auto;
+			white-space: nowrap;
 		}
 		body.desktop-portrait #gold-zone::after {
-			font-size: 0.82rem;
-			text-align: center;
+			font-size: 0.86rem;
+			text-align: right;
+		}
+
+		/* Increase blue + green zone height for this narrow desktop portrait layout. */
+		body.desktop-portrait #blue-zone,
+		body.desktop-portrait #blue-zone--placeholder {
+			height: 1052px;
+		}
+		body.desktop-portrait #green-zone,
+		body.desktop-portrait #green-zone--placeholder {
+			min-height: 520px;
 		}
 	  }
 
@@ -24583,8 +24595,9 @@ function showFloatingPreview(shape, color, options = {}) {
 					if (bonus && bottomRight && !bottomRight.contains(bonus)) {
 						bottomRight.appendChild(bonus);
 					}
-					if (coins && bottomRight && !bottomRight.contains(coins)) {
-						bottomRight.appendChild(coins);
+					// Coins (counter + buy button) under the cards in portrait bottom layout.
+					if (coins && bottomCenter && !bottomCenter.contains(coins)) {
+						bottomCenter.appendChild(coins);
 					}
 				} else {
 					// Landscape mode: gebruik sidebar layout
