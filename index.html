@@ -21483,7 +21483,12 @@ document.addEventListener('pointermove', ev => {
 	}
 
 	function getRemainingBonusCharges() {
-		return BONUS_ORDER.reduce((total, key) => total + (bonusInventory[key] || 0), 0);
+		let total = BONUS_ORDER.reduce((sum, key) => sum + (bonusInventory[key] || 0), 0);
+		// Include free placements ("Gratis")
+		total += Math.max(0, Number(freePlacementsRemaining) || 0);
+		// Include purchased placement (single pending purchased block)
+		if (window.hasPurchasedPlacement) total += 1;
+		return total;
 	}
 
 	function getCompletionWarningState() {
@@ -21534,10 +21539,15 @@ document.addEventListener('pointermove', ev => {
 			return;
 		}
 		if (confirmCompleteDetails) {
-			const playableCount = currentHand.filter(card => card && isCardPlayable(card)).length;
-			const cardLabel = playableCount === 1 ? 'speelbare kaart' : 'speelbare kaarten';
-			confirmCompleteDetails.textContent = `Je hebt nog ${playableCount} ${cardLabel} die je zou kunnen plaatsen. Weet je zeker dat je deze wilt weggooien?`;
-			confirmCompleteDetails.style.display = '';
+			const state = getCompletionWarningState();
+			const detailText = buildCompletionWarningDetails(state);
+			if (detailText) {
+				confirmCompleteDetails.textContent = `${detailText} Weet je zeker dat je naar de volgende hand wilt gaan?`;
+				confirmCompleteDetails.style.display = '';
+			} else {
+				confirmCompleteDetails.textContent = 'Weet je zeker dat je naar de volgende hand wilt gaan?';
+				confirmCompleteDetails.style.display = '';
+			}
 		}
 		confirmCompleteLayer.classList.add('show');
 		if (confirmCompleteYes) confirmCompleteYes.focus();
@@ -23138,6 +23148,11 @@ function openShopModal(callback) {
 	  const cellSize = Math.max(18, Math.min(30, computedCellSize)); // Clamp between 18 and 30
 	  const isPortrait = window.innerHeight > window.innerWidth;
 	  const isShortHeight = window.innerHeight <= 925;
+	  const isDesktopPortraitLayout = document.body.classList.contains('desktop-portrait')
+			&& !document.body.classList.contains('mobile-sidebar-layout')
+			&& !document.body.classList.contains('touch-portrait');
+	  // Purple needs a bit more vertical chrome in desktop portrait so it never clips.
+	  const purpleChromePx = isDesktopPortraitLayout ? 34 : 20;
 	  const tallZoneMaxVh = isPortrait ? '52vh' : (isShortHeight ? '65vh' : '85vh');
 	  // Green should be visibly shorter so the rest of the UI fits, but still scrollable.
 	  // User request: make it ~40px shorter.
@@ -23162,7 +23177,7 @@ function openShopModal(callback) {
 		const purpleSize = parseInt(purpleGrid.dataset.rows) || 10;
 		// Tighter chrome around the generated purple grid - gebruik minder padding.
 		purpleZone.style.width = `${purpleSize * cellSize + 30}px`;
-		purpleZone.style.height = `${purpleSize * cellSize + 20}px`; // Was +40, nu +20 voor minder hoogte
+		purpleZone.style.height = `${purpleSize * cellSize + purpleChromePx}px`;
 	  }
 
 	  // WORLD 2 UX: make yellow zone the same width as purple.
@@ -23200,7 +23215,7 @@ function openShopModal(callback) {
 		  const yellowRows = parseInt(yellowGrid.dataset.rows) || 10;
 		  const purpleRows = parseInt(purpleGrid.dataset.rows) || 10;
 		  const yellowHeight = yellowRows * cellSize + 70; // Zelfde als yellowZone.style.height berekening
-		  const purpleHeight = purpleRows * cellSize + 20; // Zelfde als purpleZone.style.height berekening
+			const purpleHeight = purpleRows * cellSize + purpleChromePx; // Zelfde als purpleZone.style.height berekening
 		  const gapBetweenZones = 10; // Gap tussen geel en paars zones
 		  blueHeight = yellowHeight + purpleHeight + gapBetweenZones;
 		} else {
@@ -23284,6 +23299,16 @@ function openShopModal(callback) {
 	  });
 
 	  requestAnimationFrame(() => {
+		// Desktop portrait request (World 2): make green zone a square (height ~= width).
+		if (greenZone && isDesktopPortraitLayout) {
+			const w = greenZone.getBoundingClientRect().width;
+			if (w > 0) {
+				const target = Math.round(w);
+				greenZone.style.height = `${target}px`;
+				greenZone.style.maxHeight = `${target}px`;
+			}
+		}
+
 		// WORLD 2 green: center the start cell in the visible area (both axes).
 		if (greenGrid && greenZone) {
 			const sx = Number(greenGrid.dataset.startX);
@@ -24367,11 +24392,19 @@ function showFloatingPreview(shape, color, options = {}) {
 		const preview = document.getElementById('floating-preview');
 		if (!preview) return;
 
+		const isNarrowMobile = window.innerWidth <= 650;
+		const isBonusPreview = !!(activeBonusPlacement || options.useDefaultPosition);
+		// Phone UX: the floating preview box is redundant (card already shows the shape) and
+		// looks bad when it can't align perfectly with the card. Keep it only for bonus placement.
+		if (isNarrowMobile && !isBonusPreview) {
+			hideFloatingPreview();
+			return;
+		}
+
 		floatingPreviewActive = true;
 		updateFloatingPreview(shape, color);
 		preview.style.display = 'flex';
 
-		const isBonusPreview = !!(activeBonusPlacement || options.useDefaultPosition);
 		const shouldPinAboveBottomBar = (window.innerWidth <= 650) || document.body.classList.contains('zoomed-in');
 		const baseTransform = (isBonusPreview || shouldPinAboveBottomBar) ? 'translate(-50%, 0)' : 'none';
 		const targetScale = isBonusPreview ? 0.55 : 1;
@@ -25099,10 +25132,8 @@ function showFloatingPreview(shape, color, options = {}) {
 		  return;
 		}
 		if (currentHand.length > 0) {
-		  // Als er nog speelbare kaarten zijn en geen kaart gespeeld, toon waarschuwing
-		  const hasPlayableCards = currentHand.some(card => card && isCardPlayable(card));
-		  if (cardsPlayedThisTurn === 0 && hasPlayableCards) {
-			// Toon een bevestigingsdialoog in plaats van blokkeren
+		  // Toon waarschuwing als er nog iets bruikbaars is (speelbare kaarten/bonussen/actieve selectie)
+		  if (shouldWarnBeforeCompletingRound()) {
 			showDiscardHandConfirm(() => {
 			  discardCurrentHand();
 			  drawNextHand();
