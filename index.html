@@ -18389,11 +18389,44 @@ document.addEventListener('pointermove', ev => {
 	  card.cardShape = shape;
 	}
 
-	function renderBlock(block, shape, color) {
+	function getActualCellSize() {
+	  // Bereken de werkelijke cel-grootte op basis van een cel in het speelveld
+	  // Dit houdt rekening met board scaling
+	  const sampleCell = document.querySelector('#board .grid .cell:not(.void-cell)');
+	  if (sampleCell) {
+		const rect = sampleCell.getBoundingClientRect();
+		// Gebruik de kleinste dimensie (cellen zijn vierkant)
+		return Math.min(rect.width, rect.height);
+	  }
+	  // Fallback naar CSS variabele
+	  const cssSize = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--cell-size')) || 26;
+	  return cssSize;
+	}
+
+	function renderBlock(block, shape, color, useActualCellSize = true) {
 	  block.innerHTML = '';
 	  block.style.display = 'grid';
-	  block.style.gridTemplateColumns = `repeat(${shape[0].length}, var(--cell-size))`;
-	  block.style.gridTemplateRows = `repeat(${shape.length}, var(--cell-size))`;
+	  
+	  // Bepaal de cel-grootte: gebruik de werkelijke speelveld cel-grootte als niet ingezoomd
+	  const isZoomed = document.body.classList.contains('zoomed-in');
+	  let cellSize;
+	  let cellSizeStr;
+	  
+	  if (useActualCellSize && !isZoomed) {
+		// Gebruik de werkelijke cel-grootte van het speelveld (inclusief scaling)
+		cellSize = getActualCellSize();
+		cellSizeStr = `${cellSize}px`;
+	  } else {
+		// Bij zoom of fallback: gebruik CSS variabele
+		cellSize = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--cell-size')) || 26;
+		cellSizeStr = 'var(--cell-size)';
+	  }
+	  
+	  // Border-radius is altijd size / 4
+	  const borderRadius = `${cellSize / 4}px`;
+	  
+	  block.style.gridTemplateColumns = `repeat(${shape[0].length}, ${cellSizeStr})`;
+	  block.style.gridTemplateRows = `repeat(${shape.length}, ${cellSizeStr})`;
 	  // Keep spacing consistent with the board grid.
 	  block.style.gap = 'var(--board-grid-gap)';
 	  block.style.opacity = '0.8';
@@ -18402,11 +18435,11 @@ document.addEventListener('pointermove', ev => {
 	  shape.forEach((row, rowIdx) => {
 		row.forEach((cell, colIdx) => {
 			const div = document.createElement('div');
-			div.style.width = 'var(--cell-size)';
-			div.style.height = 'var(--cell-size)';
+			div.style.width = cellSizeStr;
+			div.style.height = cellSizeStr;
 			div.style.margin = '0px';
-			// Border-radius consistent met speelveld: calc(var(--cell-size) / 4)
-			div.style.borderRadius = 'calc(var(--cell-size) / 4)';
+			// Border-radius consistent met speelveld: size / 4
+			div.style.borderRadius = borderRadius;
 			div.style.boxSizing = 'border-box';
 			const key = `${colIdx},${rowIdx}`;
 			const isOptional = optionalSet.has(key);
@@ -23119,7 +23152,18 @@ function openShopModal(callback) {
 		blueZone.style.width = `${targetWidthPx}px`;
 		blueZone.style.minWidth = `${targetWidthPx}px`;
 		blueZone.style.maxWidth = `${targetWidthPx}px`;
-		blueZone.style.height = `${Math.min(blueRows * cellSize, tallZoneMaxPx)}px`;
+		
+		// WORLD 2 UX: Blauw zone hoogte = geel + paars + gap ertussen
+		let blueHeight;
+		if (yellowZone && purpleZone) {
+		  const yellowHeight = yellowZone.offsetHeight || parseFloat(yellowZone.style.height) || 0;
+		  const purpleHeight = purpleZone.offsetHeight || parseFloat(purpleZone.style.height) || 0;
+		  const gapBetweenZones = 10; // Gap tussen geel en paars zones
+		  blueHeight = yellowHeight + purpleHeight + gapBetweenZones;
+		} else {
+		  blueHeight = Math.min(blueRows * cellSize, tallZoneMaxPx);
+		}
+		blueZone.style.height = `${blueHeight}px`;
 		blueZone.style.maxHeight = tallZoneMaxVh;
 		blueZone.style.overflowY = 'auto';
 		blueZone.style.overflowX = 'auto';
