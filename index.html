@@ -2562,13 +2562,7 @@
 	body.dark-mode .purchased-block-label {
 		color: #c9b0e8;
 	}
-	/* Hide purchased block preview only on small touch screens (phones).
-	   On tablets/iPad we keep it visible because it's the main tap target to start placement. */
-	@media (pointer: coarse) and (max-width: 650px) {
-		.purchased-block-preview {
-			display: none !important;
-		}
-	}
+	/* Keep the purchased preview visible everywhere; it's the drag handle to place the bought block. */
 	@keyframes pulse-glow {
 		0%, 100% { box-shadow: 0 0 8px rgba(150,100,200,0.2); }
 		50% { box-shadow: 0 0 16px rgba(150,100,200,0.4); }
@@ -9098,8 +9092,48 @@
 		grid-area: grids;
 		display: flex;
 		justify-content: center;
-		align-items: start;
+		align-items: center;
 		overflow: visible;
+	  }
+
+	  /* Half-screen desktop landscape (≈900-1200px): tighten sidebars + gaps so the full board fits. */
+	  @media (min-width: 651px) and (max-width: 1200px) and (orientation: landscape) {
+		body.desktop-landscape #desktop-wrapper {
+			grid-template-columns: minmax(96px, 130px) 1fr minmax(96px, 130px);
+			gap: 4px;
+			padding: 6px;
+		}
+		body.desktop-landscape #desktop-left,
+		body.desktop-landscape #desktop-right {
+			min-width: 96px;
+			max-width: 130px;
+		}
+		body.desktop-landscape #desktop-right .card-option {
+			width: 56px;
+			min-height: 76px;
+			padding: 4px;
+			--preview-cell: 9px;
+		}
+		body.desktop-landscape #desktop-right .card-option .card-cell {
+			width: 8px;
+			height: 8px;
+		}
+		body.desktop-landscape #desktop-right .card-label {
+			font-size: 0.48rem;
+		}
+		body.desktop-landscape #desktop-left #scoreboard {
+			padding: 5px;
+		}
+		body.desktop-landscape #desktop-left #gold-zone {
+			padding: 4px 5px;
+		}
+	  }
+
+	  /* Extra fit: if the window is narrow, slightly reduce cell-size (keeps proportions consistent). */
+	  @media (min-width: 651px) and (max-width: 1200px) and (orientation: landscape) {
+		body.desktop-landscape {
+			--cell-size: clamp(16px, 1.9vw, 24px);
+		}
 	  }
 
 	  .board {
@@ -19617,22 +19651,10 @@ document.addEventListener('pointermove', ev => {
 	  const btn = document.getElementById('buy-placement-btn');
 	  const preview = document.getElementById('purchased-block-preview');
 	  if (!btn) return;
-	  const isTouch = (window.matchMedia && window.matchMedia('(pointer: coarse)').matches) || ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
-	  const isPhoneLike = isTouch && window.innerWidth <= 650;
 	  
 	  // Als er een gekochte plaatsing actief is, toon preview en verberg knop
 	  if (window.hasPurchasedPlacement) {
-		// Phone UX: keep the button visible (preview is hidden on phones), and use it to start placement.
-		if (isPhoneLike) {
-			btn.style.display = 'flex';
-			btn.disabled = false;
-			btn.title = 'Plaats gekocht bonusblok';
-			btn.setAttribute('data-has-purchased', 'true');
-			if (preview) preview.style.display = 'none';
-			return;
-		}
 		btn.style.display = 'none';
-		btn.removeAttribute('data-has-purchased');
 		if (preview) preview.style.display = 'flex';
 		return;
 	  }
@@ -19647,24 +19669,9 @@ document.addEventListener('pointermove', ev => {
 	  btn.title = coins < cost 
 		? `Onvoldoende munten (${coins}/${cost})` 
 		: 'Koop bonusblok (2 munten)';
-	  btn.removeAttribute('data-has-purchased');
 	}
 
 	function onBuyPlacementClick() {
-	  // If a purchase is already pending (common on phones where the preview is hidden),
-	  // interpret this as "start placing the purchased block".
-	  if (window.hasPurchasedPlacement) {
-		const fallbackEvent = {
-			clientX: window.innerWidth / 2,
-			clientY: window.innerHeight / 2,
-			pointerId: null,
-			target: document.getElementById('buy-placement-btn'),
-			preventDefault() {},
-			stopPropagation() {}
-		};
-		onPurchasedBlockPreviewClick(fallbackEvent);
-		return;
-	  }
 	  const coins = getSpendableCoinCount();
 	  const cost = 2;
 	  if (coins < cost) {
@@ -19682,16 +19689,21 @@ document.addEventListener('pointermove', ev => {
 	  window.hasPurchasedPlacement = true;
 	  updateBuyPlacementButton();
 	  
-	  showObjectiveToast('🌈 Blok gekocht! Klik erop om te plaatsen.');
+	  showObjectiveToast('🌈 Blok gekocht! Sleep het icoon om te plaatsen.');
 	}
 
 	function onPurchasedBlockPreviewClick(event) {
 	  if (!window.hasPurchasedPlacement) return;
 	  const isMobileLayout = window.innerWidth <= MOBILE_BREAKPOINT;
 	  const isTouchDevice = ('ontouchstart' in window || navigator.maxTouchPoints > 0);
+	  const isPointerDown = !!(event && typeof event.type === 'string' && event.type.indexOf('pointer') === 0);
+	  const preferDirectDrag = !!(event && event.type === 'pointerdown' && event.pointerType === 'mouse');
 	  
 	  // Als er al een purchased placement drag actief is, annuleer deze
 	  if (activeBonusPlacement && activeBonusPlacement.colorKey === 'purchased') {
+		// Pointerdown on the icon should NOT toggle/cancel (this caused "doesn't work" feel).
+		// Keep cancellation only for deliberate secondary clicks.
+		if (isPointerDown) return;
 		cancelActiveBonusPlacement({ updateInventory: true });
 		return;
 	  }
@@ -19709,7 +19721,8 @@ document.addEventListener('pointermove', ev => {
 	  
 	  const previewEl = document.getElementById('purchased-block-preview');
 	  // Desktop mouse UX: click-to-pickup → hover-follow → click-to-drop.
-	  if (!isTouchDevice && previewEl) {
+	  // BUT: if the user starts with pointerdown (drag), do direct drag instead.
+	  if (!isTouchDevice && !preferDirectDrag && previewEl) {
 		activeBonusPlacement = {
 			colorKey: 'purchased',
 			pointerId: null,
@@ -19742,14 +19755,14 @@ document.addEventListener('pointermove', ev => {
 	  const startX = event.clientX || window.innerWidth / 2;
 	  const startY = event.clientY || window.innerHeight / 2;
 	  ({ offsetX, offsetY } = computeShapeCenterOffsets(draggedShape));
-	  const touchOffsetY = 60; // Offset zodat vinger het blok niet bedekt
+	  const touchOffsetY = isTouchDevice ? 60 : 0; // Offset zodat vinger het blok niet bedekt
 	  draggedBlock.style.left = `${startX - offsetX}px`;
 	  draggedBlock.style.top = `${startY - offsetY - touchOffsetY}px`;
 	  
 	  activeBonusPlacement = {
 		colorKey: 'purchased',
 		pointerId: event.pointerId || null,
-		sticky: false, // Niet sticky op touch - direct plaatsen bij release
+		sticky: false, // Direct plaatsen bij release
 		shape: cloneShape(shape),
 		purchasedPlacement: true
 	  };
