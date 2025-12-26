@@ -24069,7 +24069,13 @@ document.addEventListener('pointerdown', ev => {
 			};
 			
 			rotateBtn.addEventListener('click', handleRotate);
+			rotateBtn.addEventListener('touchend', handleRotate);
 			rotateBtn.addEventListener('mousedown', (e) => {
+				e.preventDefault();
+				e.stopPropagation();
+				e.stopImmediatePropagation();
+			});
+			rotateBtn.addEventListener('touchstart', (e) => {
 				e.preventDefault();
 				e.stopPropagation();
 				e.stopImmediatePropagation();
@@ -24098,7 +24104,13 @@ document.addEventListener('pointerdown', ev => {
 			};
 			
 			mirrorBtn.addEventListener('click', handleMirror);
+			mirrorBtn.addEventListener('touchend', handleMirror);
 			mirrorBtn.addEventListener('mousedown', (e) => {
+				e.preventDefault();
+				e.stopPropagation();
+				e.stopImmediatePropagation();
+			});
+			mirrorBtn.addEventListener('touchstart', (e) => {
 				e.preventDefault();
 				e.stopPropagation();
 				e.stopImmediatePropagation();
@@ -24141,7 +24153,13 @@ document.addEventListener('pointerdown', ev => {
 			};
 			
 			cancelBtn.addEventListener('click', handleCancel);
+			cancelBtn.addEventListener('touchend', handleCancel);
 			cancelBtn.addEventListener('mousedown', (e) => {
+				e.preventDefault();
+				e.stopPropagation();
+				e.stopImmediatePropagation();
+			});
+			cancelBtn.addEventListener('touchstart', (e) => {
 				e.preventDefault();
 				e.stopPropagation();
 				e.stopImmediatePropagation();
@@ -24188,7 +24206,13 @@ document.addEventListener('pointerdown', ev => {
 			};
 			
 			dropBtn.addEventListener('click', handleDrop);
+			dropBtn.addEventListener('touchend', handleDrop);
 			dropBtn.addEventListener('mousedown', (e) => {
+				e.preventDefault();
+				e.stopPropagation();
+				e.stopImmediatePropagation();
+			});
+			dropBtn.addEventListener('touchstart', (e) => {
 				e.preventDefault();
 				e.stopPropagation();
 				e.stopImmediatePropagation();
@@ -25636,9 +25660,9 @@ function showFloatingPreview(shape, color, options = {}) {
 	  // isCoarsePointer() checkt voor touch-primaire devices
 	  const isTouchDevice = isCoarsePointer();
 	  
-	  // Desktop breakpoints
-	  const DESKTOP_NARROW_BREAKPOINT = 925;
-	  const DESKTOP_SHORT_HEIGHT_BREAKPOINT = 925;
+	  // Desktop breakpoints - voor wanneer bottom layout beter is
+	  const DESKTOP_NARROW_BREAKPOINT = 800; // Was 925, nu smaller voor meer sidebar gebruik
+	  const DESKTOP_SHORT_HEIGHT_BREAKPOINT = 500; // Was 925, nu korter - sidebars werken ook bij korte hoogte
 	  
 	  // BELANGRIJK: Verschil maken tussen:
 	  // 1. Desktop/laptop (muis) → gebruikt normale desktop layout (sidebars of bottom)
@@ -25651,17 +25675,20 @@ function showFloatingPreview(shape, color, options = {}) {
 	  
 	  // Desktop sidebar layout: desktop in landscape met voldoende ruimte
 	  // Dit is de NORMALE layout, niet de compacte mobile versie
-	  const useDesktopLandscape = !isMobile && !isTouchDevice && effectiveLandscape;
+	  // Op desktop/laptop gebruiken we ALTIJD sidebars in landscape, tenzij heel smal
+	  const useDesktopLandscape = !isMobile && !isTouchDevice && effectiveLandscape && width > DESKTOP_NARROW_BREAKPOINT;
 	  
-	  // Bottom layout: portrait mode of te smal/kort voor sidebars
+	  // Bottom layout: portrait mode of te smal voor sidebars
 	  const isNarrowDesktop = !isMobile && !isTouchDevice && width <= DESKTOP_NARROW_BREAKPOINT;
+	  // Short height alleen forceren als echt heel kort (scrolling mogelijk)
 	  const isShortDesktop = !isMobile && !isTouchDevice && height <= DESKTOP_SHORT_HEIGHT_BREAKPOINT;
 	  
 	  // Touch device in portrait mode
 	  const isTouchPortrait = isTouchDevice && !effectiveLandscape;
 	  
-	  // Desktop bottom layout: portrait of te klein voor landscape sidebars
-	  const useDesktopPortrait = !isMobile && !isTouchDevice && (isPortrait || isNarrowDesktop || isShortDesktop);
+	  // Desktop bottom layout: alleen in portrait of als echt te smal
+	  // NIET meer gebaseerd op short height - sidebars werken goed met scroll
+	  const useDesktopPortrait = !isMobile && !isTouchDevice && (isPortrait || isNarrowDesktop);
 	  
 	  // Add body classes for CSS targeting
 	  document.body.classList.toggle('mobile-sidebar-layout', useMobileSidebarLayout);
