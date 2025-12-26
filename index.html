@@ -1193,13 +1193,13 @@
 	  #bottom-bar-bonus #gold-zone {
 		width: 100% !important;
 		flex: 0 0 auto;
-		padding: 6px 8px;
+		padding: 3px 6px;
 		margin: 0;
 		display: flex;
 		flex-direction: column;
 		align-items: stretch;
 		justify-content: flex-start;
-		gap: 6px;
+		gap: 4px;
 	  }
 	  #bottom-bar-bonus #gold-zone .buy-placement-btn {
 		margin-left: 0;
@@ -2092,9 +2092,9 @@
 
 	/* Green root cells are absolutely positioned; shrink + center them to create visible spacing. */
 	#green-grid .root-cell:not(.void-cell) {
-		width: calc(var(--cell-size) - 4px);
-		height: calc(var(--cell-size) - 4px);
-		transform: translate(2px, 2px);
+		width: calc(var(--cell-size) - 2px);
+		height: calc(var(--cell-size) - 2px);
+		transform: translate(1px, 1px);
 	}
 
 
@@ -2442,8 +2442,8 @@
 	.buy-placement-rainbow-cell {
 		width: 18px;
 		height: 18px;
-		/* Border-radius consistent met speelveld: 18px / 4 = 4.5px */
-		border-radius: calc(18px / 4);
+		/* Border-radius: max 5px, minder rond */
+		border-radius: min(5px, calc(18px / 5));
 		display: inline-block;
 		box-shadow: inset 0 0 0 1px rgba(0,0,0,0.22), 0 2px 6px rgba(0,0,0,0.22);
 		background: linear-gradient(
@@ -3659,8 +3659,8 @@
 	.card-option .card-cell {
 		width: var(--card-cell-size, 22px);
 		height: var(--card-cell-size, 22px);
-		/* Border-radius consistent met speelveld: size / 4 */
-		border-radius: calc(var(--card-cell-size, 22px) / 4);
+		/* Border-radius: max 5px, minder rond voor kleine cells */
+		border-radius: min(5px, calc(var(--card-cell-size, 22px) / 5));
 		border: 1px solid rgba(12,16,30,0.12);
 		box-shadow: inset 0 0 4px rgba(0,0,0,0.18);
 		background: rgba(255,255,255,0.95);
@@ -5632,8 +5632,8 @@
 	.shop-card .card-option .card-cell {
 		width: 22px;
 		height: 22px;
-		/* Border-radius consistent met speelveld: 22px / 4 */
-		border-radius: calc(22px / 4);
+		/* Border-radius: max 5px, minder rond */
+		border-radius: min(5px, calc(22px / 5));
 		border: 1px solid rgba(12,16,30,0.12);
 		box-shadow: inset 0 0 4px rgba(0,0,0,0.18);
 		background: rgba(255,255,255,0.95);
@@ -5769,8 +5769,8 @@
 		.shop-card .card-option .card-cell {
 			width: 12px;
 			height: 12px;
-			/* Border-radius consistent: 12px / 4 */
-			border-radius: calc(12px / 4);
+			/* Border-radius: max 5px, minder rond */
+			border-radius: min(5px, calc(12px / 5));
 		}
 
 		.shop-card .card-label {
@@ -6888,8 +6888,8 @@
 		#bottom-bar #card-choice-zone .card-option .card-cell {
 			width: 7px;
 			height: 7px;
-			/* Border-radius consistent: 7px / 4 = 1.75px */
-			border-radius: calc(7px / 4);
+			/* Border-radius: max 5px, minder rond */
+			border-radius: min(5px, calc(7px / 5));
 			border: 1px solid rgba(12,16,30,0.1);
 			box-shadow: inset 0 0 1px rgba(0,0,0,0.12);
 		}
@@ -7155,18 +7155,19 @@
 			width: auto;
 			max-width: 100%;
 			margin: 0;
-			padding: 4px 8px;
+			padding: 2px 6px;
 			background: rgba(18,20,28,0.9);
 			border: 1px solid rgba(255,255,255,0.12);
-			border-radius: 10px;
+			border-radius: 8px;
 			box-shadow: 0 8px 16px rgba(0,0,0,0.26);
 			display: flex;
 			flex-direction: row;
 			align-items: center;
 			justify-content: center;
-			gap: 8px;
+			gap: 6px;
 			color: #f5f6ff;
 			height: auto;
+			min-height: 0;
 		}
 
 		body.dark-mode #bottom-bar #gold-zone {
@@ -7318,8 +7319,8 @@
 		#bottom-bar .buy-placement-rainbow-cell {
 			width: 14px;
 			height: 14px;
-			/* Border-radius consistent met speelveld: 14px / 4 */
-			border-radius: calc(14px / 4);
+			/* Border-radius: max 5px, minder rond */
+			border-radius: min(5px, calc(14px / 5));
 		}
 		#bottom-bar .buy-placement-cost {
 			padding: 1px 4px;
@@ -7625,7 +7626,7 @@
 				font-size: 0.62rem !important;
 			}
 			#bottom-bar .buy-placement-arrow { font-size: 0.8rem !important; }
-			#bottom-bar .buy-placement-rainbow-cell { width: 12px !important; height: 12px !important; border-radius: calc(12px / 4) !important; }
+			#bottom-bar .buy-placement-rainbow-cell { width: 12px !important; height: 12px !important; border-radius: min(5px, calc(12px / 5)) !important; }
 			#bottom-bar .buy-placement-cost { font-size: 0.58rem !important; padding: 0 3px !important; }
 
 			/* Bonus upgrade shop is no longer accessed via a button. */
@@ -7890,8 +7891,8 @@
 	.card-cell {
 	  width: var(--card-cell-size, 20px);
 	  height: var(--card-cell-size, 20px);
-	  /* Border-radius consistent met speelveld: size / 4 */
-	  border-radius: calc(var(--card-cell-size, 20px) / 4);
+	  /* Border-radius: max 5px, minder rond voor kleine cells */
+	  border-radius: min(5px, calc(var(--card-cell-size, 20px) / 5));
 	}
 
 	.card.selected {
@@ -18027,6 +18028,11 @@ document.addEventListener('pointermove', ev => {
 					return;
 				}
 			}
+			// Als sticky false is (touch mode), annuleer bij invalide plaatsing
+			if (!bonusContext.sticky) {
+				cancelActiveBonusPlacement({ updateInventory: true });
+				return;
+			}
 			// Keep the bonus block visible so player can rotate/mirror or reposition after releasing.
 			enterStickyDragPreview();
 			return;
@@ -18360,8 +18366,8 @@ document.addEventListener('pointermove', ev => {
 			div.classList.add('card-cell');
 			div.style.width = `${cellSize}px`;
 			div.style.height = `${cellSize}px`;
-			// Border-radius consistent met speelveld: size / 4
-			div.style.borderRadius = `${cellSize / 4}px`;
+			// Border-radius: max 5px, minder rond voor kleine cells
+			div.style.borderRadius = `${Math.min(5, cellSize / 5)}px`;
 			if (cell) {
 			  let background;
 			  let shadow;
@@ -19620,7 +19626,7 @@ document.addEventListener('pointermove', ev => {
 	  
 	  const previewEl = document.getElementById('purchased-block-preview');
 	  // Desktop mouse UX: click-to-pickup → hover-follow → click-to-drop.
-	  if (!isMobileLayout && !isTouchDevice && previewEl) {
+	  if (!isTouchDevice && previewEl) {
 		activeBonusPlacement = {
 			colorKey: 'purchased',
 			pointerId: null,
@@ -19635,34 +19641,37 @@ document.addEventListener('pointermove', ev => {
 		return;
 	  }
 
-	  // Touch/mobile fallback: classic drag behavior.
+	  // Touch: direct drag behavior - blok volgt de vinger
 	  const block = makeDraggable(shape, colorObj);
 	  block.classList.add('bonus-draggable', 'purchased-placement');
 	  const overlay = document.getElementById('drag-overlay');
 	  if (overlay && !overlay.contains(block)) overlay.appendChild(block);
+	  if (overlay) overlay.style.display = 'block';
+	  
 	  draggedBlock = block;
 	  draggedShape = block._shape || shape;
 	  draggedColor = colorObj;
-	  // Treat this as a real drag only after the user actually moves.
+	  
+	  // Start de pointer drag tracking
 	  beginPointerDrag({ clientX: event.clientX, clientY: event.clientY, pointerId: event.pointerId || null });
 	  
-	  // Positioneer het blok bij de (laatste) pointer positie
+	  // Positioneer het blok bij de pointer positie (met touch offset)
 	  const startX = event.clientX || window.innerWidth / 2;
 	  const startY = event.clientY || window.innerHeight / 2;
 	  ({ offsetX, offsetY } = computeShapeCenterOffsets(draggedShape));
+	  const touchOffsetY = 60; // Offset zodat vinger het blok niet bedekt
 	  draggedBlock.style.left = `${startX - offsetX}px`;
-	  draggedBlock.style.top = `${startY - offsetY}px`;
+	  draggedBlock.style.top = `${startY - offsetY - touchOffsetY}px`;
 	  
 	  activeBonusPlacement = {
 		colorKey: 'purchased',
 		pointerId: event.pointerId || null,
-		sticky: true,
+		sticky: false, // Niet sticky op touch - direct plaatsen bij release
 		shape: cloneShape(shape),
 		purchasedPlacement: true
 	  };
 	  
 	  startGlobalDragVisuals();
-	  if (overlay) overlay.style.display = 'block';
 	  if (rotateButton) rotateButton.disabled = false;
 	  if (mirrorButton) mirrorButton.disabled = false;
 	  addCardControlButtons();
@@ -21507,6 +21516,24 @@ document.addEventListener('pointermove', ev => {
 		pendingRoundCompletion = null;
 	}
 
+	function showDiscardHandConfirm(callback) {
+		// Hergebruik de complete round confirm modal voor discard hand waarschuwing
+		pendingRoundCompletion = callback;
+		if (!confirmCompleteLayer) {
+			if (typeof callback === 'function') callback();
+			pendingRoundCompletion = null;
+			return;
+		}
+		if (confirmCompleteDetails) {
+			const playableCount = currentHand.filter(card => card && isCardPlayable(card)).length;
+			const cardLabel = playableCount === 1 ? 'speelbare kaart' : 'speelbare kaarten';
+			confirmCompleteDetails.textContent = `Je hebt nog ${playableCount} ${cardLabel} die je zou kunnen plaatsen. Weet je zeker dat je deze wilt weggooien?`;
+			confirmCompleteDetails.style.display = '';
+		}
+		confirmCompleteLayer.classList.add('show');
+		if (confirmCompleteYes) confirmCompleteYes.focus();
+	}
+
 	function showCompleteRoundConfirm(callback) {
 		pendingRoundCompletion = callback;
 		if (!confirmCompleteLayer) {
@@ -23155,16 +23182,20 @@ function openShopModal(callback) {
 		
 		// WORLD 2 UX: Blauw zone hoogte = geel + paars + gap ertussen
 		let blueHeight;
-		if (yellowZone && purpleZone) {
-		  const yellowHeight = yellowZone.offsetHeight || parseFloat(yellowZone.style.height) || 0;
-		  const purpleHeight = purpleZone.offsetHeight || parseFloat(purpleZone.style.height) || 0;
+		if (yellowGrid && purpleGrid) {
+		  // Bereken hoogtes direct in plaats van offsetHeight (die kan 0 zijn bij eerste render)
+		  const yellowRows = parseInt(yellowGrid.dataset.rows) || 10;
+		  const purpleRows = parseInt(purpleGrid.dataset.rows) || 10;
+		  const yellowHeight = yellowRows * cellSize + 70; // Zelfde als yellowZone.style.height berekening
+		  const purpleHeight = purpleRows * cellSize + 20; // Zelfde als purpleZone.style.height berekening
 		  const gapBetweenZones = 10; // Gap tussen geel en paars zones
 		  blueHeight = yellowHeight + purpleHeight + gapBetweenZones;
 		} else {
 		  blueHeight = Math.min(blueRows * cellSize, tallZoneMaxPx);
 		}
 		blueZone.style.height = `${blueHeight}px`;
-		blueZone.style.maxHeight = tallZoneMaxVh;
+		// Verwijder maxHeight beperking zodat blauw echt even lang kan zijn als geel+paars
+		blueZone.style.maxHeight = 'none';
 		blueZone.style.overflowY = 'auto';
 		blueZone.style.overflowX = 'auto';
 		// Remove margins so the view starts exactly at the left edge.
@@ -25019,9 +25050,11 @@ function showFloatingPreview(shape, color, options = {}) {
 		if (drawPile.length === 0) {
 		  const objectiveComplete = isCurrentObjectiveCompleted();
 		  const hasRemainingBonuses = getRemainingBonusCharges() > 0;
-		  if (currentHand.length > 0 && cardsPlayedThisTurn === 0 && !objectiveComplete) return;
-		  // Only show golden if no playable cards AND no bonuses
-		  if (shouldWarnBeforeCompletingRound() || hasRemainingBonuses) {
+		  // Als er nog speelbare kaarten zijn, toon waarschuwing in plaats van blokkeren
+		  const hasPlayableCards = currentHand.some(card => card && isCardPlayable(card));
+		  // Alleen blokkeren als objective niet compleet EN er zijn nog speelbare kaarten
+		  // Anders tonen we een waarschuwing
+		  if (shouldWarnBeforeCompletingRound() || hasRemainingBonuses || (currentHand.length > 0 && hasPlayableCards)) {
 			showCompleteRoundConfirm(finalizeRoundCompletion);
 		  } else {
 			finalizeRoundCompletion();
@@ -25029,7 +25062,17 @@ function showFloatingPreview(shape, color, options = {}) {
 		  return;
 		}
 		if (currentHand.length > 0) {
-		  if (cardsPlayedThisTurn === 0) return;
+		  // Als er nog speelbare kaarten zijn en geen kaart gespeeld, toon waarschuwing
+		  const hasPlayableCards = currentHand.some(card => card && isCardPlayable(card));
+		  if (cardsPlayedThisTurn === 0 && hasPlayableCards) {
+			// Toon een bevestigingsdialoog in plaats van blokkeren
+			showDiscardHandConfirm(() => {
+			  discardCurrentHand();
+			  drawNextHand();
+			  updateDeckPreview();
+			});
+			return;
+		  }
 		  discardCurrentHand();
 		}
 		drawNextHand();
@@ -25314,13 +25357,35 @@ function showFloatingPreview(shape, color, options = {}) {
 	  updateBuyPlacementButton();
 	}
 	if (purchasedBlockPreview) {
+	  // Gebruik pointerdown voor zowel mouse als touch
 	  purchasedBlockPreview.addEventListener('pointerdown', (e) => {
 		e.stopPropagation();
+		e.preventDefault(); // Voorkom touch scroll
+		// Capture pointer voor touch devices
+		if (e.pointerId !== undefined) {
+			try {
+				purchasedBlockPreview.setPointerCapture(e.pointerId);
+			} catch (err) { /* ignore */ }
+		}
 		onPurchasedBlockPreviewClick(e);
 	  });
 	  purchasedBlockPreview.addEventListener('click', (e) => {
 		e.stopPropagation();
 	  });
+	  // Touch events als fallback
+	  purchasedBlockPreview.addEventListener('touchstart', (e) => {
+		// Niet blokkeren als pointerdown al afgehandeld is
+		if (e.defaultPrevented) return;
+		e.stopPropagation();
+		const touch = e.touches[0];
+		if (touch) {
+			onPurchasedBlockPreviewClick({
+				clientX: touch.clientX,
+				clientY: touch.clientY,
+				pointerId: touch.identifier
+			});
+		}
+	  }, { passive: false });
 	}
 
   // expose some helpers for debugging
@@ -25607,8 +25672,9 @@ function showFloatingPreview(shape, color, options = {}) {
 	  const origCards = document.getElementById('original-card-zone');
 	  const origControls = document.getElementById('original-controls-zone');
 
-			// === MOBILE LANDSCAPE SIDEBAR LAYOUT ===
-			if (isMobileLandscape && mlWrapper && mlLeft && mlCenter && mlRight) {
+			// === TABLET/MOBILE LANDSCAPE SIDEBAR LAYOUT ===
+			// Dit geldt voor zowel tablets in landscape als kleine mobiele schermen in landscape
+			if (useSidebarLayout && mlWrapper && mlLeft && mlCenter && mlRight) {
 				// Remove desktop wrapper if exists
 				const desktopWrapper = document.getElementById('desktop-wrapper');
 				if (desktopWrapper) {
@@ -25933,7 +25999,26 @@ function showFloatingPreview(shape, color, options = {}) {
 	})();
 
 	// Run again on resize
-	window.addEventListener('resize', moveGameElements);
+	window.addEventListener('resize', () => {
+		moveGameElements();
+		// Herbereken zone groottes voor World 2/3 bij resize
+		const worldInfo = typeof getWorldAndSubLevel === 'function' ? getWorldAndSubLevel(currentLevel) : null;
+		if (worldInfo && (worldInfo.world === 2 || worldInfo.world === 3)) {
+			adjustZoneSizesForWorld2();
+		}
+	});
+	
+	// Extra listener voor orientation change op mobiel/tablet
+	window.addEventListener('orientationchange', () => {
+		// Wacht kort tot de nieuwe dimensies beschikbaar zijn
+		setTimeout(() => {
+			moveGameElements();
+			const worldInfo = typeof getWorldAndSubLevel === 'function' ? getWorldAndSubLevel(currentLevel) : null;
+			if (worldInfo && (worldInfo.world === 2 || worldInfo.world === 3)) {
+				adjustZoneSizesForWorld2();
+			}
+		}, 100);
+	});
 
 	// Menu toggle handled earlier (removed duplicate handler)
 	
