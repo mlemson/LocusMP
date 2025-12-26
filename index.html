@@ -8142,8 +8142,10 @@
 		margin: 0 auto;
 		padding: 6px;
 		box-sizing: border-box;
-		height: calc(100vh - 12px);
-		height: calc(100svh - 12px);
+		height: auto;
+		min-height: auto;
+		max-height: 100vh;
+		max-height: 100svh;
 		overflow: hidden;
 	  }
 
@@ -8153,17 +8155,15 @@
 		display: none !important;
 	  }
 
-	  /* Let the board area shrink so the bottom row remains visible inside the fixed-height wrapper. */
+	  /* Board area - don't stretch, just fit content and scale */
 	  body.desktop-portrait #desktop-grids {
-		flex: 1 1 auto;
+		flex: 0 0 auto;
 		min-height: 0;
-		max-height: calc(100vh - 160px); /* Leave room for bottom bar */
-		max-height: calc(100svh - 160px);
 		width: 100%;
 		display: flex;
 		justify-content: center;
 		align-items: flex-start;
-		overflow: hidden;
+		overflow: visible;
 	  }
 
 	  /* Scale board to fit in constrained portrait */
@@ -8175,10 +8175,24 @@
 		flex: 0 0 auto;
 		width: 100%;
 		max-width: 100%;
+		margin-top: 2px;
 	  }
 
 	  /* Narrow desktop portrait (split-screen / iPad-ish): keep bottom UI compact so the board keeps height. */
 	  @media (min-width: 651px) and (max-width: 925px) {
+		/* Compact objective in portrait */
+		body.desktop-portrait #objective-zone {
+			padding: 6px 12px;
+			min-height: 32px;
+			gap: 8px;
+		}
+		body.desktop-portrait #objective-zone h2 {
+			font-size: 0.85rem;
+		}
+		body.desktop-portrait #objective-current {
+			font-size: 0.8rem;
+		}
+		
 		body.desktop-portrait #desktop-bottom {
 			flex-wrap: nowrap;
 			justify-content: center;
