@@ -19702,12 +19702,8 @@ document.addEventListener('pointermove', ev => {
 	  const isPointerDown = !!(event && typeof event.type === 'string' && event.type.indexOf('pointer') === 0);
 	  const preferDirectDrag = !!(event && event.type === 'pointerdown' && event.pointerType === 'mouse');
 	  
-	  // Als er al een purchased placement drag actief is, annuleer deze
+	  // Als er al een purchased placement drag actief is, doe niets (voorkom toggle)
 	  if (activeBonusPlacement && activeBonusPlacement.colorKey === 'purchased') {
-		// Pointerdown on the icon should NOT toggle/cancel (this caused "doesn't work" feel).
-		// Keep cancellation only for deliberate secondary clicks.
-		if (isPointerDown) return;
-		cancelActiveBonusPlacement({ updateInventory: true });
 		return;
 	  }
 	  
@@ -19723,22 +19719,9 @@ document.addEventListener('pointermove', ev => {
 	  selectedColor = colorObj;
 	  
 	  const previewEl = document.getElementById('purchased-block-preview');
-	  // Desktop mouse UX: click-to-pickup → hover-follow → click-to-drop.
-	  // BUT: if the user starts with pointerdown (drag), do direct drag instead.
-	  if (!isTouchDevice && !preferDirectDrag && previewEl) {
-		activeBonusPlacement = {
-			colorKey: 'purchased',
-			pointerId: null,
-			sticky: true,
-			shape: cloneShape(shape),
-			purchasedPlacement: true,
-			desktopHover: true
-		};
-		startDesktopHoverDragFromSelection(previewEl, shape, colorObj);
-		if (rotateButton) rotateButton.disabled = false;
-		if (mirrorButton) mirrorButton.disabled = false;
-		return;
-	  }
+	  // Touch devices and mobile: always use direct drag (no hover mode)
+	  // Desktop mouse can also use direct drag for purchased blocks (simpler UX)
+	  // Skip hover-follow mode for purchased placement entirely.
 
 	  // Touch: direct drag behavior - blok volgt de vinger
 	  const block = makeDraggable(shape, colorObj);
@@ -19771,9 +19754,8 @@ document.addEventListener('pointermove', ev => {
 	  };
 	  
 	  startGlobalDragVisuals();
-	  if (rotateButton) rotateButton.disabled = false;
-	  if (mirrorButton) mirrorButton.disabled = false;
-	  addCardControlButtons();
+	  // Don't show rotate/mirror buttons for purchased placement (1x1 block doesn't need them)
+	  // addCardControlButtons() is skipped for purchased placement
 	}
 
 	function clearPurchasedPlacement() {
@@ -23365,26 +23347,33 @@ function openShopModal(callback) {
 	  });
 
 	  requestAnimationFrame(() => {
-		// World 2: green zone should be square across layouts (height ~= width),
-		// but cap to available vertical room so it never forces clipping.
+		// World 2: green zone MUST be square (height = width) on all screens.
+		// Cap to available vertical space but always maintain square aspect ratio.
 		try {
 			const worldInfo = typeof getWorldAndSubLevel === 'function' ? getWorldAndSubLevel(currentLevel) : null;
 			if (worldInfo && worldInfo.world === 2 && greenZone && !document.body.classList.contains('zoomed-in')) {
 				const w = greenZone.getBoundingClientRect().width;
 				if (w > 0) {
-					const cap = Math.max(160,
+					// Max available height based on viewport
+					const maxAvailableHeight = Math.max(180,
 						Math.floor(window.innerHeight * (isPortrait ? 0.40 : (isShortHeight ? 0.50 : 0.52))) - 40
 					);
-					const target = Math.round(Math.min(w, cap));
+					// Green must be square: use width as height, but cap to available space
+					const target = Math.round(Math.min(w, maxAvailableHeight));
+					// Force square by making height = width (use the smaller of the two)
+					greenZone.style.width = `${target}px`;
 					greenZone.style.height = `${target}px`;
 					greenZone.style.maxHeight = `${target}px`;
+					greenZone.style.minHeight = `${target}px`;
 				}
 			}
 		} catch (_) {}
 
-		// World 2 unzoomed: first time center on green start cell; afterwards keep last scroll.
-		if (greenZone) {
-			restoreOrAnchorZoneScroll(greenZone, (z) => resetGreenZoomScroll(z));
+		// World 2 unzoomed: ALWAYS center on green start cell (reset scroll memory on layout changes).
+		// User wants start-cell in middle when unzoomed, regardless of previous scroll.
+		if (greenZone && !document.body.classList.contains('zoomed-in')) {
+			// Force anchor (ignore saved scroll) by calling resetGreenZoomScroll directly
+			resetGreenZoomScroll(greenZone);
 		}
 	  });
 	}
@@ -24124,6 +24113,8 @@ document.addEventListener('pointerdown', ev => {
 		// Desktop mouse UX: no on-card option buttons.
 		if (!isMobileLayout && !isTouchDevice) return;
 		if (desktopHoverDragActive) return;
+		// Skip control buttons for purchased placement (1x1 block doesn't need rotate/mirror)
+		if (activeBonusPlacement && activeBonusPlacement.purchasedPlacement) return;
 		
 		// Check of buttons al bestaan
 		let rotateBtn = document.querySelector('.card-control-rotate');
