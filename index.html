@@ -18146,9 +18146,8 @@ document.addEventListener('pointermove', ev => {
 					return;
 				}
 				
-				// We hebben een zone, probeer alsnog te plaatsen (zelfs als niet helemaal valid)
-				// Voor touch purchased placement: forceer plaatsing op laatste positie
-				if (!bonusContext.sticky && lastZone && lastBaseX !== null && lastBaseY !== null) {
+				// We hebben een zone, probeer te plaatsen op laatste positie
+				if (lastZone && lastBaseX !== null && lastBaseY !== null) {
 					const zoneColor =
 						lastZone.dataset.color ||
 						lastZone.closest('.zone')?.dataset.color ||
@@ -18170,6 +18169,10 @@ document.addEventListener('pointermove', ev => {
 						return;
 					}
 				}
+				
+				// Geen geldige positie gevonden, annuleer
+				cancelActiveBonusPlacement({ updateInventory: true });
+				return;
 			}
 			// Als sticky false is (touch mode) voor ANDERE bonussen, annuleer bij invalide plaatsing
 			if (!bonusContext.sticky && bonusContext.colorKey !== 'purchased') {
