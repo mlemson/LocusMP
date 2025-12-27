@@ -1,0 +1,299 @@
+:root {
+  --cell-size: 26px;
+  --board-grid-gap: 2px;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  height: 100%;
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+  background: #f6f8fb;
+  color: #222;
+}
+
+.app {
+  display: grid;
+  grid-template-columns: 280px 1fr;
+  height: 100vh;
+}
+
+.panel {
+  border-right: 1px solid rgba(0,0,0,0.08);
+  background: #ffffff;
+  padding: 12px;
+  overflow: auto;
+}
+
+.panel__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.panel__headerActions {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.panel__title {
+  font-weight: 800;
+  letter-spacing: 0.02em;
+}
+
+.btn {
+  appearance: none;
+  border: 1px solid rgba(0,0,0,0.16);
+  background: linear-gradient(145deg, #ffd560, #ffb23c);
+  color: #1c1c1c;
+  border-radius: 10px;
+  padding: 8px 10px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.btn:active { transform: translateY(1px); }
+
+.panel__section {
+  border-top: 1px solid rgba(0,0,0,0.08);
+  padding-top: 10px;
+  margin-top: 10px;
+}
+
+.panel__sectionTitle {
+  font-weight: 800;
+  font-size: 0.85rem;
+  opacity: 0.75;
+  margin-bottom: 8px;
+}
+
+.tool {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 6px;
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+.tool:hover {
+  background: rgba(0,0,0,0.04);
+}
+
+.tool input { margin: 0; }
+
+.swatch {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border-radius: 4px;
+  border: 2px solid #444;
+  vertical-align: middle;
+}
+.swatch--yellow { background: #fff48f; }
+.swatch--green { background: #69cf57; }
+.swatch--purple { background: #ae7eed; }
+.swatch--blue { background: #76a0e3; }
+.swatch--red { background: #ed7e89; }
+
+.status {
+  margin-top: 10px;
+  font-size: 0.85rem;
+  opacity: 0.8;
+}
+
+.stage {
+  overflow: auto;
+  padding: 14px;
+}
+
+.boardHost {
+  width: fit-content;
+  margin: 0 auto;
+}
+
+.empty {
+  padding: 20px;
+  border: 1px dashed rgba(0,0,0,0.2);
+  border-radius: 12px;
+  background: rgba(255,255,255,0.7);
+}
+
+/* --- Minimal board styling (independent of game code) --- */
+.board {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.column {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.zone {
+  position: relative;
+  border-radius: 10px;
+  border: 1px solid rgba(0,0,0,0.12);
+  box-shadow: 0 2px 6px rgba(0,0,0,0.12);
+  padding: 10px;
+}
+
+.zone[data-color="geel"] { background: #f0dc7d; }
+.zone[data-color="paars"] { background: #a48dcc; }
+.zone[data-color="groen"] { background: #a8d5a2; }
+.zone[data-color="rood"] { background: #de838c; }
+.zone[data-color="blauw"] { background: #6ba8d8; }
+
+.zone.red-group {
+  display: grid;
+  grid-template-columns: repeat(2, max-content);
+  justify-content: center;
+  gap: 18px;
+}
+
+.grid {
+  display: grid;
+  gap: var(--board-grid-gap);
+  justify-content: center;
+}
+
+.cell {
+  width: var(--cell-size);
+  height: var(--cell-size);
+  background: rgba(255,255,255,0.92);
+  border: 1px solid rgba(0,0,0,0.16);
+  border-radius: calc(var(--cell-size) / 4);
+  box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+  position: relative;
+  user-select: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.cell.void-cell {
+  /* In the editor, void cells are placeholders that can be clicked to "create" a cell. */
+  visibility: visible;
+  pointer-events: auto;
+  border: 1px dashed rgba(0,0,0,0.22);
+  background: rgba(255,255,255,0.28);
+  box-shadow: none;
+}
+
+/* Zone drag handle */
+.zone-handle {
+  position: absolute;
+  left: 8px;
+  top: 8px;
+  right: 8px;
+  height: 18px;
+  border-radius: 8px;
+  background: rgba(255,255,255,0.35);
+  border: 1px solid rgba(0,0,0,0.08);
+  cursor: grab;
+}
+
+.zone-handle:active { cursor: grabbing; }
+
+.zone.drag-over {
+  outline: 3px solid rgba(82,118,255,0.55);
+  outline-offset: 3px;
+}
+
+/* Grid resizer handle (bottom-right corner) */
+.grid-resizer {
+  position: absolute;
+  right: 8px;
+  bottom: 8px;
+  width: 16px;
+  height: 16px;
+  border-radius: 6px;
+  border: 1px solid rgba(0,0,0,0.18);
+  background: rgba(255,255,255,0.6);
+  cursor: nwse-resize;
+}
+
+@media print {
+  /* Print only the board (no editor UI) */
+  .panel { display: none !important; }
+  .stage { padding: 0 !important; overflow: visible !important; }
+  .zone-handle, .grid-resizer { display: none !important; }
+
+  /* Void/placeholder cells must not show in print */
+  .cell.void-cell {
+    visibility: hidden !important;
+    border: none !important;
+    background: transparent !important;
+    box-shadow: none !important;
+  }
+}
+
+.cell.bold-cell { border: 2px solid #2c3333 !important; }
+
+.symbol {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border-radius: 4px;
+  margin: auto;
+  border: 2px solid #444;
+  background-color: #999;
+}
+.symbol.yellow { background-color: #fff48f; }
+.symbol.green { background-color: #69cf57; }
+.symbol.purple { background-color: #ae7eed; }
+.symbol.blue { background-color: #76a0e3; }
+.symbol.red { background-color: #ed7e89; }
+
+/* Gold cell "coin" marker (matches game style roughly) */
+.gold-cell::after {
+  content: "";
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #ffea63;
+  border: 2px solid #171615;
+  z-index: 1;
+}
+
+/* Portal marker */
+.portal-cell {
+  box-shadow: 0 0 10px rgba(100, 150, 255, 0.6);
+}
+.portal-symbol {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  pointer-events: none;
+}
+
+/* Trap marker (simplified but uses same class names) */
+.symbol.trap-symbol {
+  width: 18px;
+  height: 18px;
+  border-radius: 2px;
+  background: #656565;
+  border: none;
+  transform: rotate(45deg) scale(0.75);
+  pointer-events: none;
+}
+
+.symbol.trap-symbol.trap-symbol--black-hole {
+  transform: none;
+  border-radius: 50%;
+  background: radial-gradient(circle, #1a1a2e 0%, #0a0a15 60%, #000000 100%);
+  border: 2px solid rgba(138, 43, 226, 0.4);
+  box-shadow: 0 0 10px rgba(138, 43, 226, 0.4);
+}

@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="nl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>LOCUS Editor</title>
+  <link rel="stylesheet" href="editor.css" />
+</head>
+<body>
+  <div class="app">
+    <aside class="panel" aria-label="Editor tools">
+      <div class="panel__header">
+        <div class="panel__title">Editor</div>
+        <div class="panel__headerActions">
+          <button id="refresh-board" class="btn" type="button">Verversen</button>
+          <button id="print-board" class="btn" type="button">Print</button>
+        </div>
+      </div>
+
+      <div class="panel__section">
+        <div class="panel__sectionTitle">Gereedschap</div>
+        <label class="tool"><input type="radio" name="tool" value="select" checked> <span>Selecteer</span></label>
+        <label class="tool"><input type="radio" name="tool" value="erase"> <span>Lege cell</span></label>
+        <label class="tool"><input type="radio" name="tool" value="delete"> <span>Cell verwijderen</span></label>
+        <label class="tool"><input type="radio" name="tool" value="bold"> <span>Bold (omlijning)</span></label>
+      </div>
+
+      <div class="panel__section">
+        <div class="panel__sectionTitle">Kleuren (symbool)</div>
+        <label class="tool"><input type="radio" name="tool" value="sym-yellow"> <span><span class="swatch swatch--yellow"></span>Geel</span></label>
+        <label class="tool"><input type="radio" name="tool" value="sym-green"> <span><span class="swatch swatch--green"></span>Groen</span></label>
+        <label class="tool"><input type="radio" name="tool" value="sym-purple"> <span><span class="swatch swatch--purple"></span>Paars</span></label>
+        <label class="tool"><input type="radio" name="tool" value="sym-blue"> <span><span class="swatch swatch--blue"></span>Blauw</span></label>
+        <label class="tool"><input type="radio" name="tool" value="sym-red"> <span><span class="swatch swatch--red"></span>Rood</span></label>
+      </div>
+
+      <div class="panel__section">
+        <div class="panel__sectionTitle">Specials</div>
+        <label class="tool"><input type="radio" name="tool" value="coin"> <span>🪙 Munt</span></label>
+        <label class="tool"><input type="radio" name="tool" value="portal"> <span>🌀 Portal</span></label>
+        <label class="tool"><input type="radio" name="tool" value="trap-pit"> <span>◼ Trap (pit)</span></label>
+        <label class="tool"><input type="radio" name="tool" value="trap-blackhole"> <span>⬤ Trap (black hole)</span></label>
+      </div>
+
+      <div id="status" class="status" aria-live="polite"></div>
+    </aside>
+
+    <main class="stage" aria-label="Speelveld">
+      <div id="board-host" class="boardHost">
+        <div class="empty">Geen speelveld geladen. Klik op <b>Verversen</b>.</div>
+      </div>
+    </main>
+  </div>
+
+  <script src="editor.js"></script>
+</body>
+</html>
