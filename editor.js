@@ -198,7 +198,6 @@
     if (!board) return;
     const zones = Array.from(board.querySelectorAll('.zone'));
     zones.forEach((zone) => {
-      if (zone.classList.contains('red-group')) return;
       const hasGrid = zone.querySelector(':scope > .grid');
       if (hasGrid) return;
       // If zone already has .cell children, wrap them.
@@ -712,8 +711,8 @@
     const board = boardHost ? boardHost.querySelector('.board') : null;
     if (!board) return '';
     const clone = board.cloneNode(true);
-    // Remove editor chrome if present.
-    clone.querySelectorAll('.zone-handle,.grid-resizer,.zone-delete').forEach((n) => n.remove());
+    // Remove editor chrome if present (handles, resizers, delete and info UI).
+    clone.querySelectorAll('.zone-handle,.grid-resizer,.zone-delete,.zone-info-btn,.zone-info-popover').forEach((n) => n.remove());
 
     // Critical for print: ensure every grid has an explicit column template.
     // If --cell-size is missing or template is absent, the browser may stack cells vertically.
@@ -863,13 +862,13 @@
     return clone.outerHTML;
   }
 
-  function openPrintWindow(boardHtml) {
+  function openPrintWindow(boardHtml, printFriendly = false) {
     const w = window.open('', '_blank');
     if (!w) {
       setStatus('Popup geblokkeerd.');
       return;
     }
-  const css = `
+  let css = `
 @page { size: A4 landscape; margin: 8mm; }
   /* Use mm for cell size so printer renders physical dimensions reliably */
   /* cell/ gap in mm so print renders physical sizes reliably */
@@ -903,10 +902,37 @@ body { margin: 0; padding: 0; background: white; color: #111; font-family: Arial
 /* Print requirement: hide void/placeholder cells */
 .cell.void-cell { visibility: hidden !important; border: none !important; background: transparent !important; box-shadow: none !important; }
 /* Hide editor chrome in print */
-.zone-delete, .zone-handle, .grid-resizer { display: none !important; }
+.zone-delete, .zone-handle, .grid-resizer, .zone-info-btn, .zone-info-popover, .shop-bonus-info { display: none !important; }
 /* Avoid any runtime scaling on print */
 .boardHost, .board, .grid, .cell { transform: none !important; zoom: 1 !important; }
 `;
+
+    // If the user requested the print-friendly variant, inject lighter outline-based rules
+    if (printFriendly) {
+      css += `
+/* Print-friendly: remove heavy fills and use subtle borders/outlines and dotted fills for symbols */
+.cell { background: transparent !important; box-shadow: none !important; }
+.cell { border-width: 0.2mm !important; border-style: solid !important; }
+.cell.bold-cell { border-width: 0.6mm !important; }
+.zone[data-color="groen"] .cell { border-color: #6fb36f !important; }
+.zone[data-color="geel"] .cell { border-color: #d9c46a !important; }
+.zone[data-color="paars"] .cell { border-color: #b69adf !important; }
+.zone[data-color="blauw"] .cell { border-color: #7faedc !important; }
+.zone[data-color="rood"] .cell { border-color: #f07f87 !important; }
+.cell.portal-cell::after { content: "\\26f0"; opacity: 0.9; }
+
+/* Symbols: use a small dotted background to indicate color while saving ink */
+.cell .symbol { background-color: transparent !important; border: none !important; width: 14px; height: 14px; display: inline-block; border-radius: 4px; }
+.cell .symbol.yellow { background-image: radial-gradient(circle, rgba(255,244,143,0.9) 30%, transparent 31%); background-size: 3px 3px; background-repeat: repeat; }
+.cell .symbol.green { background-image: radial-gradient(circle, rgba(105,207,87,0.9) 30%, transparent 31%); background-size: 3px 3px; background-repeat: repeat; }
+.cell .symbol.purple { background-image: radial-gradient(circle, rgba(174,126,237,0.9) 30%, transparent 31%); background-size: 3px 3px; background-repeat: repeat; }
+.cell .symbol.blue { background-image: radial-gradient(circle, rgba(118,160,227,0.9) 30%, transparent 31%); background-size: 3px 3px; background-repeat: repeat; }
+.cell .symbol.red { background-image: radial-gradient(circle, rgba(237,126,137,0.9) 30%, transparent 31%); background-size: 3px 3px; background-repeat: repeat; }
+.cell .symbol.trap-symbol { background-image: radial-gradient(circle, rgba(101,101,101,0.95) 30%, transparent 31%); background-size: 3px 3px; background-repeat: repeat; }
+.cell .symbol.trap-symbol.trap-symbol--black-hole { background-image: radial-gradient(circle, rgba(26,26,46,0.95) 30%, transparent 31%); background-size: 3px 3px; background-repeat: repeat; }
+.cell.portal-cell::after { font-size: 12px; }
+      `;
+    }
     const doc = `<!doctype html><html lang="nl"><head><meta charset="utf-8"><title>Print</title><style>${css}</style></head><body><div class="boardHost">${boardHtml}</div><script>window.addEventListener('load',()=>setTimeout(()=>window.print(),150));</script></body></html>`;
     w.document.open();
     w.document.write(doc);
@@ -999,25 +1025,6 @@ body { margin: 0; padding: 0; background: white; color: #111; font-family: Arial
         setBoardHtml(html);
         return true;
       }
-
-      // Ensure blue zone bottom-most cells are marked as bold-cells so they act as start positions in the game.
-      try {
-        const blueZone = clone.querySelector('.zone[data-color="blauw"]') || clone.querySelector('#blue-zone');
-        if (blueZone) {
-          const container = blueZone.querySelector(':scope > .grid') || blueZone;
-          const all = Array.from(container.querySelectorAll(':scope > .cell:not(.void-cell)'));
-          if (all.length) {
-            let maxY = -Infinity;
-            all.forEach(c => {
-              const y = Number(c.dataset.y || c.dataset.r || c.dataset.y);
-              if (Number.isFinite(y) && y > maxY) maxY = y;
-            });
-            if (maxY !== -Infinity) {
-              all.filter(c => Number(c.dataset.y || c.dataset.r || c.dataset.y) === maxY).forEach(c => c.classList.add('bold-cell'));
-            }
-          }
-        }
-      } catch (e) { /* ignore */ }
     } catch (_) {}
     return false;
   }
@@ -1051,14 +1058,42 @@ body { margin: 0; padding: 0; background: white; color: #111; font-family: Arial
 
   if (printBtn) {
     printBtn.addEventListener('click', () => {
-      const html = getCleanBoardHtmlForPrint();
+      const printFriendlyToggle = document.getElementById('print-friendly-toggle');
+      const printFriendly = !!(printFriendlyToggle && printFriendlyToggle.checked);
+      const html = getCleanBoardHtmlForPrint(printFriendly);
       if (!html) {
         setStatus('Geen speelveld om te printen.');
         return;
       }
-      openPrintWindow(html);
+      openPrintWindow(html, printFriendly);
     });
   }
+
+  // Ensure a print-friendly toggle is available in the editor UI
+  function ensurePrintFriendlyToggle() {
+    try {
+      if (document.getElementById('print-friendly-toggle')) return;
+      if (!printBtn) return;
+      const wrapper = document.createElement('label');
+      wrapper.style.display = 'inline-flex';
+      wrapper.style.alignItems = 'center';
+      wrapper.style.gap = '6px';
+      wrapper.style.marginLeft = '8px';
+      wrapper.title = 'Wanneer aangevinkt printen we met lichte, niet-volle kleuren';
+      const input = document.createElement('input');
+      input.type = 'checkbox';
+      input.id = 'print-friendly-toggle';
+      input.name = 'print-friendly';
+      const span = document.createElement('span');
+      span.textContent = 'Printvriendelijk';
+      wrapper.appendChild(input);
+      wrapper.appendChild(span);
+      // Insert after the print button
+      try { printBtn.parentNode.insertBefore(wrapper, printBtn.nextSibling); } catch (e) { document.body.appendChild(wrapper); }
+    } catch (e) {}
+  }
+
+  ensurePrintFriendlyToggle();
 
   // --- Saved boards (nameable) ---
   const SAVED_BOARDS_KEY = 'locusSavedBoards';
@@ -1307,6 +1342,7 @@ body { margin: 0; padding: 0; background: white; color: #111; font-family: Arial
 
   // Auto-load on open: if opened from the game, load snapshot once; otherwise fallback to storage.
   if (!requestBoardFromOpener()) {
-    loadFromStorage();
+    // If nothing in storage, generate a fresh editor board so the UI isn't empty.
+    if (!loadFromStorage()) generateNewBoard();
   }
 })();

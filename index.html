@@ -17467,6 +17467,19 @@ body.dark-mode #saved-levels-modal .saved-obj-text { color: #ddd; opacity: 0.95;
 		const allVisualRows = Array.from(rowToBoldCells.keys()).sort((a, b) => a - b);
 		const rows = allVisualRows.length > 0 ? Math.max(...allVisualRows) + 1 : 0;
 
+		// For the blue grid in normal levels, only the bottom-most bold row should
+		// be eligible for placement/scoring. If this board was loaded from the
+		// external editor (custom level metadata present) allow all bold rows.
+		const isBlueGrid = String(gridId || '').toLowerCase().indexOf('blue') !== -1;
+		const isCustomBoard = !!(window && (
+			(window.loadedCustomLevelMeta && (window.loadedCustomLevelMeta.name || window.loadedCustomLevelMeta.objective || window.loadedCustomLevelMetaCompleted)) || window._locusEditorApplied
+		));
+		let visualRowsToProcess = allVisualRows;
+		if (isBlueGrid && !isCustomBoard && allVisualRows.length > 0) {
+			const bottom = Math.max(...allVisualRows);
+			visualRowsToProcess = [bottom];
+		}
+
 		const targetKey = `${gridId}-scoredTargets`;
 		let rowTargets = window[targetKey];
 		if (!(rowTargets instanceof Map)) {
@@ -17507,8 +17520,8 @@ body.dark-mode #saved-levels-modal .saved-obj-text { color: #ddd; opacity: 0.95;
 			window[placementScoringKey] = placementScorings;
 		}
 
-		// Iterate over all visual rows that have bold cells
-		for (const r of allVisualRows) {
+		// Iterate over the visual rows we've chosen to process
+		for (const r of visualRowsToProcess) {
 			const boldCells = rowToBoldCells.get(r) || [];
 			const activeBoldCells = rowToActiveBoldCells.get(r) || [];
 
@@ -19410,8 +19423,24 @@ document.addEventListener('pointermove', ev => {
 	  const metrics = getZoneMetrics(zone);
 	  const floorY = Number.isFinite(metrics.maxY) ? metrics.maxY : null;
 	  const touchesFloor = floorY !== null && pendingCells.some(cell => Number(cell.dataset.y) === floorY);
-	  // Also allow ANY bold-cell in the blue zone to act as a valid start anchor
-	  const touchesBold = pendingCells.some(cell => cell.classList && cell.classList.contains('bold-cell'));
+	  // Determine whether pendingCells touch an allowed bold-cell start.
+	  // Prefer a per-zone mark set during import (`data-editor-applied`) to detect
+	  // editor-applied boards. Fall back to global flags for backward compat.
+	  const isEditorApplied = !!(
+		(zone && zone.dataset && String(zone.dataset.editorApplied) === 'true') ||
+		(window && (window._locusEditorApplied || window.loadedCustomLevelMeta))
+	  );
+
+ 	  const allBoldCells = Array.from(zone.querySelectorAll('.cell.bold-cell:not(.void-cell)'));
+ 	  let touchesBold = false;
+ 	  if (isEditorApplied || !allBoldCells.length) {
+ 		// Allow any bold-cell (or no explicit bold-cells exist)
+ 		touchesBold = pendingCells.some(cell => cell.classList && cell.classList.contains('bold-cell'));
+ 	  } else {
+ 		// Restrict to bold-cells on the bottom-most bold row only
+ 		const maxBoldY = Math.max(...allBoldCells.map(c => Number(c.dataset.y)));
+ 		touchesBold = pendingCells.some(cell => cell.classList && cell.classList.contains('bold-cell') && Number(cell.dataset.y) === maxBoldY);
+ 	  }
 	  const hasActive = zoneHasActiveCells(zone);
 	  // If no active cells exist yet, allow placement when it touches floor OR a bold start cell
 	  if (!hasActive) return touchesFloor || touchesBold;
@@ -24242,6 +24271,13 @@ function sanitizeBoardHtml(html) {
 	  window['blue-grid-scoredTargets'] = new Map();
 	  window['blue-grid-rowPlacements'] = new Map();
 	  window['blue-grid-placementScorings'] = new Map();
+	  try { window._locusEditorApplied = false; } catch (e) {}
+	  // Clear per-grid editor-applied markers
+	  try {
+		document.querySelectorAll('.grid').forEach(g => {
+			try { if (g && g.dataset && g.dataset.editorApplied) delete g.dataset.editorApplied; } catch (e) {}
+		});
+	  } catch (e) {}
 	  
 	  // Reset coinsAwardedFromScore
 	  if (typeof coinsAwardedFromScore !== 'undefined') coinsAwardedFromScore = 0;
@@ -26137,6 +26173,15 @@ function showFloatingPreview(shape, color, options = {}) {
 			if (typeof updateScore === 'function') updateScore();
 			if (typeof updateDeckPreview === 'function') updateDeckPreview();
 			if (typeof renderCurrentHand === 'function') renderCurrentHand();
+			// Mark that a board was applied from the external editor so runtime logic
+			// can opt-in to editor-specific behaviors (e.g. blue startcells anywhere).
+			try { window._locusEditorApplied = true; } catch (e) {}
+			try {
+				// Mark every grid element so validation can detect editor-applied boards
+				document.querySelectorAll('.grid').forEach(g => {
+					try { if (g && g.dataset) g.dataset.editorApplied = 'true'; } catch (e) {}
+				});
+			} catch (e) {}
 		} catch (e) {
 			console.error('applyBoardHtmlToGame failed', e);
 		}
