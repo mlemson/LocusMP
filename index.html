@@ -3701,6 +3701,14 @@ body.dark-mode #saved-levels-modal .saved-obj-text { color: #ddd; opacity: 0.95;
 		display: flex;
 	}
 
+	/* When JS positions the buttons near the dragged block, override the
+	   fixed layout offsets (e.g. mobile-sidebar translateY + right:15px). */
+	.card-control-btn.dynamic-pos {
+		right: auto !important;
+		margin-left: 0 !important;
+		transform: none !important;
+	}
+
 	.card-control-rotate {
 		left: 50%;
 		margin-left: 75px;
@@ -17576,20 +17584,8 @@ body.dark-mode #saved-levels-modal .saved-obj-text { color: #ddd; opacity: 0.95;
 		const allVisualRows = Array.from(rowToBoldCells.keys()).sort((a, b) => a - b);
 		const rows = allVisualRows.length > 0 ? Math.max(...allVisualRows) + 1 : 0;
 
-		// For the blue grid in normal levels, only the bottom-most bold row should
-		// be eligible for placement/scoring. If this board was loaded from the
-		// external editor (custom level metadata present) allow all bold rows.
-		const isBlueGrid = String(gridId || '').toLowerCase().indexOf('blue') !== -1;
-		// Treat a board as "editor-applied" only when explicitly marked by
-		// the editor flow (window._locusEditorApplied) or the zone itself.
-		// Do NOT assume a board is custom just because some global metadata
-		// exists; that caused all bold rows to be treated as start anchors.
-		const isCustomBoard = !!(window && window._locusEditorApplied);
+		// Blue scoring: allow all bold rows (not only the bottom-most one).
 		let visualRowsToProcess = allVisualRows;
-		if (isBlueGrid && !isCustomBoard && allVisualRows.length > 0) {
-			const bottom = Math.max(...allVisualRows);
-			visualRowsToProcess = [bottom];
-		}
 
 		const targetKey = `${gridId}-scoredTargets`;
 		let rowTargets = window[targetKey];
@@ -25000,6 +24996,7 @@ document.addEventListener('pointerdown', ev => {
 				if (!isDelayingMirror && !isBonusDrag) {
 					mirrorBtn.classList.add('visible');
 					mirrorBtn.disabled = false;
+					try { delete mirrorBtn.dataset.delayed; } catch (e) { mirrorBtn.dataset.delayed = ''; }
 				} else {
 					// Keep mirror hidden and disabled until later
 					mirrorBtn.classList.remove('visible');
@@ -25011,18 +25008,40 @@ document.addEventListener('pointerdown', ev => {
 		if (isTouchDevice) {
 			// Helper to clamp horizontal positions within viewport
 			const clampX = (x, w=44) => Math.max(8, Math.min((window.innerWidth - (w + 8)), Math.round(x)));
+			const clampY = (y, h=44) => Math.max(8, Math.min((window.innerHeight - (h + 8)), Math.round(y)));
+			const applyDynamicPos = (btn) => {
+				if (!btn) return;
+				btn.classList.add('dynamic-pos');
+				btn.style.right = 'auto';
+				btn.style.marginLeft = '0px';
+			};
+			const clearDynamicPos = (btn) => {
+				if (!btn) return;
+				btn.classList.remove('dynamic-pos');
+				btn.style.removeProperty('right');
+				btn.style.removeProperty('margin-left');
+			};
 			if (draggedBlock) {
 				// Place controls directly under the dragged block (centered)
 				try {
 					const rect = draggedBlock.getBoundingClientRect();
 					const centerX = rect.left + (rect.width / 2);
-					const y = rect.bottom + 8;
+					// Prefer below the block; if too close to bottom, move above.
+					let y = rect.bottom + 8;
+					if (y + 44 + 8 > window.innerHeight) y = rect.top - 8 - 44;
+					y = clampY(y);
 					// Determine which buttons are visible
 					const visibleBtns = [];
 					if (cancelBtn) visibleBtns.push(cancelBtn);
 					if (rotateBtn) visibleBtns.push(rotateBtn);
 					// mirrorBtn may be hidden/disabled for bonus drags
 					if (mirrorBtn && mirrorBtn.classList.contains('visible') && !mirrorBtn.dataset.delayed) visibleBtns.push(mirrorBtn);
+					// Clear dynamic positioning for hidden buttons
+					[rotateBtn, mirrorBtn, cancelBtn].forEach(btn => {
+						if (!btn) return;
+						if (visibleBtns.includes(btn)) applyDynamicPos(btn);
+						else clearDynamicPos(btn);
+					});
 					const count = visibleBtns.length || 1;
 					// spacing adapts to viewport but stays reasonable
 					const spacing = Math.max(56, Math.min(96, Math.round(window.innerWidth * 0.12)));
@@ -25032,7 +25051,7 @@ document.addEventListener('pointerdown', ev => {
 						if (!btn) continue;
 						btn.style.left = clampX(startX + i * spacing) + 'px';
 						btn.style.top = y + 'px';
-						btn.style.bottom = '';
+						btn.style.bottom = 'auto';
 					}
 				} catch (e) {}
 			} else {
@@ -25044,6 +25063,11 @@ document.addEventListener('pointerdown', ev => {
 				if (cancelBtn) visibleBtns.push(cancelBtn);
 				if (rotateBtn) visibleBtns.push(rotateBtn);
 				if (mirrorBtn && mirrorBtn.classList.contains('visible') && !mirrorBtn.dataset.delayed) visibleBtns.push(mirrorBtn);
+				[rotateBtn, mirrorBtn, cancelBtn].forEach(btn => {
+					if (!btn) return;
+					if (visibleBtns.includes(btn)) applyDynamicPos(btn);
+					else clearDynamicPos(btn);
+				});
 				const count = visibleBtns.length || 1;
 				const spacing = Math.max(56, Math.min(96, Math.round(window.innerWidth * 0.12)));
 				const startX = centerX - spacing * (count - 1) / 2;
@@ -25052,7 +25076,7 @@ document.addEventListener('pointerdown', ev => {
 					if (!btn) continue;
 					btn.style.left = clampX(startX + i * spacing) + 'px';
 					btn.style.bottom = bottomVal;
-					btn.style.top = '';
+					btn.style.top = 'auto';
 				}
 			}
 		}
@@ -25063,10 +25087,13 @@ document.addEventListener('pointerdown', ev => {
 			const buttons = document.querySelectorAll('.card-control-btn');
 			buttons.forEach(btn => {
 				btn.classList.remove('visible');
+				btn.classList.remove('dynamic-pos');
 				// Clear any inline positioning applied for touch mode so CSS can take over again.
 				btn.style.removeProperty('left');
 				btn.style.removeProperty('top');
 				btn.style.removeProperty('bottom');
+				btn.style.removeProperty('right');
+				btn.style.removeProperty('margin-left');
 			});
 	}
 
@@ -25079,60 +25106,35 @@ document.addEventListener('pointerdown', ev => {
 		selectedShape = newShape;
 		activeBonusPlacement.shape = cloneShape(newShape);
 		if (draggedBlock) {
-			// Preserve visual center so block doesn't jump or disappear on touch
+			// Preserve visual center so the bonus block rotates in-place and never disappears.
+			const nextShape = cloneShape(newShape);
+			draggedShape = nextShape;
+			draggedBlock._shape = nextShape;
 			try {
 				const beforeRect = draggedBlock.getBoundingClientRect();
 				const centerX = beforeRect.left + beforeRect.width / 2;
 				const centerY = beforeRect.top + beforeRect.height / 2;
-				const nextShape = cloneShape(newShape);
-				draggedShape = nextShape;
-				draggedBlock._shape = nextShape;
-				try { liftToBody(draggedBlock); } catch (e) {}
 				renderBlock(draggedBlock, nextShape, draggedColor || selectedColor);
-				try {
-					const overlay = document.getElementById('drag-overlay');
-					if (overlay && !overlay.contains(draggedBlock)) overlay.appendChild(draggedBlock);
-					if (overlay) overlay.style.display = 'block';
-					try { addCardControlButtons(); } catch (e) {}
-				} catch (e) {}
-				// After re-render, reposition so the center remains under the finger
 				const afterRect = draggedBlock.getBoundingClientRect();
 				if (Number.isFinite(centerX) && Number.isFinite(centerY) && afterRect.width > 0 && afterRect.height > 0) {
 					draggedBlock.style.left = `${centerX - afterRect.width / 2}px`;
 					draggedBlock.style.top = `${centerY - afterRect.height / 2}px`;
 				}
-				draggedBlock.style.opacity = '1';
-				draggedBlock.style.visibility = '';
-				if (!draggedBlock.style.position) draggedBlock.style.position = 'fixed';
-				draggedBlock.style.zIndex = draggedBlock.style.zIndex || '10000';
-					try {
-						const overlay = document.getElementById('drag-overlay');
-						if (overlay && !overlay.contains(draggedBlock)) overlay.appendChild(draggedBlock);
-						if (overlay) overlay.style.display = 'block';
-						try { addCardControlButtons(); } catch (e) {}
-					} catch (e) {}
-				// Ensure block stays attached to drag overlay and visible (fix disappearing on rotation)
-				try {
-					const overlay = document.getElementById('drag-overlay');
-					if (overlay) {
-						if (!overlay.contains(draggedBlock)) overlay.appendChild(draggedBlock);
-						overlay.style.display = 'block';
-					}
-					try { addCardControlButtons(); } catch (e) {}
-				} catch (e) {}
 			} catch (e) {
-				const nextShape = cloneShape(newShape);
-				draggedShape = nextShape;
-				draggedBlock._shape = nextShape;
-				try { liftToBody(draggedBlock); } catch (e) {}
 				renderBlock(draggedBlock, nextShape, draggedColor || selectedColor);
-				try {
-					const overlay = document.getElementById('drag-overlay');
-					if (overlay && !overlay.contains(draggedBlock)) overlay.appendChild(draggedBlock);
-					if (overlay) overlay.style.display = 'block';
-					try { addCardControlButtons(); } catch (e) {}
-				} catch (e) {}
 			}
+			try {
+				const overlay = document.getElementById('drag-overlay');
+				if (overlay) {
+					if (!overlay.contains(draggedBlock)) overlay.appendChild(draggedBlock);
+					overlay.style.display = 'block';
+				}
+			} catch (e) {}
+			draggedBlock.style.opacity = '1';
+			draggedBlock.style.visibility = '';
+			if (!draggedBlock.style.position) draggedBlock.style.position = 'fixed';
+			draggedBlock.style.zIndex = draggedBlock.style.zIndex || '10000';
+			try { addCardControlButtons(); } catch (e) {}
 		} else if (draggedShape) {
 			draggedShape = cloneShape(newShape);
 		}
