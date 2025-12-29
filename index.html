@@ -373,26 +373,6 @@
 		gap: 12px; /* ruimte tussen vakken in dezelfde kolom */
 		flex: 1; /* kolommen gelijk breed op mobiel */
 	}
-
-	// Reposition and clear touch control styling after pointer/touch release
-	(function(){
-		function repositionCardControlsSoon(){
-			try {
-				setTimeout(function(){
-					if (typeof addCardControlButtons === 'function') {
-						try { addCardControlButtons(); } catch (e) {}
-					}
-					// Clear any lingering transforms that some browsers keep after drag
-					document.querySelectorAll('.card-control-btn').forEach(btn => {
-						btn.style.transform = '';
-					});
-				}, 60);
-			} catch (e) {}
-		}
-		['touchend','pointerup','mouseup','touchcancel'].forEach(ev => {
-			document.addEventListener(ev, repositionCardControlsSoon, { passive: true });
-		});
-	})();
 	.zone {
 		/* Geen background hier - wordt per zone ingesteld */
 		position: relative;
@@ -8085,6 +8065,8 @@ body.dark-mode #saved-levels-modal .saved-obj-text { color: #ddd; opacity: 0.95;
 	  cursor: none;
 	  transition: box-shadow 0.2s;
 	  z-index: var(--z-draggable);
+	  /* Allow re-picking the draggable even if it's inside #drag-overlay (which is pointer-events:none). */
+	  pointer-events: auto;
 	}
 
 	.draggable:active {
@@ -19691,13 +19673,14 @@ document.addEventListener('pointermove', ev => {
 		
 		const metrics = getZoneMetrics(zone);
 		if (!metrics || metrics.maxY < metrics.minY) return baseY;
+		const floorY = Number.isFinite(metrics.maxY) ? metrics.maxY : null;
 		
 		// GEEN magnetisch effect meer - alleen checken of positie geldig is
 		// Een positie is geldig als:
-		// 1. Het blok raakt de bodem (boldBottom cells), OF
+		// 1. Het blok raakt de bodem (laatste niet-void rij), OF
 		// 2. Het blok grenst aan een al geplaatst blok (boven/onder/links/rechts)
 		
-		let touchesBottom = false;
+		let touchesFloor = false;
 		let touchesActiveBlock = false;
 		
 		for (let y = 0; y < shape.length; y++) {
@@ -19708,9 +19691,13 @@ document.addEventListener('pointermove', ev => {
 				const cellY = baseY + y;
 				const cell = getCell(zone, cellX, cellY);
 				
-				// Check of deze cel de bodem raakt (bold-cell onderaan)
+				// Check of deze cel de bodem raakt (echte floor row)
+				if (floorY !== null && cell && Number(cell.dataset.y) === floorY) {
+					touchesFloor = true;
+				}
+				// Check of deze cel een bold start/anker raakt
 				if (cell && cell.classList.contains('bold-cell')) {
-					touchesBottom = true;
+					touchesFloor = true;
 				}
 				
 				// Check of cel onder deze actief is (staat erop)
@@ -19734,13 +19721,13 @@ document.addEventListener('pointermove', ev => {
 					}
 				}
 				
-				if (touchesBottom || touchesActiveBlock) break;
+				if (touchesFloor || touchesActiveBlock) break;
 			}
-			if (touchesBottom || touchesActiveBlock) break;
+			if (touchesFloor || touchesActiveBlock) break;
 		}
 		
 		// Als het blok noch de bodem noch een actief blok raakt, is de positie ongeldig
-		if (!touchesBottom && !touchesActiveBlock) {
+		if (!touchesFloor && !touchesActiveBlock) {
 			return -9999; // Onmogelijke positie
 		}
 		
@@ -24852,6 +24839,24 @@ document.addEventListener('pointerdown', ev => {
 	// Other card: clear the block but allow the click to continue so the new card selects.
 	cleanupDragState({ clearBonus: false, hidePreview: true });
 }, true);
+	// Whether the touch control buttons should be visible right now.
+	// Keep this conservative to avoid buttons getting "stuck" on-screen.
+	function shouldShowCardControlButtons() {
+		try {
+			if (desktopHoverDragActive) return false;
+			// Bonus placement active (dragging a bonus block)
+			if (activeBonusPlacement) return true;
+			// Dragging any block
+			if (draggedBlock) return true;
+			// Floating preview is active (touch flow)
+			if (typeof floatingPreviewActive !== 'undefined' && floatingPreviewActive) return true;
+			// A card is selected (card-pick flow)
+			if (selectedCardElement && selectedShape && selectedColor) return true;
+		} catch (e) {}
+		return false;
+	}
+	try { window.__locusShouldShowCardControlButtons = shouldShowCardControlButtons; } catch (e) {}
+
 	function addCardControlButtons() {
 		const isMobileLayout = window.innerWidth <= MOBILE_BREAKPOINT;
 		const isTouchDevice = ('ontouchstart' in window || navigator.maxTouchPoints > 0);
@@ -24859,7 +24864,15 @@ document.addEventListener('pointerdown', ev => {
 		if (!isMobileLayout && !isTouchDevice) return;
 		if (desktopHoverDragActive) return;
 		// Skip control buttons for purchased placement (1x1 block doesn't need rotate/mirror)
-		if (activeBonusPlacement && activeBonusPlacement.purchasedPlacement) return;
+		if (activeBonusPlacement && activeBonusPlacement.purchasedPlacement) {
+			removeCardControlButtons();
+			return;
+		}
+		// If nothing is currently selected/dragging, ensure controls are hidden.
+		if (!shouldShowCardControlButtons()) {
+			removeCardControlButtons();
+			return;
+		}
 
 		// If this is a bonus draggable (or we have an activeBonusPlacement), do not show mirror button
 		const isBonusDrag = !!( (draggedBlock && draggedBlock.classList && draggedBlock.classList.contains('bonus-draggable')) || (activeBonusPlacement && activeBonusPlacement.colorKey) );
@@ -25006,14 +25019,15 @@ document.addEventListener('pointerdown', ev => {
 
 		// Position buttons for touch devices:
 		if (isTouchDevice) {
-			// Helper to clamp horizontal positions within viewport
+			// Always pin controls bottom-center on touch to avoid overlap/jumble and
+			// to keep the draggable easy to pick up after rotate/release.
 			const clampX = (x, w=44) => Math.max(8, Math.min((window.innerWidth - (w + 8)), Math.round(x)));
-			const clampY = (y, h=44) => Math.max(8, Math.min((window.innerHeight - (h + 8)), Math.round(y)));
 			const applyDynamicPos = (btn) => {
 				if (!btn) return;
 				btn.classList.add('dynamic-pos');
 				btn.style.right = 'auto';
 				btn.style.marginLeft = '0px';
+				btn.style.top = 'auto';
 			};
 			const clearDynamicPos = (btn) => {
 				if (!btn) return;
@@ -25021,63 +25035,30 @@ document.addEventListener('pointerdown', ev => {
 				btn.style.removeProperty('right');
 				btn.style.removeProperty('margin-left');
 			};
-			if (draggedBlock) {
-				// Place controls directly under the dragged block (centered)
-				try {
-					const rect = draggedBlock.getBoundingClientRect();
-					const centerX = rect.left + (rect.width / 2);
-					// Prefer below the block; if too close to bottom, move above.
-					let y = rect.bottom + 8;
-					if (y + 44 + 8 > window.innerHeight) y = rect.top - 8 - 44;
-					y = clampY(y);
-					// Determine which buttons are visible
-					const visibleBtns = [];
-					if (cancelBtn) visibleBtns.push(cancelBtn);
-					if (rotateBtn) visibleBtns.push(rotateBtn);
-					// mirrorBtn may be hidden/disabled for bonus drags
-					if (mirrorBtn && mirrorBtn.classList.contains('visible') && !mirrorBtn.dataset.delayed) visibleBtns.push(mirrorBtn);
-					// Clear dynamic positioning for hidden buttons
-					[rotateBtn, mirrorBtn, cancelBtn].forEach(btn => {
-						if (!btn) return;
-						if (visibleBtns.includes(btn)) applyDynamicPos(btn);
-						else clearDynamicPos(btn);
-					});
-					const count = visibleBtns.length || 1;
-					// spacing adapts to viewport but stays reasonable
-					const spacing = Math.max(56, Math.min(96, Math.round(window.innerWidth * 0.12)));
-					const startX = centerX - spacing * (count - 1) / 2;
-					for (let i = 0; i < count; i++) {
-						const btn = visibleBtns[i];
-						if (!btn) continue;
-						btn.style.left = clampX(startX + i * spacing) + 'px';
-						btn.style.top = y + 'px';
-						btn.style.bottom = 'auto';
-					}
-				} catch (e) {}
-			} else {
-				// Desktop touch: anchor controls to bottom center for both portrait and landscape
-				const centerX = Math.round(window.innerWidth / 2);
-				const bottomVal = 'calc(var(--bottom-bar-height) + 10px)';
-				// Determine visible buttons for bottom layout
-				const visibleBtns = [];
-				if (cancelBtn) visibleBtns.push(cancelBtn);
-				if (rotateBtn) visibleBtns.push(rotateBtn);
-				if (mirrorBtn && mirrorBtn.classList.contains('visible') && !mirrorBtn.dataset.delayed) visibleBtns.push(mirrorBtn);
-				[rotateBtn, mirrorBtn, cancelBtn].forEach(btn => {
-					if (!btn) return;
-					if (visibleBtns.includes(btn)) applyDynamicPos(btn);
-					else clearDynamicPos(btn);
-				});
-				const count = visibleBtns.length || 1;
-				const spacing = Math.max(56, Math.min(96, Math.round(window.innerWidth * 0.12)));
-				const startX = centerX - spacing * (count - 1) / 2;
-				for (let i = 0; i < count; i++) {
-					const btn = visibleBtns[i];
-					if (!btn) continue;
-					btn.style.left = clampX(startX + i * spacing) + 'px';
-					btn.style.bottom = bottomVal;
-					btn.style.top = 'auto';
-				}
+
+			const centerX = Math.round(window.innerWidth / 2);
+			const bottomVal = 'calc(var(--bottom-bar-height) + 10px)';
+			// Fixed order so buttons never “swap”: cancel, rotate, mirror
+			const visibleBtns = [];
+			if (cancelBtn) visibleBtns.push(cancelBtn);
+			if (rotateBtn) visibleBtns.push(rotateBtn);
+			if (mirrorBtn && mirrorBtn.classList.contains('visible') && !mirrorBtn.dataset.delayed) visibleBtns.push(mirrorBtn);
+
+			[rotateBtn, mirrorBtn, cancelBtn].forEach(btn => {
+				if (!btn) return;
+				if (visibleBtns.includes(btn)) applyDynamicPos(btn);
+				else clearDynamicPos(btn);
+			});
+
+			const count = visibleBtns.length || 1;
+			const spacing = 64;
+			const startX = centerX - spacing * (count - 1) / 2;
+			for (let i = 0; i < count; i++) {
+				const btn = visibleBtns[i];
+				if (!btn) continue;
+				btn.style.left = clampX((startX + i * spacing) - 22) + 'px';
+				btn.style.bottom = bottomVal;
+				btn.style.top = 'auto';
 			}
 		}
 	}
@@ -25096,6 +25077,37 @@ document.addEventListener('pointerdown', ev => {
 				btn.style.removeProperty('margin-left');
 			});
 	}
+
+	// After releasing a drag (touch/pointer), re-show/reposition the touch controls
+	// at the bottom, without affecting gameplay state.
+	(function installCardControlRepositionHook(){
+		if (window.__locusCardControlRepositionHookInstalled) return;
+		window.__locusCardControlRepositionHookInstalled = true;
+		function repositionSoon(){
+			try {
+				setTimeout(function(){
+					try {
+						const shouldShow = (typeof window.__locusShouldShowCardControlButtons === 'function')
+							? window.__locusShouldShowCardControlButtons()
+							: false;
+						if (shouldShow) {
+							addCardControlButtons();
+						} else {
+							removeCardControlButtons();
+						}
+					} catch (e) {}
+					try {
+						document.querySelectorAll('.card-control-btn').forEach(btn => {
+							btn.style.transform = '';
+						});
+					} catch (e) {}
+				}, 60);
+			} catch (e) {}
+		}
+		['touchend','pointerup','mouseup','touchcancel'].forEach(ev => {
+			document.addEventListener(ev, repositionSoon, { passive: true });
+		});
+	})();
 
 	function rotateSelectedCard() {
 	  if (activeBonusPlacement) {
