@@ -18718,7 +18718,8 @@ document.addEventListener('pointermove', ev => {
 		addCardControlButtons();
 		// If mirror was delayed for this bonus drag, reveal it now and re-position
 		try {
-			if (activeBonusPlacement && activeBonusPlacement.delayedControls) {
+			// Only reveal delayed mirror if this was NOT a bonus placement
+			if (activeBonusPlacement && activeBonusPlacement.delayedControls && !(activeBonusPlacement && activeBonusPlacement.colorKey)) {
 				const mb = document.querySelector('.card-control-mirror');
 				if (mb) {
 					mb.disabled = false;
