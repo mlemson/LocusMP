@@ -4262,6 +4262,56 @@ body.dark-mode #saved-levels-modal .saved-obj-text { color: #ddd; opacity: 0.95;
 		filter: saturate(35%);
 	}
 
+	/* Inactive blueprint badge: small exclamation in the corner. Exclude
+	   multikleur cards (they are special and should not show this). */
+	.deck-modal-grid .deck-modal-card.deck-modal-card--inactive {
+		position: relative;
+		opacity: 0.5;
+		filter: grayscale(40%);
+	}
+	.deck-modal-grid .deck-modal-card.deck-modal-card--inactive::after {
+		content: '!';
+		position: absolute;
+		top: 6px;
+		right: 6px;
+		background: #ffcc00;
+		color: #3b2b00;
+		font-weight: 700;
+		font-size: 11px;
+		line-height: 14px;
+		width: 18px;
+		height: 18px;
+		border-radius: 10px;
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		box-shadow: 0 2px 4px rgba(0,0,0,0.25);
+	}
+
+	/* Explicit badge element styling (fallback for older browsers / layout) */
+	.deck-modal-inactive-badge {
+		position: absolute;
+		top: 6px;
+		right: 6px;
+		width: 20px;
+		height: 20px;
+		border-radius: 10px;
+		background: #ffcc00;
+		color: #3b2b00;
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		font-weight: 700;
+		font-size: 12px;
+		box-shadow: 0 2px 4px rgba(0,0,0,0.25);
+		pointer-events: none;
+	}
+	/* Hide badge for multikleur (rainbow) cards which already have their own corner mark */
+	.deck-modal-grid .deck-modal-card[data-card-label*="MULTIKLEUR"].deck-modal-card--inactive::after,
+	.deck-modal-grid .deck-modal-card[data-card-label*="RAINBOW"].deck-modal-card--inactive::after {
+		display: none;
+	}
+
 	.deck-modal-grid .deck-modal-card.deck-modal-card--in-hand {
 		opacity: 0.55;
 	}
@@ -12606,17 +12656,17 @@ body.dark-mode #saved-levels-modal .saved-obj-text { color: #ddd; opacity: 0.95;
 			},
 			{
 				id: 'level-10-yellow-rows-8',
-				description: 'Level 10: Voltooi 6 gele kolommen.',
-				short: 'Level 10 - 6 gele kolommen',
-				check: () => checkYellowFullRows(6),
+				description: 'Level 10: Voltooi 4 gele kolommen.',
+				short: 'Level 10 - 4 gele kolommen',
+				check: () => checkYellowFullRows(4),
 				progress: () => {
 					const yellowConfig = window.yellowGridConfig || {};
 					const set = yellowConfig.scoreMode === 'diagonal'
 						? (window.scoredYellowSegments || window.scoredYellowDiagonals)
 						: window.scoredYellowColumns;
 					const current = (set instanceof Set) ? set.size : 0;
-					const capped = Math.max(0, Math.min(6, current));
-					return `${capped}/6`;
+					const capped = Math.max(0, Math.min(4, current));
+					return `${capped}/4`;
 				}
 			},
 			{
@@ -16846,6 +16896,8 @@ body.dark-mode #saved-levels-modal .saved-obj-text { color: #ddd; opacity: 0.95;
   */
   function updateScore(cell){
 
+		try { console.debug('updateScore:called', { cellId: cell ? (cell.id || null) : null, time: Date.now() }); } catch(e) {}
+
     /* === GROEN SCORE === 
        Elke ingevulde eindcel = 8 punten */
 	(() => {
@@ -17372,10 +17424,32 @@ body.dark-mode #saved-levels-modal .saved-obj-text { color: #ddd; opacity: 0.95;
 	  // ---------- Blue score (per bold-row with >=1 active cell) ----------
 	// FIX: Use dataset.y for proper visual row detection instead of index-based calculation
 	function calculateBlueScore(gridId='blue-grid', cols=null, boldInterval=4, pointsPerBold=8) {
+		try { console.debug('calculateBlueScore:called', { gridId, time: Date.now() }); } catch(e) {}
 		const container = document.getElementById(gridId);
-		if (!container) return 0;
+		if (!container) {
+			try { console.debug('calculateBlueScore:no-container', { gridId }); } catch(e) {}
+			return 0;
+		}
 		const cells = Array.from(container.querySelectorAll('.cell:not(.void-cell)'));
 		if (cells.length === 0) return 0;
+
+		// Determine number of columns used by the grid.
+		// Prefer explicit `cols` param or `data-cols`, otherwise infer from data-x values
+		// or fallback to a square-root heuristic.
+		let deducedCols = 0;
+		if (cols && Number.isFinite(Number(cols))) {
+			deducedCols = Number(cols);
+		} else if (container && container.dataset && container.dataset.cols) {
+			deducedCols = Number(container.dataset.cols) || 0;
+		}
+		if (!deducedCols) {
+			const xs = new Set();
+			cells.forEach(c => {
+				const vx = Number(c.dataset.x);
+				if (Number.isFinite(vx)) xs.add(vx);
+			});
+			deducedCols = xs.size || Math.max(1, Math.round(Math.sqrt(cells.length)));
+		}
 
 		const scoredKey = `${gridId}-scoredRows`;
 		let scoredRows = window[scoredKey];
@@ -17407,6 +17481,17 @@ body.dark-mode #saved-levels-modal .saved-obj-text { color: #ddd; opacity: 0.95;
 				rowToActiveBoldCells.get(visualRow).push(cell);
 			}
 		});
+
+		// Debug: report counts to help diagnose missing blue scoring
+		try {
+			console.debug('calculateBlueScore:start', {
+				gridId,
+				totalCells: cells.length,
+				deducedCols,
+				boldCells: Array.from(rowToBoldCells.entries()).reduce((sum, [, arr]) => sum + arr.length, 0),
+				activeBoldCells: Array.from(rowToActiveBoldCells.entries()).reduce((sum, [, arr]) => sum + arr.length, 0)
+			});
+		} catch (e) {}
 		
 		// Get all unique visual rows sorted
 		const allVisualRows = Array.from(rowToBoldCells.keys()).sort((a, b) => a - b);
@@ -20319,6 +20404,8 @@ function getCollectedCoinCount(scores) {
 	  if (!deckModalContent) return;
 	  deckModalContent.innerHTML = '';
 	  const total = ownedDeckBlueprints.length;
+	  // Respect scenario restrictions when present.
+	  const allowedColors = Array.isArray(window.scenarioAllowedColors) ? window.scenarioAllowedColors : null;
 	  if (deckModalSubtext) {
 		deckModalSubtext.textContent = total === 1
 		  ? 'Je hebt 1 kaart in je deck'
@@ -20372,19 +20459,32 @@ function getCollectedCoinCount(scores) {
 			if (cur <= 1) map.delete(key);
 			else map.set(key, cur - 1);
 		};
-		const remainingCounts = buildCountMap(drawPile, getCardKey);
+		// Use a filtered draw pile for availability calculations so inactive colors
+		// (restricted by scenarios) are treated as 'not in draw'.
+		const filteredDrawPile = allowedColors
+			? drawPile.filter(c => c && (allowedColors.includes((c.color && c.color.name) || '') || (c.color && c.color.name) === 'multikleur'))
+			: drawPile;
+		const remainingCounts = buildCountMap(filteredDrawPile, getCardKey);
 		const handCounts = buildCountMap(currentHand, getCardKey);
 		const discardCounts = buildCountMap(discardPile, getCardKey);
 		const statusOrder = {
 			'available': 0,
 			'in-hand': 1,
 			'used': 2,
-			'discarded': 3
+			'discarded': 3,
+			'inactive': 99
 		};
 		const orderedBlueprints = ownedDeckBlueprints
 			.map((blueprint, index) => {
 				const key = getBlueprintKey(blueprint);
 				let status = 'available';
+				// If scenario restrictions exist, mark blueprints whose base color is
+				// not allowed as 'inactive' so they are shown but marked unusable.
+				const bpColorName = (blueprint && blueprint.color && blueprint.color.name) || '';
+				const isBpAllowed = !allowedColors || allowedColors.includes(bpColorName) || bpColorName === 'multikleur';
+				if (!isBpAllowed) {
+					status = 'inactive';
+				}
 				let isInHand = false;
 				let isInDrawPile = false;
 				let isDiscarded = false;
@@ -20426,6 +20526,19 @@ function getCollectedCoinCount(scores) {
 					break;
 				case 'available':
 					statusText = 'Nog in deck';
+					break;
+				case 'inactive':
+					card.classList.add('deck-modal-card--inactive');
+					statusText = 'Niet bruikbaar voor dit niveau!';
+					// Add an explicit badge element so it displays reliably over the card preview.
+					try {
+						const badge = document.createElement('div');
+						badge.className = 'deck-modal-inactive-badge';
+						badge.textContent = '?';
+						// Avoid adding badge on multikleur cards (they have their own mark)
+						const label = (card.dataset.cardLabel || '').toLowerCase();
+						if (!label.includes('multikleur') && !label.includes('rainbow')) card.appendChild(badge);
+					} catch (e) {}
 					break;
 				case 'used':
 					card.classList.add('deck-modal-card--depleted');
@@ -21236,6 +21349,17 @@ function getCollectedCoinCount(scores) {
 	if (isLuckyCopy) {
 		card.classList.add('card-lucky-copy');
 	}
+	// Visual markers for pre-level chosen cards
+	if (cardData && cardData.isPrelevelChoice) {
+		card.classList.add('prelevel-card');
+		try {
+			card.style.filter = cardData.isUsed ? 'grayscale(60%) brightness(0.6)' : 'brightness(0.85)';
+			const badge = document.createElement('span'); badge.className = 'prelevel-badge'; badge.textContent = '❗';
+			badge.style.position = 'absolute'; badge.style.top = '6px'; badge.style.right = '6px'; badge.style.fontSize = '14px'; badge.style.pointerEvents = 'none';
+			card.style.position = 'relative';
+			card.appendChild(badge);
+		} catch (e) {}
+	}
 	  const pattern = document.createElement('div');
 	  pattern.classList.add('card-pattern');
 	  card.appendChild(pattern);
@@ -21546,7 +21670,12 @@ function getCollectedCoinCount(scores) {
 	  if (rotateButton) rotateButton.disabled = true;
 		cardSelectionLocked = false;
 
-	  currentHand.forEach((cardData, idx) => {
+	  // Respect scenario restrictions when set: `window.scenarioAllowedColors` is an
+	  // optional array of Dutch color names (e.g. ['groen','blauw']). If present,
+	  // only show cards matching those colors or multikleur cards.
+	  const allowedColors = Array.isArray(window.scenarioAllowedColors) ? window.scenarioAllowedColors : null;
+	  const handToRender = allowedColors ? currentHand.filter(c => c && (allowedColors.includes((c.color && c.color.name) || '') || (c.color && c.color.name) === 'multikleur')) : currentHand;
+	  handToRender.forEach((cardData, idx) => {
 		if (typeof debugMode !== 'undefined' && debugMode) {
 			console.log(`  Card ${idx}:`, cardData.shapeName, cardData.color?.name);
 		}
@@ -21580,6 +21709,7 @@ function getCollectedCoinCount(scores) {
 	  } catch {}
 	updateDrawButtonState();
 	applyTurnCardLocks();
+	try { if (typeof monitorScenarioProgress === 'function') monitorScenarioProgress(); } catch(e){}
 	}
 
 	function finalizeBonusPlacement(placementResult, coinSnapshotBefore, bonusContext) {
@@ -23833,6 +23963,11 @@ function openShopModal(callback) {
 	  // Bij laden van een save: gebruik de opgeslagen deck state indien beschikbaar
 	  if (isLoadingGame && savedDeckState) {
 		drawPile = savedDeckState.drawPile || [];
+		// Apply scenario filter so restricted colors are not present in the draw pile.
+		if (Array.isArray(window.scenarioAllowedColors)) {
+			const allowed = window.scenarioAllowedColors;
+			drawPile = (drawPile || []).filter(c => c && (allowed.includes((c.color && c.color.name) || '') || (c.color && c.color.name) === 'multikleur'));
+		}
 		discardPile = savedDeckState.discardPile || [];
 		currentHand = savedDeckState.currentHand || [];
 		turnCount = savedDeckState.turnCount || 0;
@@ -23840,6 +23975,12 @@ function openShopModal(callback) {
 	  } else {
 		// Nieuwe start: maak fresh deck
 		drawPile = shuffleArray(ownedDeckBlueprints.map(bp => instantiateBlueprint(bp)));
+		// If scenario restricts colors, remove disallowed cards from the draw pile
+		// so they are never drawn during this run.
+		if (Array.isArray(window.scenarioAllowedColors)) {
+			const allowed = window.scenarioAllowedColors;
+			drawPile = drawPile.filter(c => c && (allowed.includes((c.color && c.color.name) || '') || (c.color && c.color.name) === 'multikleur'));
+		}
 		discardPile = [];
 		currentHand = [];
 		turnCount = 0;
@@ -26165,6 +26306,354 @@ function showFloatingPreview(shape, color, options = {}) {
 		} catch (e) { /* ignore */ }
 	}
 
+// --- Scenario helpers for World 4 prototypes (4.1, 4.2) ---
+function buildScenarioBoardHtml(scenarioId) {
+	// Build a minimal board DOM for the scenario and return outerHTML.
+	const board = document.createElement('div');
+	board.className = 'board';
+
+	// Column placeholders to match main layout so applyBoardHtmlToGame maps zones correctly
+	const col1 = document.createElement('div'); col1.className = 'column';
+	const col2 = document.createElement('div'); col2.className = 'column';
+	const col3 = document.createElement('div'); col3.className = 'column';
+	const col4 = document.createElement('div'); col4.className = 'column';
+
+	// For 4.1: rectangular green + wide blue
+	if (scenarioId === '4.1') {
+		// Green zone (placed in column 2) — larger, slightly irregular field
+		const gz = document.createElement('div'); gz.className = 'zone'; gz.dataset.color = 'groen'; gz.id = 'green-zone';
+		const gg = document.createElement('div'); gg.className = 'grid'; gg.id = 'green-grid'; gg.dataset.rows = '10'; gg.dataset.cols = '10';
+		for (let y=0;y<10;y++) for (let x=0;x<10;x++) { const c = document.createElement('div'); c.className='cell'; c.dataset.x=String(x); c.dataset.y=String(y);
+			// carve a few void pockets for visual interest
+			if ((x===0 || x===9) && (y<2 || y>7)) c.classList.add('void-cell');
+			if ((y===0 || y===9) && (x<2 || x>7)) c.classList.add('void-cell');
+			gg.appendChild(c); }
+		gz.appendChild(gg);
+		col2.appendChild(gz);
+
+		// Blue zone (column 3) wide rectangle with varied bands
+		const bz = document.createElement('div'); bz.className = 'zone'; bz.dataset.color = 'blauw'; bz.id = 'blue-zone';
+		const bg = document.createElement('div'); bg.className = 'grid'; bg.id = 'blue-grid'; bg.dataset.rows = '10'; bg.dataset.cols = '22';
+		for (let y=0;y<10;y++) for (let x=0;x<22;x++) { const c = document.createElement('div'); c.className='cell'; c.dataset.x=String(x); c.dataset.y=String(y);
+			// create narrow banding: some rows are slightly obstructed for challenge
+			if ((y===2 || y===7) && (x%5===0)) c.classList.add('void-cell');
+			bg.appendChild(c); }
+		bz.appendChild(bg);
+		col3.appendChild(bz);
+
+		// Keep other columns empty (applyBoardHtmlToGame will hide missing zones)
+	}
+
+	// For 4.2: creative shapes + subgoal hints (some void cells + a portal/key)
+	if (scenarioId === '4.2') {
+		// Green: larger organic island (11x11) with void pockets and start-cells
+		const gz = document.createElement('div'); gz.className = 'zone'; gz.dataset.color = 'groen'; gz.id = 'green-zone';
+		const gg = document.createElement('div'); gg.className = 'grid'; gg.id = 'green-grid'; gg.dataset.rows = '11'; gg.dataset.cols = '11';
+		for (let y=0;y<11;y++) for (let x=0;x<11;x++) {
+			const c = document.createElement('div'); c.className='cell'; c.dataset.x=String(x); c.dataset.y=String(y);
+			// create organic voids
+			if ((Math.abs(x-5)+Math.abs(y-5))>7) c.classList.add('void-cell');
+			// bold anchors to guide subgoal placement
+			if ((x===5 && (y===2 || y===8)) || ((x===2||x===8) && y===5)) c.classList.add('bold-cell');
+			gg.appendChild(c);
+		}
+		gz.appendChild(gg);
+		col2.appendChild(gz);
+
+		// Blue: long winding strip with portal/key and a few locked cells
+		const bz = document.createElement('div'); bz.className = 'zone'; bz.dataset.color = 'blauw'; bz.id = 'blue-zone';
+		const bg = document.createElement('div'); bg.className = 'grid'; bg.id = 'blue-grid'; bg.dataset.rows = '7'; bg.dataset.cols = '24';
+		for (let y=0;y<7;y++) for (let x=0;x<24;x++) {
+			const c = document.createElement('div'); c.className='cell'; c.dataset.x=String(x); c.dataset.y=String(y);
+			// make a small pocket for the portal
+			if (x===3 && y===3) { c.classList.add('portal-cell'); const s=document.createElement('span'); s.className='portal-symbol'; s.textContent='🗝️'; c.appendChild(s); }
+			// occasional voids to create placement rhythm
+			if ((x%7===0) && (y===1 || y===5)) c.classList.add('void-cell');
+			bg.appendChild(c);
+		}
+		bz.appendChild(bg);
+		col3.appendChild(bz);
+	}
+
+	board.appendChild(col1); board.appendChild(col2); board.appendChild(col3); board.appendChild(col4);
+	return board.outerHTML;
+}
+
+function showPreLevelChoice(onPick) {
+	// Small modal offering 3 multikleur card choices (instantiated from shapePool).
+	try {
+		const overlayId = 'prelevel-choice-overlay';
+		let overlay = document.getElementById(overlayId);
+		if (!overlay) {
+			overlay = document.createElement('div'); overlay.id = overlayId; overlay.className = 'highscore-modal-overlay';
+			overlay.innerHTML = `<div class="highscore-modal"><h2>Kies één bonuskaart</h2><div id="prelevel-choices" style="display:flex;gap:8px;flex-wrap:wrap;margin:8px 0"></div><div style="margin-top:8px"><button class="modal-btn" id="prelevel-skip">Sla over</button></div></div>`;
+			document.body.appendChild(overlay);
+		}
+		overlay.classList.add('show');
+		const container = document.getElementById('prelevel-choices'); container.innerHTML='';
+		// Create 3 options
+		const rainbowColor = { name: 'multikleur', code: 'rainbow' };
+		for (let i=0;i<3;i++) {
+			const shapeEntry = shapePool[(Math.abs(i + Math.floor(Math.random()*shapePool.length)) % shapePool.length)];
+			const bp = createCardBlueprint(shapeEntry, rainbowColor);
+			const card = instantiateBlueprint(bp);
+			const el = createCardElement(card, true, { onSelect: () => {} });
+			el.style.cursor='pointer';
+			el.addEventListener('click', ()=>{
+				overlay.classList.remove('show');
+				try { onPick(card); } catch(e){}
+			});
+			container.appendChild(el);
+		}
+		document.getElementById('prelevel-skip').onclick = ()=>{ overlay.classList.remove('show'); try{ onPick(null); }catch(e){} };
+	} catch (e) { console.error(e); try{ onPick(null); }catch(e){} }
+}
+
+function loadScenario(id, meta) {
+	const boardHtml = buildScenarioBoardHtml(id);
+	applyBoardHtmlToGame(boardHtml);
+	setLoadedLevelMeta(meta.name, meta.desc || '');
+	// Restrict visible cards to the scenario colors (Dutch names)
+	window.scenarioAllowedColors = meta.allowedColors || null;
+	// Reset relevant game state so the scenario always starts with the scenario's
+	// own deck/coins/scores rather than the player's current in-progress session.
+	try {
+		if (typeof resetScoreState === 'function') resetScoreState();
+		if (typeof resetCoins === 'function') resetCoins();
+	} catch (e) {}
+
+	// Helper: resolve a start-deck entry (blueprint, blueprintId or already-instantiated)
+	const resolveToInstance = (spec) => {
+		try {
+			if (!spec) return null;
+			// Already an instantiated card
+			if (spec.id && spec.blueprintId) return spec;
+			// Full blueprint object
+			if (spec.matrix || spec.shapeName) return instantiateBlueprint(spec);
+			// String assumed to be a blueprintId; find in ownedBlueprints
+			if (typeof spec === 'string') {
+				const bp = ownedDeckBlueprints.find(b => (b && (b.blueprintId === spec || b.shapeName === spec)));
+				if (bp) return instantiateBlueprint(bp);
+			}
+		} catch (e) { console.error('resolveToInstance failed', e); }
+		return null;
+	};
+
+	// Start-deck: prefer explicit meta.startDeck (array of specs). If absent,
+	// create a fresh deck composed from owned blueprints but filter by allowed colors.
+	if (Array.isArray(meta && meta.startDeck) && meta.startDeck.length) {
+		drawPile = shuffleArray((meta.startDeck.map(resolveToInstance).filter(Boolean)));
+		discardPile = [];
+		currentHand = [];
+		turnCount = 0;
+	} else {
+		// Build fresh draw pile but respect scenarioAllowedColors
+		drawPile = shuffleArray(ownedDeckBlueprints.map(bp => instantiateBlueprint(bp)));
+		if (Array.isArray(window.scenarioAllowedColors)) {
+			const allowed = window.scenarioAllowedColors;
+			drawPile = drawPile.filter(c => c && (allowed.includes((c.color && c.color.name) || '') || (c.color && c.color.name) === 'multikleur'));
+		}
+		discardPile = [];
+		currentHand = [];
+		turnCount = 0;
+	}
+
+	// If meta provides explicit startHand, populate it (instances or specs).
+	if (Array.isArray(meta && meta.startHand) && meta.startHand.length) {
+		currentHand = meta.startHand.map(resolveToInstance).filter(Boolean);
+	}
+
+	// If meta provides startCoins (number), apply to the coin UI
+	if (typeof meta?.startCoins === 'number') {
+		try {
+			const desired = Math.max(0, Math.floor(meta.startCoins));
+			const container = document.getElementById('collected-coins');
+			if (container) {
+				// Ensure there are enough coin elements
+				const existing = container.children.length;
+				for (let i = existing; i < desired; i++) container.appendChild(createCoinElement(i));
+				// Reset all
+				container.querySelectorAll('.coin').forEach(el => el.classList.remove('active','used'));
+				// Activate the first `desired` coins
+				Array.from(container.querySelectorAll('.coin')).slice(0, desired).forEach(el => el.classList.add('active'));
+				updateCoinCounter();
+			}
+		} catch (e) { console.error('Failed to apply startCoins', e); }
+	}
+
+	// Offer the pre-level multikleur choice and, if picked, insert it into the current hand
+	showPreLevelChoice((pickedCard) => {
+		if (pickedCard) {
+			// mark and insert the chosen instantiated card into the hand immediately
+			pickedCard.isPrelevelChoice = true;
+			pickedCard.isUsed = false;
+			// ensure identical blueprint isn't in the draw pile (remove exact matches)
+			try { drawPile = (drawPile || []).filter(c => c && c.blueprintId !== pickedCard.blueprintId); } catch(e) {}
+			currentHand.unshift(pickedCard);
+			renderCurrentHand();
+		} else {
+			renderCurrentHand();
+		}
+		// keep deck UI aware: render preview and hand
+		try { if (typeof updateDeckPreview === 'function') updateDeckPreview(); } catch(e){}
+	});
+}
+
+// --- Subgoal checks for scenarios ---
+function checkGreenHas4x4Square() {
+	try {
+		const g = document.getElementById('green-grid');
+		if (!g) return false;
+		const rows = Number(g.dataset.rows) || Math.ceil(Math.sqrt(g.querySelectorAll('.cell').length));
+		const cols = Number(g.dataset.cols) || Math.ceil(Math.sqrt(g.querySelectorAll('.cell').length));
+		for (let ry = 0; ry <= rows - 4; ry++) {
+			for (let cx = 0; cx <= cols - 4; cx++) {
+				let ok = true;
+				for (let y = 0; y < 4 && ok; y++) {
+					for (let x = 0; x < 4; x++) {
+						const sel = g.querySelector(`.cell[data-x="${cx + x}"][data-y="${ry + y}"]`);
+						if (!sel || sel.classList.contains('void-cell') || !sel.classList.contains('active')) { ok = false; break; }
+					}
+				}
+				if (ok) return true;
+			}
+		}
+	} catch (e) { console.error(e); }
+	return false;
+}
+
+function checkBluePortalActive() {
+	try {
+		const b = document.getElementById('blue-grid');
+		if (!b) return false;
+		const portal = b.querySelector('.portal-cell');
+		return !!(portal && portal.classList.contains('active'));
+	} catch (e) { return false; }
+}
+
+// If loading scenario 4.2, register its subgoals (first shown only)
+(function attachScenarioHooks(){
+	const origLoad = window.loadScenario || null;
+	window.loadScenario = function(id, meta) {
+		if (typeof origLoad === 'function') origLoad(id, meta);
+		try {
+			// Register subgoals per scenario. Provide robust checks.
+			if (id === '4.1' || (meta && meta.scenarioId === '4.1')) {
+				const subgoals = [
+					{ title: 'Groen 5×5', text: 'Maak een 5×5 volledig actief blok in groen.', check: () => checkGridHasFilledSquare('green-grid', 5) },
+					{ title: 'Blauw kolom', text: 'Activeer een volledige kolom van 8 cellen in blauw.', check: () => checkGridHasFullColumn('blue-grid', 8) }
+				];
+				setScenarioSubgoals(subgoals);
+			}
+			if (id === '4.2' || (meta && meta.scenarioId === '4.2')) {
+				const subgoals = [
+					{ title: '4×4 Vorm', text: 'Maak een 4×4 volledig actief blok in groen.', check: () => checkGridHasFilledSquare('green-grid', 4) },
+					{ title: 'Sleutel activeren', text: 'Activeer de portal/sleutel in blauw.', check: () => checkBluePortalActive() }
+				];
+				setScenarioSubgoals(subgoals);
+			}
+		} catch (e) { console.error(e); }
+	};
+})();
+
+// Helper checks for scenarios
+function checkGridHasFilledSquare(gridId, n) {
+	try {
+		const g = document.getElementById(gridId);
+		if (!g) return false;
+		const rows = Number(g.dataset.rows) || Math.ceil(Math.sqrt(g.querySelectorAll('.cell').length));
+		const cols = Number(g.dataset.cols) || Math.ceil(Math.sqrt(g.querySelectorAll('.cell').length));
+		for (let ry = 0; ry <= rows - n; ry++) {
+			for (let cx = 0; cx <= cols - n; cx++) {
+				let ok = true;
+				for (let y = 0; y < n && ok; y++) {
+					for (let x = 0; x < n; x++) {
+						const sel = g.querySelector(`.cell[data-x="${cx + x}"][data-y="${ry + y}"]`);
+						if (!sel || sel.classList.contains('void-cell') || !sel.classList.contains('active')) { ok = false; break; }
+					}
+				}
+				if (ok) return true;
+			}
+		}
+	} catch (e) { console.error(e); }
+	return false;
+}
+
+function checkGridHasFullColumn(gridId, minHeight) {
+	try {
+		const g = document.getElementById(gridId);
+		if (!g) return false;
+		const rows = Number(g.dataset.rows) || Math.ceil(Math.sqrt(g.querySelectorAll('.cell').length));
+		const cols = Number(g.dataset.cols) || Math.ceil(Math.sqrt(g.querySelectorAll('.cell').length));
+		for (let cx = 0; cx < cols; cx++) {
+			let activeCount = 0;
+			for (let y = 0; y < rows; y++) {
+				const sel = g.querySelector(`.cell[data-x="${cx}"][data-y="${y}"]`);
+				if (!sel || sel.classList.contains('void-cell')) { activeCount = 0; break; }
+				if (sel.classList.contains('active')) activeCount++; else { activeCount = 0; break; }
+			}
+			if (activeCount >= minHeight) return true;
+		}
+	} catch (e) { console.error(e); }
+	return false;
+}
+
+// Scenario subgoal management
+window.scenarioSubgoals = null;
+window.currentScenarioSubgoalIndex = -1;
+function setScenarioSubgoals(subgoals) {
+	window.scenarioSubgoals = Array.isArray(subgoals) ? subgoals : null;
+	window.currentScenarioSubgoalIndex = subgoals && subgoals.length ? 0 : -1;
+	showCurrentScenarioSubgoal();
+}
+
+function showCurrentScenarioSubgoal() {
+	try {
+		const idx = Number(window.currentScenarioSubgoalIndex || 0);
+		if (!window.scenarioSubgoals || idx < 0 || idx >= window.scenarioSubgoals.length) return;
+		const sub = window.scenarioSubgoals[idx];
+		// Display in objective zone briefly
+		const titleEl = document.querySelector('#objective-zone h2');
+		const currentEl = document.getElementById('objective-current');
+		if (titleEl) titleEl.textContent = sub.title || titleEl.textContent;
+		if (currentEl) currentEl.innerHTML = `<strong>Subdoel ${idx+1}:</strong> ${sub.text}`;
+	} catch (e) {}
+}
+
+function monitorScenarioProgress() {
+	try {
+		if (!window.scenarioSubgoals || window.currentScenarioSubgoalIndex == null) return;
+		const idx = Number(window.currentScenarioSubgoalIndex || 0);
+		if (idx < 0 || idx >= window.scenarioSubgoals.length) return;
+		const sub = window.scenarioSubgoals[idx];
+		if (!sub || typeof sub.check !== 'function') return;
+		const ok = !!sub.check();
+		if (ok) {
+			// show exclamation toast & visual
+			showObjectiveToast(`❗ ${sub.text} voltooid!`);
+			// darken and remove prelevel card from draw if present
+			try {
+				const pre = currentHand.find(c => c && c.isPrelevelChoice && !c.isUsed);
+				if (pre) {
+					pre.isUsed = true;
+					// remove any exact blueprint matches from drawPile
+					drawPile = (drawPile || []).filter(c => c && c.blueprintId !== pre.blueprintId);
+				}
+				renderCurrentHand();
+			} catch (e) {}
+			// advance
+			window.currentScenarioSubgoalIndex += 1;
+			if (window.currentScenarioSubgoalIndex >= window.scenarioSubgoals.length) {
+				// all done
+				setLoadedLevelMeta(window.loadedCustomLevelMeta?.name || 'Scenario voltooid', 'Alle subdoelen voltooid!');
+				window.scenarioSubgoals = null; window.currentScenarioSubgoalIndex = -1;
+			} else {
+				showCurrentScenarioSubgoal();
+			}
+		}
+	} catch (e) { console.error(e); }
+}
+
 	function openEditorWindow() {
 		const boardHtml = getEditorBoardHtml();
 		try { localStorage.setItem(LOCUS_EDITOR_STORAGE_KEY, boardHtml); } catch (e) {}
@@ -26936,9 +27425,18 @@ body { background: transparent !important; }
 	}
 
   // expose some helpers for debugging
-  window.createGrid = createGrid;
-  window.generateRoots = generateRoots;
-  window.updateScore = updateScore;
+	window.createGrid = createGrid;
+	window.generateRoots = generateRoots;
+	// Wrap updateScore so scenario monitor runs after each score recalculation
+	try {
+		window._origUpdateScore = updateScore;
+		window.updateScore = function(cell) {
+			try { window._origUpdateScore(cell); } catch(e) { try { window._origUpdateScore(cell); } catch(e){} }
+			try { if (typeof monitorScenarioProgress === 'function') monitorScenarioProgress(); } catch(e){}
+		};
+	} catch (e) {
+		window.updateScore = updateScore;
+	}
   
   
 	function hideEmptyZones() {
@@ -27754,6 +28252,29 @@ body { background: transparent !important; }
 		// populate list
 		const list = document.getElementById('saved-levels-list');
 		list.innerHTML = '';
+
+		// Append example scenarios for quick testing (World 4 prototypes)
+		const examplesHeader = document.createElement('div');
+		examplesHeader.style.marginBottom = '8px';
+		examplesHeader.innerHTML = '<div class="saved-title">Voorbeeld-scenario\'s (World 4)</div>';
+		list.appendChild(examplesHeader);
+
+		const examples = [
+		  { id: 'world4-4.1', name: 'Wereld 4.1 - Groen + Blauw', desc: 'Rechthoekige groen + brede blauwe zone. Special: sleutel/portal + subdoelen.', allowedColors: ['groen','blauw'], scenarioId: '4.1' },
+		  { id: 'world4-4.2', name: 'Wereld 4.2 - Vormen & Shop', desc: 'Creatieve vormen in groen, lange blauwe strip met portal/key; 4x4 subdoelen en shop-stub.', allowedColors: ['groen','blauw'], scenarioId: '4.2' }
+		];
+		examples.forEach(ex => {
+		  const item = document.createElement('div');
+		  item.style.display = 'flex'; item.style.gap = '8px'; item.style.alignItems = 'center'; item.style.marginBottom = '8px';
+		  const label = document.createElement('div'); label.style.flex = '1';
+		  const titleText = document.createElement('div'); titleText.textContent = ex.name; titleText.style.fontWeight = '600'; titleText.className = 'saved-title';
+		  const objText = document.createElement('div'); objText.className = 'saved-obj-text'; objText.textContent = ex.desc;
+		  label.appendChild(titleText); label.appendChild(objText);
+		  const loadBtn = document.createElement('button'); loadBtn.textContent = 'Laad in spel'; loadBtn.className = 'modal-btn primary';
+		  loadBtn.addEventListener('click', ()=>{ loadScenario(ex.scenarioId, ex); closeSavedLevelsModal(); });
+		  item.appendChild(label); item.appendChild(loadBtn);
+		  list.appendChild(item);
+		});
 		let saved = {};
 		try {
 			const raw = localStorage.getItem('locusSavedBoards');
