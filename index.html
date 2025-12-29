@@ -18725,22 +18725,8 @@ document.addEventListener('pointermove', ev => {
 					mb.disabled = false;
 					mb.classList.add('visible');
 					mb.removeAttribute('data-delayed');
-					// Re-run positioning logic for touch
-					if (('ontouchstart' in window || navigator.maxTouchPoints > 0) && draggedBlock) {
-						const rect = draggedBlock.getBoundingClientRect();
-						const centerX = rect.left + (rect.width / 2);
-						const spacing = 56;
-						const startX = centerX - spacing;
-						const y = rect.bottom + 8;
-						const clampX = (x, w=44) => Math.max(8, Math.min((window.innerWidth - (w + 8)), Math.round(x)));
-						const cancelBtn = document.querySelector('.card-control-cancel');
-						const rotateBtn = document.querySelector('.card-control-rotate');
-						if (cancelBtn) cancelBtn.style.left = clampX(startX - spacing) + 'px';
-						if (rotateBtn) rotateBtn.style.left = clampX(startX) + 'px';
-						mb.style.left = clampX(startX + spacing) + 'px';
-						if (cancelBtn) cancelBtn.style.top = rotateBtn.style.top = mb.style.top = y + 'px';
-						if (cancelBtn) cancelBtn.style.bottom = rotateBtn.style.bottom = mb.style.bottom = '';
-					}
+					// Re-position buttons using the centralized positioning logic
+					try { addCardControlButtons(); } catch (e) {}
 				}
 				activeBonusPlacement.delayedControls = false;
 			}
@@ -25033,26 +25019,44 @@ document.addEventListener('pointerdown', ev => {
 				try {
 					const rect = draggedBlock.getBoundingClientRect();
 					const centerX = rect.left + (rect.width / 2);
-					const spacing = 56; // horizontal spacing between buttons
-					const startX = centerX - spacing;
 					const y = rect.bottom + 8;
-					cancelBtn.style.left = clampX(startX - spacing) + 'px';
-					rotateBtn.style.left = clampX(startX) + 'px';
-					mirrorBtn.style.left = clampX(startX + spacing) + 'px';
-					cancelBtn.style.top = rotateBtn.style.top = mirrorBtn.style.top = y + 'px';
-					cancelBtn.style.bottom = rotateBtn.style.bottom = mirrorBtn.style.bottom = '';
+					// Determine which buttons are visible
+					const visibleBtns = [];
+					if (cancelBtn) visibleBtns.push(cancelBtn);
+					if (rotateBtn) visibleBtns.push(rotateBtn);
+					// mirrorBtn may be hidden/disabled for bonus drags
+					if (mirrorBtn && mirrorBtn.classList.contains('visible') && !mirrorBtn.dataset.delayed) visibleBtns.push(mirrorBtn);
+					const count = visibleBtns.length || 1;
+					// spacing adapts to viewport but stays reasonable
+					const spacing = Math.max(56, Math.min(96, Math.round(window.innerWidth * 0.12)));
+					const startX = centerX - spacing * (count - 1) / 2;
+					for (let i = 0; i < count; i++) {
+						const btn = visibleBtns[i];
+						if (!btn) continue;
+						btn.style.left = clampX(startX + i * spacing) + 'px';
+						btn.style.top = y + 'px';
+						btn.style.bottom = '';
+					}
 				} catch (e) {}
 			} else {
 				// Desktop touch: anchor controls to bottom center for both portrait and landscape
 				const centerX = Math.round(window.innerWidth / 2);
-				const spacing = 56;
-				const startX = centerX - spacing;
 				const bottomVal = 'calc(var(--bottom-bar-height) + 10px)';
-				cancelBtn.style.left = clampX(startX - spacing) + 'px';
-				rotateBtn.style.left = clampX(startX) + 'px';
-				mirrorBtn.style.left = clampX(startX + spacing) + 'px';
-				cancelBtn.style.bottom = rotateBtn.style.bottom = mirrorBtn.style.bottom = bottomVal;
-				cancelBtn.style.top = rotateBtn.style.top = mirrorBtn.style.top = '';
+				// Determine visible buttons for bottom layout
+				const visibleBtns = [];
+				if (cancelBtn) visibleBtns.push(cancelBtn);
+				if (rotateBtn) visibleBtns.push(rotateBtn);
+				if (mirrorBtn && mirrorBtn.classList.contains('visible') && !mirrorBtn.dataset.delayed) visibleBtns.push(mirrorBtn);
+				const count = visibleBtns.length || 1;
+				const spacing = Math.max(56, Math.min(96, Math.round(window.innerWidth * 0.12)));
+				const startX = centerX - spacing * (count - 1) / 2;
+				for (let i = 0; i < count; i++) {
+					const btn = visibleBtns[i];
+					if (!btn) continue;
+					btn.style.left = clampX(startX + i * spacing) + 'px';
+					btn.style.bottom = bottomVal;
+					btn.style.top = '';
+				}
 			}
 		}
 	}
