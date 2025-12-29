@@ -18929,15 +18929,16 @@ document.addEventListener('pointermove', ev => {
 	  let cellSize;
 	  let cellSizeStr;
 	  
-	  if (useActualCellSize && !isZoomed) {
-		// Gebruik de werkelijke cel-grootte van het speelveld (inclusief scaling)
+	// Use the actual rendered cell size when requested OR when in zoomed-in mode
+	// (avoids visual vs hit-test mismatch caused by using the CSS var during zoom)
+	if (useActualCellSize || isZoomed) {
 		cellSize = getActualCellSize();
 		cellSizeStr = `${cellSize}px`;
-	  } else {
-		// Bij zoom of fallback: gebruik CSS variabele
+	} else {
+		// Fallback: use the CSS variable when explicit actual sizing is not desired
 		cellSize = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--cell-size')) || 26;
 		cellSizeStr = 'var(--cell-size)';
-	  }
+	}
 	  
 	  // Border-radius is altijd size / 4
 	  const borderRadius = `${cellSize / 4}px`;
