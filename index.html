@@ -24880,6 +24880,9 @@ document.addEventListener('pointerdown', ev => {
 		if (desktopHoverDragActive) return;
 		// Skip control buttons for purchased placement (1x1 block doesn't need rotate/mirror)
 		if (activeBonusPlacement && activeBonusPlacement.purchasedPlacement) return;
+
+		// If this is a bonus draggable (or we have an activeBonusPlacement), do not show mirror button
+		const isBonusDrag = !!( (draggedBlock && draggedBlock.classList && draggedBlock.classList.contains('bonus-draggable')) || (activeBonusPlacement && activeBonusPlacement.colorKey) );
 		
 		// Check of buttons al bestaan
 		let rotateBtn = document.querySelector('.card-control-rotate');
@@ -25010,7 +25013,7 @@ document.addEventListener('pointerdown', ev => {
 				rotateBtn.classList.add('visible');
 				cancelBtn.classList.add('visible');
 				const isDelayingMirror = !!(activeBonusPlacement && activeBonusPlacement.delayedControls && isTouchDevice);
-				if (!isDelayingMirror) {
+				if (!isDelayingMirror && !isBonusDrag) {
 					mirrorBtn.classList.add('visible');
 					mirrorBtn.disabled = false;
 				} else {
@@ -25210,6 +25213,18 @@ function showFloatingPreview(shape, color, options = {}) {
 		floatingPreviewActive = true;
 		updateFloatingPreview(shape, color);
 		preview.style.display = 'flex';
+
+		// Hide mirror control for bonus previews (we don't allow mirroring bonus blocks)
+		try {
+			const mirrorBtnEl = document.getElementById('floating-preview-mirror');
+			if (mirrorBtnEl) {
+				if (isBonusPreview) {
+					mirrorBtnEl.style.display = 'none';
+				} else {
+					mirrorBtnEl.style.display = '';
+				}
+			}
+		} catch (e) {}
 
 		const shouldPinAboveBottomBar = (window.innerWidth <= 650) || document.body.classList.contains('zoomed-in');
 		const baseTransform = (isBonusPreview || shouldPinAboveBottomBar) ? 'translate(-50%, 0)' : 'none';
