@@ -3681,6 +3681,29 @@ body.dark-mode #saved-levels-modal .saved-obj-text { color: #ddd; opacity: 0.95;
 		display: flex;
 	}
 
+	/* When dragging a bonus block on touch, attach controls to the block so they move with it. */
+	.draggable .attached-controls {
+		position: absolute;
+		left: 50%;
+		top: 100%;
+		transform: translateX(-50%);
+		display: flex;
+		gap: 10px;
+		margin-top: 6px;
+		pointer-events: auto;
+		z-index: 1;
+	}
+	.draggable .attached-controls .card-control-btn {
+		position: static !important;
+		left: auto !important;
+		right: auto !important;
+		top: auto !important;
+		bottom: auto !important;
+		margin-left: 0 !important;
+		transform: none !important;
+		opacity: 0.65;
+	}
+
 	/* When JS positions the buttons near the dragged block, override the
 	   fixed layout offsets (e.g. mobile-sidebar translateY + right:15px). */
 	.card-control-btn.dynamic-pos {
@@ -18060,6 +18083,7 @@ body.dark-mode #saved-levels-modal .saved-obj-text { color: #ddd; opacity: 0.95;
 		if (overlay) {
 			overlay.appendChild(block);
 			overlay.style.display = 'block';
+			overlay.style.pointerEvents = 'auto';
 		}
 		startGlobalDragVisuals();
 
@@ -18164,6 +18188,7 @@ document.addEventListener('pointermove', ev => {
 
 	const overlay = document.getElementById('drag-overlay');		document.body.classList.add('dragging'); // optioneel, voor extra styling
 		overlay.style.display = 'block';
+		overlay.style.pointerEvents = 'auto';
 
 		// Voeg draggedBlock als kind van overlay, zodat hij altijd boven alles zweeft
 		overlay.appendChild(draggedBlock);
@@ -18718,7 +18743,10 @@ document.addEventListener('pointermove', ev => {
 		if (overlay && overlay.contains(draggedBlock)) {
 			document.body.appendChild(draggedBlock);
 		}
-		if (overlay) overlay.style.display = 'none';
+		if (overlay) {
+			overlay.style.display = 'none';
+			overlay.style.pointerEvents = 'none';
+		}
 
 		document.body.classList.remove('dragging');
 		document.body.style.cursor = '';
@@ -18777,6 +18805,7 @@ document.addEventListener('pointermove', ev => {
 		lastZone = null;
 		lastBaseX = lastBaseY = null;
 		if (overlay) overlay.style.display = 'none';
+		if (overlay) overlay.style.pointerEvents = 'none';
 		document.body.classList.remove('dragging');
 		document.body.style.cursor = '';
 		document.documentElement.style.cursor = '';
@@ -19024,16 +19053,28 @@ document.addEventListener('pointermove', ev => {
 	}
 
 	function renderBlock(block, shape, color, useActualCellSize = true) {
+	// Preserve any attached controls (bonus drag touch UX) across re-renders.
+	let preservedControls = null;
+	try {
+		preservedControls = block.querySelector(':scope > .attached-controls');
+		if (preservedControls) preservedControls.remove();
+	} catch (e) { preservedControls = null; }
 	block.innerHTML = '';
 	block.style.display = 'grid';
 	// Ensure floating/draggable previews remain visible on top when rotated
 	try {
-		const isFloatingPreview = (block.id === 'floating-preview' || block.id === 'purchased-block-preview' || (block.classList && (block.classList.contains('draggable') || block.classList.contains('bonus-draggable'))));
-		if (isFloatingPreview) {
+		const isFloatingPreview = (block.id === 'floating-preview' || block.id === 'purchased-block-preview');
+		const isDraggablePreview = !!(block.classList && (block.classList.contains('draggable') || block.classList.contains('bonus-draggable')));
+		if (isFloatingPreview || isDraggablePreview) {
 			if (!block.style.position) block.style.position = 'fixed';
 			block.style.zIndex = block.style.zIndex || '10000';
-			const overlay = document.getElementById('drag-overlay') || document.body;
-			if (overlay && !overlay.contains(block)) overlay.appendChild(block);
+			// IMPORTANT: only move draggable blocks into #drag-overlay while actively dragging.
+			// Otherwise they become hard to pick up again (overlay is normally pointer-events:none)
+			// and scrollable zones can steal the gesture.
+			const overlay = document.getElementById('drag-overlay');
+			const isActiveDrag = document.body.classList.contains('dragging');
+			const targetParent = (isDraggablePreview && overlay && isActiveDrag) ? overlay : document.body;
+			if (targetParent && !targetParent.contains(block)) targetParent.appendChild(block);
 		}
 	} catch (e) {}
 	  
@@ -19107,6 +19148,9 @@ document.addEventListener('pointermove', ev => {
 			block.appendChild(div);
 		});
 	  });
+	  try {
+		  if (preservedControls) block.appendChild(preservedControls);
+	  } catch (e) {}
 	}
 
 	function hexToRGBA(hex, alpha = 1) {
@@ -24596,6 +24640,7 @@ function sanitizeBoardHtml(html) {
 		suppressDesktopDropUntil = 0;
 		endPointerDragTracking();
 		if (overlay) overlay.style.display = 'none';
+		if (overlay) overlay.style.pointerEvents = 'none';
 		document.body.classList.remove('dragging');
 		document.body.style.cursor = '';
 		document.documentElement.style.cursor = '';
@@ -25033,8 +25078,36 @@ document.addEventListener('pointerdown', ev => {
 
 		// Position buttons for touch devices:
 		if (isTouchDevice) {
-			// Always pin controls bottom-center on touch to avoid overlap/jumble and
-			// to keep the draggable easy to pick up after rotate/release.
+			// If dragging a bonus block, attach the controls to the dragged block so they
+			// move with it (requested touch UX). Otherwise, keep them pinned bottom-center.
+			const isBonusTouchDrag = !!(activeBonusPlacement && draggedBlock && document.body.classList.contains('dragging'));
+			if (isBonusTouchDrag) {
+				try {
+					let container = draggedBlock.querySelector(':scope > .attached-controls');
+					if (!container) {
+						container = document.createElement('div');
+						container.className = 'attached-controls';
+						draggedBlock.appendChild(container);
+					}
+					// Ensure the correct buttons are inside the container.
+					if (cancelBtn && cancelBtn.parentElement !== container) container.appendChild(cancelBtn);
+					if (rotateBtn && rotateBtn.parentElement !== container) container.appendChild(rotateBtn);
+					// Mirror is not shown for bonus drags; keep it in the DOM for later reuse.
+					// Clear any fixed-position styles from previous layouts.
+					[cancelBtn, rotateBtn, mirrorBtn].forEach(btn => {
+						if (!btn) return;
+						btn.style.removeProperty('left');
+						btn.style.removeProperty('top');
+						btn.style.removeProperty('right');
+						btn.style.removeProperty('bottom');
+						btn.style.removeProperty('margin-left');
+					});
+					return;
+				} catch (e) {
+					// fall through to bottom-pinned layout
+				}
+
+			// Always pin controls bottom-center on touch to avoid overlap/jumble.
 			const clampX = (x, w=44) => Math.max(8, Math.min((window.innerWidth - (w + 8)), Math.round(x)));
 			const applyDynamicPos = (btn) => {
 				if (!btn) return;
@@ -25449,6 +25522,11 @@ function showFloatingPreview(shape, color, options = {}) {
 
 		// Haal color code op (kan object of string zijn)
 		const colorCode = (typeof color === 'object' && color.code) ? color.code : color;
+		const isRainbow = !!(
+			(color && typeof color === 'object' && (color.code === 'rainbow' || color.name === 'multikleur')) ||
+			colorCode === 'rainbow'
+		);
+		const rainbowGradient = 'linear-gradient(45deg, #f06272, #fff25a, #4ed346, #5d90f0, #a35eff)';
 
 		// Render cellen
 		shape.forEach((row, y) => {
@@ -25459,7 +25537,7 @@ function showFloatingPreview(shape, color, options = {}) {
 				cell.style.borderRadius = '3px';
 				
 				if (val === 1) {
-					cell.style.background = colorCode;
+					cell.style.background = isRainbow ? rainbowGradient : colorCode;
 					cell.style.border = '1px solid rgba(0,0,0,0.2)';
 					cell.style.boxShadow = '0 1px 3px rgba(0,0,0,0.2)';
 				} else {
