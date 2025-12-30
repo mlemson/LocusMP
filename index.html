@@ -22,10 +22,10 @@
 				var _s = document.createElement('style');
 				_s.setAttribute('data-locus-theme-preload','true');
 				_s.textContent = 'html,body { background: #1b1d22 !important; color: #e5e5e5 !important; }\n'
-					+ '#menu-toggle { background: #2f3546 !important; border-color: rgba(255,255,255,0.12) !important; }\n'
+					+ '#menu-toggle { background: var(--color-menu-bg, #2f3546) !important; border-color: var(--shadow-light, rgba(255,255,255,0.12)) !important; }\n'
 					+ '#menu-toggle span { background: rgba(255,255,255,0.88) !important; }\n'
-					+ '#mobile-objective-banner, #ml-objective-top, #objective-zone { background: rgba(34,37,43,0.95) !important; color: #e5e5e5 !important; }\n'
-					+ '.card { background: #333 !important; color: inherit !important; }';
+					+ '#mobile-objective-banner, #ml-objective-top, #objective-zone { background: rgba(34,37,43,0.95) !important; color: var(--color-text-light, #e5e5e5) !important; }\n'
+					+ '.card { background: var(--color-dark-gray, #333) !important; color: inherit !important; }';
 				document.head.appendChild(_s);
 			} catch (e) {
 				// Ignore storage or DOM errors (private mode / blocked storage).
@@ -47,7 +47,7 @@
 			/* === Shared defaults (desktop look from 22-10 + mobile HUD from 23-10-3) === */
 			html {
 				min-height: 100%;
-				background: #1b1d22;
+				background: var(--color-dark-bg);
 				overflow-y: hidden;
 				overflow-x: hidden;
 				overscroll-behavior: contain;
@@ -61,7 +61,7 @@
 				padding: 10px;
 				min-height: 100%;
 				width: 100%;
-				background: #1b1d22;
+				background: var(--color-dark-bg);
 				/*
 					IMPORTANT (mobile/iOS): never put emoji fonts before system UI fonts.
 					Otherwise digits can render in Apple Color Emoji, which looks "weird".
@@ -77,7 +77,7 @@
 				grid-template-columns: auto;
 				justify-content: center;
 				align-items: start;
-				color: #e5e5e5;
+				color: var(--color-text-light);
 				transition: background-color 0.3s, color 0.3s;
 			}
 
@@ -111,11 +111,25 @@
 
 
 
-			/* Colors - Dark mode */
+			/* Colors - Dark mode (REFACTORED: Phase 2) */
 			--main-bg-dark: #1a1a1a;
 			--panel-bg-dark: #2d2d2d;
 			--score-bg-dark: rgba(45,45,45,0.9);
 			--card-bg-dark: #2d2d2d;
+			
+			/* Refactored colors - Phase 2 */
+			--color-dark-bg: #1b1d22;
+			--color-dark-panel: #2d2d2d;
+			--color-text-light: #e5e5e5;
+			--color-accent-blue: #4a90e2;
+			--color-menu-bg: #2f3546;
+			--color-dark-gray: #333;
+			--color-border-dark: #2d2f36;
+			
+			/* Shadow utilities */
+			--shadow-light: rgba(0,0,0,0.12);
+			--shadow-medium: rgba(0,0,0,0.3);
+			--shadow-dark: rgba(0,0,0,0.5);
 		}
 
 		* {
@@ -339,8 +353,8 @@
 		   ============================================
 		*/
 		body.dark-mode {
-			background: #1b1d22;
-			color: #e5e5e5;
+			background: var(--color-dark-bg);
+			color: var(--color-text-light);
 		}
 
 		.board {
@@ -400,9 +414,9 @@
 
 
 	body.dark-mode .zone {
-		border: 1px solid #2d2f36;
-		box-shadow: 0 4px 10px rgba(0,0,0,0.5);
-	}		.zone-placeholder {
+		border: 1px solid var(--color-border-dark);
+		box-shadow: 0 4px 10px var(--shadow-dark);
+	}.zone-placeholder {
 			pointer-events: none;
 			position: relative;
 		}
@@ -648,7 +662,7 @@
 			width: 100%;
 			padding: 2px 6px;
 			background: rgba(34, 37, 43, 0.95);
-			color: #e5e5e5;
+			color: var(--color-text-light);
 			border-radius: 6px;
 			font-size: 0.65rem;
 			text-align: center;
@@ -2829,7 +2843,7 @@ body.dark-mode .diamond-glyph { color: #bfefff; }
 	body.dark-mode #scoreboard .score-total {
 	  background: #2f3239;
 	  border-color: #3d4048;
-	  color: #e5e5e5;
+	  color: var(--color-text-light);
 	}
 
 	#scoreboard .trap-summary {
@@ -3574,9 +3588,9 @@ body.dark-mode #saved-levels-modal .saved-obj-text { color: #ddd; opacity: 0.95;
 
 	body.dark-mode #turn-counter-inline {
 		background: linear-gradient(145deg, #22252b, #1a1c21);
-		border: 1px solid #2d2f36;
+		border: 1px solid var(--color-border-dark);
 		box-shadow: 0 6px 14px rgba(0,0,0,0.45);
-		color: #e5e5e5;
+		color: var(--color-text-light);
 	}
 
 	.card-option {
@@ -7958,7 +7972,7 @@ body.dark-mode #saved-levels-modal .saved-obj-text { color: #ddd; opacity: 0.95;
 	*/
 	.card {
 	  display: grid;
-	  background: #333;
+	  background: var(--color-dark-gray);
 	  border-radius: 8px;
 	  transition: transform 0.2s, box-shadow 0.2s;
 	}
@@ -8265,8 +8279,8 @@ body.dark-mode #saved-levels-modal .saved-obj-text { color: #ddd; opacity: 0.95;
 	  }
 
 	  body.dark-mode {
-		background: #1b1d22;
-		color: #e5e5e5;
+		background: var(--color-dark-bg);
+		color: var(--color-text-light);
 	  }
 
 	  /* ============================================
@@ -9143,9 +9157,9 @@ body.dark-mode #saved-levels-modal .saved-obj-text { color: #ddd; opacity: 0.95;
 	box-shadow: 0 2px 6px rgba(0,0,0,0.12);
   }	  body.dark-mode #objective-zone {
 		background: linear-gradient(145deg, #22252b, #1a1c21);
-		border: 1px solid #2d2f36;
-		box-shadow: 0 4px 10px rgba(0,0,0,0.5);
-		color: #e5e5e5;
+		border: 1px solid var(--color-border-dark);
+		box-shadow: 0 4px 10px var(--shadow-dark);
+		color: var(--color-text-light);
 	  }
 
 	  #objective-zone h2 {
@@ -9158,7 +9172,7 @@ body.dark-mode #saved-levels-modal .saved-obj-text { color: #ddd; opacity: 0.95;
 	  }
 
 	  body.dark-mode #objective-zone h2 {
-		color: #e5e5e5;
+		color: var(--color-text-light);
 	  }
 
 	  #objective-current {
@@ -9695,7 +9709,7 @@ body.dark-mode #saved-levels-modal .saved-obj-text { color: #ddd; opacity: 0.95;
 		display: none !important;
 	  }
 	  body.dark-mode.desktop-landscape:not(.classic-mode) #gold-zone::after {
-		color: #e5e5e5;
+		color: var(--color-text-light);
 	  }
 
 	  /* Classic mode: keep only the board + coins visible. */
@@ -9759,14 +9773,14 @@ body.dark-mode #saved-levels-modal .saved-obj-text { color: #ddd; opacity: 0.95;
 	  }
 
 	  body.dark-mode #gold-zone {
-		border: 1px solid #2d2f36 !important;
-		box-shadow: 0 4px 10px rgba(0,0,0,0.5) !important;
+		border: 1px solid var(--color-border-dark) !important;
+		box-shadow: 0 4px 10px var(--shadow-dark) !important;
 		background: linear-gradient(145deg, #22252b, #1a1c21) !important;
-		color: #e5e5e5;
+		color: var(--color-text-light);
 	  }
 
 	  body.dark-mode #gold-zone h2 {
-		color: #e5e5e5;
+		color: var(--color-text-light);
 	  }
 
 	  #bonus-zone {
@@ -9801,11 +9815,11 @@ body.dark-mode #saved-levels-modal .saved-obj-text { color: #ddd; opacity: 0.95;
 	  }
 
 	  body.dark-mode #bonus-zone h2 {
-		color: #e5e5e5;
+		color: var(--color-text-light);
 	  }
 
 	  body.dark-mode #bonus-zone h2 {
-		color: #e5e5e5;
+		color: var(--color-text-light);
 	  }
 
 	  /* Desktop bottom columns spacing */
@@ -9960,7 +9974,7 @@ body.dark-mode #saved-levels-modal .saved-obj-text { color: #ddd; opacity: 0.95;
 	}
 
 	  body.dark-mode #controls button {
-		background: #333;
+		background: var(--color-dark-gray);
 		color: #eee;
 		border-color: #555;
 	  }
@@ -10002,13 +10016,13 @@ body.dark-mode #saved-levels-modal .saved-obj-text { color: #ddd; opacity: 0.95;
 
 	  body.dark-mode #card-choice-zone {
 		background: linear-gradient(145deg, #22252b, #1a1c21);
-		border: 1px solid #2d2f36;
-		box-shadow: 0 4px 10px rgba(0,0,0,0.5);
-		color: #e5e5e5;
+		border: 1px solid var(--color-border-dark);
+		box-shadow: 0 4px 10px var(--shadow-dark);
+		color: var(--color-text-light);
 	  }
 
 	  body.dark-mode #card-choice-zone h2 {
-		color: #e5e5e5;
+		color: var(--color-text-light);
 	  }
 
 	  #kiesKaartTitel {
@@ -10474,9 +10488,9 @@ body.dark-mode #saved-levels-modal .saved-obj-text { color: #ddd; opacity: 0.95;
 
 	  body.dark-mode #scoreboard {
 		background: linear-gradient(145deg, #22252b, #1a1c21);
-		border: 1px solid #2d2f36;
-		box-shadow: 0 4px 10px rgba(0,0,0,0.5);
-		color: #e5e5e5;
+		border: 1px solid var(--color-border-dark);
+		box-shadow: 0 4px 10px var(--shadow-dark);
+		color: var(--color-text-light);
 	  }
 
 	  #scoreboard h2,
@@ -10485,7 +10499,7 @@ body.dark-mode #saved-levels-modal .saved-obj-text { color: #ddd; opacity: 0.95;
 	  }
 
 	  body.dark-mode #scoreboard h2 {
-		color: #e5e5e5;
+		color: var(--color-text-light);
 	  }
 
 	  body.dark-mode #scoreboard hr {
@@ -10503,7 +10517,7 @@ body.dark-mode #saved-levels-modal .saved-obj-text { color: #ddd; opacity: 0.95;
 
 	  body.dark-mode #scoreboard .score-row {
 		background: #2a2d35;
-		color: #e5e5e5;
+		color: var(--color-text-light);
 	  }
 
 	  #scoreboard .score-row:hover {
@@ -10563,9 +10577,9 @@ body.dark-mode #saved-levels-modal .saved-obj-text { color: #ddd; opacity: 0.95;
 
 	  body.dark-mode #objective-zone {
 		background: linear-gradient(145deg, #22252b, #1a1c21);
-		border: 1px solid #2d2f36;
-		box-shadow: 0 4px 10px rgba(0,0,0,0.5);
-		color: #e5e5e5;
+		border: 1px solid var(--color-border-dark);
+		box-shadow: 0 4px 10px var(--shadow-dark);
+		color: var(--color-text-light);
 	  }
 
 	  #objective-zone h2 {
@@ -10633,9 +10647,9 @@ body.dark-mode #saved-levels-modal .saved-obj-text { color: #ddd; opacity: 0.95;
 	  body.dark-mode #bonus-zone,
 	  body.dark-mode #original-bonus-zone .zone {
 		background: linear-gradient(145deg, #22252b, #1a1c21);
-		border: 1px solid #2d2f36;
-		box-shadow: 0 4px 10px rgba(0,0,0,0.5);
-		color: #e5e5e5;
+		border: 1px solid var(--color-border-dark);
+		box-shadow: 0 4px 10px var(--shadow-dark);
+		color: var(--color-text-light);
 	  }
 
 	  #bonus-zone h2,
@@ -18257,123 +18271,6 @@ document.addEventListener('pointermove', ev => {
 	  }
 	});
 
-	/*
-		EN:
-		- LEGACY/DUPLICATE: Older alternative drag algorithm kept as a block comment.
-		  It uses different logic (zones under cursor rather than per-cell elementFromPoint).
-		  Keeping both can confuse future edits; consider deleting once the new approach is stable.
-	
-	document.addEventListener('pointermove', ev => {
-		if (!draggedBlock) return;
-
-		const visualOffsetX = 40; // kleine offset zodat het blok onder de vinger zit
-		const visualOffsetY = 20; // kleine offset zodat het blok onder de vinger zit
-
-		// Gebruik clientX/Y in plaats van pageX/Y
-		const x = ev.clientX;
-		const y = ev.clientY;
-
-		// ===== Verplaats visueel het draggable blok =====
-		draggedBlock.style.left = (x - offsetX  - visualOffsetX) + 'px';
-		draggedBlock.style.top  = (y - offsetY - visualOffsetY) + 'px';
-
-			
-		
-		// Detecteer alle zones (inclusief subgrids)
-		const zones = [...document.querySelectorAll('.zone')].filter(z => !z.classList.contains('zone-placeholder'));
-
-		// Vind alle zones onder de cursor
-		const hoveredZones = zones.filter(z => {
-		  const r = z.getBoundingClientRect();
-		  return x >= r.left && x <= r.right && y >= r.top && y <= r.bottom;
-		});
-
-		// Kies de meest specifieke zone:
-		// - Als je boven een subgrid hangt, gebruik die
-		// - Anders (bijv. voor blauw/geel) gebruik de gewone zone
-		let zone = null;
-		if (hoveredZones.length > 0) {
-		  // Geef prioriteit aan subgrids binnen de rode zone
-		  zone = hoveredZones.find(z => z.id.startsWith('red-grid')) || hoveredZones[0];
-		}
-
-		if (!zone) {
-			if (lastZone) clearPreview(lastZone);
-			lastZone = null;
-			lastBaseX = lastBaseY = null;
-			return;
-		}
-
-		lastZone = zone;
-		
-		
-		  // ===== Bereken correcte positie binnen de zone =====
-		  const zRect = zone.getBoundingClientRect();
-		  
-		  
-		  // --- Bepaal aantal kolommen op betrouwbare manier ---
-		  // Probeer eerst dataset of style, fallback op computed gridTemplateColumns of een cell
-		  let cols = parseInt(zone.dataset.cols || '0', 10);
-		  if (!cols) {
-			const inline = zone.style.gridTemplateColumns;
-			if (inline) {
-			  const m = inline.match(/repeat\(\s*(\d+)/i);
-			  cols = m ? parseInt(m[1],10) : 0;
-			}
-		  }
-		  // fallback: bereken uit eerste rij van cells (meest robuust)
-		  const cells = Array.from(zone.querySelectorAll('.cell'));
-		  if (!cols && cells.length) {
-			// probeer columns = aantal verschillende data-x waarden
-			const xs = new Set(cells.map(c => c.dataset.x).filter(Boolean));
-			cols = xs.size || Math.round(Math.sqrt(cells.length)) || 1;
-		  }
-		  cols = Math.max(1, cols);
-
-
-		  const sampleCell = zone.querySelector('.cell');
-	      const cellSize = sampleCell ? sampleCell.getBoundingClientRect().width : (zRect.width / cols);
-
-
-	  // ===== Relatieve positie binnen de zone =====
-	  const rect = draggedBlock.getBoundingClientRect();
-	  const relX = rect.left + rect.width/2 - zRect.left;
-	  const relY = rect.top  + rect.height/2 - zRect.top;
-	  
-	  // ===== Bereken grid positie direct vanaf cursor positie =====
-	  // Gebruik de cursor positie zonder offset correctie voor exacte alignment
-	  let baseX = Math.floor(relX / cellSize);
-	  let baseY = Math.floor(relY / cellSize);
-		// Alleen blauw/geel: laat het blok "vallen" naar beneden
-		if (zone.id === 'blue-zone' || zone.id === 'yellow-zone') {
-			if (zone.id === 'blue-zone' || zone.id === 'yellow-zone') {
-				baseY = getStickyBaseY(zone, baseX, baseY, draggedShape);
-				// clamp again in case sticky geeft buiten-range
-				const rows = Math.max(1, Math.ceil(cells.length / cols));
-				const shapeHeightCells = draggedShape.length;
-		        baseY = Math.max(0, Math.min(rows - shapeHeightCells, baseY));
-			}
-		}
-
-		if (baseX !== lastBaseX || baseY !== lastBaseY) {
-			lastBaseX = baseX;
-			lastBaseY = baseY;
-			
-			// ===== Toon de preview =====
-			// Zorg dat we altijd de juiste kleur pakken
-			const zoneColor =
-			  zone.dataset.color ||
-			  zone.closest('.zone')?.dataset.color ||
-			  (zone.id.startsWith('red-grid') ? 'rood' : null);
-			const colorOk = zoneColor === draggedColor.name || draggedColor.name === 'multikleur' || (draggedColor.name === 'rood' && zoneColor === 'rood');
-			const allowed = colorOk && canPlace(zone, baseX, baseY, draggedShape);
-			// Preview uitgeschakeld
-			// showPreview(zone, baseX, baseY, draggedShape, draggedColor, allowed);
-		}
-	});
-	
-	*/
-
 	// =============
 	// LOSLATEN
 	// =============
@@ -25032,6 +24929,39 @@ document.addEventListener('pointerdown', ev => {
 		});
 	})();
 
+	// PHASE 3 REFACTOR: Helper function to rotate draggedBlock while preserving visual center
+	function rotateDraggedBlockInPlace(newShape, color) {
+		if (!draggedBlock) return;
+		try {
+			const beforeRect = draggedBlock.getBoundingClientRect();
+			const centerX = beforeRect.left + beforeRect.width / 2;
+			const centerY = beforeRect.top + beforeRect.height / 2;
+			const nextShape = cloneShape(newShape);
+			draggedShape = nextShape;
+			draggedBlock._shape = nextShape;
+			renderBlock(draggedBlock, nextShape, color);
+			const afterRect = draggedBlock.getBoundingClientRect();
+			if (Number.isFinite(centerX) && Number.isFinite(centerY) && afterRect.width > 0 && afterRect.height > 0) {
+				draggedBlock.style.left = `${centerX - afterRect.width / 2}px`;
+				draggedBlock.style.top = `${centerY - afterRect.height / 2}px`;
+			}
+			draggedBlock.style.opacity = '1';
+			draggedBlock.style.visibility = '';
+			if (!draggedBlock.style.position) draggedBlock.style.position = 'fixed';
+			draggedBlock.style.zIndex = draggedBlock.style.zIndex || '10000';
+			const overlay = document.getElementById('drag-overlay');
+			if (overlay) {
+				if (!overlay.contains(draggedBlock)) overlay.appendChild(draggedBlock);
+				overlay.style.display = 'block';
+			}
+		} catch (e) {
+			const nextShape = cloneShape(newShape);
+			draggedShape = nextShape;
+			draggedBlock._shape = nextShape;
+			renderBlock(draggedBlock, nextShape, color);
+		}
+	}
+
 	function rotateSelectedCard() {
 	  if (activeBonusPlacement) {
 		// Roteer de shape in activeBonusPlacement
@@ -25041,34 +24971,7 @@ document.addEventListener('pointerdown', ev => {
 		selectedShape = newShape;
 		activeBonusPlacement.shape = cloneShape(newShape);
 		if (draggedBlock) {
-			// Preserve visual center so the bonus block rotates in-place and never disappears.
-			const nextShape = cloneShape(newShape);
-			draggedShape = nextShape;
-			draggedBlock._shape = nextShape;
-			try {
-				const beforeRect = draggedBlock.getBoundingClientRect();
-				const centerX = beforeRect.left + beforeRect.width / 2;
-				const centerY = beforeRect.top + beforeRect.height / 2;
-				renderBlock(draggedBlock, nextShape, draggedColor || selectedColor);
-				const afterRect = draggedBlock.getBoundingClientRect();
-				if (Number.isFinite(centerX) && Number.isFinite(centerY) && afterRect.width > 0 && afterRect.height > 0) {
-					draggedBlock.style.left = `${centerX - afterRect.width / 2}px`;
-					draggedBlock.style.top = `${centerY - afterRect.height / 2}px`;
-				}
-			} catch (e) {
-				renderBlock(draggedBlock, nextShape, draggedColor || selectedColor);
-			}
-			try {
-				const overlay = document.getElementById('drag-overlay');
-				if (overlay) {
-					if (!overlay.contains(draggedBlock)) overlay.appendChild(draggedBlock);
-					overlay.style.display = 'block';
-				}
-			} catch (e) {}
-			draggedBlock.style.opacity = '1';
-			draggedBlock.style.visibility = '';
-			if (!draggedBlock.style.position) draggedBlock.style.position = 'fixed';
-			draggedBlock.style.zIndex = draggedBlock.style.zIndex || '10000';
+			rotateDraggedBlockInPlace(newShape, draggedColor || selectedColor);
 			try { addCardControlButtons(); } catch (e) {}
 		} else if (draggedShape) {
 			draggedShape = cloneShape(newShape);
@@ -25100,41 +25003,8 @@ document.addEventListener('pointerdown', ev => {
 	  }
 	  
 	// If a draggable block exists (e.g. sticky preview), always keep it in sync.
-	// Preserve the visual center so the block doesn't jump or disappear on touch.
-	// Do NOT rely on object identity between color objects.
 	if (draggedBlock) {
-		try {
-			const beforeRect = draggedBlock.getBoundingClientRect();
-			const centerX = beforeRect.left + beforeRect.width / 2;
-			const centerY = beforeRect.top + beforeRect.height / 2;
-			const nextShape = cloneShape(newShape);
-			draggedShape = nextShape;
-			draggedBlock._shape = nextShape;
-			renderBlock(draggedBlock, nextShape, draggedColor || selectedColor);
-			// After re-render, reposition so the center remains under the finger
-			const afterRect = draggedBlock.getBoundingClientRect();
-			if (Number.isFinite(centerX) && Number.isFinite(centerY) && afterRect.width > 0 && afterRect.height > 0) {
-				draggedBlock.style.left = `${centerX - afterRect.width / 2}px`;
-				draggedBlock.style.top = `${centerY - afterRect.height / 2}px`;
-			}
-			draggedBlock.style.opacity = '1';
-			draggedBlock.style.visibility = '';
-			if (!draggedBlock.style.position) draggedBlock.style.position = 'fixed';
-			draggedBlock.style.zIndex = draggedBlock.style.zIndex || '10000';
-			// BUG FIX: Zorg dat blok in overlay blijft en overlay zichtbaar is na draaien
-			try {
-				const overlay = document.getElementById('drag-overlay');
-				if (overlay) {
-					if (!overlay.contains(draggedBlock)) overlay.appendChild(draggedBlock);
-					overlay.style.display = 'block';
-				}
-			} catch (e) {}
-		} catch (e) {
-			const nextShape = cloneShape(newShape);
-			draggedShape = nextShape;
-			draggedBlock._shape = nextShape;
-			renderBlock(draggedBlock, nextShape, draggedColor || selectedColor);
-		}
+		rotateDraggedBlockInPlace(newShape, draggedColor || selectedColor);
 		// Recompute center offsets so placement/drag uses the transformed shape correctly.
 		({ offsetX, offsetY } = computeShapeCenterOffsets(draggedShape));
 		if (lastZone) {
@@ -25193,33 +25063,8 @@ document.addEventListener('pointerdown', ev => {
 	  }
 	  
 	  if (draggedBlock) {
-			// Preserve visual center so block doesn't jump or disappear on touch
-			try {
-				const beforeRect = draggedBlock.getBoundingClientRect();
-				const centerX = beforeRect.left + beforeRect.width / 2;
-				const centerY = beforeRect.top + beforeRect.height / 2;
-				const nextShape = cloneShape(newShape);
-				draggedShape = nextShape;
-				draggedBlock._shape = nextShape;
-				try { liftToBody(draggedBlock); } catch (e) {}
-				renderBlock(draggedBlock, nextShape, draggedColor || selectedColor);
-				// After re-render, reposition so the center remains under the finger
-				const afterRect = draggedBlock.getBoundingClientRect();
-				if (Number.isFinite(centerX) && Number.isFinite(centerY) && afterRect.width > 0 && afterRect.height > 0) {
-					draggedBlock.style.left = `${centerX - afterRect.width / 2}px`;
-					draggedBlock.style.top = `${centerY - afterRect.height / 2}px`;
-				}
-				draggedBlock.style.opacity = '1';
-				draggedBlock.style.visibility = '';
-				if (!draggedBlock.style.position) draggedBlock.style.position = 'fixed';
-				draggedBlock.style.zIndex = draggedBlock.style.zIndex || '10000';
-			} catch (e) {
-				const nextShape = cloneShape(newShape);
-				draggedShape = nextShape;
-				draggedBlock._shape = nextShape;
-				renderBlock(draggedBlock, nextShape, draggedColor || selectedColor);
-			}
-		({ offsetX, offsetY } = computeShapeCenterOffsets(nextShape));
+		rotateDraggedBlockInPlace(newShape, draggedColor || selectedColor);
+		({ offsetX, offsetY } = computeShapeCenterOffsets(draggedShape));
 		if (lastZone) {
 			clearPreview(lastZone);
 			lastBaseX = null;
