@@ -3674,6 +3674,7 @@ body.dark-mode #saved-levels-modal .saved-obj-text { color: #ddd; opacity: 0.95;
 		border-radius: 16px;
 		background: linear-gradient(165deg, #ffffff 0%, #eef2ff 45%, #dfe4ff 100%);
 		border: 1px solid rgba(40,55,120,0.18);
+		box-sizing: border-box;
 		box-shadow: 0 18px 26px rgba(10,12,20,0.2);
 		position: relative;
 		overflow: visible;
@@ -6440,6 +6441,20 @@ body.dark-mode #saved-levels-modal .saved-obj-text { color: #ddd; opacity: 0.95;
 			transition: transform 0.28s ease, opacity 0.28s ease;
 		}
 
+		/* Wider phones: scale the hamburger button up (similar steps as the hand cards). */
+		@media (max-width: 650px) and (min-width: 291px) {
+			#menu-toggle { width: 50px; height: 50px; padding: 10px; }
+			#menu-toggle span { width: 24px; }
+		}
+		@media (max-width: 650px) and (min-width: 341px) {
+			#menu-toggle { width: 63px; height: 63px; padding: 12px; }
+			#menu-toggle span { width: 28px; }
+		}
+		@media (max-width: 650px) and (min-width: 391px) {
+			#menu-toggle { width: 76px; height: 76px; padding: 14px; }
+			#menu-toggle span { width: 32px; }
+		}
+
 		#menu-toggle.active span:nth-child(1) { transform: translateY(6px) rotate(45deg); }
 		#menu-toggle.active span:nth-child(2) { opacity: 0; }
 		#menu-toggle.active span:nth-child(3) { transform: translateY(-6px) rotate(-45deg); }
@@ -8040,7 +8055,8 @@ body.dark-mode #saved-levels-modal .saved-obj-text { color: #ddd; opacity: 0.95;
 	.card {
 	  display: grid;
 	  background: var(--color-dark-gray);
-	  border-radius: 8px;
+	  border-radius: 6px;
+	  box-sizing: border-box;
 	  transition: transform 0.2s, box-shadow 0.2s;
 	}
 	
@@ -8052,15 +8068,17 @@ body.dark-mode #saved-levels-modal .saved-obj-text { color: #ddd; opacity: 0.95;
 	  width: var(--card-cell-size, 20px);
 	  height: var(--card-cell-size, 20px);
 	  /* Border-radius: max 5px, minder rond voor kleine cells */
-	  border-radius: min(5px, calc(var(--card-cell-size, 20px) / 5));
+	  border-radius: 1px;
 	}
 
 	.card.selected {
 	  outline: 3px solid #7a8aad;
+	  outline-offset: -3px;
 	}
 	
 	body.dark-mode .card.selected {
 	  outline: 3px solid #a7a9ad;
+	  outline-offset: -3px;
 	}
 
 	.draggable {
@@ -10141,11 +10159,13 @@ body.dark-mode #saved-levels-modal .saved-obj-text { color: #ddd; opacity: 0.95;
 
 	  #card-choice-zone .card-option.selected {
 		outline: 3px solid #3a6ff7;
+		outline-offset: -3px;
 		border-color: #3a6ff7;
 	  }
 
 	  body.dark-mode #card-choice-zone .card-option.selected {
 		outline: 3px solid #5a8fff;
+		outline-offset: -3px;
 		border-color: #5a8fff;
 	  }
 
@@ -13824,7 +13844,7 @@ body.dark-mode #saved-levels-modal .saved-obj-text { color: #ddd; opacity: 0.95;
 
 	// Touch UX: lift the dragged block slightly above the finger.
 	// Keep this small; it only applies to real touch/pen pointer events.
-	const TOUCH_FINGER_LIFT_PX = 20;
+	const TOUCH_FINGER_LIFT_PX = 28;
 	function getFingerLiftOffsetY(ev) {
 		try {
 			const pointerType = ev && ev.pointerType;
