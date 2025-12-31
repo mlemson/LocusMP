@@ -17970,9 +17970,10 @@ body.dark-mode #saved-levels-modal .saved-obj-text { color: #ddd; opacity: 0.95;
 		const actualCellSize = Math.min(actualCellWidth, actualCellHeight);
 		({ offsetX, offsetY } = computeShapeCenterOffsets(currentShape, actualCellSize));
 
-		// Voor touch devices: voeg extra upward offset toe zodat blok boven vinger verschijnt
-		const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
-		const touchOffsetY = isTouchDevice ? 60 : 0; // 60px boven vinger
+		// For touch pointers only: add upward offset so the block is not under the finger.
+		// IMPORTANT: Do not use navigator.maxTouchPoints here (Windows can report >0 even for mouse use).
+		const isTouchPointer = (ev.pointerType === 'touch' || ev.pointerType === 'pen');
+		const touchOffsetY = (isTouchPointer && window.innerWidth <= MOBILE_BREAKPOINT) ? 60 : 0;
 
 		// Start drag direct: plaats blok op cursor positie met offset
 		const overlay = document.getElementById('drag-overlay');
@@ -18071,8 +18072,8 @@ document.addEventListener('pointermove', ev => {
 	if (dragPointerId !== null && ev.pointerId !== dragPointerId) return;
 
 	if (!dragHasMoved) {
-		const isTouchDevice = ('ontouchstart' in window || navigator.maxTouchPoints > 0);
-		const moveThreshold = isTouchDevice ? 10 : 5;
+		const isTouchPointer = (ev.pointerType === 'touch' || ev.pointerType === 'pen');
+		const moveThreshold = isTouchPointer ? 10 : 5;
 		const dx = Math.abs((Number(ev.clientX) || 0) - dragStartClientX);
 		const dy = Math.abs((Number(ev.clientY) || 0) - dragStartClientY);
 		if ((dx + dy) >= moveThreshold) {
@@ -18091,8 +18092,8 @@ document.addEventListener('pointermove', ev => {
 		document.documentElement.style.cursor = 'none';
 
 	// Toon control buttons in mobiel zonder touch tijdens drag
-	const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
-	if (window.innerWidth <= MOBILE_BREAKPOINT && !isTouchDevice) {
+	const isTouchPointer = (ev.pointerType === 'touch' || ev.pointerType === 'pen');
+	if (window.innerWidth <= MOBILE_BREAKPOINT && !isTouchPointer) {
 		addCardControlButtons();
 	}
 
@@ -18100,8 +18101,8 @@ document.addEventListener('pointermove', ev => {
 	  const cursorX = ev.clientX;
 	  const cursorY = ev.clientY;
 
-	  // Voor touch devices: voeg extra upward offset toe
-	  const touchOffsetY = isTouchDevice ? 60 : 0;
+	  // For touch pointers only: add upward offset
+	  const touchOffsetY = (isTouchPointer && window.innerWidth <= MOBILE_BREAKPOINT) ? 60 : 0;
 
 	  // ===== Verplaats visueel het draggable blok =====
 	setElPos(draggedBlock, cursorX - offsetX, cursorY - offsetY - touchOffsetY);
@@ -18194,11 +18195,49 @@ document.addEventListener('pointermove', ev => {
 		return;
 	  }
 	  
-	  // Bereken de baseX/baseY vanuit de eerste hit (of gemiddelde)
+	  // Bereken de baseX/baseY robuust vanuit ALLE hits.
+	  // De oude aanpak gebruikte alleen de "eerste" hit; als die sporadisch mist (gap/void/border),
+	  // dan verspringt de anchor (vaak 1 cel omhoog). We pakken nu de meest voorkomende baseX/baseY.
+	  const countOccurrences = (values) => {
+		const counts = new Map();
+		for (const v of values) {
+			counts.set(v, (counts.get(v) || 0) + 1);
+		}
+		return counts;
+	  };
+	  const pickBest = (counts, previous) => {
+		let bestVal = null;
+		let bestCount = -Infinity;
+		for (const [val, cnt] of counts.entries()) {
+			if (cnt > bestCount) {
+				bestCount = cnt;
+				bestVal = val;
+				continue;
+			}
+			if (cnt === bestCount) {
+				// Tie-break: prefer staying close to previous (prevents jitter), else smallest value.
+				if (Number.isFinite(previous)) {
+					const curDist = Math.abs(val - previous);
+					const bestDist = Math.abs(bestVal - previous);
+					if (curDist < bestDist) bestVal = val;
+				} else if (val < bestVal) {
+					bestVal = val;
+				}
+			}
+		}
+		return bestVal;
+	  };
+
+	  const baseXCandidates = zoneHits.map(h => h.gridX - h.shapeCol);
+	  const baseYCandidates = zoneHits.map(h => h.gridY - h.shapeRow);
+	  let baseX = pickBest(countOccurrences(baseXCandidates), lastBaseX);
+	  let baseY = pickBest(countOccurrences(baseYCandidates), lastBaseY);
+	  if (!Number.isFinite(baseX)) baseX = baseXCandidates[0];
+	  if (!Number.isFinite(baseY)) baseY = baseYCandidates[0];
+	  
+	  // Keep a representative hovered cell (used for zone detection below)
 	  const firstHit = zoneHits[0];
 	  let hoveredCell = firstHit.gridCell;
-	  let baseX = firstHit.gridX - firstHit.shapeCol;
-	  let baseY = firstHit.gridY - firstHit.shapeRow;
 	  
 	  // DEBUG: Log baseX/baseY calculation
 	  if (window.debugHoverPosition) {
