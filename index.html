@@ -13767,7 +13767,7 @@ body.dark-mode #saved-levels-modal .saved-obj-text { color: #ddd; opacity: 0.95;
 
 	// Touch UX: lift the dragged block slightly above the finger.
 	// Keep this small; it only applies to real touch/pen pointer events.
-	const TOUCH_FINGER_LIFT_PX = 12;
+	const TOUCH_FINGER_LIFT_PX = 20;
 	function getFingerLiftOffsetY(ev) {
 		try {
 			const pointerType = ev && ev.pointerType;
