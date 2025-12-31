@@ -8,8 +8,6 @@
 		/*
 			EN:
 			- WHY: Apply the saved theme class as early as possible to avoid a flash of the wrong theme.
-			- STATE: Reads `localStorage.theme` (and legacy `localStorage.darkMode`). Writes `dark-mode` on <html>.
-			- OVERRIDE: The later DOMContentLoaded theme handler (applyTheme) is still the source of truth.
 		*/
 		(function preloadThemeClass() {
 			try {
@@ -84,7 +82,7 @@
 		:root {
 			/* Base measurements */
 			/* Fixed across all grids; the board itself is scaled to fit the screen. */
-			--cell-size: 22px;
+			--cell-size: 26px;
 			--board-grid-gap: 2px;
 			--preview-gap: 2px;
 			--gap: 10px;
@@ -2248,23 +2246,24 @@
 	   Gekleurde vierkantjes die in cellen kunnen verschijnen
 	   Tonen welke kleur/zone de cel vertegenwoordigt
 	*/
-	.symbol { display: inline-block; width: 14px; height: 14px; border-radius: 4px; margin: auto; border:2px solid #444; background-color: #999; }
+	.symbol { display: inline-block; width: calc(var(--cell-size) * 0.52); height: calc(var(--cell-size) * 0.52); border-radius: calc(var(--cell-size) * 0.12); margin: auto; border: calc(var(--cell-size) * 0.08) solid #444; background-color: #999; box-sizing: border-box; }
 	.symbol.yellow { background-color: #fff48f; }
 	.symbol.green  { background-color: #69cf57; }
 	.symbol.purple { background-color: #ae7eed; }
 	.symbol.blue   { background-color: #76a0e3; }
 	.symbol.red    { background-color: #ed7e89; }
-	.symbol.trap-symbol {
-	  width: 18px;
-	  height: 18px;
-	  border-radius: 2px;
-	  background: #656565;
-	  border: none;
-	  transform: rotate(45deg) scale(0.75);
-	  pointer-events: none;
-	  position: relative;
-	  overflow: hidden;
-	}
+		.symbol.trap-symbol {
+			width: calc(var(--cell-size) * 0.65);
+			height: calc(var(--cell-size) * 0.65);
+			border-radius: calc(var(--cell-size) * 0.06);
+			background: #656565;
+			border: none;
+			transform: rotate(45deg) scale(0.75);
+			pointer-events: none;
+			position: relative;
+			overflow: hidden;
+			box-sizing: border-box;
+		}
 
 	.symbol.trap-symbol::after {
 	  content: "";
@@ -2297,22 +2296,22 @@
 	}
 
 	/* Mega Bonus Symbol - grotere bonus met shimmer effect */
-	.symbol.mega-bonus-symbol {
-	  width: 120%;
-	  height: 120%;
-	  border-radius: 8px;
-	  cursor: pointer;
-	  display: flex;
-	  align-items: center;
-	  justify-content: center;
-	  font-size: 24px;
-	  font-weight: bold;
-	  position: absolute;
-	  top: 50%;
-	  left: 50%;
-	  transform: translate(-50%, -50%);
-	  transition: transform 0.2s ease;
-	  z-index: 15;
+		.symbol.mega-bonus-symbol {
+			width: 120%;
+			height: 120%;
+			border-radius: calc(var(--cell-size) * 0.15);
+			cursor: pointer;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			font-size: calc(var(--cell-size) * 0.8);
+			font-weight: bold;
+			position: absolute;
+			top: 50%;
+			left: 50%;
+			transform: translate(-50%, -50%);
+			transition: transform 0.2s ease;
+			z-index: 15;
 	  /* Gradient glim effect over bonus color */
 	  background: linear-gradient(135deg, 
 		rgba(255, 255, 255, 0.4) 0%, 
@@ -2330,22 +2329,22 @@
 	}
 
 	/* Upgrade Shop Symbol - shop icoon met gouden gloed */
-	.symbol.upgrade-shop-symbol {
-	  width: 100%;
-	  height: 100%;
-	  border-radius: 8px;
-	  cursor: pointer;
-	  display: flex;
-	  align-items: center;
-	  justify-content: center;
-	  font-size: 24px;
-	  font-weight: bold;
-	  position: absolute;
-	  top: 50%;
-	  left: 50%;
-	  transform: translate(-50%, -50%);
-	  transition: transform 0.2s ease;
-	  z-index: 15;
+		.symbol.upgrade-shop-symbol {
+			width: 100%;
+			height: 100%;
+			border-radius: calc(var(--cell-size) * 0.15);
+			cursor: pointer;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			font-size: calc(var(--cell-size) * 0.8);
+			font-weight: bold;
+			position: absolute;
+			top: 50%;
+			left: 50%;
+			transform: translate(-50%, -50%);
+			transition: transform 0.2s ease;
+			z-index: 15;
 		/* Diamond-like cool gradient to distinguish from traps */
 		background: linear-gradient(135deg, #e6fbff 0%, #bfefff 40%, #9ad8ff 100%);
 		color: #0b3b4a;
@@ -2400,7 +2399,7 @@ body.dark-mode .diamond-glyph { color: #bfefff; }
 		top: 50%;
 		left: 50%;
 		transform: translate(-50%, -50%);
-		font-size: 24px;
+		font-size: calc(var(--cell-size) * 0.9);
 		z-index: 100;
 		pointer-events: none;
 		filter: drop-shadow(0 0 10px rgba(100, 150, 255, 1));
@@ -2456,7 +2455,6 @@ body.dark-mode .diamond-glyph { color: #bfefff; }
 		background: radial-gradient(circle at 30% 30%, #fff6b5, #f7bb36 70%);
 		border-color: #f3b12b;
 		box-shadow: 0 0 8px rgba(255,209,90,0.78), inset 0 0 2px rgba(255,255,255,0.85);
-		transform: scale(1.05);
 	}
 
 	.coin.used {
@@ -14813,8 +14811,7 @@ body.dark-mode #saved-levels-modal .saved-obj-text { color: #ddd; opacity: 0.95;
 				const actualCellSize = Math.min(actualCellWidth, actualCellHeight);
 				({ offsetX, offsetY } = computeShapeCenterOffsets(shape, actualCellSize));
 				const touchOffsetY = 60;
-				draggedBlock.style.left = `${event.clientX - offsetX}px`;
-				draggedBlock.style.top = `${event.clientY - offsetY - touchOffsetY}px`;
+				setElPos(draggedBlock, event.clientX - offsetX, event.clientY - offsetY - touchOffsetY);
 				// Controls are delayed for touch bonus drags; they will appear on release.
 				activeBonusPlacement.delayedControls = true;
 			} else {
@@ -14895,8 +14892,7 @@ body.dark-mode #saved-levels-modal .saved-obj-text { color: #ddd; opacity: 0.95;
 		const actualCellSize = Math.min(actualCellWidth, actualCellHeight);
 		({ offsetX, offsetY } = computeShapeCenterOffsets(shape, actualCellSize));
 		const touchOffsetY = 60;
-		block.style.left = `${event.clientX - offsetX}px`;
-		block.style.top = `${event.clientY - offsetY - touchOffsetY}px`;
+		setElPos(block, event.clientX - offsetX, event.clientY - offsetY - touchOffsetY);
 
 		// Ensure block immediately matches zoomed cell size if a zoom/lift occurred
 		requestAnimationFrame(() => {
@@ -14907,8 +14903,7 @@ body.dark-mode #saved-levels-modal .saved-obj-text { color: #ddd; opacity: 0.95;
 				const cellHeight = afterRect.height / (block._shape || shape).length;
 				const cellSize = Math.min(cellWidth, cellHeight);
 				({ offsetX, offsetY } = computeShapeCenterOffsets(block._shape || shape, cellSize));
-				block.style.left = `${event.clientX - offsetX}px`;
-				block.style.top = `${event.clientY - offsetY - touchOffsetY}px`;
+				setElPos(block, event.clientX - offsetX, event.clientY - offsetY - touchOffsetY);
 			} catch (e) {}
 		});
 		const overlay = document.getElementById('drag-overlay');
@@ -14931,8 +14926,7 @@ body.dark-mode #saved-levels-modal .saved-obj-text { color: #ddd; opacity: 0.95;
 					renderBlock(block, block._shape || shape, colorObj);
 					({ offsetX, offsetY } = computeShapeCenterOffsets(block._shape || shape));
 					const touchOffsetY2 = 60;
-					block.style.left = `${event.clientX - offsetX}px`;
-					block.style.top = `${event.clientY - offsetY - touchOffsetY2}px`;
+					setElPos(block, event.clientX - offsetX, event.clientY - offsetY - touchOffsetY2);
 				} catch (e) {}
 			});
 		return;
@@ -14964,8 +14958,7 @@ body.dark-mode #saved-levels-modal .saved-obj-text { color: #ddd; opacity: 0.95;
 		const shapeWidth = shape[0].length;
 		const shapeHeight = shape.length;
 		({ offsetX, offsetY } = computeShapeCenterOffsets(shape));
-		block.style.left = `${event.clientX - offsetX}px`;
-		block.style.top = `${event.clientY - offsetY}px`;
+		setElPos(block, event.clientX - offsetX, event.clientY - offsetY);
 		// visuals handled by startGlobalDragVisuals()
 		if (overlay) overlay.style.display = 'block';
 			// After possible zoom/DOM-lift, re-render to pick up zoomed cell size
@@ -14973,8 +14966,7 @@ body.dark-mode #saved-levels-modal .saved-obj-text { color: #ddd; opacity: 0.95;
 				try {
 					renderBlock(block, block._shape || shape, colorObj);
 					({ offsetX, offsetY } = computeShapeCenterOffsets(block._shape || shape));
-					block.style.left = `${event.clientX - offsetX}px`;
-					block.style.top = `${event.clientY - offsetY}px`;
+					setElPos(block, event.clientX - offsetX, event.clientY - offsetY);
 				} catch (e) {}
 			});
 			return;
@@ -15022,8 +15014,7 @@ body.dark-mode #saved-levels-modal .saved-obj-text { color: #ddd; opacity: 0.95;
 		({ offsetX, offsetY } = computeShapeCenterOffsets(draggedShape));
 		const localTouchDevice = ('ontouchstart' in window || navigator.maxTouchPoints > 0);
 		const touchOffsetY = localTouchDevice ? 60 : 0;
-		block.style.left = `${event.clientX - offsetX}px`;
-		block.style.top = `${event.clientY - offsetY - touchOffsetY}px`;
+		setElPos(block, event.clientX - offsetX, event.clientY - offsetY - touchOffsetY);
 		activeBonusPlacement = {
 			colorKey,
 			pointerId: event.pointerId || null,
@@ -17992,8 +17983,7 @@ body.dark-mode #saved-levels-modal .saved-obj-text { color: #ddd; opacity: 0.95;
 		startGlobalDragVisuals();
 
 		// Positioneer blok direct op de pointer positie
-		block.style.left = (ev.clientX - offsetX) + 'px';
-		block.style.top = (ev.clientY - offsetY - touchOffsetY) + 'px';
+		setElPos(block, ev.clientX - offsetX, ev.clientY - offsetY - touchOffsetY);
 
         block.setPointerCapture(ev.pointerId);
         block.style.transition = 'transform 0.1s ease';
@@ -18114,8 +18104,7 @@ document.addEventListener('pointermove', ev => {
 	  const touchOffsetY = isTouchDevice ? 60 : 0;
 
 	  // ===== Verplaats visueel het draggable blok =====
-	  draggedBlock.style.left = (cursorX - offsetX) + 'px';
-	  draggedBlock.style.top  = (cursorY - offsetY - touchOffsetY) + 'px';
+	setElPos(draggedBlock, cursorX - offsetX, cursorY - offsetY - touchOffsetY);
 	  
 	  // DEBUG: Log hover positioning values
 	  if (window.debugHoverPosition) {
@@ -19018,6 +19007,90 @@ document.addEventListener('pointermove', ev => {
 	  if (cell.classList.contains('void-cell') || cell.dataset.disabled === 'true') return null;
 	  return cell;
 	}
+
+	// --- Editor defaults / helpers (added to reduce duplicated checks) ---
+	const ZONE_WIDTH = 320;      // px — default zone width
+	const ZONE_HEIGHT = 200;     // px — default zone height
+	const ZONE_GAP = 8;          // px — default gap
+	const RESIZER_SIZE = 8;      // px — resizer handle size
+	const HOVER_OFFSET_X = 0;    // px — hover X offset (user requested 0)
+	const HOVER_OFFSET_Y = 0;    // px — hover Y offset (user requested 0)
+	const Z_INDEX_HOVER = 9999;  // z-index for hovered blocks
+
+	function isAbsolutePositionedGrid(el) {
+		if (!el) return false;
+		try {
+			const grid = el.closest ? el.closest('.grid') : null;
+			const zone = el.closest ? el.closest('.zone') : null;
+
+			const isGreenGrid = (grid && grid.id === 'green-grid') || (zone && zone.dataset && String(zone.dataset.color || '').toLowerCase() === 'groen');
+			const isRedGrid = (zone && zone.id && zone.id.startsWith('red-grid')) ||
+												(zone && zone.dataset && String(zone.dataset.color || '').toLowerCase() === 'rood') ||
+												(zone && zone.classList && zone.classList.contains('red-group')) ||
+												(grid && grid.id && String(grid.id || '').startsWith('red-grid'));
+
+			// If any element has an explicit inline position absolute/fixed/sticky, treat as absolute-positioned grid
+			if (el.style && el.style.position) {
+				const p = String(el.style.position || '').toLowerCase();
+				if (p === 'absolute' || p === 'fixed' || p === 'sticky') return true;
+			}
+			if (grid && grid.style && grid.style.position) {
+				const p = String(grid.style.position || '').toLowerCase();
+				if (p === 'absolute' || p === 'fixed' || p === 'sticky') return true;
+			}
+			if (zone && zone.style && zone.style.position) {
+				const p = String(zone.style.position || '').toLowerCase();
+				if (p === 'absolute' || p === 'fixed' || p === 'sticky') return true;
+			}
+
+			// Fallback to computed style check (safer for styles coming from CSS rules)
+			const target = grid || zone || el;
+			if (window.getComputedStyle && target) {
+				const computed = window.getComputedStyle(target);
+				const pos = computed && computed.position ? String(computed.position || '').toLowerCase() : '';
+				if (pos === 'absolute' || pos === 'fixed' || pos === 'sticky') return true;
+			}
+
+			return isGreenGrid || isRedGrid;
+		} catch (e) {
+			return false;
+		}
+	}
+
+		// Inject small helper CSS for class-based toggles (avoid inline styles for grid chrome)
+		(function(){
+			try {
+				const css = '\n.grid--resizing{pointer-events:none;opacity:0.95!important;}\n.grid--hovered{transform:translate(var(--hover-x,0px),var(--hover-y,0px))!important;z-index:' + Z_INDEX_HOVER + '!important;}\n.use-transform-pos{will-change:transform;transform:translate3d(var(--dx,0px),var(--dy,0px),0);}\n';
+				const s = document.createElement('style');
+				s.setAttribute('data-generated','locus-grid-helpers');
+				s.textContent = css;
+				document.head && document.head.appendChild(s);
+			} catch (e) {}
+		})();
+
+// Helper to set element position using CSS variables + transform class
+function setElPos(el, x, y) {
+	if (!el) return;
+	try {
+		const xs = (typeof x === 'number') ? (x + 'px') : String(x || '0px');
+		const ys = (typeof y === 'number') ? (y + 'px') : String(y || '0px');
+		// Remove legacy left/top to avoid conflicts
+		try { el.style.removeProperty('left'); } catch (e) {}
+		try { el.style.removeProperty('top'); } catch (e) {}
+		el.style.setProperty('--dx', xs);
+		el.style.setProperty('--dy', ys);
+		el.classList.add('use-transform-pos');
+	} catch (e) {}
+}
+
+function clearElPos(el) {
+	if (!el) return;
+	try {
+		el.classList.remove('use-transform-pos');
+		el.style.removeProperty('--dx');
+		el.style.removeProperty('--dy');
+	} catch (e) {}
+}
 
 	function collectPlacementCells(zone, baseX, baseY, shape) {
 	  if (!zone || !Array.isArray(shape) || !shape.length) return null;
@@ -20202,8 +20275,7 @@ function getCollectedCoinCount(scores) {
 	  const startY = event.clientY || window.innerHeight / 2;
 	  ({ offsetX, offsetY } = computeShapeCenterOffsets(draggedShape));
 	  const touchOffsetY = isTouchDevice ? 60 : 0; // Offset zodat vinger het blok niet bedekt
-	  draggedBlock.style.left = `${startX - offsetX}px`;
-	  draggedBlock.style.top = `${startY - offsetY - touchOffsetY}px`;
+	setElPos(draggedBlock, startX - offsetX, startY - offsetY - touchOffsetY);
 
 	// Ensure the purchased draggable immediately measures zoomed cell size
 	// (in case zoom/lift just occurred). Re-render on next frame.
@@ -20211,8 +20283,7 @@ function getCollectedCoinCount(scores) {
 		try {
 			renderBlock(block, block._shape || shape, colorObj);
 			({ offsetX, offsetY } = computeShapeCenterOffsets(block._shape || shape));
-			block.style.left = `${startX - offsetX}px`;
-			block.style.top = `${startY - offsetY - touchOffsetY}px`;
+			setElPos(block, startX - offsetX, startY - offsetY - touchOffsetY);
 		} catch (e) {}
 	});
 	  
@@ -21666,8 +21737,7 @@ function getCollectedCoinCount(scores) {
 					renderBlock(freeBlock, freeBlock._shape || shape, colorObj);
 					({ offsetX, offsetY } = computeShapeCenterOffsets(freeBlock._shape || shape));
 					const touchOffsetY2 = 60;
-					freeBlock.style.left = `${event.clientX - offsetX}px`;
-					freeBlock.style.top = `${event.clientY - offsetY - touchOffsetY2}px`;
+					setElPos(freeBlock, event.clientX - offsetX, event.clientY - offsetY - touchOffsetY2);
 				} catch (e) {}
 			});
 		} else {
@@ -24163,7 +24233,7 @@ function sanitizeBoardHtml(html) {
 			const isRedGrid = (zone && zone.id && zone.id.startsWith('red-grid')) ||
 				(zone && zone.dataset && zone.dataset.color === 'rood') ||
 				(zone && zone.classList && zone.classList.contains('red-group'));
-			const usesAbsolutePositioning = isGreenGrid || isRedGrid || (cell.style && cell.style.position === 'absolute');
+			const usesAbsolutePositioning = isAbsolutePositionedGrid(cell);
 			// Only remove inline styles for CSS Grid-based zones, not absolute-positioned ones
 			if (!usesAbsolutePositioning) {
 				try { cell.removeAttribute('style'); } catch (e) {}
@@ -24506,8 +24576,7 @@ function sanitizeBoardHtml(html) {
 		const block = makeDraggable(shape, color);
 		offsetX = centerOffsets.offsetX;
 		offsetY = centerOffsets.offsetY;
-		block.style.left = `${startX - offsetX}px`;
-		block.style.top = `${startY - offsetY}px`;
+		setElPos(block, startX - offsetX, startY - offsetY);
 
 		draggedBlock = block;
 		draggedShape = block._shape || shape;
@@ -24637,8 +24706,7 @@ function sanitizeBoardHtml(html) {
 		offsetX = centerOffsets.offsetX;
 		offsetY = centerOffsets.offsetY;
 		const touchOffsetY = isTouchDevice ? 60 : 0;
-		block.style.left = `${options.clientX - offsetX}px`;
-		block.style.top = `${options.clientY - offsetY - touchOffsetY}px`;
+		setElPos(block, options.clientX - offsetX, options.clientY - offsetY - touchOffsetY);
 		const overlay = document.getElementById('drag-overlay');
 		if (overlay && !overlay.contains(block)) {
 			overlay.appendChild(block);
@@ -24654,8 +24722,7 @@ function sanitizeBoardHtml(html) {
 			startX = options.clientX;
 			startY = options.clientY;
 		}
-		block.style.left = `${startX - offsetX}px`;
-		block.style.top = `${startY - offsetY - touchOffsetY}px`;
+		setElPos(block, startX - offsetX, startY - offsetY - touchOffsetY);
 		// Show the draggable immediately on touch (no need to lift finger first).
 		if (isTouchDevice) {
 			const overlay = document.getElementById('drag-overlay');
@@ -24665,8 +24732,7 @@ function sanitizeBoardHtml(html) {
 			}
 		}
 	} else {
-		block.style.left = `${rect.left}px`;
-		block.style.top = `${rect.top}px`;
+		setElPos(block, rect.left, rect.top);
 		offsetX = 0;
 		offsetY = 0;
 	}
@@ -25013,8 +25079,7 @@ document.addEventListener('pointerdown', ev => {
 			renderBlock(draggedBlock, nextShape, color);
 			const afterRect = draggedBlock.getBoundingClientRect();
 			if (Number.isFinite(centerX) && Number.isFinite(centerY) && afterRect.width > 0 && afterRect.height > 0) {
-				draggedBlock.style.left = `${centerX - afterRect.width / 2}px`;
-				draggedBlock.style.top = `${centerY - afterRect.height / 2}px`;
+				setElPos(draggedBlock, centerX - afterRect.width / 2, centerY - afterRect.height / 2);
 			}
 			draggedBlock.style.opacity = '1';
 			draggedBlock.style.visibility = '';
@@ -25587,8 +25652,7 @@ function showFloatingPreview(shape, color, options = {}) {
 			if (selectedShape && selectedColor && !draggedBlock) {
 				const block = makeDraggable(selectedShape, selectedColor);
 				const rect = preview.getBoundingClientRect();
-				block.style.left = `${rect.left}px`;
-				block.style.top = `${rect.top}px`;
+				setElPos(block, rect.left, rect.top);
 
 				draggedBlock = block;
 				draggedShape = block._shape || selectedShape;
@@ -26202,7 +26266,7 @@ function showFloatingPreview(shape, color, options = {}) {
 				// Red subgrids (red-grid1, red-grid2, etc.) don't have a .grid child - cells are directly inside.
 				const isGreenGrid = destGrid.id === 'green-grid' || destGrid.closest('.zone[data-color="groen"]');
 				const isRedGrid = destGrid.id && destGrid.id.startsWith('red-grid') || destGrid.closest('.zone[data-color="rood"]') || destGrid.closest('.red-group') || (destGrid.dataset && destGrid.dataset.color === 'rood');
-				const usesAbsolutePositioning = isGreenGrid || isRedGrid;
+				const usesAbsolutePositioning = isAbsolutePositionedGrid(destGrid);
 				
 				// Determine the zone ID for this grid
 				const zone = destGrid.closest('.zone');
