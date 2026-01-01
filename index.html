@@ -12599,17 +12599,17 @@ body.dark-mode #saved-levels-modal .saved-obj-text { color: #ddd; opacity: 0.95;
 			},
 			{
 				id: 'level-8-yellow-rows-6',
-				description: 'Level 8: Voltooi 4 gele kolommen.',
-				short: 'Level 8 - 4 gele kolommen',
-				check: () => checkYellowFullRows(4),
+				description: 'Level 8: Voltooi 3 gele kolommen.',
+				short: 'Level 8 - 3 gele kolommen',
+				check: () => checkYellowFullRows(3),
 				progress: () => {
 					const yellowConfig = window.yellowGridConfig || {};
 					const set = yellowConfig.scoreMode === 'diagonal'
 						? (window.scoredYellowSegments || window.scoredYellowDiagonals)
 						: window.scoredYellowColumns;
 					const current = (set instanceof Set) ? set.size : 0;
-					const capped = Math.max(0, Math.min(4, current));
-					return `${capped}/4`;
+					const capped = Math.max(0, Math.min(3, current));
+					return `${capped}/3`;
 				}
 			},
 			{
@@ -23202,9 +23202,9 @@ function openShopModal(callback) {
 	  const blackHoleOnlyMaxTraps = hasBlackHoleUpgrade && !shouldGenerateTraps ? 1 : 0;
 
 	  const boardConfigs = [
-		() => createGrid('yellow-grid', yellowRows, yellowCols, { goldCells: true, symbols: true, minSymbols: 8, maxSymbols: 12, coinChance: 0.2, maxCoins: 15, rowLengths: yellowRowPattern, rowOffsets: yellowRowOffsets, boldColumns: [0], pointsPerColumn: yellowColumnPoints, trapChance: trapChance || blackHoleOnlyChance, maxTraps: maxTraps || blackHoleOnlyMaxTraps, blackHoleChance: hasBlackHoleUpgrade ? 1.0 : 0 }),
-		() => createGrid('purple-grid', 9, 9, { symbols: true, goldCells: true, minSymbols: 6, maxSymbols: 8, coinChance: 0.03, maxCoins: 4, randomBoldCount: 8, avoidAdjacentBold: true, trapChance: (shouldGenerateTraps ? 0.08 : 0) || blackHoleOnlyChance, maxTraps: shouldGenerateTraps ? 7 : 0, blackHoleChance: hasBlackHoleUpgrade && shouldGenerateTraps ? 0.3 : 0 }),
-		() => createGrid('blue-grid', blueRows, blueCols, { boldBottom: true, goldCells: true, symbols: true, minSymbols: 10, maxSymbols: 12, coinChance: 0.05, maxCoins: 6, rowLengths: blueRowPattern, rowOffsets: blueRowOffsets, trapChance: (shouldGenerateTraps ? 0.04 : 0), maxTraps: shouldGenerateTraps ? 4 : 0, blackHoleChance: 0 }),
+		() => createGrid('yellow-grid', yellowRows, yellowCols, { goldCells: true, symbols: true, minSymbols: 12, maxSymbols: 14, coinChance: 0.22, maxCoins: 17, rowLengths: yellowRowPattern, rowOffsets: yellowRowOffsets, boldColumns: [0], pointsPerColumn: yellowColumnPoints, trapChance: trapChance || blackHoleOnlyChance, maxTraps: maxTraps || blackHoleOnlyMaxTraps, blackHoleChance: hasBlackHoleUpgrade ? 1.0 : 0 }),
+		() => createGrid('purple-grid', 9, 9, { symbols: true, goldCells: true, minSymbols: 8, maxSymbols: 10, coinChance: 0.03, maxCoins: 4, randomBoldCount: 8, avoidAdjacentBold: true, trapChance: (shouldGenerateTraps ? 0.08 : 0) || blackHoleOnlyChance, maxTraps: shouldGenerateTraps ? 7 : 0, blackHoleChance: hasBlackHoleUpgrade && shouldGenerateTraps ? 0.3 : 0 }),
+		() => createGrid('blue-grid', blueRows, blueCols, { boldBottom: true, goldCells: true, symbols: true, minSymbols: 12, maxSymbols: 16, coinChance: 0.07, maxCoins: 8, rowLengths: blueRowPattern, rowOffsets: blueRowOffsets, trapChance: (shouldGenerateTraps ? 0.04 : 0), maxTraps: shouldGenerateTraps ? 4 : 0, blackHoleChance: 0 }),
 		() => generateRoots('green-grid', 15, 15, 40, 0.25, 0.06, 12, 16, 4, false, (shouldGenerateTraps ? 0.07 : 0), shouldGenerateTraps ? 5 : 0, 0),
 		() => generateRoots('red-grid1', 4, 4, 10, 0.3, 0.04, 2, 4, 2, true, 0.00, 0, 0),
 		() => generateRoots('red-grid2', 4, 5, 10, 0.3, 0.04, 2, 4, 2, true, 0.00, 0, 0),
@@ -23498,10 +23498,10 @@ function openShopModal(callback) {
 		  createGrid('yellow-grid', yellowRows, yellowCols, {
 			goldCells: true,
 			symbols: true,
-			minSymbols: 5,
-			maxSymbols: 7,
-			coinChance: 0.07,
-			maxCoins: 8,
+			minSymbols: 7,
+			maxSymbols: 10,
+			coinChance: 0.09,
+			maxCoins: 10,
 			rowLengths: yellowShape.pattern,
 			rowOffsets: yellowShape.offsets,
 			boldColumns: [], // Geen kolom-based bolds
@@ -23566,10 +23566,10 @@ function openShopModal(callback) {
 			boldBottom: true,
 			goldCells: true,
 			symbols: true,
-			minSymbols: 15,
-			maxSymbols: 22,
-			coinChance: 0.09,
-			maxCoins: 16,
+			minSymbols: 18,
+			maxSymbols: 26,
+			coinChance: 0.11,
+			maxCoins: 20,
 			rowLengths: blueRowPattern,
 			rowOffsets: blueRowOffsets,
 			voidCells: blueGapCells, // Gap cells tussen main en split
@@ -23602,8 +23602,8 @@ function openShopModal(callback) {
 		  // NOTE: generateRoots signature is (.., branchCount, splitChance, coinChance, minSymbols, maxSymbols, maxCoins, ...)
 		  // Previously, splitChance and coinChance were accidentally swapped, causing huge coin/bonus density.
 		  // World 2 request: noticeably fewer bonuses on green.
-		  const greenCoinChance = 0.02;
-		  return generateRoots('green-grid', greenRows, greenSize, greenMaxGrowth, greenSplitChance, greenCoinChance, 4, 6, 2, false, trapChance, Math.floor(maxTraps * 0.9), blackHoleChance * 0.3);
+		  const greenCoinChance = 0.015;
+		  return generateRoots('green-grid', greenRows, greenSize, greenMaxGrowth, greenSplitChance, greenCoinChance, 3, 5, 2, false, trapChance, Math.floor(maxTraps * 0.9), blackHoleChance * 0.3);
 		},
 		
 		// Rood: 4 grids met verschillende groottes (smaller maar hoger)
@@ -23843,10 +23843,10 @@ function openShopModal(callback) {
 		  createGrid('yellow-grid', yellowRows, yellowCols, {
 			goldCells: true,
 			symbols: true,
-			minSymbols: 8,
-			maxSymbols: 14,
-			coinChance: 0.08,
-			maxCoins: 10,
+			minSymbols: 10,
+			maxSymbols: 16,
+			coinChance: 0.10,
+			maxCoins: 12,
 			rowLengths: yellowShape.pattern,
 			rowOffsets: yellowShape.offsets,
 			boldColumns: [],
@@ -23893,10 +23893,10 @@ function openShopModal(callback) {
 			boldBottom: true,
 			goldCells: true,
 			symbols: true,
-			minSymbols: 35,
-			maxSymbols: 50,
-			coinChance: 0.18,
-			maxCoins: 35,
+			minSymbols: 40,
+			maxSymbols: 58,
+			coinChance: 0.20,
+			maxCoins: 40,
 			rowLengths: blueRowPattern,
 			rowOffsets: blueRowOffsets,
 			voidCells: blueGapCells,
@@ -23909,7 +23909,7 @@ function openShopModal(callback) {
 		// Groen: Ultra groot met maximale vertakkingen
 		() => {
 		  const greenSplitChance = 0.45;
-		  return generateRoots('green-grid', greenRows, greenCols, greenMaxGrowth, greenSplitChance, 0.08, 16, 28, 8, false, trapChance, Math.floor(maxTraps * 1.1), blackHoleChance * 0.4);
+		  return generateRoots('green-grid', greenRows, greenCols, greenMaxGrowth, greenSplitChance, 0.06, 12, 21, 6, false, trapChance, Math.floor(maxTraps * 1.1), blackHoleChance * 0.4);
 		},
 		
 		// Rood: Alle 6 grids
@@ -23992,13 +23992,14 @@ function openShopModal(callback) {
 	  const cellSize = Math.max(18, Math.min(30, computedCellSize)); // Clamp between 18 and 30
 	  const worldInfo = (typeof getWorldAndSubLevel === 'function') ? getWorldAndSubLevel(currentLevel) : null;
 	  const isWorld2 = !!(worldInfo && worldInfo.world === 2);
+	  const isWorld3 = !!(worldInfo && worldInfo.world === 3);
 	  const isPortrait = window.innerHeight > window.innerWidth;
 	  const isShortHeight = window.innerHeight <= 925;
 	  const isDesktopPortraitLayout = document.body.classList.contains('desktop-portrait')
 			&& !document.body.classList.contains('mobile-sidebar-layout')
 			&& !document.body.classList.contains('touch-portrait');
 	  // Purple needs extra vertical chrome so it never clips (header/padding/outline).
-	  const purpleChromePx = isDesktopPortraitLayout ? 40 : 30;
+	  const purpleChromePx = isDesktopPortraitLayout ? 50 : 40;
 	  const tallZoneMaxVh = isPortrait ? '52vh' : (isShortHeight ? '65vh' : '85vh');
 	  // Green should be visibly shorter so the rest of the UI fits, but still scrollable.
 	  // User request: make it ~40px shorter.
@@ -24120,8 +24121,9 @@ function openShopModal(callback) {
 
 	  requestAnimationFrame(() => {
 		// World 2 request: green zone must be a SQUARE: height == width (unzoomed).
+		// World 3 request: keep green zone same format as World 2 (avoid overly tall zone).
 		try {
-			if (isWorld2 && greenZone && !document.body.classList.contains('zoomed-in')) {
+			if ((isWorld2 || isWorld3) && greenZone && !document.body.classList.contains('zoomed-in')) {
 				// Use the UNTRANSFORMED layout width as source of truth.
 				// If an ancestor is transform-scaled, getBoundingClientRect() returns the scaled width,
 				// and setting height to that value would be scaled again (ending up too short).
