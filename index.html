@@ -17312,6 +17312,11 @@ body.dark-mode #saved-levels-modal .saved-obj-text { color: #ddd; opacity: 0.95;
      Toont ook animaties bij score veranderingen
   */
   function updateScore(cell){
+	// Local refs (avoid ReferenceErrors if other scopes also use these names)
+	const safeLevel = (typeof currentLevel !== 'undefined') ? currentLevel : 1;
+	const worldInfo = (typeof getWorldAndSubLevel === 'function') ? getWorldAndSubLevel(safeLevel) : { world: 1 };
+	const isWorld2 = Number(worldInfo?.world || 1) === 2;
+	const greenGrid = document.getElementById('green-grid');
 
 		try { console.debug('updateScore:called', { cellId: cell ? (cell.id || null) : null, time: Date.now() }); } catch(e) {}
 
