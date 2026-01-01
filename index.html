@@ -24722,11 +24722,7 @@ function openShopModal(callback) {
 			const targetWidth = `${Math.round(desired)}px`;
 			yellowZone.style.width = targetWidth;
 			yellowZone.style.minWidth = targetWidth;
-			// World 3: keep purple equal-width too (prevents yellow grid being clipped).
-			if (worldInfo.world === 3) {
-				purpleZone.style.width = targetWidth;
-				purpleZone.style.minWidth = targetWidth;
-			}
+			
 		}
 	  } catch (_) {}
 	  
