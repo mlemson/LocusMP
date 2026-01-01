@@ -11189,8 +11189,9 @@ body.dark-mode #saved-levels-modal .saved-obj-text { color: #ddd; opacity: 0.95;
 		}
 	}
 
-	/* === Mobile zoom: make zoomed zones uniform (user request) === */
-	@media (max-width: 650px) {
+	/* === Mobile zoom: make zoomed zones uniform (user request) ===
+	   Include phone-landscape (often >650px wide) by keying on coarse pointer + short height. */
+	@media (max-width: 650px), (max-height: 650px) and (pointer: coarse) {
 		body.zoomed-in #yellow-zone.zoom-focus,
 		body.zoomed-in #green-zone.zoom-focus,
 		body.zoomed-in #blue-zone.zoom-focus,
@@ -11214,10 +11215,22 @@ body.dark-mode #saved-levels-modal .saved-obj-text { color: #ddd; opacity: 0.95;
 			box-shadow: 0 0 30px rgba(0, 0, 0, 0.5);
 		}
 
-		/* If there is extra vertical room in zoom, center the small square grids (like Purple in the screenshot). */
+		/* Yellow/Purple zoom: center the grid and prevent bottom clipping.
+		   Purple needs flex for justify-content to have any effect. */
 		body.zoomed-in #yellow-zone.zoom-focus,
 		body.zoomed-in #purple-zone.zoom-focus {
+			display: flex !important;
+			flex-direction: column !important;
+			align-items: center !important;
 			justify-content: center !important;
+			overflow: auto !important;
+			-webkit-overflow-scrolling: touch;
+		}
+		/* Remove extra grid margins in zoom so it truly centers within the container. */
+		body.zoomed-in #yellow-zone.zoom-focus #yellow-grid.grid,
+		body.zoomed-in #purple-zone.zoom-focus #purple-grid.grid {
+			margin-top: 0 !important;
+			margin-bottom: 0 !important;
 		}
 		/* Green zoom: let JS handle scroll-centering to the start cell; don't use align-items which moves the grid. */
 		body.zoomed-in #green-zone.zoom-focus {
@@ -15773,7 +15786,16 @@ body.dark-mode #saved-levels-modal .saved-obj-text { color: #ddd; opacity: 0.95;
 		let mobileZoomResizeBound = false;
 
 	function isMobileViewport() {
-		return window.innerWidth <= 650;
+		try {
+			const w = window.innerWidth;
+			const h = window.innerHeight;
+			if (w <= 650) return true;
+			// Phone landscape often reports >650px width in CSS pixels.
+			// Use coarse pointer + small min dimension to still apply mobile zoom sizing.
+			const coarse = !!(window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
+			if (coarse && Math.min(w, h) < 700) return true;
+		} catch (e) {}
+		return false;
 	}
 
 	function applyMobileZoomSizing(zone) {
