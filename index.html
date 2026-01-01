@@ -24533,9 +24533,9 @@ function openShopModal(callback) {
 			goldCells: true,
 			symbols: true,
 			minSymbols: 10,
-			maxSymbols: 16,
+			maxSymbols: 10,
 			coinChance: 0.10,
-			maxCoins: 12,
+			maxCoins: 10,
 			rowLengths: yellowShape.pattern,
 			rowOffsets: yellowShape.offsets,
 			boldColumns: [],
@@ -24544,7 +24544,7 @@ function openShopModal(callback) {
 			diagonalLegend: true,
 			trimRight: true,
 			trapChance: trapChance,
-			maxTraps: maxTraps,
+			maxTraps: Math.floor(maxTraps * 0.6),
 			blackHoleChance: blackHoleChance
 		  });
 		  const yellowZone = document.getElementById('yellow-zone');
@@ -24563,18 +24563,18 @@ function openShopModal(callback) {
 		  symbols: true,
 		  goldCells: true,
 		  minSymbols: 16,
-		  maxSymbols: 24,
+		  maxSymbols: 16,
 		  coinChance: 0.06,
-		  maxCoins: 12,
+		  maxCoins: 10,
 		  randomBoldCount: 14,
 		  avoidAdjacentBold: true,
 		  fixedBoldCells: [[0,0], [0, purpleSize - 1], [purpleSize - 1, 0], [purpleSize - 1, purpleSize - 1], 
 						   [0, Math.floor(purpleSize/2)], [purpleSize - 1, Math.floor(purpleSize/2)],
 						   [Math.floor(purpleSize/2), 0], [Math.floor(purpleSize/2), purpleSize - 1]],
 		  outerRingShade: true,
-		  trapChance: trapChance * 1.2,
-		  maxTraps: Math.floor(maxTraps * 1.3),
-		  blackHoleChance: blackHoleChance * 0.6
+		  trapChance: trapChance * 1.1,
+		  maxTraps: Math.floor(maxTraps * 1.1),
+		  blackHoleChance: blackHoleChance * 0.3
 		}),
 		
 		// Blauw: Ultra lange rivier met 2 splits
@@ -24583,7 +24583,7 @@ function openShopModal(callback) {
 			boldBottom: true,
 			goldCells: true,
 			symbols: true,
-			minSymbols: 40,
+			minSymbols: 58,
 			maxSymbols: 58,
 			coinChance: 0.20,
 			maxCoins: 40,
