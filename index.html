@@ -15417,18 +15417,24 @@ body.dark-mode #saved-levels-modal .saved-obj-text { color: #ddd; opacity: 0.95;
 			}
 		}
 
-		const minSymbols = Math.max(0, Math.min(options.minSymbols || 0, activeCellCount));
-		const maxSymbols = Math.max(minSymbols, Math.min(options.maxSymbols || minSymbols, activeCellCount));
+		// IMPORTANT: ensure minSymbols/maxSymbols correspond to ACTUALLY PLACED symbols.
+		// Previously we sampled from all active cells (including bold cells), but later we refuse to place symbols on bold
+		// and coins could override symbols. That made the visible symbol count much lower than minSymbols.
+		const shuffledIdx = allIdx.slice();
+		shuffleArray(shuffledIdx);
+		const symbolCandidates = shuffledIdx.filter(i => !boldIndices.has(i));
+		const minSymbols = Math.max(0, Math.min(options.minSymbols || 0, symbolCandidates.length));
+		const maxSymbols = Math.max(minSymbols, Math.min(options.maxSymbols || minSymbols, symbolCandidates.length));
 		const symbolCount = maxSymbols > minSymbols
 			? Math.floor(Math.random() * (maxSymbols - minSymbols + 1)) + minSymbols
 			: minSymbols;
-		const shuffledIdx = allIdx.slice();
-		shuffleArray(shuffledIdx);
-		const symbolIndices = new Set(shuffledIdx.slice(0, symbolCount));
+		const symbolIndices = new Set(symbolCandidates.slice(0, symbolCount));
 
 		const coinCandidates = shuffledIdx.filter(i => {
 			if (options.maxCoins && options.maxCoins <= 0) return false;
 			if (options.goldCells === false && options.coinChance === 0) return false;
+			// Never let coins replace symbols; symbols have their own min/max budget.
+			if (symbolIndices.has(i)) return false;
 			if (boldIndices.has(i)) return false;
 			return true;
 		});
