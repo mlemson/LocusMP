@@ -2216,6 +2216,19 @@
 		margin-left: 0;
 		margin-right: 0;
 	}
+	/* Purple: World 1 keeps vertical breathing room; Worlds 2/3 remove it. */
+	body.world-1 #purple-zone #purple-grid.grid,
+	body.world-1 #purple-zone--placeholder #purple-grid.grid {
+		margin-top: 20px;
+		margin-bottom: 20px;
+	}
+	body.world-2 #purple-zone #purple-grid.grid,
+	body.world-2 #purple-zone--placeholder #purple-grid.grid,
+	body.world-3 #purple-zone #purple-grid.grid,
+	body.world-3 #purple-zone--placeholder #purple-grid.grid {
+		margin-top: 0;
+		margin-bottom: 0;
+	}
 	/* Green: remove inner margin so the darker outer rim disappears. */
 	#green-zone #green-grid {
 		margin: 0;
