@@ -2161,6 +2161,11 @@
 	#blue-zone--placeholder .cell { background: #d6eaff; color: #001f3f; border-color: #a8d8ff; }
 	#yellow-zone .cell.active,
 	#yellow-zone--placeholder .cell.active { background: #cfba51; border-color: #f7dc54; } 
+	/* Yellow: highlight completed lines/segments/rings a bit darker (all worlds). */
+	#yellow-zone .cell.active.yellow-completed-path,
+	#yellow-zone--placeholder .cell.active.yellow-completed-path {
+		filter: brightness(0.86);
+	}
 	#red-zone .cell.active,
 	#red-zone--placeholder .cell.active { background: #b56069; border-color: #ff7b73; }
 	#purple-zone .cell.active,
@@ -3945,6 +3950,21 @@ body.dark-mode #saved-levels-modal .saved-obj-text { color: #ddd; opacity: 0.95;
 		color: rgba(20,24,36,0.55);
 	}
 
+	.card-effect {
+		margin-top: 6px;
+		font-size: 0.68rem;
+		font-weight: 700;
+		letter-spacing: 0.05em;
+		text-transform: uppercase;
+		color: rgba(20,24,36,0.62);
+		background: rgba(20,24,36,0.06);
+		padding: 4px 10px;
+		border-radius: 999px;
+		display: inline-flex;
+		align-items: center;
+		gap: 6px;
+	}
+
 	body.dark-mode .card-option {
 		background: linear-gradient(160deg, #2d3142 0%, #232635 45%, #1b1e2c 100%);
 		border-color: rgba(120,140,220,0.2);
@@ -3972,6 +3992,11 @@ body.dark-mode #saved-levels-modal .saved-obj-text { color: #ddd; opacity: 0.95;
 
 	body.dark-mode .card-meta {
 		color: rgba(255,255,255,0.65);
+	}
+
+	body.dark-mode .card-effect {
+		color: rgba(255,255,255,0.85);
+		background: rgba(255,255,255,0.08);
 	}
 
 	#card-options {
@@ -11881,12 +11906,26 @@ body.dark-mode #saved-levels-modal .saved-obj-text { color: #ddd; opacity: 0.95;
 		bonusBoost: {
 			id: 'bonusBoost',
 			name: 'Bonus Boost',
-			description: 'Krijg 2 bonusblokken per kleur in plaats van 1.',
+			description: 'Ontgrendel Bonus Boost kaarten (en krijg er direct 1). Een Bonus Boost kaart geeft 2× bonussen voor de kleur van die kaart (niet alle kleuren).',
 			cost: 15,
 			icon: '⚡',
 			purchased: false,
 			onPurchase: () => {
-				// Deze upgrade wijzigt toggleCell bonus logic
+				try {
+					if (typeof createBonusBoostCardBlueprint !== 'function') return;
+					const blueprint = createBonusBoostCardBlueprint();
+					if (!blueprint) return;
+					ownedDeckBlueprints.push(blueprint);
+					// Immediate reward: also give one copy right now.
+					try {
+						const card = instantiateBlueprint(blueprint);
+						if (card) currentHand.push(card);
+					} catch (e) {}
+					updateDeckPreview();
+					saveGameState();
+					renderCurrentHand();
+					showObjectiveToast('⚡ Bonus Boost kaart ontvangen! Speel hem om 2× bonussen van die kleur te krijgen.');
+				} catch (e) {}
 			}
 		},
 		multicolorBoost: {
@@ -11949,7 +11988,7 @@ body.dark-mode #saved-levels-modal .saved-obj-text { color: #ddd; opacity: 0.95;
 		portals: {
 			id: 'portals',
 			name: 'Portals',
-			description: 'Plaats tegelijkertijd op twee zones met portal verbinding.',
+			description: 'Portals verschijnen op het speelveld waarvan je ook kan starten met plaatsen.',
 			cost: 20,
 			icon: '🌐',
 			purchased: false,
@@ -14064,6 +14103,8 @@ body.dark-mode #saved-levels-modal .saved-obj-text { color: #ddd; opacity: 0.95;
 		red: [[1]]
 	};
 	let activeBonusPlacement = null;
+	// Per-level: set of bonus colors that are boosted to 2× by playing a Bonus Boost card
+	let bonusBoostActiveColors = new Set();
 	
 	// Free placement system
 	let freePlacementsRemaining = 0;
@@ -14672,7 +14713,9 @@ body.dark-mode #saved-levels-modal .saved-obj-text { color: #ddd; opacity: 0.95;
 	function getBonusChargeAmount(colorKey) {
 		if (!BONUS_COLOR_CONFIG[colorKey]) return 0;
 		let amount = 1;
-		if (hasUpgrade('bonusBoost')) amount += 1;
+		if (bonusBoostActiveColors instanceof Set && bonusBoostActiveColors.has(colorKey)) {
+			amount = 2;
+		}
 		return amount;
 	}	function markActiveBonusButton(colorKey) {
 		const container = document.getElementById('bonus-inventory');
@@ -16977,6 +17020,7 @@ body.dark-mode #saved-levels-modal .saved-obj-text { color: #ddd; opacity: 0.95;
 	  }
 	  resetTrapState();
 	  resetBonusState();
+	  try { bonusBoostActiveColors = new Set(); } catch (e) {}
 	}
 
 	function addCoin(){
@@ -17477,7 +17521,155 @@ body.dark-mode #saved-levels-modal .saved-obj-text { color: #ddd; opacity: 0.95;
 	const columnPoints = Array.isArray(yellowConfig.pointsByColumn) ? yellowConfig.pointsByColumn : [];
 	const fallbackColumnPoints = yellowConfig.pointsPerColumn || yellowConfig.pointsPerRow || 0;
 	const playableYellowCells = yellowContainer ? Array.from(yellowContainer.querySelectorAll('.cell:not(.void-cell)')) : [];
-	if (yellowConfig.scoreMode === 'diagonal') {
+	const bumpYellowCompletionMark = (cells, delta) => {
+		if (!Array.isArray(cells) || !cells.length || !delta) return;
+		for (const c of cells) {
+			if (!c || !c.classList || !c.classList.contains('cell')) continue;
+			const prev = Number(c.dataset.yellowCompletedMarks || '0') || 0;
+			const next = Math.max(0, prev + delta);
+			c.dataset.yellowCompletedMarks = String(next);
+			c.classList.toggle('yellow-completed-path', next > 0);
+		}
+	};
+	const scoreYellowKey = (key, points, cells, full) => {
+		if (!key) return;
+		window.scoredYellowSegments = window.scoredYellowSegments || new Set();
+		window.scoredYellowDiagonals = window.scoredYellowDiagonals || new Set();
+		window.scoredYellowSegmentPoints = window.scoredYellowSegmentPoints || new Map();
+		const scored = window.scoredYellowSegments;
+		const pointsByKey = window.scoredYellowSegmentPoints;
+		const wasFull = scored.has(key);
+		if (full && !wasFull) {
+			yellow += points;
+			scored.add(key);
+			window.scoredYellowDiagonals.add(key);
+			pointsByKey.set(key, points);
+			bumpYellowCompletionMark(cells, +1);
+			const anchorCell = cells && cells[0];
+			if (anchorCell) {
+				const rect = anchorCell.getBoundingClientRect();
+				const scrollX = window.scrollX || window.pageXOffset;
+				const scrollY = window.scrollY || window.pageYOffset;
+				showScoreAnimation(
+					rect.left + rect.width / 2 + scrollX,
+					rect.top + rect.height / 2 + scrollY,
+					`+${points}`,
+					"yellow"
+				);
+			}
+		} else if (!full && wasFull) {
+			const lost = Number(pointsByKey.get(key));
+			yellow -= Number.isFinite(lost) ? lost : points;
+			scored.delete(key);
+			window.scoredYellowDiagonals.delete(key);
+			pointsByKey.delete(key);
+			bumpYellowCompletionMark(cells, -1);
+			const anchorCell = cells && cells[0];
+			if (anchorCell) {
+				const rect = anchorCell.getBoundingClientRect();
+				const scrollX = window.scrollX || window.pageXOffset;
+				const scrollY = window.scrollY || window.pageYOffset;
+				showScoreAnimation(
+					rect.left + rect.width / 2 + scrollX,
+					rect.top + rect.height / 2 + scrollY,
+					`−${Number.isFinite(lost) ? lost : points}`,
+					"yellow"
+				);
+			}
+		}
+	};
+	if (yellowConfig.scoreMode === 'rings') {
+		// World 3 request: score by "circles" (rings) of the diamond.
+		const ringMinPoints = Math.max(0, Number(yellowConfig.ringMinPoints) || 12);
+		const ringMaxPoints = Math.max(ringMinPoints, Number(yellowConfig.ringMaxPoints) || 64);
+		const cellByCoord = new Map();
+		for (const c of playableYellowCells) {
+			const x = Number(c.dataset.x);
+			const y = Number(c.dataset.y);
+			if (!Number.isFinite(x) || !Number.isFinite(y)) continue;
+			cellByCoord.set(`${x},${y}`, c);
+		}
+		const tryGet = (x, y) => cellByCoord.get(`${x},${y}`) || null;
+		const boundary = [];
+		for (const c of cellByCoord.values()) {
+			const x = Number(c.dataset.x);
+			const y = Number(c.dataset.y);
+			if (!Number.isFinite(x) || !Number.isFinite(y)) continue;
+			if (!tryGet(x - 1, y) || !tryGet(x + 1, y) || !tryGet(x, y - 1) || !tryGet(x, y + 1)) {
+				boundary.push(c);
+			}
+		}
+		const depthByCell = new Map();
+		const q = [];
+		for (const c of boundary) {
+			depthByCell.set(c, 0);
+			q.push(c);
+		}
+		while (q.length) {
+			const cur = q.shift();
+			const curDepth = depthByCell.get(cur) || 0;
+			const x = Number(cur.dataset.x);
+			const y = Number(cur.dataset.y);
+			const neigh = [tryGet(x - 1, y), tryGet(x + 1, y), tryGet(x, y - 1), tryGet(x, y + 1)].filter(Boolean);
+			for (const n of neigh) {
+				if (!depthByCell.has(n)) {
+					depthByCell.set(n, curDepth + 1);
+					q.push(n);
+				}
+			}
+		}
+		let maxDepth = 0;
+		const rings = new Map();
+		for (const [cell, depth] of depthByCell.entries()) {
+			maxDepth = Math.max(maxDepth, Number(depth) || 0);
+			if (!rings.has(depth)) rings.set(depth, []);
+			rings.get(depth).push(cell);
+		}
+		window.scoredYellowRings = window.scoredYellowRings || new Map();
+		const scoredRings = window.scoredYellowRings;
+		for (const [depth, cells] of rings.entries()) {
+			const denom = Math.max(1, maxDepth);
+			const t = (denom - Number(depth)) / denom; // outer (0) => 1, inner => 0
+			const points = Math.round(ringMinPoints + t * (ringMaxPoints - ringMinPoints));
+			const full = cells.every(c => c.classList.contains('active'));
+			const key = `ring:${depth}`;
+			const wasFull = scoredRings.has(key);
+			if (full && !wasFull) {
+				yellow += points;
+				scoredRings.set(key, points);
+				bumpYellowCompletionMark(cells, +1);
+				const anchorCell = cells[0];
+				if (anchorCell) {
+					const rect = anchorCell.getBoundingClientRect();
+					const scrollX = window.scrollX || window.pageXOffset;
+					const scrollY = window.scrollY || window.pageYOffset;
+					showScoreAnimation(
+						rect.left + rect.width / 2 + scrollX,
+						rect.top + rect.height / 2 + scrollY,
+						`+${points}`,
+						"yellow"
+					);
+				}
+			} else if (!full && wasFull) {
+				const lost = Number(scoredRings.get(key));
+				yellow -= Number.isFinite(lost) ? lost : points;
+				scoredRings.delete(key);
+				bumpYellowCompletionMark(cells, -1);
+				const anchorCell = cells[0];
+				if (anchorCell) {
+					const rect = anchorCell.getBoundingClientRect();
+					const scrollX = window.scrollX || window.pageXOffset;
+					const scrollY = window.scrollY || window.pageYOffset;
+					showScoreAnimation(
+						rect.left + rect.width / 2 + scrollX,
+						rect.top + rect.height / 2 + scrollY,
+						`−${Number.isFinite(lost) ? lost : points}`,
+						"yellow"
+					);
+				}
+			}
+		}
+	} else if (yellowConfig.scoreMode === 'diagonal') {
 	  // World 2: score *segments* on diagonals (irregular shapes can have gaps)
 	  // Points scale as requested: 4→8, 6→16, 8→32 (doubling every +2 length)
 	  const minLen = Math.max(1, Number(yellowConfig.minDiagonalLength) || 4);
@@ -17486,9 +17678,7 @@ body.dark-mode #saved-levels-modal .saved-obj-text { color: #ddd; opacity: 0.95;
 		const halfSteps = Math.floor(len / 2) + 1;
 		return Math.pow(2, halfSteps);
 	  };
-	  window.scoredYellowSegments = window.scoredYellowSegments || new Set();
-	  // Back-compat: keep old set in sync so objectives/checks don't regress.
-	  window.scoredYellowDiagonals = window.scoredYellowDiagonals || new Set();
+	  const allowToCenter = yellowConfig.allowDiagonalToCenter === true;
 	  const cellByCoord = new Map();
 	  for (const c of playableYellowCells) {
 		const x = Number(c.dataset.x);
@@ -17534,44 +17724,42 @@ body.dark-mode #saved-levels-modal .saved-obj-text { color: #ddd; opacity: 0.95;
 	  ];
 
 	  for (const seg of segments) {
-		if (!seg.points) {
-		  window.scoredYellowSegments.delete(seg.key);
-		  continue;
+		const fullDiag = seg.cells.every(c => c.classList.contains('active'));
+		const keyFull = `${seg.key}:full`;
+		if (!allowToCenter) {
+			if (seg.points > 0) scoreYellowKey(keyFull, seg.points, seg.cells, fullDiag);
+			else scoreYellowKey(keyFull, seg.points, seg.cells, false);
+			continue;
 		}
-		const full = seg.cells.every(c => c.classList.contains('active'));
-		const wasFull = window.scoredYellowSegments.has(seg.key);
-		if (full && !wasFull) {
-		  yellow += seg.points;
-		  window.scoredYellowSegments.add(seg.key);
-		  window.scoredYellowDiagonals.add(seg.key);
-		  const anchorCell = seg.cells[0];
-		  if (anchorCell) {
-			const rect = anchorCell.getBoundingClientRect();
-			const scrollX = window.scrollX || window.pageXOffset;
-			const scrollY = window.scrollY || window.pageYOffset;
-			showScoreAnimation(
-			  rect.left + rect.width / 2 + scrollX,
-			  rect.top + rect.height / 2 + scrollY,
-			  `+${seg.points}`,
-			  "yellow"
-			);
-		  }
-		} else if (!full && wasFull) {
-		  yellow -= seg.points;
-		  window.scoredYellowSegments.delete(seg.key);
-		  window.scoredYellowDiagonals.delete(seg.key);
-		  const anchorCell = seg.cells[0];
-		  if (anchorCell) {
-			const rect = anchorCell.getBoundingClientRect();
-			const scrollX = window.scrollX || window.pageXOffset;
-			const scrollY = window.scrollY || window.pageYOffset;
-			showScoreAnimation(
-			  rect.left + rect.width / 2 + scrollX,
-			  rect.top + rect.height / 2 + scrollY,
-			  `−${seg.points}`,
-			  "yellow"
-			);
-		  }
+
+		// World 2 request: allow scoring for corner → center (bold) diagonal segments too.
+		const mid = Math.floor(seg.cells.length / 2);
+		const boldIdxs = [];
+		for (let i = 0; i < seg.cells.length; i++) {
+			if (seg.cells[i].classList.contains('bold-cell')) boldIdxs.push(i);
+		}
+		let pivot = mid;
+		if (boldIdxs.length) {
+			boldIdxs.sort((a, b) => Math.abs(a - mid) - Math.abs(b - mid));
+			pivot = boldIdxs[0];
+		}
+		const cellsA = seg.cells.slice(0, pivot + 1);
+		const cellsB = seg.cells.slice(pivot);
+		const pointsA = computeSegmentPoints(cellsA.length);
+		const pointsB = computeSegmentPoints(cellsB.length);
+		const fullA = pointsA > 0 && cellsA.every(c => c.classList.contains('active'));
+		const fullB = pointsB > 0 && cellsB.every(c => c.classList.contains('active'));
+		const keyA = `${seg.key}:halfA`;
+		const keyB = `${seg.key}:halfB`;
+
+		// If full diagonal is complete, score ONLY the full line and remove half-scores.
+		if (seg.points > 0) scoreYellowKey(keyFull, seg.points, seg.cells, fullDiag);
+		if (fullDiag) {
+			if (pointsA > 0) scoreYellowKey(keyA, pointsA, cellsA, false);
+			if (pointsB > 0) scoreYellowKey(keyB, pointsB, cellsB, false);
+		} else {
+			if (pointsA > 0) scoreYellowKey(keyA, pointsA, cellsA, fullA);
+			if (pointsB > 0) scoreYellowKey(keyB, pointsB, cellsB, fullB);
 		}
 	  }
 	} else {
@@ -17627,6 +17815,7 @@ body.dark-mode #saved-levels-modal .saved-obj-text { color: #ddd; opacity: 0.95;
 		if (full && !wasFull) {
 		  yellow += columnPointsValue;
 		  window.scoredYellowColumns.add(col);
+		  bumpYellowCompletionMark(colCells, +1);
 
 		  const anchorCell = colCells[0];
 		  if (anchorCell) {
@@ -17644,6 +17833,7 @@ body.dark-mode #saved-levels-modal .saved-obj-text { color: #ddd; opacity: 0.95;
 		} else if (!full && wasFull) {
 		  yellow -= columnPointsValue;
 		  window.scoredYellowColumns.delete(col);
+		  bumpYellowCompletionMark(colCells, -1);
 
 		  const anchorCell = colCells[0];
 		  if (anchorCell) {
@@ -20563,7 +20753,8 @@ function optionalCellsTouchActive(zone, pendingCells) {
 			matrix: cloneShape(blueprint.matrix),
 			category: blueprint.category,
 			color: safeColor,
-			isGolden
+			isGolden,
+			isBonusBoost: !!blueprint.isBonusBoost
 		};
 	}
 
@@ -21733,6 +21924,11 @@ function getCollectedCoinCount(scores) {
 	  // Golden modifier +2
 	  const isGolden = !!(cardData.isGolden || cardData.color?.isGolden);
 	  if (isGolden) baseCost += 2;
+	  // Bonus Boost modifier
+	  if (cardData && cardData.isBonusBoost) {
+		const extra = (typeof BONUS_BOOST_CARD_COST_BONUS === 'number') ? BONUS_BOOST_CARD_COST_BONUS : 4;
+		baseCost += extra;
+	  }
 	  // Multikleur modifier +2
 	  if (cardData.color.name === 'multikleur') baseCost += 2;
 	  return baseCost;
@@ -21781,6 +21977,43 @@ function getCollectedCoinCount(scores) {
 		const baseColor = palette[Math.floor(Math.random() * palette.length)];
 		const color = cloneColor(baseColor);
 		return instantiateBlueprint(createCardBlueprint(entry, color, { isGolden: true }));
+	}
+
+	function getBonusKeyFromColorName(colorName) {
+		const name = String(colorName || '').trim().toLowerCase();
+		if (!name) return null;
+		for (const key of BONUS_ORDER) {
+			const meta = BONUS_COLOR_CONFIG[key];
+			if (meta && String(meta.colorName || '').toLowerCase() === name) return key;
+		}
+		return null;
+	}
+
+	const BONUS_BOOST_CARD_COST_BONUS = 4;
+	function createBonusBoostCardBlueprint(colorKey = null) {
+		const miniChoices = (CARD_BLUEPRINTS && Array.isArray(CARD_BLUEPRINTS.mini)) ? CARD_BLUEPRINTS.mini : [];
+		const shapePick = miniChoices.length
+			? miniChoices[Math.floor(Math.random() * miniChoices.length)]
+			: { name: 'Domino verticaal', matrix: [[1],[1]] };
+		const entry = { name: 'Bonus Boost', matrix: cloneShape(shapePick.matrix), category: 'mini' };
+		let baseColor = null;
+		if (colorKey && BONUS_COLOR_CONFIG[colorKey]) {
+			const desiredName = BONUS_COLOR_CONFIG[colorKey].colorName;
+			baseColor = NON_WILDCARD_COLORS.find(c => c && c.name === desiredName) || null;
+		}
+		if (!baseColor) {
+			baseColor = NON_WILDCARD_COLORS.length
+				? NON_WILDCARD_COLORS[Math.floor(Math.random() * NON_WILDCARD_COLORS.length)]
+				: { name: 'geel', code: '#cfba51' };
+		}
+		return createCardBlueprint(entry, cloneColor(baseColor), { isBonusBoost: true });
+	}
+
+	function createBonusBoostShopCard() {
+		const bp = createBonusBoostCardBlueprint();
+		const card = instantiateBlueprint(bp);
+		card.isBonusBoostShopCard = true;
+		return card;
 	}
 
 	function createShopCard(choice, isRandomCard = false) {
@@ -21935,13 +22168,18 @@ function getCollectedCoinCount(scores) {
 	  card.cardShape = cardData.matrix;
 	  card.cardColor = cardData.color;
 	const isGoldenCard = !!cardData.isGolden || !!cardData.color?.isGolden;
+	const isBonusBoostCard = !!cardData.isBonusBoost;
 	const isDeckCopy = !!cardData.isDeckCopy;
 	const isLuckyCopy = !!cardData.isLuckyCopy;
 	card.dataset.golden = isGoldenCard ? 'true' : 'false';
+	card.dataset.bonusBoost = isBonusBoostCard ? 'true' : 'false';
 	card.dataset.deckCopy = isDeckCopy ? 'true' : 'false';
 	card.dataset.luckyCopy = isLuckyCopy ? 'true' : 'false';
 	if (isGoldenCard) {
 		card.classList.add('card-golden');
+	}
+	if (isBonusBoostCard) {
+		card.classList.add('card-bonus-boost');
 	}
 	if (isDeckCopy) {
 		card.classList.add('card-deck-copy');
@@ -21985,6 +22223,16 @@ function getCollectedCoinCount(scores) {
 		meta.textContent = `${cardData.matrix.length}×${cardData.matrix[0].length}`;
 
 		card.append(label, meta);
+		if (isBonusBoostCard) {
+			const colorKey = getBonusKeyFromColorName(cardData?.color?.name);
+			const effect = document.createElement('div');
+			effect.classList.add('card-effect');
+			const labelColor = (colorKey && BONUS_COLOR_CONFIG[colorKey])
+				? BONUS_COLOR_CONFIG[colorKey].label
+				: (cardData?.color?.name || '');
+			effect.textContent = `⚡ BONUS BOOST: 2× ${labelColor}`;
+			card.appendChild(effect);
+		}
 	  }
 
 	  // Pointer UX:
@@ -22517,6 +22765,17 @@ function getCollectedCoinCount(scores) {
 	  if (!consumed) return;
 	cardsPlayedThisTurn += 1;
 	const { playedCard, handIndex } = consumed;
+	// Bonus Boost card: after playing it, only that color's bonus is 2× (per level)
+	try {
+		if (playedCard && playedCard.isBonusBoost) {
+			const boostKey = getBonusKeyFromColorName(playedCard?.color?.name);
+			if (boostKey && BONUS_COLOR_CONFIG[boostKey]) {
+				if (!(bonusBoostActiveColors instanceof Set)) bonusBoostActiveColors = new Set();
+				bonusBoostActiveColors.add(boostKey);
+				showObjectiveToast(`⚡ Bonus Boost actief: 2× ${BONUS_COLOR_CONFIG[boostKey].label} bonussen (dit level)`);
+			}
+		}
+	} catch (e) {}
 	const actionId = ++actionSequence;
 	const cardSnapshot = {
 		id: playedCard.id,
@@ -23152,6 +23411,13 @@ function openShopModal(callback) {
 
 		// Specials are allowed but should not explode the amount of options.
 		const availableSpecialFactories = [];
+		if (hasUpgrade('bonusBoost')) {
+			availableSpecialFactories.push(() => {
+				const boostCard = createBonusBoostShopCard();
+				boostCard.isBonusBoostShopCard = true;
+				return { option: boostCard, cost: calculateCardCost(boostCard), fixed: false };
+			});
+		}
 		if (hasUpgrade('goldenCards')) {
 			availableSpecialFactories.push(() => {
 				const goldenCard = createGoldenShopCard();
@@ -23389,7 +23655,9 @@ function openShopModal(callback) {
 			  shapeName: option.shapeName,
 			  matrix: cloneShape(option.matrix),
 			  category: option.category,
-			  color: cloneColor(option.color)
+			  color: cloneColor(option.color),
+			  isGolden: !!(option.isGolden || option.color?.isGolden),
+			  isBonusBoost: !!option.isBonusBoost
 			});
 			
 			// Shop blijft open - markeer mystery kaart als gekocht
@@ -23425,7 +23693,9 @@ function openShopModal(callback) {
 		shapeName: option.shapeName,
 		matrix: cloneShape(option.matrix),
 		category: option.category,
-		color: cloneColor(option.color)
+		color: cloneColor(option.color),
+		isGolden: !!(option.isGolden || option.color?.isGolden),
+		isBonusBoost: !!option.isBonusBoost
 	  });
 	  
 	  // Shop blijft open - verwijder de gekochte kaart en toon bericht
@@ -23661,7 +23931,9 @@ function openShopModal(callback) {
 		scoreMode: 'diagonal',
 		diagonalAxis: 'xMinusY',
 		diagonalPointsPerCell: 2,
-		minDiagonalLength: 4
+		minDiagonalLength: 4,
+		// World 2 request: allow scoring for corner → center (bold cell) diagonal segments.
+		allowDiagonalToCenter: true
 	  };
 	  
 	  // BLAUW: Lange continue rivier (60+ rijen) die kronkelt en soms breed wordt
@@ -24020,12 +24292,10 @@ function openShopModal(callback) {
 		pointsByWidth: {},
 		pointsPerRow: 0,
 		pointsPerColumn: 0,
-		// World 3: Hybride scoring - zowel kolommen als diagonalen
-		scoreMode: 'diagonal',
-		diagonalAxis: 'xMinusY',
-		diagonalPointsPerCell: 3, // Hogere punten per cel
-		minDiagonalLength: 3, // Kortere diagonalen tellen ook
-		world3BonusMultiplier: 1.5 // Extra bonus voor voltooide vormen
+		// World 3 request: score per "cirkel" (ring) of the diamond.
+		scoreMode: 'rings',
+		ringMinPoints: 12,
+		ringMaxPoints: 64
 	  };
 	  
 	  // BLAUW: Ultra lange rivier met meerdere splits (80 rijen!)
@@ -24386,10 +24656,16 @@ function openShopModal(callback) {
 	  try {
 		const worldInfo = typeof getWorldAndSubLevel === 'function' ? getWorldAndSubLevel(currentLevel) : null;
 		if (worldInfo && (worldInfo.world === 2 || worldInfo.world === 3) && yellowZone && purpleZone) {
-			const targetWidth = purpleZone.style.width || `${purpleZone.offsetWidth}px`;
-			if (targetWidth) {
-				yellowZone.style.width = targetWidth;
-				yellowZone.style.minWidth = targetWidth;
+			const purpleW = parseFloat(purpleZone.style.width || '') || purpleZone.offsetWidth || 0;
+			const yellowW = parseFloat(yellowZone.style.width || '') || yellowZone.offsetWidth || 0;
+			const desired = Math.max(1, Math.max(purpleW, yellowW));
+			const targetWidth = `${Math.round(desired)}px`;
+			yellowZone.style.width = targetWidth;
+			yellowZone.style.minWidth = targetWidth;
+			// World 3: keep purple equal-width too (prevents yellow grid being clipped).
+			if (worldInfo.world === 3) {
+				purpleZone.style.width = targetWidth;
+				purpleZone.style.minWidth = targetWidth;
 			}
 		}
 	  } catch (_) {}
@@ -24696,7 +24972,8 @@ function openShopModal(callback) {
 			matrix: bp.matrix,
 			category: bp.category,
 			color: bp.color ? { name: bp.color.name, code: bp.color.code, isGolden: bp.color.isGolden } : null,
-			isGolden: bp.isGolden || false
+			isGolden: bp.isGolden || false,
+			isBonusBoost: bp.isBonusBoost || false
 		  })),
 		  
 		  // Current game state (drawPile, discardPile, currentHand)
@@ -24707,7 +24984,8 @@ function openShopModal(callback) {
 			matrix: card.matrix,
 			category: card.category,
 			color: card.color ? { name: card.color.name, code: card.color.code, isGolden: card.color.isGolden } : null,
-			isGolden: card.isGolden || false
+			isGolden: card.isGolden || false,
+			isBonusBoost: card.isBonusBoost || false
 		  })),
 		  discardPile: discardPile.map(card => ({
 			id: card.id,
@@ -24716,7 +24994,8 @@ function openShopModal(callback) {
 			matrix: card.matrix,
 			category: card.category,
 			color: card.color ? { name: card.color.name, code: card.color.code, isGolden: card.color.isGolden } : null,
-			isGolden: card.isGolden || false
+			isGolden: card.isGolden || false,
+			isBonusBoost: card.isBonusBoost || false
 		  })),
 		  currentHand: currentHand.map(card => ({
 			id: card.id,
@@ -24725,7 +25004,8 @@ function openShopModal(callback) {
 			matrix: card.matrix,
 			category: card.category,
 			color: card.color ? { name: card.color.name, code: card.color.code, isGolden: card.color.isGolden } : null,
-			isGolden: card.isGolden || false
+			isGolden: card.isGolden || false,
+			isBonusBoost: card.isBonusBoost || false
 		  })),
 		  cardsPlayedThisTurn: cardsPlayedThisTurn,
 		  turnCount: turnCount,
@@ -24906,7 +25186,8 @@ function sanitizeBoardHtml(html) {
 			  matrix: bp.matrix,
 			  category: bp.category || 'standard',
 			  color: colorObj,
-			  isGolden: bp.isGolden || false
+			  isGolden: bp.isGolden || false,
+			  isBonusBoost: bp.isBonusBoost || false
 			};
 		  }).filter(bp => bp !== null);
 		  
@@ -24955,7 +25236,8 @@ function sanitizeBoardHtml(html) {
 			matrix: cardData.matrix,
 			category: cardData.category || 'standard',
 			color: colorObj,
-			isGolden: cardData.isGolden || false
+			isGolden: cardData.isGolden || false,
+			isBonusBoost: cardData.isBonusBoost || false
 		  };
 		}
 		
