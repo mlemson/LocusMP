@@ -1996,7 +1996,7 @@
 		/* World 2 (mobile): make blue zone a bit taller (+50px). */
 		body.world-2 #blue-zone,
 		body.world-2 #blue-zone--placeholder {
-			height: calc(791px + 50px);
+			height: 841px;
 		}
 	}
 	/* World 2: keep green zone square (same width, more height). */
@@ -16584,6 +16584,21 @@ body.dark-mode #saved-levels-modal .saved-obj-text { color: #ddd; opacity: 0.95;
 		finalMaxSymbols = Math.max(maxSymbolBase, Math.floor(clusterSize * (symbolPercentage + 0.05)));
 		finalMaxCoins = Math.max(maxCoinBase, Math.floor(clusterSize * coinPercentage));
 		finalCoinChance = 0.15; // Hogere kans maar minder max coins
+
+		// World 2/3 request: green has too many symbols/coins vs other grids.
+		// Scale to ~60% of current density, but only for the green grid in World 2/3.
+		try {
+			const safeLevel = (typeof currentLevel !== 'undefined') ? currentLevel : 1;
+			const worldInfo = (typeof getWorldAndSubLevel === 'function') ? getWorldAndSubLevel(safeLevel) : { world: 1 };
+			const worldNum = Number(worldInfo?.world || 1);
+			if (gridId === 'green-grid' && (worldNum === 2 || worldNum === 3)) {
+				const SCALE = 0.6;
+				finalMinSymbols = Math.max(0, Math.floor(finalMinSymbols * SCALE));
+				finalMaxSymbols = Math.max(finalMinSymbols, Math.floor(finalMaxSymbols * SCALE));
+				finalMaxCoins = Math.max(0, Math.floor(finalMaxCoins * SCALE));
+				finalCoinChance = Math.max(0, Math.min(1, finalCoinChance * SCALE));
+			}
+		} catch (e) {}
 	  }
 
 	  // SYMBOLS
@@ -23837,8 +23852,9 @@ function openShopModal(callback) {
 		  createGrid('yellow-grid', yellowRows, yellowCols, {
 			goldCells: true,
 			symbols: true,
-			minSymbols: 7,
-			maxSymbols: 10,
+			// World 2 request: a bit more symbols (+~40%).
+			minSymbols: 10,
+			maxSymbols: 14,
 			coinChance: 0.09,
 			maxCoins: 10,
 			rowLengths: yellowShape.pattern,
@@ -24386,7 +24402,17 @@ function openShopModal(callback) {
 		const blueCols = parseInt(blueGrid.dataset.cols) || 18;
 		// WORLD 2 UX (user request): fixed max width + allow horizontal scrolling.
 		const isNarrow = window.innerWidth <= 650;
-		const maxWidthPx = isNarrow ? 165 : 260;
+		// Wider mobile phones (still <=650px) can handle a slightly wider blue zone.
+		let maxWidthPx;
+		if (isNarrow) {
+			const w = Number(window.innerWidth) || 0;
+			if (w >= 391) maxWidthPx = 190;
+			else if (w >= 341) maxWidthPx = 180;
+			else if (w >= 291) maxWidthPx = 172;
+			else maxWidthPx = 165;
+		} else {
+			maxWidthPx = 260;
+		}
 		// If the generated river is narrower, shrink to content so there is no unnecessary horizontal scrolling.
 		const contentWidthPx = blueCols * cellSize;
 		const targetWidthPx = Math.min(maxWidthPx, Math.max(1, contentWidthPx));
@@ -24407,6 +24433,8 @@ function openShopModal(callback) {
 		} else {
 		  blueHeight = Math.min(blueRows * cellSize, tallZoneMaxPx);
 		}
+		// World 2 (mobile): user requested ~+50px extra height.
+		if (isWorld2 && isNarrow) blueHeight += 50;
 		blueZone.style.height = `${blueHeight}px`;
 		// Verwijder maxHeight beperking zodat blauw echt even lang kan zijn als geel+paars
 		blueZone.style.maxHeight = 'none';
