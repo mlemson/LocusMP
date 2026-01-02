@@ -875,6 +875,11 @@
   :root { --cell-size: 6.88mm; --board-grid-gap: 0.53mm; }
 html, body { height: 100%; width: 100%; }
 body { margin: 0; padding: 0; background: white; color: #111; font-family: Arial, sans-serif; }
+/* iPad/Safari: ensure background colors are actually printed */
+@media print {
+  html, body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+}
 /* Center the board on the printable page area. */
 .printCenter { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; overflow: visible; }
 /* Wrapper we can scale without affecting the inner layout. */
@@ -914,15 +919,17 @@ body { margin: 0; padding: 0; background: white; color: #111; font-family: Arial
     // If the user requested the print-friendly variant, inject lighter outline-based rules
     if (printFriendly) {
       css += `
-/* Print-friendly: remove heavy fills and use subtle borders/outlines and dotted fills for symbols */
+/* Print-friendly / ink-friendly: no backgrounds, strong black outlines */
+.zone { background: transparent !important; box-shadow: none !important; }
+.zone[data-color="geel"],
+.zone[data-color="paars"],
+.zone[data-color="groen"],
+.zone[data-color="rood"],
+.zone[data-color="blauw"] { background: transparent !important; }
+
 .cell { background: transparent !important; box-shadow: none !important; }
-.cell { border-width: 0.2mm !important; border-style: solid !important; }
-.cell.bold-cell { border-width: 0.6mm !important; }
-.zone[data-color="groen"] .cell { border-color: #6fb36f !important; }
-.zone[data-color="geel"] .cell { border-color: #d9c46a !important; }
-.zone[data-color="paars"] .cell { border-color: #b69adf !important; }
-.zone[data-color="blauw"] .cell { border-color: #7faedc !important; }
-.zone[data-color="rood"] .cell { border-color: #f07f87 !important; }
+.cell { border-width: 0.26mm !important; border-style: solid !important; border-color: #000 !important; }
+.cell.bold-cell { border-width: 0.6mm !important; border-color: #000 !important; }
 .cell.portal-cell::after { content: "\\26f0"; opacity: 0.9; }
 
 /* Symbols: use a small dotted background to indicate color while saving ink */
