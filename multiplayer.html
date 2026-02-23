@@ -402,9 +402,18 @@
 
 					// State sync: wanneer host state verandert → update UI
 					host.onStateChanged = (state) => {
+						console.log('[P2P Adapter] onStateChanged, phase:', state?.phase, 'userId:', p2pMp.userId);
 						const prev = p2pMp.gameState;
 						p2pMp.gameState = state;
-						if (p2pMp.onGameStateChanged) p2pMp.onGameStateChanged(state, prev);
+						if (p2pMp.onGameStateChanged) {
+							try {
+								p2pMp.onGameStateChanged(state, prev);
+							} catch (err) {
+								console.error('[P2P Adapter] onGameStateChanged ERROR:', err);
+							}
+						} else {
+							console.warn('[P2P Adapter] onGameStateChanged is niet gezet!');
+						}
 					};
 
 					host.onPlayerJoined = (data) => {

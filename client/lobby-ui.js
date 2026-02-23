@@ -708,48 +708,57 @@ class LocusLobbyUI {
 	// ──────────────────────────────────────────
 
 	_onGoalPhase(choices) {
-		if (this._startDeckOverlay) {
-			this._startDeckOverlay.remove();
-			this._startDeckOverlay = null;
-		}
-		this._showScreen('goal-screen');
-		const container = this.elements['goal-choices-container'];
-		if (!container) return;
+		console.log('[Locus UI] _onGoalPhase called, choices:', choices?.length);
+		try {
+			if (this._startDeckOverlay) {
+				this._startDeckOverlay.remove();
+				this._startDeckOverlay = null;
+			}
+			this._showScreen('goal-screen');
+			const container = this.elements['goal-choices-container'];
+			if (!container) {
+				console.error('[Locus UI] goal-choices-container element niet gevonden!');
+				return;
+			}
 
-		const level = this.mp.gameState?.level || 1;
-		container.innerHTML = `
-			<h2 class="mp-section-title">Kies je Doelstelling — Level ${level}</h2>
-			<p class="mp-section-subtitle">Andere spelers zien niet welk doel jij kiest!</p>
-			<div class="mp-goal-grid">
-				${choices.map((goal, i) => `
-					<button class="mp-goal-card" data-index="${i}">
-						<div class="mp-goal-name">${this._escapeHtml(goal.name)}</div>
-						<div class="mp-goal-desc">${this._escapeHtml(goal.description)}</div>
-						<div class="mp-goal-points">🏆 ${goal.points || 15} punten</div>
-					</button>
-				`).join('')}
-			</div>
-		`;
+			const level = this.mp.gameState?.level || 1;
+			container.innerHTML = `
+				<h2 class="mp-section-title">Kies je Doelstelling — Level ${level}</h2>
+				<p class="mp-section-subtitle">Andere spelers zien niet welk doel jij kiest!</p>
+				<div class="mp-goal-grid">
+					${choices.map((goal, i) => `
+						<button class="mp-goal-card" data-index="${i}">
+							<div class="mp-goal-name">${this._escapeHtml(goal?.name || 'Onbekend doel')}</div>
+							<div class="mp-goal-desc">${this._escapeHtml(goal?.description || '')}</div>
+							<div class="mp-goal-points">🏆 ${goal?.points || 15} punten</div>
+						</button>
+					`).join('')}
+				</div>
+			`;
 
-		container.querySelectorAll('.mp-goal-card').forEach(btn => {
-			btn.addEventListener('click', async () => {
-				const index = Number(btn.dataset.index);
-				container.querySelectorAll('.mp-goal-card').forEach(b => b.disabled = true);
-				btn.classList.add('selected');
+			container.querySelectorAll('.mp-goal-card').forEach(btn => {
+				btn.addEventListener('click', async () => {
+					const index = Number(btn.dataset.index);
+					container.querySelectorAll('.mp-goal-card').forEach(b => b.disabled = true);
+					btn.classList.add('selected');
 
-				try {
-					await this.mp.chooseGoal(index);
-					this._showToast('Doelstelling gekozen! Wachten op andere spelers...', 'success');
-				} catch (err) {
-					this._showToast('Fout bij kiezen: ' + err.message, 'error');
-					container.querySelectorAll('.mp-goal-card').forEach(b => b.disabled = false);
-					btn.classList.remove('selected');
-				}
+					try {
+						await this.mp.chooseGoal(index);
+						this._showToast('Doelstelling gekozen! Wachten op andere spelers...', 'success');
+					} catch (err) {
+						this._showToast('Fout bij kiezen: ' + err.message, 'error');
+						container.querySelectorAll('.mp-goal-card').forEach(b => b.disabled = false);
+						btn.classList.remove('selected');
+					}
+				});
 			});
-		});
+		} catch (err) {
+			console.error('[Locus UI] _onGoalPhase ERROR:', err);
+		}
 	}
 
 	_onStartDeckPhase() {
+		console.log('[Locus UI] _onStartDeckPhase, userId:', this.mp.userId, 'inviteCode:', this.mp.inviteCode);
 		this._showWaitingRoom(this.mp.inviteCode || '???', this.mp.gameState?.hostPlayerId === this.mp.userId);
 		const myType = this.mp.gameState?.players?.[this.mp.userId]?.startingDeckType;
 		if (myType) {
@@ -3775,11 +3784,20 @@ class LocusLobbyUI {
 			const myPlayer = state.players?.[this.mp.userId];
 			if (myPlayer?.chosenObjective) {
 				// Al gekozen, wacht op andere spelers
+				console.log('[Locus UI] Goal al gekozen, wacht op anderen');
 				this._showScreen('goal-screen');
 				const container = this.elements['goal-choices-container'];
 				if (container) container.innerHTML = '<h2 class="mp-section-title">Doelstelling gekozen!</h2><p class="mp-section-subtitle">Wachten op andere spelers...</p>';
 			} else if (myChoices && myChoices.length > 0) {
 				this._onGoalPhase(myChoices);
+			} else {
+				console.warn('[Locus UI] choosingGoals maar GEEN choices gevonden voor userId:', this.mp.userId,
+					'| objectiveChoices:', JSON.stringify(state.objectiveChoices ? Object.keys(state.objectiveChoices) : 'null'),
+					'| players keys:', Object.keys(state.players || {}));
+				// Forceer toch naar goal-screen zodat de UI niet vasthangt
+				this._showScreen('goal-screen');
+				const container = this.elements['goal-choices-container'];
+				if (container) container.innerHTML = '<h2 class="mp-section-title">Wachten op doelstellingen...</h2>';
 			}
 		}
 		if (state.phase === 'playing') {

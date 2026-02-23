@@ -108,8 +108,8 @@ class LocusP2PHost {
 			try {
 				this._handleMessage(conn, data);
 			} catch (err) {
-				console.error('[P2P Host] Message error:', err);
-				conn.send({ type: 'error', error: err.message });
+				console.error('[P2P Host] Message handling error:', err, '| msg type:', data?.type);
+				try { conn.send({ type: 'error', error: err.message }); } catch (e) { /* ignore */ }
 			}
 		});
 
@@ -348,6 +348,7 @@ class LocusP2PHost {
 
 	/** Host speelt zelf een actie (roep direct de game rules aan) */
 	hostAction(type, data = {}) {
+		console.log('[P2P Host] hostAction:', type, data);
 		const playerId = this.hostPlayerId;
 		let result;
 
@@ -453,6 +454,7 @@ class LocusP2PHost {
 				result = { error: 'Onbekende actie: ' + type };
 		}
 
+		console.log('[P2P Host] hostAction result:', type, '→ phase:', this.gameState?.phase, 'result:', JSON.stringify(result)?.slice(0, 200));
 		this._broadcastState();
 		return result;
 	}
@@ -495,7 +497,11 @@ class LocusP2PHost {
 	_broadcastState() {
 		// Stuur naar host UI
 		if (this.onStateChanged) {
-			this.onStateChanged(this._sanitizeForPlayer(this.hostPlayerId));
+			try {
+				this.onStateChanged(this._sanitizeForPlayer(this.hostPlayerId));
+			} catch (err) {
+				console.error('[P2P Host] onStateChanged error:', err);
+			}
 		}
 
 		// Stuur naar alle gasten (per-speler gesanitized)
