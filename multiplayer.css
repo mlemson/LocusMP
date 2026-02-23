@@ -3549,6 +3549,8 @@ body.mp-placing * {
 
 .mp-startdeck-modal {
 	width: min(720px, 96vw);
+	max-height: min(84vh, 760px);
+	overflow: auto;
 }
 
 .mp-startdeck-subtitle {
@@ -3589,6 +3591,33 @@ body.mp-placing * {
 	font-size: 0.8rem;
 	font-weight: 600;
 	color: var(--mp-text-dim);
+}
+
+@media (max-width: 860px) {
+	.mp-startdeck-modal {
+		width: min(680px, 94vw);
+		padding: 14px;
+	}
+
+	.mp-startdeck-cards {
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+	}
+}
+
+@media (max-width: 560px) {
+	.mp-startdeck-modal {
+		width: min(520px, 92vw);
+		padding: 12px;
+	}
+
+	.mp-startdeck-cards {
+		grid-template-columns: 1fr;
+		gap: 8px;
+	}
+
+	.mp-startdeck-card {
+		min-height: 92px;
+	}
 }
 
 /* ══════════════════════════════════════════════

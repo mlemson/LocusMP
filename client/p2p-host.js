@@ -148,6 +148,18 @@ class LocusP2PHost {
 		switch (msg.type) {
 			case 'joinGame': {
 				const name = String(msg.playerName || 'Speler').slice(0, 20);
+				const reconnectPlayerId = msg.reconnectPlayerId ? String(msg.reconnectPlayerId) : null;
+				if (reconnectPlayerId && this.gameState.players[reconnectPlayerId]) {
+					const reconnectPlayer = this.gameState.players[reconnectPlayerId];
+					if (reconnectPlayer.connected === false) {
+						reconnectPlayer.connected = true;
+						if (name) reconnectPlayer.name = name;
+						this.playerMap.set(conn.peer, reconnectPlayerId);
+						conn.send({ type: 'joinResult', success: true, playerId: reconnectPlayerId, roomCode: this.roomCode, reconnected: true });
+						this._broadcastState();
+						break;
+					}
+				}
 				const pid = 'P_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
 				const result = this.Rules.addPlayer(this.gameState, pid, name);
 				if (result.error) {
@@ -511,10 +523,7 @@ class LocusP2PHost {
 		const sanitized = JSON.parse(JSON.stringify(this.gameState));
 		for (const pid of Object.keys(sanitized.players)) {
 			if (pid !== playerId) {
-				sanitized.players[pid].hand = sanitized.players[pid].hand.map(c => ({
-					hidden: true, colorCode: c.color?.code || '#666',
-					category: c.category || 'standard', matrix: c.matrix || null, shapeName: c.shapeName || ''
-				}));
+				// Laat hand zichtbaar voor tegenstanders (gevraagd UX-gedrag)
 				sanitized.players[pid].drawPile = Array.isArray(sanitized.players[pid].drawPile)
 					? sanitized.players[pid].drawPile.length : 0;
 				sanitized.players[pid].discardPile = Array.isArray(sanitized.players[pid].discardPile)
@@ -713,6 +722,7 @@ class LocusP2PGuest {
 	}
 
 	async joinGame(playerName, roomCode) {
+		const options = arguments[2] || {};
 		this.roomCode = roomCode.toUpperCase().trim();
 		const hostPeerId = `locus-${this.roomCode}`;
 
@@ -733,7 +743,7 @@ class LocusP2PGuest {
 				conn.on('data', (data) => this._handleMessage(data));
 
 				// Stuur join request
-				conn.send({ type: 'joinGame', playerName });
+				conn.send({ type: 'joinGame', playerName, reconnectPlayerId: options.reconnectPlayerId || null });
 
 				// Wacht op joinResult
 				const joinHandler = (msg) => {
@@ -742,6 +752,12 @@ class LocusP2PGuest {
 						if (msg.success) {
 							this.userId = msg.playerId;
 							this.inviteCode = msg.roomCode;
+							try {
+								sessionStorage.setItem('locus_p2p_role', 'guest');
+								sessionStorage.setItem('locus_p2p_roomCode', this.roomCode);
+								sessionStorage.setItem('locus_p2p_playerId', this.userId);
+								sessionStorage.setItem('locus_p2p_userName', playerName);
+							} catch (_) {}
 							resolve({ gameId: 'p2p-' + msg.roomCode, playerId: msg.playerId });
 						} else {
 							reject(new Error(msg.error || 'Joinen mislukt'));

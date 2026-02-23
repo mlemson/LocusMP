@@ -796,13 +796,13 @@ function spawnBonusesAfterRoundFour(gameState, options = {}) {
 
 	let spawnCount;
 	if (isRoundStart) {
-		if (world === 1) spawnCount = round >= 8 ? 8 : 6;
-		else if (world === 2) spawnCount = round >= 8 ? 12 : 9;
-		else spawnCount = round >= 8 ? 16 : 12;
+		if (world === 1) spawnCount = round >= 8 ? 5 : 4;
+		else if (world === 2) spawnCount = round >= 8 ? 7 : 6;
+		else spawnCount = round >= 8 ? 9 : 8;
 	} else {
-		if (world === 1) spawnCount = 2;
-		else if (world === 2) spawnCount = 3;
-		else spawnCount = 4;
+		if (world === 1) spawnCount = 1;
+		else if (world === 2) spawnCount = 2;
+		else spawnCount = 2;
 	}
 	const seed = (gameState.seed | 0)
 		^ (round * 4093)
@@ -2397,6 +2397,7 @@ function chooseStartingDeck(gameState, playerId, deckType) {
 	gameState.updatedAt = Date.now();
 
 	const allChosen = gameState.playerOrder.every(pid => {
+		if (gameState.players[pid]?.connected === false) return true;
 		const type = gameState.players[pid]?.startingDeckType;
 		return !!normalizeStartingDeckType(type);
 	});
@@ -2419,9 +2420,10 @@ function chooseObjective(gameState, playerId, objectiveIndex) {
 	player.chosenObjective = { ...choices[objectiveIndex] };
 	gameState.updatedAt = Date.now();
 
-	const allChosen = gameState.playerOrder.every(pid =>
-		gameState.players[pid]?.chosenObjective != null
-	);
+	const allChosen = gameState.playerOrder.every(pid => {
+		if (gameState.players[pid]?.connected === false) return true;
+		return gameState.players[pid]?.chosenObjective != null;
+	});
 
 	if (allChosen) {
 		for (const pid of gameState.playerOrder) {
@@ -2711,25 +2713,6 @@ function passMove(gameState, playerId, cardId) {
 		const discardedCard = player.hand.splice(discardIndex, 1)[0];
 		player.discardPile.push(discardedCard);
 
-		// Bij pass ook: 1 extra kaart naar discardPile als spanning-mechanic
-		if (player.hand.length > 0) {
-			const sacrificedCard = player.hand.splice(0, 1)[0];
-			player.discardPile.push(sacrificedCard);
-			gameState.moveHistory.push({
-				playerId,
-				autoSacrifice: true,
-				cardSacrificed: sacrificedCard?.id || null,
-				turnCount: gameState.turnCount,
-				timestamp: Date.now()
-			});
-		}
-
-		// Resterende kaarten terug in drawPile
-		if (player.hand.length > 0) {
-			player.drawPile.push(...player.hand);
-			player.hand = [];
-		}
-
 		gameState.moveHistory.push({
 			playerId,
 			pass: true,
@@ -2774,14 +2757,9 @@ function endTurn(gameState, playerId, discardCardId = null) {
 	// Initialiseer discardPile als die nog niet bestaat
 	if (!Array.isArray(player.discardPile)) player.discardPile = [];
 
-	// ── CARD DISCARD MECHANIC ──
-	// Na het spelen van een kaart (of niet): verwerk resterende hand.
-	// - Als je een kaart gespeeld hebt:
-	//   * 1 resterende kaart → naar discardPile (extra spanning)
-	//   * 2+ resterende kaarten → 1 naar discardPile, rest terug naar drawPile
-	// - Als je GEEN kaart gespeeld hebt:
-	//   * auto-discard eerste niet-gouden kaart als pass (bestaand gedrag)
-	//   * daarna ook 1 extra naar discardPile als er nog kaarten over zijn
+	// ── TURN-END DISCARD MECHANIC ──
+	// Als er GEEN kaart gespeeld is: discard 1 niet-gouden kaart (pass-achtig).
+	// Als er WEL een kaart gespeeld is: laat resterende handkaarten actief in de hand.
 
 	const nonGoldenCards = player.hand.filter(c => !c.isGolden);
 	if (!gameState._cardPlayedThisTurn && nonGoldenCards.length > 0) {
@@ -2809,26 +2787,7 @@ function endTurn(gameState, playerId, discardCardId = null) {
 		}
 	}
 
-	// ── Verwerk resterende hand: 1 kaart verdwijnt naar aflegstapel, rest terug in deck ──
-	if (player.hand.length > 0) {
-		// 1 kaart naar discardPile (de "verloren" kaart voor spanning)
-		const sacrificeIndex = 0; // eerste overgebleven kaart offeren
-		const sacrificedCard = player.hand.splice(sacrificeIndex, 1)[0];
-		player.discardPile.push(sacrificedCard);
-		gameState.moveHistory.push({
-			playerId,
-			autoSacrifice: true,
-			cardSacrificed: sacrificedCard?.id || null,
-			turnCount: gameState.turnCount,
-			timestamp: Date.now()
-		});
-
-		// Resterende kaarten terug in de drawPile (bovenop, zodat ze later weer getrokken worden)
-		if (player.hand.length > 0) {
-			player.drawPile.push(...player.hand);
-			player.hand = [];
-		}
-	}
+	// Resterende hand blijft actief (niet automatisch sacrificen of terugstorten)
 
 	// Als bonus-only beurt en geen bonusmoves gedaan: forfeit alle bonussen
 	if (player.hand.length === 0 && player.drawPile.length === 0) {
@@ -3416,7 +3375,10 @@ function shopReady(gameState, playerId) {
 	player.shopReady = true;
 	gameState.updatedAt = Date.now();
 
-	const allReady = gameState.playerOrder.every(pid => gameState.players[pid].shopReady);
+	const allReady = gameState.playerOrder.every(pid => {
+		if (gameState.players[pid]?.connected === false) return true;
+		return !!gameState.players[pid]?.shopReady;
+	});
 	return { success: true, allReady };
 }
 

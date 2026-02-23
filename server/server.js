@@ -195,14 +195,7 @@ function sanitizeGameStateForPlayer(gameState, playerId) {
 
 	for (const pid of Object.keys(sanitized.players)) {
 		if (pid !== playerId) {
-			// Verberg hand maar stuur wel het aantal, kleuren en vormen (voor opponent panel)
-			sanitized.players[pid].hand = sanitized.players[pid].hand.map(c => ({
-				hidden: true,
-				colorCode: c.color?.code || '#666',
-				category: c.category || 'standard',
-				matrix: c.matrix || null,
-				shapeName: c.shapeName || ''
-			}));
+			// Laat hand zichtbaar voor tegenstanders (gevraagd UX-gedrag)
 			sanitized.players[pid].drawPile = Array.isArray(sanitized.players[pid].drawPile)
 				? sanitized.players[pid].drawPile.length
 				: (sanitized.players[pid].drawPile || 0);

@@ -310,6 +310,7 @@
 			// P2P knoppen beschikbaar als PeerJS geladen is
 			if (hasPeerJS) {
 				_setupP2PButtons(mp);
+				await _tryAutoReconnectP2P(hasSocketIO);
 			} else {
 				// Geen PeerJS en geen Socket.IO → toon foutmelding
 				if (!hasSocketIO) {
@@ -321,6 +322,47 @@
 						lobbyCard.appendChild(msg);
 					}
 				}
+			}
+		}
+
+		async function _tryAutoReconnectP2P(hasSocketIO) {
+			if (hasSocketIO) return;
+			if (typeof Peer === 'undefined') return;
+
+			let role = null;
+			let roomCode = null;
+			let playerId = null;
+			let userName = null;
+			try {
+				role = sessionStorage.getItem('locus_p2p_role');
+				roomCode = sessionStorage.getItem('locus_p2p_roomCode');
+				playerId = sessionStorage.getItem('locus_p2p_playerId');
+				userName = sessionStorage.getItem('locus_p2p_userName');
+			} catch (_) {
+				return;
+			}
+
+			if (role !== 'guest' || !roomCode || !userName) return;
+
+			try {
+				const guest = new LocusP2PGuest();
+				await guest.init();
+				const result = await guest.joinGame(userName, roomCode, { reconnectPlayerId: playerId || null });
+
+				guest.userName = userName;
+				guest.gameId = result.gameId;
+				guest.inviteCode = roomCode;
+
+				const ui = new LocusLobbyUI(guest);
+				ui.init();
+				ui._showWaitingRoom(roomCode, false);
+				if (guest.gameState) ui.handleReconnect();
+
+				window._mp = guest;
+				window._ui = ui;
+				console.log('[Locus] P2P auto-reconnect geslaagd');
+			} catch (err) {
+				console.warn('[Locus] P2P auto-reconnect mislukt:', err.message || err);
 			}
 		}
 
@@ -399,6 +441,12 @@
 					window._mp = p2pMp;
 					window._ui = ui;
 					window._p2pHost = host;
+					try {
+						sessionStorage.setItem('locus_p2p_role', 'host');
+						sessionStorage.setItem('locus_p2p_roomCode', result.roomCode);
+						sessionStorage.setItem('locus_p2p_playerId', host.hostPlayerId);
+						sessionStorage.setItem('locus_p2p_userName', name);
+					} catch (_) {}
 
 					// State sync: wanneer host state verandert → update UI
 					host.onStateChanged = (state) => {
@@ -492,6 +540,12 @@
 
 					window._mp = guest;
 					window._ui = ui;
+					try {
+						sessionStorage.setItem('locus_p2p_role', 'guest');
+						sessionStorage.setItem('locus_p2p_roomCode', code);
+						sessionStorage.setItem('locus_p2p_playerId', result.playerId);
+						sessionStorage.setItem('locus_p2p_userName', name);
+					} catch (_) {}
 
 				} catch (err) {
 					joinBtn.disabled = false;
