@@ -3101,7 +3101,7 @@ function checkGameEnd(gameState) {
 const SHOP_ITEMS = [
 	{ id: 'extra-bonus', name: 'Bonus Charge', description: 'Krijg een bonus charge naar keuze (eenmalig)', cost: 2, icon: '⚡', oneTimePerLevel: true },
 	{ id: 'random-card', name: 'Random Kaart', description: 'Ontvang direct 1 willekeurige kaart voor je volgende level (eenmalig)', cost: 1, icon: '🎲', oneTimePerLevel: true },
-	{ id: 'time-bomb', name: 'Tijdbom', description: 'Stop de beurt van een andere speler direct! (eenmalig)', cost: 2, icon: '💣' },
+	{ id: 'time-bomb', name: 'Tijdbom', description: 'Stop de beurt van een andere speler direct! (eenmalig)', cost: 2, icon: '💣', oneTimePerLevel: true },
 	{ id: 'unlock-golden', name: 'Gouden Kaarten', description: 'Unlock gouden kaarten (wildcard, elke zone)', cost: 10, icon: '✨', unlockOnly: true, minLevel: 3 },
 	{ id: 'unlock-multikleur', name: 'Multikleur Kaarten', description: 'Unlock multikleur kaarten (elke zone)', cost: 10, icon: '🌈', unlockOnly: true, minLevel: 3 },
 	{ id: 'unlock-steen', name: 'Steen Vormen', description: 'Kies 1 van 3 steen vormen die aangrenzende plaatsing blokkeren', cost: 10, icon: '🪨', unlockOnly: true, minLevel: 3, reappearLevel: 8 },

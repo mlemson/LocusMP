@@ -1126,22 +1126,24 @@ class LocusLobbyUI {
 			const isCurrentTurn = this.mp.gameState.playerOrder[this.mp.gameState.currentTurnIndex] === opp.id;
 			const cardsPlayed = opp.cardsPlayed || 0;
 			const selection = this._activeSelections[opp.id] || null;
-			const selectionHtml = selection
-				? `<div class="mp-opp-selection">${selection.mode === 'bonus' ? '⚡ Bonus geselecteerd' : `🃏 Geselecteerd: ${this._escapeHtml(selection.cardName || 'kaart')}`}</div>`
-				: '';
+			const selectedCardId = (selection && selection.mode === 'card') ? (selection.cardId || null) : null;
+			const selectedCardName = (selection && selection.mode === 'card') ? (selection.cardName || null) : null;
 
 			// Hand kaarten als mini-cards met vorm
 			const handCards = hand.map(c => {
 				const colorCode = c.colorCode || c.color?.code || '#555';
+				const isSelected = selectedCardId
+					? c.id === selectedCardId
+					: (selectedCardName ? c.shapeName === selectedCardName : false);
 				if (c.matrix) {
 					// Toon de vorm als mini-grid
 					const miniGrid = this._renderMiniGrid(c.matrix, { code: colorCode });
-					return `<div class="mp-opp-card-detail" title="${this._escapeHtml(c.shapeName || c.category || '?')}">
+					return `<div class="mp-opp-card-detail ${isSelected ? 'is-selected-by-player' : ''}" title="${this._escapeHtml(c.shapeName || c.category || '?')}">
 						<div class="mp-opp-card-shape">${miniGrid}</div>
 						${c.shapeName ? `<div class="mp-opp-card-label">${this._escapeHtml(c.shapeName)}</div>` : ''}
 					</div>`;
 				}
-				return `<div class="mp-opp-card-mini" style="background:${colorCode}" title="${c.category || '?'}"></div>`;
+				return `<div class="mp-opp-card-mini ${isSelected ? 'is-selected-by-player' : ''}" style="background:${colorCode}" title="${c.category || '?'}"></div>`;
 			}).join('');
 
 			// Objective
@@ -1195,7 +1197,6 @@ class LocusLobbyUI {
 						<span title="Totaal kaarten over">🃏 ${totalCards}</span>
 						<span title="Kaarten gespeeld">✅ ${cardsPlayed} gespeeld</span>
 					</div>
-					${selectionHtml}
 					${objectiveHtml}
 				</div>
 			`;
@@ -1552,6 +1553,7 @@ class LocusLobbyUI {
 		this._createGhost(e);
 		this._sendInteraction('start', {
 			mode: 'card',
+			cardId: card.id,
 			cardName: card.shapeName,
 			colorCode: card.color?.code || null,
 			matrix: this._dragState.matrix
@@ -1680,7 +1682,7 @@ class LocusLobbyUI {
 	_onPlacementPointerUpCancel = (e) => {
 		if (!this._isDragging || !this._dragState) return;
 
-		const isTouchLikeRelease = e.pointerType === 'touch' || e.pointerType === 'pen' || this._isTouchLikeDevice();
+		const isTouchLikeRelease = e.pointerType === 'touch' || e.pointerType === 'pen';
 		if (isTouchLikeRelease) {
 			// Mobiel: plaats direct op release als preview geldig is; annuleer niet agressief op loslaten.
 			if (this._attemptPlacementFromCurrentPreview()) return;
@@ -2731,7 +2733,7 @@ class LocusLobbyUI {
 	_onBonusPointerUpCancel = (e) => {
 		if (!this._bonusMode) return;
 
-		const isTouchLikeRelease = e.pointerType === 'touch' || e.pointerType === 'pen' || this._isTouchLikeDevice();
+		const isTouchLikeRelease = e.pointerType === 'touch' || e.pointerType === 'pen';
 		if (isTouchLikeRelease) {
 			const hasPreview = Number.isFinite(this._lastBonusBaseX)
 				&& Number.isFinite(this._lastBonusBaseY)
@@ -2762,6 +2764,7 @@ class LocusLobbyUI {
 		if (type === 'start') {
 			this._activeSelections[this.mp.userId] = {
 				mode: payload.mode || 'card',
+				cardId: payload.cardId || null,
 				cardName: payload.cardName || null,
 				updatedAt: Date.now()
 			};
@@ -2795,6 +2798,7 @@ class LocusLobbyUI {
 		if (data.type === 'start') {
 			this._activeSelections[data.playerId] = {
 				mode: data.mode || 'card',
+				cardId: data.cardId || null,
 				cardName: data.cardName || null,
 				updatedAt: Date.now()
 			};
@@ -2821,6 +2825,7 @@ class LocusLobbyUI {
 		if (!this._activeSelections[data.playerId]) {
 			this._activeSelections[data.playerId] = {
 				mode: data.mode || 'card',
+				cardId: data.cardId || null,
 				cardName: data.cardName || null,
 				updatedAt: Date.now()
 			};
