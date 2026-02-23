@@ -1565,11 +1565,10 @@ class LocusLobbyUI {
 		// Board in placement mode
 		const board = document.querySelector('.mp-board');
 		if (board) board.classList.add('placement-mode');
-		this._scrollMobileBoardToZone(bonusColor, true);
 
 		// Touch/coarse: spring direct naar de bijbehorende kleur-zone bij single-color kaarten
 		const allowedZones = Rules.getAllowedZones(card);
-		if (allowedZones.length === 1) {
+		if (allowedZones.length === 1 && (e.pointerType === 'touch' || e.pointerType === 'pen' || this._isTouchLikeDevice())) {
 			this._scrollMobileBoardToZone(allowedZones[0], true);
 		}
 
