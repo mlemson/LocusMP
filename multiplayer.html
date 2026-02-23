@@ -222,17 +222,20 @@
 		}
 	</script>
 
-	<!-- Socket.IO client (alleen laden als we via de Locus-server draaien) -->
+	<!-- Socket.IO client (alleen laden als we via de Locus Node.js server draaien) -->
 	<script>
 		(function() {
-			// Alleen Socket.IO laden als de pagina geserved wordt door de Locus Node.js server
-			// Bij file://, andere dev servers of static hosting is socket.io niet beschikbaar
-			if (window.location.protocol === 'file:') return;
+			var host = window.location.hostname || '';
+			var proto = window.location.protocol || '';
+			// Skip Socket.IO op file://, GitHub Pages, Netlify, Vercel, en andere static hosts
+			if (proto === 'file:') return;
+			if (host.endsWith('.github.io')) return;
+			if (host.endsWith('.netlify.app')) return;
+			if (host.endsWith('.vercel.app')) return;
+			if (host.endsWith('.pages.dev')) return;
 			var s = document.createElement('script');
 			s.src = '/socket.io/socket.io.js';
-			s.onerror = function() {
-				// Stille fout — P2P modus is beschikbaar als alternatief
-			};
+			s.onerror = function() { /* P2P modus beschikbaar als alternatief */ };
 			document.head.appendChild(s);
 		})();
 	</script>
@@ -410,6 +413,20 @@
 
 					host.onPlayerLeft = (playerId) => {
 						if (p2pMp.onPlayerLeft) p2pMp.onPlayerLeft(playerId);
+					};
+
+					// Event forwarding: host ontvangt ook events zoals levelComplete, movePlayed etc.
+					host.onEvent = (eventType, data) => {
+						switch (eventType) {
+							case 'movePlayed': if (p2pMp.onMovePlayed) p2pMp.onMovePlayed(data); break;
+							case 'levelComplete': if (p2pMp.onLevelComplete) p2pMp.onLevelComplete(data.levelScores, data.levelWinner, data.level); break;
+							case 'nextLevelStarted': if (p2pMp.onNextLevel) p2pMp.onNextLevel(data.level); break;
+							case 'gameEnded': if (p2pMp.onGameEnded) p2pMp.onGameEnded(data); break;
+							case 'timeBombUsed': if (p2pMp.onTimeBombed) p2pMp.onTimeBombed(data); break;
+							case 'opponentInteraction': if (p2pMp.onOpponentInteraction) p2pMp.onOpponentInteraction(data); break;
+							case 'taunt': if (p2pMp.onTaunt) p2pMp.onTaunt(data); break;
+							case 'pauseChanged': if (p2pMp.onPauseChanged) p2pMp.onPauseChanged(data); break;
+						}
 					};
 
 				} catch (err) {

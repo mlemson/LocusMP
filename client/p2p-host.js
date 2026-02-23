@@ -518,7 +518,10 @@ class LocusP2PHost {
 			try { conn.send(msg); } catch (e) { /* skip */ }
 		}
 
-		// Host UI krijgt events via onStateChanged (al afgehandeld)
+		// Host UI krijgt events via onEvent callback
+		if (this.onEvent) {
+			try { this.onEvent(eventType, data); } catch (e) { console.error('[P2P Host] onEvent error:', e); }
+		}
 	}
 
 	_broadcastEventExcept(excludePeerId, eventType, data) {
@@ -526,6 +529,10 @@ class LocusP2PHost {
 		for (const [peerId, conn] of this.connections) {
 			if (peerId === excludePeerId) continue;
 			try { conn.send(msg); } catch (e) { /* skip */ }
+		}
+		// Host UI ontvangt ook events van gasten
+		if (this.onEvent) {
+			try { this.onEvent(eventType, data); } catch (e) { /* skip */ }
 		}
 	}
 

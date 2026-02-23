@@ -3736,6 +3736,9 @@ class LocusLobbyUI {
 	// ──────────────────────────────────────────
 
 	_onGameStateChanged(state, prevState) {
+		if (state.phase !== prevState?.phase) {
+			console.log('[Locus UI] Phase transition:', prevState?.phase, '→', state.phase);
+		}
 		try { this._checkBonusSpawnNotifications(state, prevState); } catch (e) { console.error('[Locus UI] bonus spawn notification error:', e); }
 		if (state.phase === 'playing') {
 			this._syncTurnTimerFromState(state);
@@ -3759,6 +3762,9 @@ class LocusLobbyUI {
 			this._onStartDeckPhase();
 		}
 		if (state.phase === 'choosingGoals') {
+			console.log('[Locus UI] choosingGoals detected, userId:', this.mp.userId,
+				'objectiveChoices keys:', Object.keys(state.objectiveChoices || {}),
+				'myChoices:', state.objectiveChoices?.[this.mp.userId]?.length || 0);
 			// Verberg startdeck overlay als die er nog is
 			if (this._startDeckOverlay) {
 				this._startDeckOverlay.remove();
