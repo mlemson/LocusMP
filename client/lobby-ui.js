@@ -562,7 +562,16 @@ class LocusLobbyUI {
 
 	async _handleUndo() {
 		if (!this.mp.isMyTurn()) return;
-		if (!this.mp.gameState?._cardPlayedThisTurn) {
+		const undoData = this.mp.gameState?._turnUndoData;
+		const canUndo = !!(
+			undoData &&
+			undoData.playerId === this.mp.userId &&
+			(
+				(Array.isArray(undoData.bonusMoves) && undoData.bonusMoves.length > 0) ||
+				(Array.isArray(undoData.placedCells) && undoData.placedCells.length > 0)
+			)
+		);
+		if (!canUndo) {
 			this._showToast('Niets om ongedaan te maken', 'info');
 			return;
 		}
@@ -929,14 +938,12 @@ class LocusLobbyUI {
 					? (cardPlayed ? '🎯 Speel bonussen of beëindig beurt!' : '🎯 Jouw beurt!')
 					: `⏳ ${this._escapeHtml(current?.name || '???')} is aan zet`)}
 			</div>
-			${(!isMyTurn || goldCoins > 0) ? `
+			${!isPaused ? `
 				<div class="mp-turn-meta-row">
-					${!isMyTurn ? `
-						<div class="mp-turn-inline-timer">
-							<div class="mp-timer-bar"><div class="mp-timer-fill"></div></div>
-							<span class="mp-timer-text">40s</span>
-						</div>
-					` : ''}
+					<div class="mp-turn-inline-timer">
+						<div class="mp-timer-bar"><div class="mp-timer-fill"></div></div>
+						<span class="mp-timer-text">40s</span>
+					</div>
 					${goldCoins > 0 ? `<div class="mp-gold-counter">💰 ${goldCoins} goud</div>` : ''}
 				</div>
 			` : ''}
@@ -958,6 +965,15 @@ class LocusLobbyUI {
 		if (isMyTurn) {
 			const hand = this.mp.getMyHand();
 			const hasCards = hand && hand.length > 0;
+			const undoData = this.mp.gameState?._turnUndoData;
+			const canUndo = !!(
+				undoData &&
+				undoData.playerId === this.mp.userId &&
+				(
+					(Array.isArray(undoData.bonusMoves) && undoData.bonusMoves.length > 0) ||
+					(Array.isArray(undoData.placedCells) && undoData.placedCells.length > 0)
+				)
+			);
 
 			// Start timer altijd wanneer het mijn beurt is
 			if (!this._turnTimerInterval) this._startTurnTimer();
@@ -966,17 +982,17 @@ class LocusLobbyUI {
 				// Na kaart geplaatst: End Turn + Undo, geen Pas
 				if (passBtn) passBtn.style.display = 'none';
 				if (endTurnBtn) endTurnBtn.style.display = 'inline-flex';
-				if (undoBtn) undoBtn.style.display = 'inline-flex';
+				if (undoBtn) undoBtn.style.display = canUndo ? 'inline-flex' : 'none';
 			} else if (!hasCards) {
-				// Bonus-only beurt: End Turn, geen Pas/Undo
+				// Bonus-only beurt: End Turn, Undo alleen na bonusplaatsing
 				if (passBtn) passBtn.style.display = 'none';
 				if (endTurnBtn) endTurnBtn.style.display = 'inline-flex';
-				if (undoBtn) undoBtn.style.display = 'none';
+				if (undoBtn) undoBtn.style.display = canUndo ? 'inline-flex' : 'none';
 			} else {
 				// Nog geen kaart gespeeld: Pas beschikbaar + End Turn
 				if (passBtn) passBtn.style.display = 'inline-flex';
 				if (endTurnBtn) endTurnBtn.style.display = 'none';
-				if (undoBtn) undoBtn.style.display = 'none';
+				if (undoBtn) undoBtn.style.display = canUndo ? 'inline-flex' : 'none';
 			}
 		} else {
 			if (passBtn) passBtn.style.display = 'none';
@@ -997,7 +1013,7 @@ class LocusLobbyUI {
 		if (!container) return;
 
 		const scoreboard = this.mp.getScoreboard();
-		const sorted = [...scoreboard].sort((a, b) => b.score - a.score);
+		const sorted = [...scoreboard];
 
 		container.innerHTML = sorted.map((p, rank) => {
 			const bd = p.scoreBreakdown || {};
@@ -1074,7 +1090,6 @@ class LocusLobbyUI {
 		}
 
 		const unifiedPlayers = this.mp.getScoreboard()
-			.sort((a, b) => b.score - a.score)
 			.map((sb, rank) => {
 				const p = this.mp.gameState.players[sb.id] || {};
 				return {
@@ -2398,8 +2413,15 @@ class LocusLobbyUI {
 					}
 				}
 				if (!valid) {
-					this._showToast('Ongeldige positie', 'warning');
-					return;
+					const sameZone = this._lastBonusZone === zoneName && (this._lastBonusSubgridId || null) === (subgridId || null);
+					const hasFallback = sameZone && Number.isFinite(this._lastBonusBaseX) && Number.isFinite(this._lastBonusBaseY);
+					if (hasFallback) {
+						baseX = this._lastBonusBaseX;
+						baseY = this._lastBonusBaseY;
+					} else {
+						this._showToast('Ongeldige positie', 'warning');
+						return;
+					}
 				}
 			}
 
@@ -2537,6 +2559,7 @@ class LocusLobbyUI {
 		}
 		try {
 			const result = await this.mp.playBonus(this._bonusMode.color, zoneName, baseX, baseY, subgridId, this._bonusMode.rotation || 0);
+			if (result?.error) throw new Error(result.error);
 			if (result?.success) {
 				this._playPlaceSound();
 				let msg = 'Bonus geplaatst! ✓';
@@ -2546,7 +2569,43 @@ class LocusLobbyUI {
 				this._cancelBonusMode();
 			}
 		} catch (err) {
-			this._showToast('Bonus mislukt: ' + err.message, 'error');
+			const fallbackZone = this._lastBonusZone;
+			const fallbackSubgrid = this._lastBonusSubgridId || null;
+			const fallbackX = this._lastBonusBaseX;
+			const fallbackY = this._lastBonusBaseY;
+			const hasFallback =
+				fallbackZone === zoneName &&
+				Number.isFinite(fallbackX) &&
+				Number.isFinite(fallbackY) &&
+				(fallbackX !== baseX || fallbackY !== baseY || fallbackSubgrid !== (subgridId || null));
+
+			if (hasFallback) {
+				try {
+					const fallbackResult = await this.mp.playBonus(
+						this._bonusMode.color,
+						fallbackZone,
+						fallbackX,
+						fallbackY,
+						fallbackSubgrid,
+						this._bonusMode.rotation || 0
+					);
+					if (fallbackResult?.error) throw new Error(fallbackResult.error);
+					if (fallbackResult?.success) {
+						this._playPlaceSound();
+						let msg = 'Bonus geplaatst! ✓';
+						if (fallbackResult.goldCollected) msg += ` (${fallbackResult.goldCollected}x goud!)`;
+						if (fallbackResult.bonusesCollected?.length) msg += ` (+${fallbackResult.bonusesCollected.length} bonus!)`;
+						this._showToast(msg, 'success');
+						this._cancelBonusMode();
+						return;
+					}
+				} catch (fallbackErr) {
+					this._showToast('Bonus mislukt: ' + (fallbackErr.message || fallbackErr), 'error');
+					return;
+				}
+			}
+
+			this._showToast('Bonus mislukt: ' + (err.message || err), 'error');
 		}
 	}
 

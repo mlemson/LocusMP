@@ -118,6 +118,20 @@ class LocusP2PHost {
 			const playerId = this.playerMap.get(conn.peer);
 			if (playerId && this.gameState?.players[playerId]) {
 				this.gameState.players[playerId].connected = false;
+				const currentPid = this.gameState.playerOrder?.[this.gameState.currentTurnIndex];
+				if (this.gameState.phase === 'playing' && currentPid === playerId) {
+					this._clearTimer();
+					const autoResult = this.Rules.passMove(this.gameState, playerId, null);
+					if (autoResult?.gameEnded) {
+						this._broadcastEvent('levelComplete', {
+							levelScores: this.gameState.levelScores,
+							levelWinner: this.gameState.levelWinner,
+							level: this.gameState.level
+						});
+					} else {
+						this._startTimerForCurrentPlayer();
+					}
+				}
 				if (this.onPlayerLeft) this.onPlayerLeft(playerId);
 				this._broadcastState();
 			}
@@ -335,8 +349,40 @@ class LocusP2PHost {
 			case 'playerInteraction': {
 				if (!playerId) return;
 				const playerName = this.gameState.players[playerId]?.name || 'Speler';
+				const interactionType = msg.interactionType || msg.interaction || 'move';
 				this._broadcastEventExcept(conn.peer, 'opponentInteraction', {
-					...msg, playerId, playerName
+					type: interactionType,
+					mode: msg.mode,
+					zoneName: msg.zoneName,
+					baseX: msg.baseX,
+					baseY: msg.baseY,
+					subgridId: msg.subgridId || null,
+					matrix: msg.matrix,
+					cardName: msg.cardName,
+					colorCode: msg.colorCode,
+					playerId,
+					playerName
+				});
+				break;
+			}
+
+			case 'start':
+			case 'move':
+			case 'end': {
+				if (!playerId) return;
+				const playerName = this.gameState.players[playerId]?.name || 'Speler';
+				this._broadcastEventExcept(conn.peer, 'opponentInteraction', {
+					type: msg.type,
+					mode: msg.mode,
+					zoneName: msg.zoneName,
+					baseX: msg.baseX,
+					baseY: msg.baseY,
+					subgridId: msg.subgridId || null,
+					matrix: msg.matrix,
+					cardName: msg.cardName,
+					colorCode: msg.colorCode,
+					playerId,
+					playerName
 				});
 				break;
 			}
@@ -799,7 +845,10 @@ class LocusP2PGuest {
 	async sendTaunt(text) { return this._sendCommand('sendTaunt', { text }); }
 	sendInteraction(data) {
 		if (this.connection && this.connected) {
-			this.connection.send({ type: 'playerInteraction', ...data });
+			const interactionType = data?.type || 'move';
+			const payload = { ...(data || {}) };
+			delete payload.type;
+			this.connection.send({ type: 'playerInteraction', interactionType, ...payload });
 		}
 	}
 

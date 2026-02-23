@@ -1065,6 +1065,22 @@ io.on('connection', (socket) => {
 			if (gameState && gameState.players[info.playerId]) {
 				gameState.players[info.playerId].connected = false;
 
+				const currentPid = gameState.playerOrder?.[gameState.currentTurnIndex];
+				if (gameState.phase === 'playing' && currentPid === info.playerId) {
+					_clearTurnTimer(info.gameId);
+					const autoResult = GameRules.passMove(gameState, info.playerId, null);
+					if (!autoResult?.error && !autoResult?.gameEnded) {
+						_startTimerForCurrentPlayer(info.gameId);
+					}
+					if (autoResult?.gameEnded) {
+						io.to(info.gameId).emit('levelComplete', {
+							levelScores: gameState.levelScores,
+							levelWinner: gameState.levelWinner,
+							level: gameState.level
+						});
+					}
+				}
+
 				// Broadcast disconnect
 				socket.to(info.gameId).emit('playerDisconnected', {
 					playerId: info.playerId,

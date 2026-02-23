@@ -2920,7 +2920,9 @@ function undoMove(gameState, playerId) {
 	}
 
 	// 3. Kaart terug in hand
-	player.hand.splice(undo.cardIndex, 0, undo.card);
+	if (undo.card && undo.cardIndex >= 0) {
+		player.hand.splice(undo.cardIndex, 0, undo.card);
+	}
 
 	// 4. Verwijder verzamelde bonussen van de kaartplaatsing
 	for (const bc of undo.collectedBonuses) {
@@ -2952,6 +2954,7 @@ function undoMove(gameState, playerId) {
 	// 8. Clear turn state
 	delete gameState._turnUndoData;
 	gameState._cardPlayedThisTurn = false;
+	gameState.bonusPlayedThisTurn = false;
 	delete gameState._turnTimerStart;
 
 	gameState.updatedAt = Date.now();
@@ -2981,6 +2984,10 @@ function advanceTurn(gameState) {
 
 		const nextPid = gameState.playerOrder[gameState.currentTurnIndex];
 		const nextPlayer = gameState.players[nextPid];
+		if (!nextPlayer || nextPlayer.connected === false) {
+			attempts++;
+			continue;
+		}
 
 		// Vul hand aan tot 3 kaarten als drawPile beschikbaar is
 		if (nextPlayer.hand.length < 3 && nextPlayer.drawPile.length > 0) {
@@ -3022,6 +3029,7 @@ function advanceTurn(gameState) {
 function checkGameEnd(gameState) {
 	const allEmpty = gameState.playerOrder.every(pid => {
 		const p = gameState.players[pid];
+		if (!p || p.connected === false) return true;
 		return p.hand.length === 0 && p.drawPile.length === 0 && !playerHasBonuses(p);
 	});
 
@@ -3157,12 +3165,12 @@ function getShopItems(level, player) {
 
 /** Calculate shop card price based on cell count */
 function getCardPrice(card) {
-	if (!card || !card.matrix) return 3;
+	if (!card || !card.matrix) return 2;
 	let cells = 0;
 	for (const row of card.matrix) {
 		for (const c of row) { if (c) cells++; }
 	}
-	return Math.max(3, cells + 1);
+	return Math.max(2, cells);
 }
 
 /** Generate shop card offerings for a player: 2 open kaarten + 1 gesloten random */
@@ -3197,7 +3205,7 @@ function generateShopCardOfferings(gameState, playerId) {
 		category: 'mystery',
 		color: { name: 'mysterie', code: '#4a4f6d', zone: 'any' },
 		isRandomOffer: true,
-		shopPrice: 4
+		shopPrice: 3
 	});
 	return offerings;
 }
