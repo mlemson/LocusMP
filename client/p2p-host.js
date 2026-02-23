@@ -105,6 +105,20 @@ class LocusP2PHost {
 					this.gameState.inviteCode = this.roomCode;
 				}
 
+				// Herstel timer-consistentie na host (auto-)reconnect.
+				// De oude setTimeout bestaat niet meer na refresh; zonder herstart blijft de beurt hangen op 0s.
+				if (this.gameState?.phase === 'playing') {
+					this._clearTimer();
+					if (!this.gameState.paused) {
+						this.gameState._turnTimerRemainingMs = Math.max(1, Number(this._turnTimerDuration) || 40000);
+						this._startTimerForCurrentPlayer();
+					} else {
+						const rem = Math.max(0, Number(this.gameState._turnTimerRemainingMs) || 0);
+						this.gameState._turnTimerRemainingMs = rem;
+						this.gameState._turnTimerStart = 0;
+					}
+				}
+
 				resolve({ roomCode: this.roomCode, hostPlayerId: this.hostPlayerId });
 			});
 
