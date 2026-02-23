@@ -536,11 +536,11 @@ function generateLevel1Board(rng, level) {
 	//  BLUE ZONE — Wereldafhankelijk toren
 	// ══════════════════════════════════════════
 	if (world === 1) {
-		// World 1: 5 breed, 20 hoog
+		// World 1: 5 breed, iets hoger met extra bold-laag
 		const blueWidth = 5;
-		const blueHeight = 20;
+		const blueHeight = 24;
 		const blueBold = [];
-		const blueBoldRows = [0, 5, 10, 15];
+		const blueBoldRows = [0, 5, 10, 15, 20];
 		for (const by of blueBoldRows) {
 			for (let x = 0; x < blueWidth; x++) {
 				blueBold.push({ x, y: by });
@@ -554,11 +554,11 @@ function generateLevel1Board(rng, level) {
 		zones.blue.boldRows = blueBoldRows;
 		placeBonusSymbols(zones.blue, rng, 3, { preferredColor: 'red', preferredChance: 0.5 });
 	} else if (world === 2) {
-		// World 2: 7 breed, 30 hoog, meer bold rijen
+		// World 2: 7 breed, iets hoger met extra bold-laag
 		const blueWidth = 7;
-		const blueHeight = 30;
+		const blueHeight = 36;
 		const blueBold = [];
-		const blueBoldRows = [0, 6, 12, 18, 24];
+		const blueBoldRows = [0, 6, 12, 18, 24, 30];
 		for (const by of blueBoldRows) {
 			for (let x = 0; x < blueWidth; x++) {
 				blueBold.push({ x, y: by });
@@ -572,11 +572,11 @@ function generateLevel1Board(rng, level) {
 		zones.blue.boldRows = blueBoldRows;
 		placeBonusSymbols(zones.blue, rng, 5, { preferredColor: 'red', preferredChance: 0.5 });
 	} else {
-		// World 3: 9 breed, 40 hoog, veel bold rijen
+		// World 3: 9 breed, iets hoger met extra bold-laag
 		const blueWidth = 9;
-		const blueHeight = 40;
+		const blueHeight = 48;
 		const blueBold = [];
-		const blueBoldRows = [0, 7, 14, 21, 28, 35];
+		const blueBoldRows = [0, 7, 14, 21, 28, 35, 42];
 		for (const by of blueBoldRows) {
 			for (let x = 0; x < blueWidth; x++) {
 				blueBold.push({ x, y: by });
@@ -633,7 +633,8 @@ function generateLevel1Board(rng, level) {
 			const gCell = sg.cells[sgKeys[gIdx]];
 			if (gCell && !gCell.flags.includes('gold')) gCell.flags.push('gold');
 		}
-		placeBonusSymbols(sg, rng, world === 1 ? 3 : (world === 2 ? 4 : 5));
+		const redBonusBase = world === 1 ? 3 : (world === 2 ? 4 : 5);
+		placeBonusSymbols(sg, rng, redBonusBase * 0.75);
 	}
 
 	// ══════════════════════════════════════════
@@ -790,20 +791,13 @@ function getBoardWorld(boardState) {
 function spawnBonusesAfterRoundFour(gameState, options = {}) {
 	if (!gameState?.boardState?.zones) return 0;
 	const round = Number(gameState.turnCount || 0);
-	if (round <= 4) return 0;
+	if (round < 5) return 0;
+	if (gameState._roundFiveBonusBurstDone) return 0;
 	const world = getBoardWorld(gameState.boardState);
 	const isRoundStart = !!options.isRoundStart;
+	if (!isRoundStart) return 0;
 
-	let spawnCount;
-	if (isRoundStart) {
-		if (world === 1) spawnCount = round >= 8 ? 5 : 4;
-		else if (world === 2) spawnCount = round >= 8 ? 7 : 6;
-		else spawnCount = round >= 8 ? 9 : 8;
-	} else {
-		if (world === 1) spawnCount = 1;
-		else if (world === 2) spawnCount = 2;
-		else spawnCount = 2;
-	}
+	const spawnCount = 10;
 	const seed = (gameState.seed | 0)
 		^ (round * 4093)
 		^ ((gameState.moveHistory?.length || 0) * 131)
@@ -848,6 +842,8 @@ function spawnBonusesAfterRoundFour(gameState, options = {}) {
 			timestamp: Date.now()
 		});
 	}
+
+	gameState._roundFiveBonusBurstDone = true;
 
 	return spawned;
 }
@@ -1129,14 +1125,15 @@ function scoreGreenData(zoneData) {
  * Eerste scorende bold-rij = 6pt
  * Volgende rijen: 8 + (n-1) * 2 (dus 8, 10, 12, 14, ...)
  */
-// Blue scoring: +10 per bold-rij, top-rij = +30
-const BLUE_ROW_POINTS = [10, 30];
+// Blue scoring tiers (onder → boven): +10, +15, +20, +25, top +40
+const BLUE_ROW_POINTS = [10, 15, 20, 25, 40];
 
 function getBlueTierPoints(tierIndex, totalTiers) {
-	const basePoints = BLUE_ROW_POINTS[0] || 10;
-	const finalTierPoints = BLUE_ROW_POINTS[1] || 30;
-	if (!Number.isFinite(totalTiers) || totalTiers <= 0) return basePoints;
-	return tierIndex === (totalTiers - 1) ? finalTierPoints : basePoints;
+	const fallback = [10, 15, 20, 25, 40];
+	const tiers = Array.isArray(BLUE_ROW_POINTS) && BLUE_ROW_POINTS.length > 0 ? BLUE_ROW_POINTS : fallback;
+	if (!Number.isFinite(totalTiers) || totalTiers <= 0) return tiers[0] || 10;
+	const idx = Math.max(0, Math.min(Number(tierIndex) || 0, tiers.length - 1));
+	return tiers[idx] || tiers[tiers.length - 1] || 10;
 }
 
 function scoreBlueData(zoneData) {
@@ -1241,7 +1238,8 @@ function scoreRedData(redZone) {
  */
 function getPurpleConnectionPoints(boldCount) {
 	if (!Number.isFinite(boldCount) || boldCount < 2) return 0;
-	return (boldCount - 1) * 6;
+	const connections = boldCount - 1;
+	return 6 * ((connections * (connections + 1)) / 2);
 }
 
 function scorePurpleData(zoneData) {
@@ -2432,6 +2430,7 @@ function chooseObjective(gameState, playerId, objectiveIndex) {
 		gameState.phase = 'playing';
 		gameState.currentTurnIndex = 0;
 		gameState.turnCount = 1;
+		delete gameState._roundFiveBonusBurstDone;
 		gameState._turnTimerStart = Date.now();
 	}
 
@@ -3438,6 +3437,7 @@ function startNextLevel(gameState) {
 	gameState.phase = 'choosingGoals';
 	gameState.currentTurnIndex = 0;
 	gameState.turnCount = 1;
+	delete gameState._roundFiveBonusBurstDone;
 	gameState.bonusPlayedThisTurn = false;
 	gameState.levelScores = null;
 	gameState.levelWinner = null;

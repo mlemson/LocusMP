@@ -342,27 +342,108 @@
 				return;
 			}
 
-			if (role !== 'guest' || !roomCode || !userName) return;
+			if (!roomCode || !userName) return;
 
-			try {
-				const guest = new LocusP2PGuest();
-				await guest.init();
-				const result = await guest.joinGame(userName, roomCode, { reconnectPlayerId: playerId || null });
+			if (role === 'guest') {
+				try {
+					const guest = new LocusP2PGuest();
+					await guest.init();
+					const result = await guest.joinGame(userName, roomCode, { reconnectPlayerId: playerId || null });
 
-				guest.userName = userName;
-				guest.gameId = result.gameId;
-				guest.inviteCode = roomCode;
+					guest.userName = userName;
+					guest.gameId = result.gameId;
+					guest.inviteCode = roomCode;
 
-				const ui = new LocusLobbyUI(guest);
-				ui.init();
-				ui._showWaitingRoom(roomCode, false);
-				if (guest.gameState) ui.handleReconnect();
+					const ui = new LocusLobbyUI(guest);
+					ui.init();
+					ui._showWaitingRoom(roomCode, false);
+					if (guest.gameState) ui.handleReconnect();
 
-				window._mp = guest;
-				window._ui = ui;
-				console.log('[Locus] P2P auto-reconnect geslaagd');
-			} catch (err) {
-				console.warn('[Locus] P2P auto-reconnect mislukt:', err.message || err);
+					window._mp = guest;
+					window._ui = ui;
+					console.log('[Locus] P2P auto-reconnect geslaagd (guest)');
+				} catch (err) {
+					console.warn('[Locus] P2P auto-reconnect mislukt (guest):', err.message || err);
+				}
+				return;
+			}
+
+			if (role === 'host') {
+				try {
+					let savedState = null;
+					try {
+						const raw = sessionStorage.getItem('locus_p2p_state');
+						savedState = raw ? JSON.parse(raw) : null;
+					} catch (_) {
+						savedState = null;
+					}
+
+					const host = new LocusP2PHost();
+					await host.startHost(userName, {
+						roomCode,
+						hostPlayerId: playerId || null,
+						resumeState: savedState
+					});
+
+					const p2pMp = _createP2PHostAdapter(host);
+					p2pMp.gameState = host._sanitizeForPlayer(host.hostPlayerId);
+					p2pMp.userId = host.hostPlayerId;
+					p2pMp.userName = userName;
+					p2pMp.gameId = host.gameState.id;
+					p2pMp.inviteCode = host.roomCode;
+					p2pMp.connected = true;
+
+					const ui = new LocusLobbyUI(p2pMp);
+					ui.init();
+					if (host.gameState?.phase === 'waiting') ui._showWaitingRoom(host.roomCode, true);
+					if (p2pMp.gameState) ui.handleReconnect();
+
+					window._mp = p2pMp;
+					window._ui = ui;
+					window._p2pHost = host;
+
+					try {
+						sessionStorage.setItem('locus_p2p_role', 'host');
+						sessionStorage.setItem('locus_p2p_roomCode', host.roomCode);
+						sessionStorage.setItem('locus_p2p_playerId', host.hostPlayerId);
+						sessionStorage.setItem('locus_p2p_userName', userName);
+						sessionStorage.setItem('locus_p2p_state', JSON.stringify(host.gameState));
+					} catch (_) {}
+
+					host.onStateChanged = (state) => {
+						const prev = p2pMp.gameState;
+						p2pMp.gameState = state;
+						if (p2pMp.onGameStateChanged) {
+							try { p2pMp.onGameStateChanged(state, prev); } catch (err) { console.error('[P2P Adapter] onGameStateChanged ERROR:', err); }
+						}
+						try { sessionStorage.setItem('locus_p2p_state', JSON.stringify(host.gameState)); } catch (_) {}
+					};
+
+					host.onPlayerJoined = (data) => {
+						if (p2pMp.onPlayerJoined) p2pMp.onPlayerJoined(data);
+					};
+
+					host.onPlayerLeft = (leftPlayerId) => {
+						if (p2pMp.onPlayerLeft) p2pMp.onPlayerLeft(leftPlayerId);
+					};
+
+					host.onEvent = (eventType, data) => {
+						switch (eventType) {
+							case 'movePlayed': if (p2pMp.onMovePlayed) p2pMp.onMovePlayed(data); break;
+							case 'levelComplete': if (p2pMp.onLevelComplete) p2pMp.onLevelComplete(data.levelScores, data.levelWinner, data.level); break;
+							case 'nextLevelStarted': if (p2pMp.onNextLevel) p2pMp.onNextLevel(data.level); break;
+							case 'gameEnded': if (p2pMp.onGameEnded) p2pMp.onGameEnded(data); break;
+							case 'timeBombUsed': if (p2pMp.onTimeBombed) p2pMp.onTimeBombed(data); break;
+							case 'opponentInteraction': if (p2pMp.onOpponentInteraction) p2pMp.onOpponentInteraction(data); break;
+							case 'taunt': if (p2pMp.onTaunt) p2pMp.onTaunt(data); break;
+							case 'pauseChanged': if (p2pMp.onPauseChanged) p2pMp.onPauseChanged(data); break;
+						}
+					};
+
+					console.log('[Locus] P2P auto-reconnect geslaagd (host)');
+				} catch (err) {
+					console.warn('[Locus] P2P auto-reconnect mislukt (host):', err.message || err);
+				}
 			}
 		}
 
@@ -446,6 +527,7 @@
 						sessionStorage.setItem('locus_p2p_roomCode', result.roomCode);
 						sessionStorage.setItem('locus_p2p_playerId', host.hostPlayerId);
 						sessionStorage.setItem('locus_p2p_userName', name);
+						sessionStorage.setItem('locus_p2p_state', JSON.stringify(host.gameState));
 					} catch (_) {}
 
 					// State sync: wanneer host state verandert → update UI
@@ -462,6 +544,7 @@
 						} else {
 							console.warn('[P2P Adapter] onGameStateChanged is niet gezet!');
 						}
+						try { sessionStorage.setItem('locus_p2p_state', JSON.stringify(host.gameState)); } catch (_) {}
 					};
 
 					host.onPlayerJoined = (data) => {

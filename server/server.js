@@ -102,6 +102,16 @@ function _startTimerForCurrentPlayer(gameId, forceFull = false) {
 	}
 }
 
+function _grantExtraTurnTime(gameId, playerId, extraMs = 5000) {
+	const gameState = games.get(gameId);
+	if (!gameState || gameState.phase !== 'playing' || gameState.paused) return;
+	const currentPid = gameState.playerOrder?.[gameState.currentTurnIndex];
+	if (!currentPid || currentPid !== playerId) return;
+	const remainingMs = _getRemainingTurnMs(gameState);
+	const nextRemaining = Math.max(1, remainingMs + Math.max(0, Number(extraMs) || 0));
+	_startTurnTimer(gameId, currentPid, nextRemaining);
+}
+
 function _clearTurnTimer(gameId) {
 	const existing = turnTimers.get(gameId);
 	if (existing) {
@@ -179,12 +189,8 @@ function countCardsPlayed(gameState, playerId) {
 
 /** Check of objectives moeten worden onthuld (na 4 kaarten per speler) */
 function shouldRevealObjectives(gameState) {
-	if (!gameState.playerOrder || gameState.playerOrder.length === 0) return false;
-	// Onthul als ELKE actieve (verbonden) speler minstens 4 kaarten heeft gespeeld
-	const activePlayerIds = gameState.playerOrder.filter(pid => gameState.players?.[pid]?.connected !== false);
-	if (activePlayerIds.length === 0) return false;
-	const minPlayed = Math.min(...activePlayerIds.map(pid => countCardsPlayed(gameState, pid)));
-	return minPlayed >= 4;
+	const round = Number(gameState?.turnCount || 0);
+	return round > 4;
 }
 
 /** Verberg kaarten/doelstellingen van andere spelers */
@@ -584,6 +590,7 @@ io.on('connection', (socket) => {
 			});
 
 			broadcastGameState(io, info.gameId);
+			_grantExtraTurnTime(info.gameId, info.playerId, 5000);
 
 			// Timer loopt al vanuit begin van beurt — niet herstarten
 
@@ -647,6 +654,7 @@ io.on('connection', (socket) => {
 			}
 
 			broadcastGameState(io, info.gameId);
+			_grantExtraTurnTime(info.gameId, info.playerId, 5000);
 
 		} catch (error) {
 			console.error('[Locus] playBonus error:', error);

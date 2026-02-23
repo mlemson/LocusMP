@@ -44,9 +44,15 @@ class LocusP2PHost {
 	 */
 	async startHost(playerName, options = {}) {
 		if (!this.Rules) throw new Error('LocusGameRules niet geladen');
+		const resumeState = options.resumeState && typeof options.resumeState === 'object'
+			? JSON.parse(JSON.stringify(options.resumeState))
+			: null;
+		const preferredRoomCode = String(options.roomCode || '').trim().toUpperCase();
 
 		// Genereer room code
-		this.roomCode = this._generateRoomCode();
+		this.roomCode = /^[A-Z0-9]{6}$/.test(preferredRoomCode)
+			? preferredRoomCode
+			: this._generateRoomCode();
 		const peerId = `locus-${this.roomCode}`;
 
 		return new Promise((resolve, reject) => {
@@ -63,25 +69,41 @@ class LocusP2PHost {
 
 			this.peer.on('open', (id) => {
 				console.log('[P2P Host] Peer geopend:', id);
+				const requestedHostPlayerId = typeof options.hostPlayerId === 'string' ? options.hostPlayerId : null;
 
-				// Maak game state aan
-				this.hostPlayerId = 'P_host_' + Date.now().toString(36);
-				const seed = Date.now() + Math.floor(Math.random() * 100000);
-
-				this.gameState = this.Rules.createGameState(
-					'p2p-' + this.roomCode,
-					this.hostPlayerId,
-					{
-						seed,
-						maxPlayers: options.maxPlayers || 4,
-						cardsPerPlayer: options.cardsPerPlayer || 8,
-						handSize: 3
+				if (resumeState && resumeState.players && Array.isArray(resumeState.playerOrder)) {
+					this.gameState = resumeState;
+					this.gameState.id = this.gameState.id || ('p2p-' + this.roomCode);
+					this.gameState.inviteCode = this.roomCode;
+					this.hostPlayerId = requestedHostPlayerId || this.gameState.hostPlayerId || this.hostPlayerId;
+					if (this.hostPlayerId && this.gameState.players?.[this.hostPlayerId]) {
+						this.gameState.players[this.hostPlayerId].connected = true;
+						if (playerName) this.gameState.players[this.hostPlayerId].name = playerName;
+					} else {
+						this.hostPlayerId = this.hostPlayerId || ('P_host_' + Date.now().toString(36));
+						this.gameState.hostPlayerId = this.hostPlayerId;
+						this.Rules.addPlayer(this.gameState, this.hostPlayerId, playerName);
 					}
-				);
+				} else {
+					// Maak game state aan
+					this.hostPlayerId = requestedHostPlayerId || ('P_host_' + Date.now().toString(36));
+					const seed = Date.now() + Math.floor(Math.random() * 100000);
 
-				// Voeg host toe als speler
-				this.Rules.addPlayer(this.gameState, this.hostPlayerId, playerName);
-				this.gameState.inviteCode = this.roomCode;
+					this.gameState = this.Rules.createGameState(
+						'p2p-' + this.roomCode,
+						this.hostPlayerId,
+						{
+							seed,
+							maxPlayers: options.maxPlayers || 4,
+							cardsPerPlayer: options.cardsPerPlayer || 8,
+							handSize: 3
+						}
+					);
+
+					// Voeg host toe als speler
+					this.Rules.addPlayer(this.gameState, this.hostPlayerId, playerName);
+					this.gameState.inviteCode = this.roomCode;
+				}
 
 				resolve({ roomCode: this.roomCode, hostPlayerId: this.hostPlayerId });
 			});
@@ -209,7 +231,12 @@ class LocusP2PHost {
 				);
 				conn.send({ type: 'result', action: 'playMove', ...result });
 				if (result.success) {
-					this._broadcastEvent('movePlayed', { playerId, zoneName: msg.zoneName });
+					this._grantExtraTurnTime(playerId, 5000);
+					this._broadcastEvent('movePlayed', {
+						playerId,
+						zoneName: msg.zoneName,
+						objectivesRevealed: this._shouldRevealObjectives()
+					});
 				}
 				this._broadcastState();
 				break;
@@ -222,6 +249,9 @@ class LocusP2PHost {
 					msg.baseX, msg.baseY, msg.subgridId || null, msg.rotation || 0
 				);
 				conn.send({ type: 'result', action: 'playBonus', ...result });
+				if (result.success) {
+					this._grantExtraTurnTime(playerId, 5000);
+				}
 				this._broadcastState();
 				break;
 			}
@@ -424,11 +454,19 @@ class LocusP2PHost {
 			case 'playMove':
 				result = this.Rules.playMove(this.gameState, playerId, data.cardId, data.zoneName,
 					data.baseX, data.baseY, data.rotation || 0, !!data.mirrored, data.subgridId || null);
-				if (result.success) this._broadcastEvent('movePlayed', { playerId, zoneName: data.zoneName });
+				if (result.success) {
+					this._grantExtraTurnTime(playerId, 5000);
+					this._broadcastEvent('movePlayed', {
+						playerId,
+						zoneName: data.zoneName,
+						objectivesRevealed: this._shouldRevealObjectives()
+					});
+				}
 				break;
 			case 'playBonus':
 				result = this.Rules.playBonus(this.gameState, playerId, data.bonusColor, data.zoneName,
 					data.baseX, data.baseY, data.subgridId || null, data.rotation || 0);
+				if (result.success) this._grantExtraTurnTime(playerId, 5000);
 				break;
 			case 'passMove':
 				this._clearTimer();
@@ -523,11 +561,8 @@ class LocusP2PHost {
 	}
 
 	_shouldRevealObjectives() {
-		if (!this.gameState?.playerOrder?.length) return false;
-		const activePlayerIds = this.gameState.playerOrder.filter(pid => this.gameState.players?.[pid]?.connected !== false);
-		if (activePlayerIds.length === 0) return false;
-		const minPlayed = Math.min(...activePlayerIds.map(pid => this._countCardsPlayed(pid)));
-		return minPlayed >= 4;
+		const round = Number(this.gameState?.turnCount || 0);
+		return round > 4;
 	}
 
 	// ── Sanitize state per speler (verberg andermans kaarten) ──
@@ -624,16 +659,25 @@ class LocusP2PHost {
 
 		const currentPid = this.gameState.playerOrder[this.gameState.currentTurnIndex];
 		if (!currentPid) return;
+		const remaining = Math.max(1, Number(this.gameState._turnTimerRemainingMs) || this._turnTimerDuration);
+		this._startTimerForPlayer(currentPid, remaining);
+	}
 
+	_startTimerForPlayer(playerId, durationMs) {
+		this._clearTimer();
+		if (!this.gameState || this.gameState.phase !== 'playing') return;
+		if (!playerId) return;
+
+		const duration = Math.max(1, Number(durationMs) || this._turnTimerDuration);
 		this._turnTimerStart = Date.now();
 		this.gameState._turnTimerStart = this._turnTimerStart;
-		this.gameState._turnTimerDurationMs = this._turnTimerDuration;
-		this.gameState._turnTimerRemainingMs = this._turnTimerDuration;
+		this.gameState._turnTimerDurationMs = duration;
+		this.gameState._turnTimerRemainingMs = duration;
 
 		this._turnTimer = setTimeout(() => {
 			// Auto-end turn
-			const result = this.Rules.endTurn(this.gameState, currentPid);
-			console.log(`[P2P Host] Timer verlopen voor ${currentPid}`);
+			const result = this.Rules.endTurn(this.gameState, playerId);
+			console.log(`[P2P Host] Timer verlopen voor ${playerId}`);
 			this._broadcastState();
 			if (result.gameEnded) {
 				this._broadcastEvent('levelComplete', {
@@ -644,7 +688,19 @@ class LocusP2PHost {
 			} else {
 				this._startTimerForCurrentPlayer();
 			}
-		}, this._turnTimerDuration);
+		}, duration);
+}
+
+	_grantExtraTurnTime(playerId, extraMs = 5000) {
+		if (!this.gameState || this.gameState.phase !== 'playing') return;
+		const currentPid = this.gameState.playerOrder?.[this.gameState.currentTurnIndex];
+		if (!currentPid || currentPid !== playerId) return;
+		const startedAt = Number(this.gameState._turnTimerStart || this._turnTimerStart || 0);
+		const duration = Math.max(1, Number(this.gameState._turnTimerDurationMs) || this._turnTimerDuration);
+		const elapsed = startedAt > 0 ? Math.max(0, Date.now() - startedAt) : 0;
+		const remaining = Math.max(1, duration - elapsed);
+		const nextRemaining = Math.max(1, remaining + Math.max(0, Number(extraMs) || 0));
+		this._startTimerForPlayer(currentPid, nextRemaining);
 	}
 
 	_clearTimer() {

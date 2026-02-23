@@ -788,18 +788,24 @@ class LocusLobbyUI {
 		const options = [
 			{
 				id: 'adventurer',
+				icon: '🧭',
 				title: 'Avonturier',
-				desc: 'Veelal 2 kleuren'
+				desc: 'Veelal 2 kleuren',
+				meta: 'Flexibele opening'
 			},
 			{
 				id: 'spread',
+				icon: '🎨',
 				title: 'Verspreid',
-				desc: 'Van elke kleur 2 kaarten'
+				desc: 'Van elke kleur 2 kaarten',
+				meta: 'Gebalanceerde start'
 			},
 			{
 				id: 'random',
+				icon: '🎲',
 				title: 'Random',
-				desc: 'Volledig willekeurige mix'
+				desc: 'Volledig willekeurige mix',
+				meta: 'Hoge variatie'
 			}
 		];
 
@@ -807,13 +813,17 @@ class LocusLobbyUI {
 		overlay.className = 'mp-discard-overlay mp-startdeck-overlay';
 		overlay.innerHTML = `
 			<div class="mp-discard-modal mp-startdeck-modal">
-				<div class="mp-discard-title">Kies je startdeck voor Level 1</div>
-				<div class="mp-startdeck-subtitle">Je krijgt op basis hiervan je beginkaarten.</div>
+				<div class="mp-discard-title mp-startdeck-title">Kies je startdeck voor Level 1</div>
+				<div class="mp-startdeck-subtitle">Kies een speelstijl — je beginkaarten worden hierop afgestemd.</div>
 				<div class="mp-discard-cards mp-startdeck-cards">
 					${options.map(opt => `
 						<button class="mp-discard-card mp-startdeck-card" data-deck-type="${opt.id}">
-							<div class="mp-startdeck-name">${this._escapeHtml(opt.title)}</div>
+							<div class="mp-startdeck-head">
+								<span class="mp-startdeck-icon">${this._escapeHtml(opt.icon)}</span>
+								<span class="mp-startdeck-name">${this._escapeHtml(opt.title)}</span>
+							</div>
 							<div class="mp-startdeck-desc">${this._escapeHtml(opt.desc)}</div>
+							<div class="mp-startdeck-meta">${this._escapeHtml(opt.meta)}</div>
 						</button>
 					`).join('')}
 				</div>
@@ -1553,6 +1563,7 @@ class LocusLobbyUI {
 		// Board in placement mode
 		const board = document.querySelector('.mp-board');
 		if (board) board.classList.add('placement-mode');
+		this._scrollMobileBoardToZone(bonusColor, true);
 
 		// Touch/coarse: spring direct naar de bijbehorende kleur-zone bij single-color kaarten
 		const allowedZones = Rules.getAllowedZones(card);
@@ -1836,6 +1847,16 @@ class LocusLobbyUI {
 		if (this._dragState?.card && Rules) {
 			const allowedZones = Rules.getAllowedZones(this._dragState.card);
 			if (!allowedZones.includes(bestZone)) {
+				this._sendInteraction('move', {
+					mode: 'card',
+					cardName: this._dragState.card?.shapeName || null,
+					zoneName: bestZone,
+					baseX,
+					baseY,
+					subgridId,
+					matrix,
+					isValid: false
+				});
 				// Verkeerde kleur/zone — toon rode preview
 				if (ghost) { ghost.classList.add('preview-denied'); ghost.classList.remove('preview-ok'); }
 				const boardState = this.mp.gameState?.boardState;
@@ -1856,11 +1877,13 @@ class LocusLobbyUI {
 			this._lastPreviewSubgridId = subgridId;
 			this._sendInteraction('move', {
 				mode: 'card',
+				cardName: this._dragState.card?.shapeName || null,
 				zoneName: bestZone,
 				baseX,
 				baseY,
 				subgridId,
-				matrix
+				matrix,
+				isValid: true
 			});
 			for (const coord of adjPreview.cells) {
 				const sel = subgridId
@@ -1871,6 +1894,16 @@ class LocusLobbyUI {
 			}
 			if (ghost) { ghost.classList.remove('preview-denied'); ghost.classList.add('preview-ok'); }
 		} else {
+			this._sendInteraction('move', {
+				mode: 'card',
+				cardName: this._dragState.card?.shapeName || null,
+				zoneName: bestZone,
+				baseX,
+				baseY,
+				subgridId,
+				matrix,
+				isValid: false
+			});
 			if (ghost) { ghost.classList.add('preview-denied'); ghost.classList.remove('preview-ok'); }
 			const boardState = this.mp.gameState?.boardState;
 			if (boardState) {
@@ -2517,14 +2550,26 @@ class LocusLobbyUI {
 		if (placed) {
 			this._sendInteraction('move', {
 				mode: 'bonus',
+				cardName: `${this._bonusMode.color} bonus`,
 				zoneName: bestZone,
 				baseX,
 				baseY,
 				subgridId,
-				matrix
+				matrix,
+				isValid: true
 			});
 			if (ghost) { ghost.classList.remove('preview-denied'); ghost.classList.add('preview-ok'); }
 		} else {
+			this._sendInteraction('move', {
+				mode: 'bonus',
+				cardName: `${this._bonusMode.color} bonus`,
+				zoneName: bestZone,
+				baseX,
+				baseY,
+				subgridId,
+				matrix,
+				isValid: false
+			});
 			if (ghost) { ghost.classList.add('preview-denied'); ghost.classList.remove('preview-ok'); }
 			this._showDeniedPreviewCells(bestZone, baseX, baseY, matrix, boardState, zoneHits[0]?.gridCell);
 		}
@@ -2740,7 +2785,7 @@ class LocusLobbyUI {
 			return;
 		}
 		for (const el of this._oppPreviewCells) {
-			if (el && el.classList) el.classList.remove('preview-opponent');
+			if (el && el.classList) el.classList.remove('preview-opponent', 'preview-opponent-denied');
 		}
 		this._oppPreviewCells = [];
 	}
@@ -2771,8 +2816,19 @@ class LocusLobbyUI {
 		if (data.type !== 'move') return;
 		if (!data.zoneName || !Array.isArray(data.matrix)) return;
 		if (!Number.isFinite(data.baseX) || !Number.isFinite(data.baseY)) return;
+		this._scrollMobileBoardToZone(data.zoneName, true);
+
+		if (!this._activeSelections[data.playerId]) {
+			this._activeSelections[data.playerId] = {
+				mode: data.mode || 'card',
+				cardName: data.cardName || null,
+				updatedAt: Date.now()
+			};
+			this._renderOpponentPanels();
+		}
 
 		this._clearOpponentPreview();
+		const isValid = data.isValid !== false;
 		for (let r = 0; r < data.matrix.length; r++) {
 			for (let c = 0; c < (data.matrix[r]?.length || 0); c++) {
 				if (!data.matrix[r][c]) continue;
@@ -2784,6 +2840,7 @@ class LocusLobbyUI {
 				const el = document.querySelector(sel);
 				if (el) {
 					el.classList.add('preview-opponent');
+					el.classList.toggle('preview-opponent-denied', !isValid);
 					this._oppPreviewCells.push(el);
 				}
 			}
@@ -2920,14 +2977,16 @@ class LocusLobbyUI {
 
 		if (zoneName === 'blue') {
 			const rowLabels = [];
+			const blueTierPoints = Array.isArray(blueRowPoints) && blueRowPoints.length > 0
+				? blueRowPoints
+				: [10, 15, 20, 25, 40];
 			for (let y = 0; y < zoneData.rows; y++) {
 				if (!blueRowTierByY.has(y)) {
 					rowLabels.push('<div class="mp-blue-row-point-spacer"></div>');
 					continue;
 				}
 				const tierIndex = blueRowTierByY.get(y);
-				const isTopTier = tierIndex === (blueRowTierByY.size - 1);
-				const points = isTopTier ? (blueRowPoints[1] || blueRowPoints[0] || 10) : (blueRowPoints[0] || 10);
+				const points = blueTierPoints[Math.min(tierIndex, blueTierPoints.length - 1)] || blueTierPoints[blueTierPoints.length - 1] || 10;
 				const isClaimed = claimedBlueRows.has(y);
 				rowLabels.push(`<div class="mp-blue-row-point ${isClaimed ? 'is-claimed' : ''}" title="+${points} punten voor deze bold-rij">+${points}</div>`);
 			}
@@ -4114,6 +4173,7 @@ class LocusLobbyUI {
 		// Animate: show "player played on zone" banner for opponents
 		if (!isMe && playerName) {
 			this._showMoveNotification(playerName, zoneName);
+			this._scrollMobileBoardToZone(zoneName, true);
 		}
 
 		// Animate cells flashing on the zone
