@@ -517,10 +517,25 @@ class LocusP2PHost {
 		return result;
 	}
 
+	_countCardsPlayed(playerId) {
+		if (!this.gameState?.moveHistory) return 0;
+		return this.gameState.moveHistory.filter(m => m.playerId === playerId && !m.pass && !m.bonusMove && m.cardId).length;
+	}
+
+	_shouldRevealObjectives() {
+		if (!this.gameState?.playerOrder?.length) return false;
+		const activePlayerIds = this.gameState.playerOrder.filter(pid => this.gameState.players?.[pid]?.connected !== false);
+		if (activePlayerIds.length === 0) return false;
+		const minPlayed = Math.min(...activePlayerIds.map(pid => this._countCardsPlayed(pid)));
+		return minPlayed >= 4;
+	}
+
 	// ── Sanitize state per speler (verberg andermans kaarten) ──
 
 	_sanitizeForPlayer(playerId) {
 		const sanitized = JSON.parse(JSON.stringify(this.gameState));
+		const revealObjectives = this._shouldRevealObjectives();
+		sanitized._objectivesRevealed = revealObjectives;
 		for (const pid of Object.keys(sanitized.players)) {
 			if (pid !== playerId) {
 				// Laat hand zichtbaar voor tegenstanders (gevraagd UX-gedrag)
@@ -532,7 +547,11 @@ class LocusP2PHost {
 				sanitized.players[pid].shopOfferings = [];
 				delete sanitized.players[pid]._pendingFreeChoices;
 				if (sanitized.players[pid].chosenObjective) {
-					sanitized.players[pid].chosenObjective = { hidden: true };
+					if (revealObjectives) {
+						sanitized.players[pid].chosenObjective._revealed = true;
+					} else {
+						sanitized.players[pid].chosenObjective = { hidden: true };
+					}
 				}
 			}
 		}

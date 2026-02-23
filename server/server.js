@@ -180,8 +180,10 @@ function countCardsPlayed(gameState, playerId) {
 /** Check of objectives moeten worden onthuld (na 4 kaarten per speler) */
 function shouldRevealObjectives(gameState) {
 	if (!gameState.playerOrder || gameState.playerOrder.length === 0) return false;
-	// Onthul als ELKE speler minstens 4 kaarten heeft gespeeld
-	const minPlayed = Math.min(...gameState.playerOrder.map(pid => countCardsPlayed(gameState, pid)));
+	// Onthul als ELKE actieve (verbonden) speler minstens 4 kaarten heeft gespeeld
+	const activePlayerIds = gameState.playerOrder.filter(pid => gameState.players?.[pid]?.connected !== false);
+	if (activePlayerIds.length === 0) return false;
+	const minPlayed = Math.min(...activePlayerIds.map(pid => countCardsPlayed(gameState, pid)));
 	return minPlayed >= 4;
 }
 

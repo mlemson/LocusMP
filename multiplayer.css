@@ -3292,6 +3292,16 @@ body.mp-placing * {
 	margin-bottom: 4px;
 }
 
+.mp-opp-selection {
+	font-size: 0.7rem;
+	color: var(--mp-text);
+	background: rgba(113,146,219,0.12);
+	border: 1px solid rgba(113,146,219,0.26);
+	border-radius: 6px;
+	padding: 4px 8px;
+	margin: 4px 0;
+}
+
 .mp-opp-objective {
 	display: flex;
 	align-items: center;

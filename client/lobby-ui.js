@@ -58,6 +58,7 @@ class LocusLobbyUI {
 		this._oppTimerInterval = null;
 		this._pauseTogglePending = false;
 		this._turnTimerPausedRemainingMs = 0;
+		this._activeSelections = {};
 	}
 
 	// ──────────────────────────────────────────
@@ -1114,6 +1115,10 @@ class LocusLobbyUI {
 			const totalCards = handSize + drawPileSize;
 			const isCurrentTurn = this.mp.gameState.playerOrder[this.mp.gameState.currentTurnIndex] === opp.id;
 			const cardsPlayed = opp.cardsPlayed || 0;
+			const selection = this._activeSelections[opp.id] || null;
+			const selectionHtml = selection
+				? `<div class="mp-opp-selection">${selection.mode === 'bonus' ? '⚡ Bonus geselecteerd' : `🃏 Geselecteerd: ${this._escapeHtml(selection.cardName || 'kaart')}`}</div>`
+				: '';
 
 			// Hand kaarten als mini-cards met vorm
 			const handCards = hand.map(c => {
@@ -1180,6 +1185,7 @@ class LocusLobbyUI {
 						<span title="Totaal kaarten over">🃏 ${totalCards}</span>
 						<span title="Kaarten gespeeld">✅ ${cardsPlayed} gespeeld</span>
 					</div>
+					${selectionHtml}
 					${objectiveHtml}
 				</div>
 			`;
@@ -2708,6 +2714,18 @@ class LocusLobbyUI {
 
 	_sendInteraction(type, payload = {}) {
 		if (!this.mp?.sendInteraction) return;
+		if (type === 'start') {
+			this._activeSelections[this.mp.userId] = {
+				mode: payload.mode || 'card',
+				cardName: payload.cardName || null,
+				updatedAt: Date.now()
+			};
+			this._renderOpponentPanels();
+		}
+		if (type === 'end') {
+			delete this._activeSelections[this.mp.userId];
+			this._renderOpponentPanels();
+		}
 		if (type === 'move') {
 			const now = Date.now();
 			if (now - this._interactionMoveThrottleTs < 80) return;
@@ -2730,6 +2748,12 @@ class LocusLobbyUI {
 	_onOpponentInteraction(data) {
 		if (!data || data.playerId === this.mp.userId) return;
 		if (data.type === 'start') {
+			this._activeSelections[data.playerId] = {
+				mode: data.mode || 'card',
+				cardName: data.cardName || null,
+				updatedAt: Date.now()
+			};
+			this._renderOpponentPanels();
 			const label = data.mode === 'bonus'
 				? `${data.playerName} kiest een bonus`
 				: `${data.playerName} selecteert ${data.cardName || 'een kaart'}`;
@@ -2738,6 +2762,8 @@ class LocusLobbyUI {
 		}
 
 		if (data.type === 'end') {
+			delete this._activeSelections[data.playerId];
+			this._renderOpponentPanels();
 			this._clearOpponentPreview();
 			return;
 		}

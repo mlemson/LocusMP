@@ -2722,6 +2722,9 @@ function passMove(gameState, playerId, cardId) {
 		});
 	}
 
+	// Vul direct weer aan naar 3 kaarten zodat spelers altijd hand-cards hebben
+	drawHand(gameState, playerId);
+
 	advanceTurn(gameState);
 	const ended = checkGameEnd(gameState);
 
@@ -2800,6 +2803,9 @@ function endTurn(gameState, playerId, discardCardId = null) {
 			}
 		}
 	}
+
+	// Vul direct weer aan naar 3 kaarten zodat spelers altijd hand-cards hebben
+	drawHand(gameState, playerId);
 
 	advanceTurn(gameState);
 	const ended = checkGameEnd(gameState);
