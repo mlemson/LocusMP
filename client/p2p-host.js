@@ -479,6 +479,14 @@ class LocusP2PHost {
 				}
 			}
 		}
+		// Verberg objectiveChoices van andere spelers
+		if (sanitized.objectiveChoices) {
+			for (const pid of Object.keys(sanitized.objectiveChoices)) {
+				if (pid !== playerId) {
+					sanitized.objectiveChoices[pid] = [];
+				}
+			}
+		}
 		return sanitized;
 	}
 

@@ -3758,10 +3758,30 @@ class LocusLobbyUI {
 		if (state.phase === 'choosingStartDeck') {
 			this._onStartDeckPhase();
 		}
+		if (state.phase === 'choosingGoals') {
+			// Verberg startdeck overlay als die er nog is
+			if (this._startDeckOverlay) {
+				this._startDeckOverlay.remove();
+				this._startDeckOverlay = null;
+			}
+			// Haal objective keuzes uit de state en toon ze
+			const myChoices = state.objectiveChoices?.[this.mp.userId];
+			const myPlayer = state.players?.[this.mp.userId];
+			if (myPlayer?.chosenObjective) {
+				// Al gekozen, wacht op andere spelers
+				this._showScreen('goal-screen');
+				const container = this.elements['goal-choices-container'];
+				if (container) container.innerHTML = '<h2 class="mp-section-title">Doelstelling gekozen!</h2><p class="mp-section-subtitle">Wachten op andere spelers...</p>';
+			} else if (myChoices && myChoices.length > 0) {
+				this._onGoalPhase(myChoices);
+			}
+		}
 		if (state.phase === 'playing') {
 			if (prevState?.phase !== 'playing') {
 				this._lastTimerBeep = null;
 				this._syncTurnTimerFromState(state);
+				// Schakel naar game-screen als we er nog niet zijn
+				this._showScreen('game-screen');
 			}
 			this._startOpponentTimerTicker();
 			if (this._startDeckOverlay) {

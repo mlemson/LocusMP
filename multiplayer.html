@@ -222,15 +222,16 @@
 		}
 	</script>
 
-	<!-- Socket.IO client (alleen laden als we via een server draaien) -->
+	<!-- Socket.IO client (alleen laden als we via de Locus-server draaien) -->
 	<script>
 		(function() {
-			// Bij file:// protocol is er sowieso geen server, skip het verzoek
+			// Alleen Socket.IO laden als de pagina geserved wordt door de Locus Node.js server
+			// Bij file://, andere dev servers of static hosting is socket.io niet beschikbaar
 			if (window.location.protocol === 'file:') return;
 			var s = document.createElement('script');
 			s.src = '/socket.io/socket.io.js';
 			s.onerror = function() {
-				console.log('[Locus] Socket.IO niet beschikbaar — alleen P2P modus');
+				// Stille fout — P2P modus is beschikbaar als alternatief
 			};
 			document.head.appendChild(s);
 		})();
