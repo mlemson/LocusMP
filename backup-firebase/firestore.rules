@@ -1,0 +1,25 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ─── GAMES ───
+    match /games/{gameId} {
+      // Iedereen die in het spel zit mag lezen
+      allow read: if request.auth != null
+        && request.auth.uid in resource.data.playerOrder;
+
+      // Alleen Cloud Functions mogen schrijven (admin SDK)
+      // Client mag NOOIT direct schrijven
+      allow write: if false;
+    }
+
+    // ─── INVITE CODES ───
+    match /inviteCodes/{code} {
+      // Iedereen mag invite codes lezen (om te joinen)
+      allow read: if request.auth != null;
+
+      // Alleen Cloud Functions mogen aanmaken
+      allow write: if false;
+    }
+  }
+}

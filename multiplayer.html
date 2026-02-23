@@ -1,0 +1,632 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+	<meta charset="utf-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+	<title>LOCUS — Multiplayer</title>
+	<link rel="stylesheet" href="multiplayer.css">
+</head>
+<body>
+	<!-- ════════════════════════════════════════
+	     SCREEN 1: LOBBY
+	     ════════════════════════════════════════ -->
+	<div id="lobby-screen" class="mp-screen">
+		<div class="mp-logo-container">
+			<h1 class="mp-logo">LOCUS</h1>
+			<div class="mp-logo-sub">MULTIPLAYER</div>
+		</div>
+
+		<div class="mp-lobby-card">
+			<div class="mp-input-group mp-name-required">
+				<div class="mp-name-callout">⚠️ Vul eerst je naam in voordat je een spel maakt of joint</div>
+				<label for="player-name-input">👤 Jouw naam</label>
+				<input type="text" id="player-name-input" placeholder="Vul hier je naam in..." maxlength="20" autocomplete="off" required />
+			</div>
+
+			<div class="mp-lobby-spacer"></div>
+
+			<div class="mp-settings-row">
+				<div class="mp-input-group mp-half">
+					<label for="max-players-select">Spelers</label>
+					<select id="max-players-select">
+						<option value="2">2</option>
+						<option value="3">3</option>
+						<option value="4" selected>4</option>
+						<option value="5">5</option>
+						<option value="6">6</option>
+						<option value="7">7</option>
+						<option value="8">8</option>
+					</select>
+				</div>
+				<div class="mp-input-group mp-half">
+					<label for="cards-per-player-select">Kaarten</label>
+					<select id="cards-per-player-select">
+						<option value="4">4</option>
+						<option value="6">6</option>
+						<option value="8" selected>8</option>
+						<option value="10">10</option>
+						<option value="12">12</option>
+					</select>
+				</div>
+			</div>
+
+			<button id="create-game-btn" class="mp-btn mp-btn-primary">
+				🎮 Nieuw Spel Maken
+			</button>
+
+			<div class="mp-divider"><span>OF</span></div>
+
+			<div class="mp-input-group">
+				<label for="invite-code-input">Invite Code</label>
+				<input type="text" id="invite-code-input" placeholder="bv. ABC123"
+					   maxlength="6" autocomplete="off" style="text-transform: uppercase; letter-spacing: 4px; text-align: center;" />
+			</div>
+
+			<button id="join-game-btn" class="mp-btn mp-btn-secondary">
+				🔗 Join Spel
+			</button>
+		</div>
+	</div>
+
+	<!-- ════════════════════════════════════════
+	     SCREEN 2: WACHTKAMER
+	     ════════════════════════════════════════ -->
+	<div id="waiting-screen" class="mp-screen" style="display:none;">
+		<div class="mp-waiting-card">
+			<h2>Wachtkamer</h2>
+
+			<div class="mp-invite-section">
+				<p>Deel deze code met je medespelers:</p>
+				<div id="invite-code-display" class="mp-invite-code" title="Klik om te kopiëren">------</div>
+				<small>Klik om te kopiëren</small>
+			</div>
+
+			<div id="waiting-status" class="mp-player-count">0/4 spelers</div>
+
+			<div id="player-list" class="mp-player-list">
+				<!-- Dynamisch gevuld -->
+			</div>
+
+			<button id="start-game-btn" class="mp-btn mp-btn-primary" disabled style="display:none;">
+				🚀 Start Spel
+			</button>
+
+			<div class="mp-waiting-dots">
+				<span>Wachten op spelers</span>
+				<div class="mp-dots"><span></span><span></span><span></span></div>
+			</div>
+		</div>
+	</div>
+
+	<!-- ════════════════════════════════════════
+	     SCREEN 3: DOELSTELLING KIEZEN
+	     ════════════════════════════════════════ -->
+	<div id="goal-screen" class="mp-screen" style="display:none;">
+		<div id="goal-choices-container" class="mp-goal-container">
+			<!-- Dynamisch gevuld -->
+		</div>
+	</div>
+
+	<!-- ════════════════════════════════════════
+	     SCREEN 4: HET SPEL
+	     ════════════════════════════════════════ -->
+	<div id="game-screen" class="mp-screen mp-game-layout" style="display:none;">
+		<!-- Top bar: scoreboard + turn -->
+		<div class="mp-top-bar">
+			<div id="mp-turn-indicator" class="mp-turn-indicator">
+				<div class="mp-turn-label">Ronde 0</div>
+				<div class="mp-turn-player">Wachten...</div>
+			</div>
+			<div id="mp-my-objective" class="mp-my-objective"></div>
+			<div id="mp-taunt-bar" class="mp-taunt-bar" aria-label="Taunts">
+				<button class="mp-taunt-btn" data-taunt="Nooo!">Nooo!</button>
+				<button class="mp-taunt-btn" data-taunt="HAHA">HAHA</button>
+				<button class="mp-taunt-btn" data-taunt="Well played!">Well played!</button>
+				<button class="mp-taunt-btn" data-taunt="Oeps...">Oeps...</button>
+				<button class="mp-taunt-btn" data-taunt="Kom op!">Kom op!</button>
+			</div>
+		</div>
+
+		<!-- Sidebar: scoreboard + opponent panels -->
+		<div class="mp-sidebar">
+			<div id="mp-scoreboard" class="mp-scoreboard">
+				<!-- Dynamisch gevuld -->
+			</div>
+			<div id="mp-opponent-panels" class="mp-opponent-panels">
+				<!-- Dynamisch gevuld -->
+			</div>
+		</div>
+
+		<!-- Bord -->
+		<div id="mp-board-container" class="mp-board-container">
+			<!-- Dynamisch gevuld -->
+		</div>
+
+		<!-- Hand (kaarten) -->
+		<div class="mp-bottom-bar">
+			<div id="mp-bonus-bar" class="mp-bonus-bar" style="display:none;"></div>
+			<div class="mp-hand-row">
+				<button id="mp-deck-overview-btn" class="mp-btn mp-btn-secondary mp-deck-btn" title="Bekijk je deck">
+					🃏 <span id="mp-deck-count">0</span>
+				</button>
+				<div id="mp-hand-container" class="mp-hand-container">
+					<!-- Dynamisch gevuld -->
+				</div>
+			</div>
+			<div class="mp-bottom-actions">
+				<div id="mp-turn-timer" class="mp-turn-timer" style="display:none;">
+					<div class="mp-timer-bar"><div class="mp-timer-fill"></div></div>
+					<span class="mp-timer-text">40s</span>
+				</div>
+				<button id="mp-undo-btn" class="mp-btn mp-btn-secondary" style="display:none;" title="Ongedaan maken (Ctrl+Z)">
+					↩ Undo
+				</button>
+				<button id="mp-end-turn-btn" class="mp-btn mp-btn-primary" style="display:none;">
+					✅ Beurt Beëindigen
+				</button>
+				<button id="mp-pass-btn" class="mp-btn mp-btn-warning" style="display:none;">
+					<span class="mp-pass-icon" aria-hidden="true">🗑</span>
+					<span class="mp-pass-text">Pas</span>
+				</button>
+			</div>
+		</div>
+	</div>
+
+	<!-- ════════════════════════════════════════
+	     SCREEN 5: RESULTATEN
+	     ════════════════════════════════════════ -->
+	<div id="results-screen" class="mp-screen" style="display:none;">
+		<div id="results-container" class="mp-results-container">
+			<!-- Dynamisch gevuld -->
+		</div>
+		<button id="play-again-btn" class="mp-btn mp-btn-primary" style="margin-top: 24px;">
+			🔄 Opnieuw Spelen
+		</button>
+	</div>
+
+	<!-- ════════════════════════════════════════
+	     SCREEN 6: SHOP
+	     ════════════════════════════════════════ -->
+	<div id="shop-screen" class="mp-screen" style="display:none;">
+		<div id="shop-container" class="mp-shop-container">
+			<!-- Dynamisch gevuld -->
+		</div>
+	</div>
+
+	<!-- ════════════════════════════════════════
+	     DECK OVERVIEW OVERLAY
+	     ════════════════════════════════════════ -->
+	<div id="mp-deck-overlay" class="mp-deck-overlay" style="display:none;">
+		<div class="mp-deck-overlay-header">
+			<h3>🃏 Jouw Deck</h3>
+			<button id="mp-deck-close-btn" class="mp-deck-close-x" title="Sluiten">✕</button>
+		</div>
+		<div id="mp-deck-cards" class="mp-deck-cards">
+			<!-- Dynamisch gevuld -->
+		</div>
+	</div>
+
+	<!-- ════════════════════════════════════════
+	     SCRIPTS
+	     ════════════════════════════════════════ -->
+
+	<!-- PeerJS voor P2P hosting (CDN — meerdere fallbacks) -->
+	<script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js"></script>
+	<script>
+		if (typeof Peer === 'undefined') {
+			// Fallback CDN als jsdelivr geblokkeerd is
+			var s = document.createElement('script');
+			s.src = 'https://cdnjs.cloudflare.com/ajax/libs/peerjs/1.5.4/peerjs.min.js';
+			s.onerror = function() { console.warn('[Locus] PeerJS kon niet geladen worden — P2P niet beschikbaar'); };
+			document.head.appendChild(s);
+		}
+	</script>
+
+	<!-- Socket.IO client (alleen laden als we via een server draaien) -->
+	<script>
+		(function() {
+			// Bij file:// protocol is er sowieso geen server, skip het verzoek
+			if (window.location.protocol === 'file:') return;
+			var s = document.createElement('script');
+			s.src = '/socket.io/socket.io.js';
+			s.onerror = function() {
+				console.log('[Locus] Socket.IO niet beschikbaar — alleen P2P modus');
+			};
+			document.head.appendChild(s);
+		})();
+	</script>
+
+	<!-- Shared game rules -->
+	<script src="shared/game-rules.js"></script>
+
+	<!-- Multiplayer client (Socket.IO) -->
+	<script src="client/multiplayer-client.js"></script>
+
+	<!-- P2P Host/Guest module (WebRTC) -->
+	<script src="client/p2p-host.js"></script>
+
+	<!-- Lobby UI -->
+	<script src="client/lobby-ui.js"></script>
+
+	<!-- App bootstrap -->
+	<script>
+		// Wacht iets langer zodat dynamisch geladen scripts (socket.io, peerjs fallback) tijd hebben
+		window.addEventListener('load', () => {
+			setTimeout(_bootstrapApp, 150);
+		});
+
+		async function _bootstrapApp() {
+			// Detecteer of Socket.IO server beschikbaar is
+			const hasSocketIO = typeof io !== 'undefined';
+			const hasPeerJS = typeof Peer !== 'undefined';
+			let mp = null;
+
+			console.log('[Locus] Socket.IO:', hasSocketIO ? 'beschikbaar' : 'niet beschikbaar');
+			console.log('[Locus] PeerJS:', hasPeerJS ? 'beschikbaar' : 'niet beschikbaar');
+
+			if (hasSocketIO) {
+				// Normale server modus
+				mp = new LocusMultiplayer();
+			} else {
+				// Geen server — verberg server-only knoppen, toon P2P opties
+				console.log('[Locus] Geen Socket.IO server — alleen P2P modus');
+				const createBtn = document.getElementById('create-game-btn');
+				const joinBtn = document.getElementById('join-game-btn');
+				if (createBtn) createBtn.style.display = 'none';
+				if (joinBtn) joinBtn.style.display = 'none';
+				// Verberg de "OF" divider boven join
+				const dividers = document.querySelectorAll('.mp-lobby-card > .mp-divider');
+				if (dividers.length > 0) dividers[0].style.display = 'none';
+				// Verberg invite code input group
+				const inviteInput = document.getElementById('invite-code-input');
+				if (inviteInput && inviteInput.parentElement) inviteInput.parentElement.style.display = 'none';
+			}
+
+			if (mp) {
+				const ui = new LocusLobbyUI(mp);
+				ui.init();
+
+				// Auto-reconnect
+				const savedGame = sessionStorage.getItem('locus_gameId');
+				if (savedGame) {
+					try {
+						const result = await mp.init();
+						if (result.reconnected) {
+							ui.handleReconnect();
+						}
+					} catch (err) {
+						console.warn('[Locus] Auto-reconnect mislukt:', err.message);
+					}
+				}
+
+				window._mp = mp;
+				window._ui = ui;
+			}
+
+			// P2P knoppen beschikbaar als PeerJS geladen is
+			if (hasPeerJS) {
+				_setupP2PButtons(mp);
+			} else {
+				// Geen PeerJS en geen Socket.IO → toon foutmelding
+				if (!hasSocketIO) {
+					const lobbyCard = document.querySelector('.mp-lobby-card');
+					if (lobbyCard) {
+						const msg = document.createElement('div');
+						msg.style.cssText = 'padding:16px;text-align:center;color:#ff6b6b;font-weight:bold;';
+						msg.textContent = '⚠️ Geen server en P2P bibliotheek kon niet laden. Controleer je internetverbinding of open via een server.';
+						lobbyCard.appendChild(msg);
+					}
+				}
+			}
+		}
+
+		function _setupP2PButtons(existingMp) {
+			const lobbyCard = document.querySelector('.mp-lobby-card');
+			if (!lobbyCard) return;
+
+			// Voeg P2P sectie toe onder de bestaande lobby
+			const hasServer = typeof io !== 'undefined';
+			const p2pSection = document.createElement('div');
+			p2pSection.className = 'mp-p2p-section';
+			p2pSection.innerHTML = `
+				<div class="mp-divider"><span>${hasServer ? 'OF P2P (geen server)' : 'P2P Spel'}</span></div>
+				<button id="p2p-host-btn" class="mp-btn mp-btn-primary" style="background: linear-gradient(135deg, #6b4fa2, #8f76b8);">
+					🌐 Host P2P Spel
+				</button>
+				<div class="mp-input-group" style="margin-top: 10px;">
+					<label for="p2p-room-code-input">Room Code</label>
+					<input type="text" id="p2p-room-code-input" placeholder="bv. A3BK7X"
+						   maxlength="6" autocomplete="off" style="text-transform: uppercase; letter-spacing: 4px; text-align: center;" />
+				</div>
+				<button id="p2p-join-btn" class="mp-btn mp-btn-secondary" style="margin-top: 4px;">
+					🔗 Join P2P Spel
+				</button>
+				<small style="display:block; text-align:center; margin-top:6px; opacity:0.6;">
+					Direct verbinden via WebRTC — geen server nodig
+				</small>
+			`;
+			lobbyCard.appendChild(p2pSection);
+
+			// P2P Host
+			document.getElementById('p2p-host-btn').addEventListener('click', async () => {
+				const nameInput = document.getElementById('player-name-input');
+				const name = nameInput?.value?.trim();
+				if (!name) {
+					nameInput?.classList.add('mp-shake');
+					setTimeout(() => nameInput?.classList.remove('mp-shake'), 500);
+					return;
+				}
+
+				if (typeof Peer === 'undefined') {
+					alert('PeerJS is niet geladen. Controleer je internetverbinding en herlaad de pagina.');
+					return;
+				}
+
+				const maxPlayers = Number(document.getElementById('max-players-select')?.value || 4);
+				const cardsPerPlayer = Number(document.getElementById('cards-per-player-select')?.value || 8);
+
+				// Toon loading state
+				const hostBtn = document.getElementById('p2p-host-btn');
+				const origText = hostBtn.textContent;
+				hostBtn.disabled = true;
+				hostBtn.textContent = '⏳ Verbinden...';
+
+				try {
+					const host = new LocusP2PHost();
+					const result = await host.startHost(name, { maxPlayers, cardsPerPlayer });
+
+					// Maak een P2P-wrapper die dezelfde interface heeft als LocusMultiplayer
+					const p2pMp = _createP2PHostAdapter(host);
+
+					// Stel state in VÓÓR ui.init() zodat de lobby direct de waiting room toont
+					p2pMp.gameState = host._sanitizeForPlayer(host.hostPlayerId);
+					p2pMp.userId = host.hostPlayerId;
+					p2pMp.userName = name;
+					p2pMp.gameId = host.gameState.id;
+					p2pMp.inviteCode = result.roomCode;
+					p2pMp.connected = true;
+
+					const ui = new LocusLobbyUI(p2pMp);
+					ui.init();
+
+					// Forceer transitie naar wachtkamer
+					ui._showWaitingRoom(result.roomCode, true);
+
+					window._mp = p2pMp;
+					window._ui = ui;
+					window._p2pHost = host;
+
+					// State sync: wanneer host state verandert → update UI
+					host.onStateChanged = (state) => {
+						const prev = p2pMp.gameState;
+						p2pMp.gameState = state;
+						if (p2pMp.onGameStateChanged) p2pMp.onGameStateChanged(state, prev);
+					};
+
+					host.onPlayerJoined = (data) => {
+						if (p2pMp.onPlayerJoined) p2pMp.onPlayerJoined(data);
+					};
+
+					host.onPlayerLeft = (playerId) => {
+						if (p2pMp.onPlayerLeft) p2pMp.onPlayerLeft(playerId);
+					};
+
+				} catch (err) {
+					hostBtn.disabled = false;
+					hostBtn.textContent = origText;
+					alert('P2P host starten mislukt: ' + (err.message || err));
+				}
+			});
+
+			// P2P Join
+			document.getElementById('p2p-join-btn').addEventListener('click', async () => {
+				const nameInput = document.getElementById('player-name-input');
+				const name = nameInput?.value?.trim();
+				if (!name) {
+					nameInput?.classList.add('mp-shake');
+					setTimeout(() => nameInput?.classList.remove('mp-shake'), 500);
+					return;
+				}
+
+				if (typeof Peer === 'undefined') {
+					alert('PeerJS is niet geladen. Controleer je internetverbinding en herlaad de pagina.');
+					return;
+				}
+
+				// Gebruik de P2P room code input (niet de server invite code input)
+				const codeInput = document.getElementById('p2p-room-code-input');
+				const code = codeInput?.value?.trim()?.toUpperCase();
+				if (!code || code.length !== 6) {
+					alert('Vul een geldige 6-letter room code in.');
+					codeInput?.focus();
+					return;
+				}
+
+				const joinBtn = document.getElementById('p2p-join-btn');
+				const origText = joinBtn.textContent;
+				joinBtn.disabled = true;
+				joinBtn.textContent = '⏳ Verbinden...';
+
+				try {
+					const guest = new LocusP2PGuest();
+					await guest.init();
+					const result = await guest.joinGame(name, code);
+
+					// Guest heeft dezelfde interface als LocusMultiplayer
+					guest.userName = name;
+					guest.gameId = result.gameId;
+					guest.inviteCode = code;
+
+					const ui = new LocusLobbyUI(guest);
+					ui.init();
+
+					// Forceer transitie naar wachtkamer
+					ui._showWaitingRoom(code, false);
+
+					window._mp = guest;
+					window._ui = ui;
+
+				} catch (err) {
+					joinBtn.disabled = false;
+					joinBtn.textContent = origText;
+					alert('P2P joinen mislukt: ' + (err.message || err));
+				}
+			});
+		}
+
+		/**
+		 * Maak een adapter object dat de LocusMultiplayer interface
+		 * implementeert maar de P2PHost gebruikt als backend.
+		 */
+		function _createP2PHostAdapter(host) {
+			return {
+				serverUrl: 'p2p',
+				socket: null,
+				userId: host.hostPlayerId,
+				userName: null,
+				gameId: null,
+				inviteCode: null,
+				gameState: null,
+				connected: true,
+
+				// Callbacks
+				onGameStateChanged: null,
+				onPlayerJoined: null,
+				onPlayerLeft: null,
+				onTurnChanged: null,
+				onGameStarted: null,
+				onGameEnded: null,
+				onGoalPhase: null,
+				onError: null,
+				onConnectionChanged: null,
+				onMovePlayed: null,
+				onLevelComplete: null,
+				onShopPhase: null,
+				onNextLevel: null,
+				onObjectivesRevealed: null,
+				onTimeBombed: null,
+				onOpponentInteraction: null,
+				onTaunt: null,
+				onPauseChanged: null,
+
+				async init() { return { userId: host.hostPlayerId }; },
+
+				async createGame(name, opts) {
+					return { gameId: host.gameState.id, inviteCode: host.roomCode, playerId: host.hostPlayerId };
+				},
+
+				async joinGame() { /* host is already in */ },
+
+				async startGame() { return host.hostAction('startGame'); },
+				async chooseStartingDeck(dt) { return host.hostAction('chooseStartingDeck', { deckType: dt }); },
+				async chooseGoal(idx) { return host.hostAction('chooseGoal', { objectiveIndex: idx }); },
+
+				async playCard(cardId, zoneName, baseX, baseY, rotation, mirrored, subgridId) {
+					return host.hostAction('playMove', { cardId, zoneName, baseX, baseY, rotation, mirrored, subgridId });
+				},
+
+				async playBonus(bonusColor, zoneName, baseX, baseY, subgridId, rotation) {
+					return host.hostAction('playBonus', { bonusColor, zoneName, baseX, baseY, subgridId, rotation });
+				},
+
+				async pass(cardId) { return host.hostAction('passMove', { cardId }); },
+				async endTurn(cardId) { return host.hostAction('endTurn', { cardId }); },
+				async undoMove() { return host.hostAction('undoMove'); },
+				async startShopPhase() { return host.hostAction('startShopPhase'); },
+				async buyShopItem(itemId, extra) { return host.hostAction('buyShopItem', { itemId, extra }); },
+				async claimFreeCard(cardId) { return host.hostAction('claimFreeCard', { cardId }); },
+				async setShopReady() { return host.hostAction('shopReady'); },
+				async useTimeBomb() { return host.hostAction('useTimeBomb'); },
+				async togglePause() { return host.hostAction('togglePause'); },
+				async sendTaunt(text) {
+					// Host broadcast taunt locally
+					host._broadcastEvent('taunt', {
+						playerId: host.hostPlayerId,
+						playerName: host.gameState?.players[host.hostPlayerId]?.name || 'Host',
+						text, timestamp: Date.now()
+					});
+					return { success: true };
+				},
+				sendInteraction(data) {
+					host._broadcastEventExcept(null, 'opponentInteraction', {
+						...data,
+						playerId: host.hostPlayerId,
+						playerName: host.gameState?.players[host.hostPlayerId]?.name || 'Host'
+					});
+				},
+
+				isMyTurn() {
+					if (!this.gameState || this.gameState.phase !== 'playing') return false;
+					return this.gameState.playerOrder[this.gameState.currentTurnIndex] === this.userId;
+				},
+
+				getCurrentPlayer() {
+					if (!this.gameState) return null;
+					const pid = this.gameState.playerOrder[this.gameState.currentTurnIndex];
+					return this.gameState.players[pid] || null;
+				},
+
+				getMyPlayer() {
+					if (!this.gameState) return null;
+					return this.gameState.players[this.userId] || null;
+				},
+
+				getMyHand() {
+					const p = this.getMyPlayer();
+					return p ? p.hand : [];
+				},
+
+				getScoreboard() {
+					if (!this.gameState) return [];
+					return this.gameState.playerOrder.map(pid => {
+						const p = this.gameState.players[pid];
+						return {
+							id: pid, name: p.name, score: p.score || 0,
+							scoreBreakdown: p.scoreBreakdown || null,
+							isCurrentTurn: this.gameState.playerOrder[this.gameState.currentTurnIndex] === pid,
+							isMe: pid === this.userId,
+							cardsLeft: Array.isArray(p.drawPile) ? p.drawPile.length : (p.drawPile || 0),
+							handSize: Array.isArray(p.hand) ? p.hand.length : 0,
+							discardPileSize: Array.isArray(p.discardPile) ? p.discardPile.length : (typeof p.discardPile === 'number' ? p.discardPile : 0),
+							bonusInventory: p.bonusInventory || {},
+							connected: p.connected
+						};
+					});
+				},
+
+				getBoardState() {
+					return this.gameState?.boardState || null;
+				},
+
+				previewPlacement(zoneName, baseX, baseY, matrix, subgridId) {
+					if (!this.gameState?.boardState) return { valid: false };
+					const Rules = window.LocusGameRules;
+					if (!Rules) return { valid: false };
+					let zoneData;
+					if (zoneName === 'red') {
+						const sgs = subgridId
+							? (this.gameState.boardState.zones.red?.subgrids || []).filter(sg => sg.id === subgridId)
+							: (this.gameState.boardState.zones.red?.subgrids || []);
+						for (const sg of sgs) {
+							const cells = Rules.collectPlacementCellsData(sg, baseX, baseY, matrix);
+							if (cells) return { valid: Rules.validatePlacement(zoneName, sg, cells), cells };
+						}
+						return { valid: false };
+					}
+					zoneData = this.gameState.boardState.zones[zoneName];
+					if (!zoneData) return { valid: false };
+					const cells = Rules.collectPlacementCellsData(zoneData, baseX, baseY, matrix);
+					if (!cells) return { valid: false };
+					return { valid: Rules.validatePlacement(zoneName, zoneData, cells), cells };
+				},
+
+				disconnect() {
+					host.destroy();
+					this.gameState = null;
+					this.connected = false;
+				}
+			};
+		}
+	</script>
+</body>
+</html>

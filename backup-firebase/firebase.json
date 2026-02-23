@@ -1,0 +1,30 @@
+{
+  "firestore": {
+    "rules": "firestore.rules"
+  },
+  "functions": [
+    {
+      "source": "backend",
+      "codebase": "default",
+      "ignore": [
+        "node_modules",
+        ".git"
+      ]
+    }
+  ],
+  "hosting": {
+    "public": ".",
+    "ignore": [
+      "firebase.json",
+      "**/node_modules/**",
+      "backend/**",
+      "FIREBASE-SETUP.md"
+    ],
+    "rewrites": [
+      {
+        "source": "**",
+        "destination": "/multiplayer.html"
+      }
+    ]
+  }
+}

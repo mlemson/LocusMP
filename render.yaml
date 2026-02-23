@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: locus-multiplayer
+    runtime: node
+    buildCommand: cd server && npm install
+    startCommand: node server/server.js
+    envVars:
+      - key: PORT
+        value: 3000
+      - key: NODE_ENV
+        value: production

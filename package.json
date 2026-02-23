@@ -1,0 +1,13 @@
+{
+  "name": "locus-multiplayer",
+  "version": "1.0.0",
+  "description": "Locus Multiplayer — Board game met 2-8 spelers",
+  "main": "server/server.js",
+  "scripts": {
+    "start": "node server/server.js",
+    "dev": "node server/server.js"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
