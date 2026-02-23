@@ -185,17 +185,35 @@ class LocusP2PHost {
 			case 'joinGame': {
 				const name = String(msg.playerName || 'Speler').slice(0, 20);
 				const reconnectPlayerId = msg.reconnectPlayerId ? String(msg.reconnectPlayerId) : null;
-				if (reconnectPlayerId && this.gameState.players[reconnectPlayerId]) {
-					const reconnectPlayer = this.gameState.players[reconnectPlayerId];
-					if (reconnectPlayer.connected === false) {
+
+					const players = this.gameState?.players || {};
+					let reconnectTargetId = null;
+
+					// 1) Primaire route: expliciete reconnect op bekende playerId
+					if (reconnectPlayerId && players[reconnectPlayerId] && players[reconnectPlayerId].connected === false) {
+						reconnectTargetId = reconnectPlayerId;
+					}
+
+					// 2) Fallback:zelfde naam + offline speler (handig bij refresh/nieuw tabblad)
+					if (!reconnectTargetId && name) {
+						const offlineByName = Object.values(players).find(p =>
+							p &&
+							p.connected === false &&
+							String(p.name || '').trim().toLowerCase() === String(name).trim().toLowerCase()
+						);
+						if (offlineByName?.id) reconnectTargetId = offlineByName.id;
+					}
+
+					if (reconnectTargetId) {
+						const reconnectPlayer = players[reconnectTargetId];
 						reconnectPlayer.connected = true;
 						if (name) reconnectPlayer.name = name;
-						this.playerMap.set(conn.peer, reconnectPlayerId);
-						conn.send({ type: 'joinResult', success: true, playerId: reconnectPlayerId, roomCode: this.roomCode, reconnected: true });
+						this.playerMap.set(conn.peer, reconnectTargetId);
+						conn.send({ type: 'joinResult', success: true, playerId: reconnectTargetId, roomCode: this.roomCode, reconnected: true });
 						this._broadcastState();
 						break;
 					}
-				}
+
 				const pid = 'P_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
 				const result = this.Rules.addPlayer(this.gameState, pid, name);
 				if (result.error) {

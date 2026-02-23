@@ -608,7 +608,19 @@
 				try {
 					const guest = new LocusP2PGuest();
 					await guest.init();
-					const result = await guest.joinGame(name, code);
+					let reconnectPlayerId = null;
+					try {
+						const savedRole = sessionStorage.getItem('locus_p2p_role');
+						const savedRoom = sessionStorage.getItem('locus_p2p_roomCode');
+						const savedPid = sessionStorage.getItem('locus_p2p_playerId');
+						if (savedRole === 'guest' && savedRoom === code && savedPid) {
+							reconnectPlayerId = savedPid;
+						}
+					} catch (_) {
+						reconnectPlayerId = null;
+					}
+
+					const result = await guest.joinGame(name, code, { reconnectPlayerId });
 
 					// Guest heeft dezelfde interface als LocusMultiplayer
 					guest.userName = name;
