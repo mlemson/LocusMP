@@ -2085,10 +2085,6 @@ class LocusLobbyUI {
 
 			this._cancelDrag();
 			if (result.success) {
-				let msg = 'Kaart geplaatst! ✓';
-				if (result.goldCollected) msg += ` (${result.goldCollected}x goud!)`;
-				if (result.bonusesCollected?.length) msg += ` (+${result.bonusesCollected.length} bonus!)`;
-				this._showToast(msg, 'success');
 				// Timer loopt al vanuit begin van beurt
 			}
 		} catch (err) {
@@ -2633,10 +2629,6 @@ class LocusLobbyUI {
 			if (result?.error) throw new Error(result.error);
 			if (result?.success) {
 				this._playPlaceSound();
-				let msg = 'Bonus geplaatst! ✓';
-				if (result.goldCollected) msg += ` (${result.goldCollected}x goud!)`;
-				if (result.bonusesCollected?.length) msg += ` (+${result.bonusesCollected.length} bonus!)`;
-				this._showToast(msg, 'success');
 				this._cancelBonusMode();
 			}
 		} catch (err) {
@@ -2663,10 +2655,6 @@ class LocusLobbyUI {
 					if (fallbackResult?.error) throw new Error(fallbackResult.error);
 					if (fallbackResult?.success) {
 						this._playPlaceSound();
-						let msg = 'Bonus geplaatst! ✓';
-						if (fallbackResult.goldCollected) msg += ` (${fallbackResult.goldCollected}x goud!)`;
-						if (fallbackResult.bonusesCollected?.length) msg += ` (+${fallbackResult.bonusesCollected.length} bonus!)`;
-						this._showToast(msg, 'success');
 						this._cancelBonusMode();
 						return;
 					}
@@ -2821,10 +2809,6 @@ class LocusLobbyUI {
 				updatedAt: Date.now()
 			};
 			this._renderOpponentPanels();
-			const label = data.mode === 'bonus'
-				? `${data.playerName} kiest een bonus`
-				: `${data.playerName} selecteert ${data.cardName || 'een kaart'}`;
-			this._showToast(label, 'info');
 			return;
 		}
 
