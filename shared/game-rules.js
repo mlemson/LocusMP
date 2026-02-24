@@ -1063,11 +1063,21 @@ function applyPlacement(boardState, zoneName, zoneData, baseX, baseY, matrix, co
  */
 const YELLOW_COLUMN_PAIR_POINTS = [10, 14, 20, 28, 38];
 
+function hasStoneInYellowColumn(zoneData, x) {
+	if (!zoneData) return false;
+	for (let y = 0; y < zoneData.rows; y++) {
+		const cell = getDataCell(zoneData, x, y);
+		if (cell?.isStone) return true;
+	}
+	return false;
+}
+
 function scoreYellowData(zoneData) {
 	if (!zoneData) return 0;
 	let score = 0;
 
 	for (let x = 0; x < zoneData.cols; x++) {
+		if (hasStoneInYellowColumn(zoneData, x)) continue;
 		let colComplete = true;
 		for (let y = 0; y < zoneData.rows; y++) {
 			const cell = getDataCell(zoneData, x, y);
@@ -1184,10 +1194,24 @@ const DEFAULT_MAX_LEVELS = 10;
 function getRedSubgridScoreInfo(subgrid) {
 	const allCells = Object.values(subgrid?.cells || {});
 	const totalCount = allCells.length;
+	const hasStone = allCells.some(c => !!c?.isStone);
 	if (totalCount === 0) {
 		return {
 			totalCount: 0,
 			filledCount: 0,
+			fillRatio: 0,
+			basePoints: 0,
+			fullBonusPoints: 0,
+			totalPoints: 0,
+			isPartialReached: false,
+			isFull: false
+		};
+	}
+
+	if (hasStone) {
+		return {
+			totalCount,
+			filledCount: allCells.filter(c => c.active).length,
 			fillRatio: 0,
 			basePoints: 0,
 			fullBonusPoints: 0,
@@ -1361,6 +1385,7 @@ function calculatePlayerScores(boardState, playerIds) {
 	const yellowZone = boardState.zones.yellow;
 	if (yellowZone) {
 		for (let x = 0; x < yellowZone.cols; x++) {
+			if (hasStoneInYellowColumn(yellowZone, x)) continue;
 			let colComplete = true;
 			const colCells = [];
 			for (let y = 0; y < yellowZone.rows; y++) {
@@ -1799,6 +1824,7 @@ function countPlayerCompletedYellowCols(boardState, playerId) {
 	if (!zone || !playerId) return 0;
 	let count = 0;
 	for (let x = 0; x < zone.cols; x++) {
+		if (hasStoneInYellowColumn(zone, x)) continue;
 		const colCells = [];
 		let complete = true;
 		for (let y = 0; y < zone.rows; y++) {
@@ -1846,6 +1872,7 @@ function countPlayerCompletedRedSubgrids(boardState, playerId) {
 	for (const sg of zone.subgrids) {
 		const allCells = Object.values(sg.cells);
 		if (allCells.length === 0) continue;
+		if (allCells.some(c => c?.isStone)) continue;
 		if (!allCells.every(c => c.active)) continue;
 		if (getLatestPlacerOwner(allCells) === playerId) count++;
 	}
