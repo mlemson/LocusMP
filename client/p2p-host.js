@@ -190,11 +190,11 @@ class LocusP2PHost {
 					let reconnectTargetId = null;
 
 					// 1) Primaire route: expliciete reconnect op bekende playerId
-					if (reconnectPlayerId && players[reconnectPlayerId] && players[reconnectPlayerId].connected === false) {
+					if (reconnectPlayerId && players[reconnectPlayerId]) {
 						reconnectTargetId = reconnectPlayerId;
 					}
 
-					// 2) Fallback:zelfde naam + offline speler (handig bij refresh/nieuw tabblad)
+					// 2) Fallback: zelfde naam + offline speler
 					if (!reconnectTargetId && name) {
 						const offlineByName = Object.values(players).find(p =>
 							p &&
@@ -204,8 +204,28 @@ class LocusP2PHost {
 						if (offlineByName?.id) reconnectTargetId = offlineByName.id;
 					}
 
+					// 3) Race-condition fallback: tijdens lopend spel kan oude connectie nog kort als connected staan
+					if (!reconnectTargetId && name && this.gameState?.phase !== 'waiting') {
+						const byNameInRunningGame = Object.values(players).find(p =>
+							p && String(p.name || '').trim().toLowerCase() === String(name).trim().toLowerCase()
+						);
+						if (byNameInRunningGame?.id) reconnectTargetId = byNameInRunningGame.id;
+					}
+
 					if (reconnectTargetId) {
 						const reconnectPlayer = players[reconnectTargetId];
+
+						// Verwijder stale peer mappings voor dezelfde speler
+						for (const [peerId, mappedPid] of this.playerMap.entries()) {
+							if (mappedPid === reconnectTargetId && peerId !== conn.peer) {
+								this.playerMap.delete(peerId);
+								const staleConn = this.connections.get(peerId);
+								if (staleConn) {
+									try { staleConn.close(); } catch (_) {}
+								}
+							}
+						}
+
 						reconnectPlayer.connected = true;
 						if (name) reconnectPlayer.name = name;
 						this.playerMap.set(conn.peer, reconnectTargetId);

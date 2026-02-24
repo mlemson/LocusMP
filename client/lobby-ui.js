@@ -143,7 +143,7 @@ class LocusLobbyUI {
 			'mp-scoreboard', 'mp-turn-indicator', 'mp-hand-container',
 			'mp-board-container', 'mp-pass-btn', 'mp-timer',
 			'mp-my-objective', 'mp-bonus-bar',
-			'mp-taunt-bar',
+			'mp-taunt-bar', 'mp-room-code-badge',
 			'mp-end-turn-btn', 'mp-undo-btn', 'mp-turn-timer',
 			'mp-deck-overview-btn', 'mp-deck-overlay', 'mp-deck-close-btn', 'mp-deck-cards', 'mp-deck-count',
 			'results-container', 'play-again-btn',
@@ -870,6 +870,7 @@ class LocusLobbyUI {
 		this._syncTurnTimerFromState(state);
 		this._startOpponentTimerTicker();
 		this._showScreen('game-screen');
+		this._updateRoomCodeBadge();
 		this._renderBoard(state.boardState);
 		this._renderScoreboard();
 		this._renderHand();
@@ -934,6 +935,7 @@ class LocusLobbyUI {
 	_updateTurnIndicator() {
 		const indicator = this.elements['mp-turn-indicator'];
 		if (!indicator || !this.mp.gameState) return;
+		this._updateRoomCodeBadge();
 
 		const isMyTurn = this.mp.isMyTurn();
 		const current = this.mp.getCurrentPlayer();
@@ -1023,6 +1025,13 @@ class LocusLobbyUI {
 			if (timerEl) timerEl.style.display = 'none';
 			if (!this._turnTimerInterval) this._startTurnTimer();
 		}
+	}
+
+	_updateRoomCodeBadge() {
+		const badge = this.elements['mp-room-code-badge'];
+		if (!badge) return;
+		const code = String(this.mp?.inviteCode || this.mp?.roomCode || '').toUpperCase().trim();
+		badge.textContent = `Room: ${code || '------'}`;
 	}
 
 	// ──────────────────────────────────────────

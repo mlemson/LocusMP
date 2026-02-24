@@ -589,6 +589,25 @@ html, body {
 	border-bottom: 1px solid rgba(255,255,255,0.06);
 }
 
+.mp-top-right {
+	display: flex;
+	flex-direction: column;
+	align-items: flex-end;
+	gap: 6px;
+}
+
+.mp-room-code-badge {
+	font-size: 0.66rem;
+	font-weight: 700;
+	letter-spacing: 0.6px;
+	color: rgba(208, 232, 255, 0.95);
+	background: rgba(61, 117, 181, 0.2);
+	border: 1px solid rgba(61, 117, 181, 0.5);
+	padding: 3px 8px;
+	border-radius: 999px;
+	text-transform: uppercase;
+}
+
 .mp-taunt-bar {
 	display: flex;
 	align-items: center;
@@ -1034,6 +1053,17 @@ html, body {
 	flex-direction: column;
 	gap: 12px;
 	align-items: flex-start;
+}
+
+.mp-board-col-left {
+	width: max-content;
+	align-items: stretch;
+}
+
+.mp-board-col-left .mp-zone-yellow,
+.mp-board-col-left .mp-zone-green {
+	width: 100%;
+	box-sizing: border-box;
 }
 
 .mp-board-col-middle {
@@ -2104,6 +2134,17 @@ body.mp-loading .mp-btn {
 	.mp-top-bar {
 		padding: 4px 8px;
 		gap: 2px;
+	}
+
+	.mp-top-right {
+		width: 100%;
+		align-items: flex-start;
+		gap: 4px;
+	}
+
+	.mp-room-code-badge {
+		font-size: 0.58rem;
+		padding: 2px 6px;
 	}
 
 	.mp-taunt-btn {
