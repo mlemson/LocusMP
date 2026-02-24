@@ -111,7 +111,7 @@ class LocusP2PHost {
 					this._clearTimer();
 					if (!this.gameState.paused) {
 						this.gameState._turnTimerRemainingMs = Math.max(1, Number(this._turnTimerDuration) || 40000);
-						this._startTimerForCurrentPlayer();
+						this._startTimerForCurrentPlayer(true);
 					} else {
 						const rem = Math.max(0, Number(this.gameState._turnTimerRemainingMs) || 0);
 						this.gameState._turnTimerRemainingMs = rem;
@@ -165,7 +165,7 @@ class LocusP2PHost {
 							level: this.gameState.level
 						});
 					} else {
-						this._startTimerForCurrentPlayer();
+						this._startTimerForCurrentPlayer(true);
 					}
 				}
 				if (this.onPlayerLeft) this.onPlayerLeft(playerId);
@@ -250,7 +250,7 @@ class LocusP2PHost {
 				if (!playerId) return;
 				const result = this.Rules.chooseObjective(this.gameState, playerId, msg.objectiveIndex);
 				conn.send({ type: 'result', action: 'chooseGoal', ...result });
-				if (result.allChosen) this._startTimerForCurrentPlayer();
+				if (result.allChosen) this._startTimerForCurrentPlayer(true);
 				this._broadcastState();
 				break;
 			}
@@ -301,7 +301,7 @@ class LocusP2PHost {
 						level: this.gameState.level
 					});
 				} else {
-					this._startTimerForCurrentPlayer();
+					this._startTimerForCurrentPlayer(true);
 				}
 				break;
 			}
@@ -319,7 +319,7 @@ class LocusP2PHost {
 						level: this.gameState.level
 					});
 				} else {
-					this._startTimerForCurrentPlayer();
+					this._startTimerForCurrentPlayer(true);
 				}
 				break;
 			}
@@ -365,7 +365,7 @@ class LocusP2PHost {
 				}
 				this._broadcastState();
 				if (result.allReady && this.gameState.phase === 'playing') {
-					this._startTimerForCurrentPlayer();
+					this._startTimerForCurrentPlayer(true);
 				}
 				break;
 			}
@@ -384,7 +384,7 @@ class LocusP2PHost {
 					});
 				}
 				this._broadcastState();
-				if (!result.gameEnded) this._startTimerForCurrentPlayer();
+				if (!result.gameEnded) this._startTimerForCurrentPlayer(true);
 				break;
 			}
 
@@ -407,8 +407,13 @@ class LocusP2PHost {
 					this.gameState.paused = false;
 					this.gameState.pausedBy = null;
 					this.gameState.pausedAt = null;
-					if (this.gameState.phase === 'playing') this._startTimerForCurrentPlayer();
+					// Herstart timer met de opgeslagen resterende tijd
+					if (this.gameState.phase === 'playing') this._startTimerForCurrentPlayer(false);
 				} else {
+					// Sla resterende tijd op vóór pauzeren
+					const _pauseElapsed = Math.max(0, Date.now() - (this._turnTimerStart || 0));
+					const _pauseDuration = Math.max(1, Number(this.gameState._turnTimerDurationMs) || this._turnTimerDuration);
+					this.gameState._turnTimerRemainingMs = Math.max(1, _pauseDuration - _pauseElapsed);
 					this.gameState.paused = true;
 					this.gameState.pausedBy = playerId;
 					this.gameState.pausedAt = Date.now();
@@ -481,7 +486,7 @@ class LocusP2PHost {
 				break;
 			case 'chooseGoal':
 				result = this.Rules.chooseObjective(this.gameState, playerId, data.objectiveIndex);
-				if (result.allChosen) this._startTimerForCurrentPlayer();
+				if (result.allChosen) this._startTimerForCurrentPlayer(true);
 				break;
 			case 'playMove':
 				result = this.Rules.playMove(this.gameState, playerId, data.cardId, data.zoneName,
@@ -510,7 +515,7 @@ class LocusP2PHost {
 						level: this.gameState.level
 					});
 				} else {
-					this._startTimerForCurrentPlayer();
+					this._startTimerForCurrentPlayer(true);
 				}
 				break;
 			case 'endTurn':
@@ -523,7 +528,7 @@ class LocusP2PHost {
 						level: this.gameState.level
 					});
 				} else {
-					this._startTimerForCurrentPlayer();
+					this._startTimerForCurrentPlayer(true);
 				}
 				break;
 			case 'undoMove':
@@ -545,7 +550,7 @@ class LocusP2PHost {
 					this._broadcastEvent('nextLevelStarted', { level: this.gameState.level });
 				}
 				if (result.allReady && this.gameState.phase === 'playing') {
-					this._startTimerForCurrentPlayer();
+					this._startTimerForCurrentPlayer(true);
 				}
 				break;
 			case 'useTimeBomb':
@@ -559,7 +564,7 @@ class LocusP2PHost {
 						bombedPlayerName: result.bombedPlayerName
 					});
 				}
-				if (!result?.gameEnded) this._startTimerForCurrentPlayer();
+				if (!result?.gameEnded) this._startTimerForCurrentPlayer(true);
 				break;
 			case 'togglePause': {
 				// Host toggled pause
@@ -567,8 +572,13 @@ class LocusP2PHost {
 					this.gameState.paused = false;
 					this.gameState.pausedBy = null;
 					this.gameState.pausedAt = null;
-					if (this.gameState.phase === 'playing') this._startTimerForCurrentPlayer();
+					// Herstart timer met de opgeslagen resterende tijd
+					if (this.gameState.phase === 'playing') this._startTimerForCurrentPlayer(false);
 				} else {
+					// Sla resterende tijd op vóór pauzeren
+					const _pauseElapsed = Math.max(0, Date.now() - (this._turnTimerStart || 0));
+					const _pauseDuration = Math.max(1, Number(this.gameState._turnTimerDurationMs) || this._turnTimerDuration);
+					this.gameState._turnTimerRemainingMs = Math.max(1, _pauseDuration - _pauseElapsed);
 					this.gameState.paused = true;
 					this.gameState.pausedBy = playerId;
 					this.gameState.pausedAt = Date.now();
@@ -685,13 +695,17 @@ class LocusP2PHost {
 
 	// ── Turn Timer ──
 
-	_startTimerForCurrentPlayer() {
+	_startTimerForCurrentPlayer(forceFull = false) {
 		this._clearTimer();
 		if (!this.gameState || this.gameState.phase !== 'playing') return;
 
 		const currentPid = this.gameState.playerOrder[this.gameState.currentTurnIndex];
 		if (!currentPid) return;
-		const remaining = Math.max(1, Number(this.gameState._turnTimerRemainingMs) || this._turnTimerDuration);
+		// forceFull=true geeft de volgende speler altijd een verse volledige timer;
+		// forceFull=false (hervatten na pauze) gebruikt de opgeslagen resterende tijd.
+		const remaining = forceFull
+			? this._turnTimerDuration
+			: Math.max(1, Number(this.gameState._turnTimerRemainingMs) || this._turnTimerDuration);
 		this._startTimerForPlayer(currentPid, remaining);
 	}
 
@@ -718,7 +732,7 @@ class LocusP2PHost {
 					level: this.gameState.level
 				});
 			} else {
-				this._startTimerForCurrentPlayer();
+				this._startTimerForCurrentPlayer(true);
 			}
 		}, duration);
 }

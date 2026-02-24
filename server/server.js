@@ -81,8 +81,8 @@ function _startTurnTimer(gameId, playerId, durationMs = TURN_TIMER_MS) {
 				level: gameState.level
 			});
 		} else {
-			// Start timer voor de volgende speler
-			_startTimerForCurrentPlayer(gameId);
+			// Start fresh timer voor de volgende speler
+			_startTimerForCurrentPlayer(gameId, true);
 		}
 	}, duration);
 	turnTimers.set(gameId, timer);
@@ -700,8 +700,8 @@ io.on('connection', (socket) => {
 					level: gameState.level
 				});
 			} else {
-				// Start timer voor de volgende speler
-				_startTimerForCurrentPlayer(info.gameId);
+				// Start fresh timer voor de volgende speler
+				_startTimerForCurrentPlayer(info.gameId, true);
 			}
 
 		} catch (error) {
@@ -749,8 +749,8 @@ io.on('connection', (socket) => {
 					level: gameState.level
 				});
 			} else {
-				// Start timer voor de volgende speler
-				_startTimerForCurrentPlayer(info.gameId);
+				// Start fresh timer voor de volgende speler
+				_startTimerForCurrentPlayer(info.gameId, true);
 			}
 
 		} catch (error) {
@@ -945,8 +945,8 @@ io.on('connection', (socket) => {
 					level: gameState.level
 				});
 			} else {
-				// Start timer voor de volgende speler
-				_startTimerForCurrentPlayer(info.gameId);
+				// Start fresh timer voor de volgende speler
+				_startTimerForCurrentPlayer(info.gameId, true);
 			}
 
 		} catch (error) {
@@ -1073,7 +1073,7 @@ io.on('connection', (socket) => {
 					_clearTurnTimer(info.gameId);
 					const autoResult = GameRules.passMove(gameState, info.playerId, null);
 					if (!autoResult?.error && !autoResult?.gameEnded) {
-						_startTimerForCurrentPlayer(info.gameId);
+						_startTimerForCurrentPlayer(info.gameId, true);
 					}
 					if (autoResult?.gameEnded) {
 						io.to(info.gameId).emit('levelComplete', {
