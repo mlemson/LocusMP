@@ -1918,6 +1918,57 @@ body.mp-loading .mp-btn {
 	}
 }
 
+@media (max-width: 1300px) and (min-width: 769px) and (max-height: 900px) {
+	:root {
+		--mp-cell-size: 16px;
+		--mp-cell-radius: 3px;
+	}
+
+	.mp-game-layout {
+		grid-template-columns: 190px 1fr;
+	}
+
+	.mp-board-container {
+		padding: 6px;
+	}
+
+	.mp-board {
+		gap: 6px;
+		padding: 2px;
+	}
+
+	.mp-zone {
+		padding: 5px;
+		padding-top: 18px;
+	}
+
+	.mp-zone-label {
+		font-size: 0.62rem;
+		top: 2px;
+		left: 5px;
+	}
+
+	.mp-blue-row-point,
+	.mp-yellow-col-point,
+	.mp-purple-points-guide,
+	.mp-green-points-guide {
+		font-size: 0.58rem;
+	}
+
+	.mp-score-row {
+		padding: 6px 8px;
+	}
+
+	.mp-score-value-big {
+		font-size: 1rem;
+		min-width: 36px;
+	}
+
+	.mp-card {
+		width: 86px;
+	}
+}
+
 @media (max-width: 1100px) and (min-width: 769px) and (min-height: 820px) {
 	.mp-game-layout {
 		grid-template-areas:
