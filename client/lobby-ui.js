@@ -60,6 +60,7 @@ class LocusLobbyUI {
 		this._turnTimerPausedRemainingMs = 0;
 		this._activeSelections = {};
 		this._touchDragScrollLocked = false;
+		this._ignoreNextBonusClickUntil = 0;
 	}
 
 	// ──────────────────────────────────────────
@@ -2304,7 +2305,14 @@ class LocusLobbyUI {
 		if (isMyTurn) {
 			container.querySelectorAll('.mp-bonus-btn:not(.disabled):not(.mp-bomb-btn)').forEach(btn => {
 				btn.addEventListener('click', () => {
+					if (Date.now() < (this._ignoreNextBonusClickUntil || 0)) return;
 					this._activateBonusMode(btn.dataset.bonusColor);
+				});
+				btn.addEventListener('pointerdown', (e) => {
+					if (e.pointerType !== 'touch' && e.pointerType !== 'pen') return;
+					e.preventDefault();
+					this._ignoreNextBonusClickUntil = Date.now() + 500;
+					this._activateBonusMode(btn.dataset.bonusColor, e);
 				});
 			});
 		}
@@ -2333,7 +2341,7 @@ class LocusLobbyUI {
 		}
 	}
 
-	_activateBonusMode(bonusColor) {
+	_activateBonusMode(bonusColor, startPointerEvent = null) {
 		const Rules = window.LocusGameRules;
 		if (!Rules) return;
 		if (!this.mp.isMyTurn()) return;
@@ -2396,6 +2404,11 @@ class LocusLobbyUI {
 		const board = document.querySelector('.mp-board');
 		if (board) board.classList.add('placement-mode');
 
+		// Mobiel/touch: ga direct naar de juiste kleurzone
+		if (this._isTouchLikeDevice() || startPointerEvent?.pointerType === 'touch' || startPointerEvent?.pointerType === 'pen') {
+			this._scrollMobileBoardToZone(bonusColor, true);
+		}
+
 		// Ghost volgt muis + preview (centered, like card ghosts)
 		this._bonusMoveHandler = (e) => {
 			if (!this._bonusMode?.ghostEl) return;
@@ -2417,6 +2430,11 @@ class LocusLobbyUI {
 		};
 		document.addEventListener('pointermove', this._bonusMoveHandler);
 		document.addEventListener('pointerup', this._onBonusPointerUpCancel);
+
+		// Touch-start: toon ghost direct onder vinger zodat hold+sleep meteen werkt
+		if (startPointerEvent) {
+			this._bonusMoveHandler(startPointerEvent);
+		}
 
 		// Klik om te plaatsen (event delegation op container)
 		const container = this.elements['mp-board-container'];
