@@ -73,8 +73,8 @@ function _startTurnTimer(gameId, playerId, durationMs = TURN_TIMER_MS) {
 		// Auto-end turn
 		const endResult = GameRules.endTurn(gameState, playerId);
 		console.log(`[Locus] Timer verlopen voor ${playerId} — auto endTurn (ended: ${endResult.gameEnded})`);
-		broadcastGameState(io, gameId);
 		if (endResult.gameEnded) {
+			broadcastGameState(io, gameId);
 			io.to(gameId).emit('levelComplete', {
 				levelScores: gameState.levelScores,
 				levelWinner: gameState.levelWinner,
@@ -83,6 +83,7 @@ function _startTurnTimer(gameId, playerId, durationMs = TURN_TIMER_MS) {
 		} else {
 			// Start fresh timer voor de volgende speler
 			_startTimerForCurrentPlayer(gameId, true);
+			broadcastGameState(io, gameId);
 		}
 	}, duration);
 	turnTimers.set(gameId, timer);
@@ -400,6 +401,23 @@ io.on('connection', (socket) => {
 				});
 			}
 
+			// Check voor gedisconnecteerde speler met dezelfde naam (herverbinden zonder sessionStorage)
+			const disconnectedEntry = Object.entries(gameState.players || {}).find(([pid, p]) =>
+				p.connected === false &&
+				String(p.name || '').trim().toLowerCase() === playerName.trim().toLowerCase()
+			);
+			if (disconnectedEntry) {
+				const [existingPlayerId, existingPlayer] = disconnectedEntry;
+				existingPlayer.connected = true;
+				socketToPlayer.set(socket.id, { gameId, playerId: existingPlayerId });
+				socket.join(gameId);
+				console.log(`[Locus] ${playerName} herverbonden via naam in game ${gameId}`);
+				callback({ success: true, gameId, playerId: existingPlayerId, reconnected: true });
+				broadcastGameState(io, gameId);
+				socket.to(gameId).emit('playerReconnected', { playerId: existingPlayerId, name: existingPlayer.name });
+				return;
+			}
+
 			const playerId = generatePlayerId();
 			const addResult = GameRules.addPlayer(gameState, playerId, playerName);
 			if (addResult.error) {
@@ -515,12 +533,11 @@ io.on('connection', (socket) => {
 
 			callback({ success: true, allChosen: chooseResult.allChosen });
 
-			broadcastGameState(io, info.gameId);
-
 			// Start timer voor de eerste speler als het spel begint
 			if (chooseResult.allChosen) {
 				_startTimerForCurrentPlayer(info.gameId, true);
 			}
+			broadcastGameState(io, info.gameId);
 
 		} catch (error) {
 			console.error('[Locus] chooseGoal error:', error);
@@ -691,9 +708,8 @@ io.on('connection', (socket) => {
 				winner: passResult.winner || null
 			});
 
-			broadcastGameState(io, info.gameId);
-
 			if (passResult.gameEnded) {
+				broadcastGameState(io, info.gameId);
 				io.to(info.gameId).emit('levelComplete', {
 					levelScores: gameState.levelScores,
 					levelWinner: gameState.levelWinner,
@@ -702,6 +718,7 @@ io.on('connection', (socket) => {
 			} else {
 				// Start fresh timer voor de volgende speler
 				_startTimerForCurrentPlayer(info.gameId, true);
+				broadcastGameState(io, info.gameId);
 			}
 
 		} catch (error) {
@@ -740,9 +757,8 @@ io.on('connection', (socket) => {
 				winner: endResult.winner || null
 			});
 
-			broadcastGameState(io, info.gameId);
-
 			if (endResult.gameEnded) {
+				broadcastGameState(io, info.gameId);
 				io.to(info.gameId).emit('levelComplete', {
 					levelScores: gameState.levelScores,
 					levelWinner: gameState.levelWinner,
@@ -751,6 +767,7 @@ io.on('connection', (socket) => {
 			} else {
 				// Start fresh timer voor de volgende speler
 				_startTimerForCurrentPlayer(info.gameId, true);
+				broadcastGameState(io, info.gameId);
 			}
 
 		} catch (error) {
@@ -888,12 +905,11 @@ io.on('connection', (socket) => {
 				io.to(info.gameId).emit('nextLevelStarted', { level: gameState.level });
 			}
 
-			broadcastGameState(io, info.gameId);
-
 			// Start timer als het spel meteen naar playing gaat (niet bij choosingGoals)
 			if (result.allReady && gameState.phase === 'playing') {
 				_startTimerForCurrentPlayer(info.gameId, true);
 			}
+			broadcastGameState(io, info.gameId);
 
 		} catch (error) {
 			console.error('[Locus] shopReady error:', error);
@@ -936,9 +952,8 @@ io.on('connection', (socket) => {
 				bombedPlayerName: result.bombedPlayerName
 			});
 
-			broadcastGameState(io, info.gameId);
-
 			if (result.gameEnded) {
+				broadcastGameState(io, info.gameId);
 				io.to(info.gameId).emit('levelComplete', {
 					levelScores: gameState.levelScores,
 					levelWinner: gameState.levelWinner,
@@ -947,6 +962,7 @@ io.on('connection', (socket) => {
 			} else {
 				// Start fresh timer voor de volgende speler
 				_startTimerForCurrentPlayer(info.gameId, true);
+				broadcastGameState(io, info.gameId);
 			}
 
 		} catch (error) {

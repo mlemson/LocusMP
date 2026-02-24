@@ -1217,8 +1217,11 @@ html, body {
 }
 
 .mp-green-points-guide {
-	margin: 0 auto 5px;
-	width: fit-content;
+	position: absolute;
+	top: 4px;
+	left: 50%;
+	transform: translateX(-50%);
+	white-space: nowrap;
 	font-size: 0.66rem;
 	font-weight: 700;
 	color: rgba(208, 255, 214, 0.9);
