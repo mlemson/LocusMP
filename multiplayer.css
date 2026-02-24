@@ -1023,15 +1023,25 @@ html, body {
 
 /* ── BOARD ── */
 .mp-board {
-	display: grid;
-	grid-template-columns: auto auto auto;
-	grid-template-rows: max-content max-content;
-	grid-template-areas:
-		"yellow blue red"
-		"green blue purple";
-	align-items: start;
+	display: flex;
+	align-items: flex-start;
 	gap: 12px;
 	padding: 8px;
+}
+
+.mp-board-col {
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+	align-items: flex-start;
+}
+
+.mp-board-col-middle {
+	align-self: stretch;
+}
+
+.mp-board-col-middle .mp-zone-blue {
+	height: 100%;
 }
 
 .mp-zone-yellow { grid-area: yellow; }

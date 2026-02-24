@@ -438,7 +438,12 @@ class LocusLobbyUI {
 
 		this._setLoading(true);
 		try {
-			await this.mp.init();
+			const initResult = await this.mp.init();
+			if (initResult?.reconnected) {
+				this.handleReconnect();
+				this._setLoading(false);
+				return;
+			}
 			const joinResult = await this.mp.joinGame(name, code);
 			if (joinResult.reconnected) {
 				// Spel loopt al — navigeer direct naar het juiste scherm
@@ -2920,17 +2925,36 @@ class LocusLobbyUI {
 		const prevMobileIdx = this._getCurrentMobileBoardIndex();
 
 		const zones = boardState.zones;
-		container.innerHTML = `
-			<div class="mp-board">
-				${this._renderZone('yellow', zones.yellow, 'Geel')}
-				${this._renderZone('green', zones.green, 'Groen')}
-				${this._renderZone('blue', zones.blue, 'Blauw')}
-				${this._renderRedZone(zones.red)}
-				${this._renderZone('purple', zones.purple, 'Paars')}
-			</div>
-		`;
+		const isTouch = this._isTouchLikeDevice();
+		if (isTouch) {
+			container.innerHTML = `
+				<div class="mp-board">
+					${this._renderZone('yellow', zones.yellow, 'Geel')}
+					${this._renderZone('green', zones.green, 'Groen')}
+					${this._renderZone('blue', zones.blue, 'Blauw')}
+					${this._renderRedZone(zones.red)}
+					${this._renderZone('purple', zones.purple, 'Paars')}
+				</div>
+			`;
+		} else {
+			container.innerHTML = `
+				<div class="mp-board mp-board-desktop">
+					<div class="mp-board-col mp-board-col-left">
+						${this._renderZone('yellow', zones.yellow, 'Geel')}
+						${this._renderZone('green', zones.green, 'Groen')}
+					</div>
+					<div class="mp-board-col mp-board-col-middle">
+						${this._renderZone('blue', zones.blue, 'Blauw')}
+					</div>
+					<div class="mp-board-col mp-board-col-right">
+						${this._renderRedZone(zones.red)}
+						${this._renderZone('purple', zones.purple, 'Paars')}
+					</div>
+				</div>
+			`;
+		}
 
-		if (this._isTouchLikeDevice()) {
+		if (isTouch) {
 			const targetIdx = Number.isFinite(this._forcedMobileBoardIndex)
 				? this._forcedMobileBoardIndex
 				: (Number.isFinite(this._lastMobileBoardIndex)

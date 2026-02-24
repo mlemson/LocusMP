@@ -53,6 +53,10 @@ class LocusMultiplayer {
 
 	async init() {
 		try {
+			if (this.socket && this.connected) {
+				return { userId: this.userId || this.socket.id, reconnected: !!(this.gameId && this.userId) };
+			}
+
 			this.socket = io(this.serverUrl, {
 				transports: ['websocket', 'polling'],
 				reconnection: true,

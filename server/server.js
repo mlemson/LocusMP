@@ -96,22 +96,6 @@ function _startTimerForCurrentPlayer(gameId, forceFull = false) {
 	if (gameState.paused) return;
 	const currentPid = gameState.playerOrder[gameState.currentTurnIndex];
 	if (currentPid) {
-		// Als de huidige speler disconnected is, sla hun beurt direct over
-		if (gameState.players[currentPid]?.connected === false) {
-			const passResult = GameRules.passMove(gameState, currentPid, null);
-			if (!passResult?.error && !passResult?.gameEnded) {
-				_startTimerForCurrentPlayer(gameId, true);
-				broadcastGameState(io, gameId);
-			} else if (passResult?.gameEnded) {
-				broadcastGameState(io, gameId);
-				io.to(gameId).emit('levelComplete', {
-					levelScores: gameState.levelScores,
-					levelWinner: gameState.levelWinner,
-					level: gameState.level
-				});
-			}
-			return;
-		}
 		const duration = forceFull
 			? TURN_TIMER_MS
 			: Math.max(1, Number(gameState._turnTimerRemainingMs) || TURN_TIMER_MS);
