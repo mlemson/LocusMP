@@ -59,6 +59,7 @@ class LocusLobbyUI {
 		this._pauseTogglePending = false;
 		this._turnTimerPausedRemainingMs = 0;
 		this._activeSelections = {};
+		this._touchDragScrollLocked = false;
 	}
 
 	// ──────────────────────────────────────────
@@ -1560,6 +1561,7 @@ class LocusLobbyUI {
 			originEl: cardEl
 		};
 		this._isDragging = true;
+		this._setTouchDragScrollLock(e.pointerType === 'touch' || e.pointerType === 'pen' || this._isTouchLikeDevice());
 
 		// Verberg cursor tijdens plaatsing
 		document.body.classList.add('mp-placing');
@@ -1686,6 +1688,9 @@ class LocusLobbyUI {
 
 	_onPointerMove = (e) => {
 		if (!this._isDragging || !this._dragState) return;
+		if (this._touchDragScrollLocked && (e.pointerType === 'touch' || e.pointerType === 'pen')) {
+			e.preventDefault();
+		}
 
 		this._positionGhost(e);
 
@@ -2149,9 +2154,20 @@ class LocusLobbyUI {
 		document.removeEventListener('pointermove', this._onPointerMove);
 		document.removeEventListener('pointerup', this._onPointerUp);
 		document.removeEventListener('pointerup', this._onPlacementPointerUpCancel);
+		this._setTouchDragScrollLock(false);
 
 		const board = document.querySelector('.mp-board');
 		if (board) board.classList.remove('placement-mode');
+	}
+
+	_setTouchDragScrollLock(locked) {
+		if (locked === this._touchDragScrollLocked) return;
+		this._touchDragScrollLocked = !!locked;
+		document.body.classList.toggle('mp-touch-drag-lock', this._touchDragScrollLocked);
+		const boardContainer = this.elements['mp-board-container'] || document.getElementById('mp-board-container');
+		if (boardContainer) boardContainer.classList.toggle('mp-touch-drag-lock', this._touchDragScrollLocked);
+		const board = boardContainer?.querySelector('.mp-board') || document.querySelector('.mp-board');
+		if (board) board.classList.toggle('mp-touch-drag-lock', this._touchDragScrollLocked);
 	}
 
 	/**
@@ -2333,6 +2349,7 @@ class LocusLobbyUI {
 			: Rules.cloneMatrix(Rules.BONUS_SHAPES.default);
 
 		this._bonusMode = { color: bonusColor, matrix, rotation: 0, baseRotation: 0, ghostEl: null };
+		this._setTouchDragScrollLock(this._isTouchLikeDevice());
 		this._sendInteraction('start', {
 			mode: 'bonus',
 			cardName: `${bonusColor} bonus`,
@@ -2382,6 +2399,9 @@ class LocusLobbyUI {
 		// Ghost volgt muis + preview (centered, like card ghosts)
 		this._bonusMoveHandler = (e) => {
 			if (!this._bonusMode?.ghostEl) return;
+			if (this._touchDragScrollLocked && (e.pointerType === 'touch' || e.pointerType === 'pen')) {
+				e.preventDefault();
+			}
 			const ox = this._bonusGhostOffsetX || 0;
 			const oy = this._bonusGhostOffsetY || 0;
 			const touchOffsetY = this._getFingerLiftOffset(e);
@@ -2707,6 +2727,7 @@ class LocusLobbyUI {
 			this._bonusMoveHandler = null;
 		}
 		document.removeEventListener('pointerup', this._onBonusPointerUpCancel);
+		this._setTouchDragScrollLock(false);
 		// Verwijder click handler van container
 		const container = this.elements['mp-board-container'];
 		if (container) {
