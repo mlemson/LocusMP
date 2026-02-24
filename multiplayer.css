@@ -1860,6 +1860,64 @@ body.mp-loading .mp-btn {
 }
 
 /* ── RESPONSIVE ── */
+@media (max-width: 1360px) and (min-width: 769px) {
+	:root {
+		--mp-cell-size: 22px;
+	}
+
+	.mp-game-layout {
+		grid-template-columns: 220px 1fr;
+	}
+
+	.mp-board {
+		gap: 10px;
+		padding: 6px;
+	}
+
+	.mp-zone {
+		padding: 8px;
+		padding-top: 24px;
+	}
+
+	.mp-board-container {
+		padding: 12px;
+	}
+}
+
+@media (max-width: 1220px) and (min-width: 769px), (max-height: 860px) and (min-width: 769px) {
+	:root {
+		--mp-cell-size: 20px;
+		--mp-cell-radius: 4px;
+	}
+
+	.mp-game-layout {
+		grid-template-columns: 200px 1fr;
+	}
+
+	.mp-board {
+		gap: 8px;
+		padding: 4px;
+	}
+
+	.mp-zone {
+		padding: 7px;
+		padding-top: 22px;
+	}
+
+	.mp-board-container {
+		padding: 8px;
+	}
+
+	.mp-score-row {
+		padding: 8px 10px;
+	}
+
+	.mp-score-value-big {
+		font-size: 1.1rem;
+		min-width: 42px;
+	}
+}
+
 @media (max-width: 1100px) and (min-width: 769px) and (min-height: 820px) {
 	.mp-game-layout {
 		grid-template-areas:
