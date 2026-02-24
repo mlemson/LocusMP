@@ -1860,6 +1860,53 @@ body.mp-loading .mp-btn {
 }
 
 /* ── RESPONSIVE ── */
+@media (max-width: 1100px) and (min-width: 769px) and (min-height: 820px) {
+	.mp-game-layout {
+		grid-template-areas:
+			"top"
+			"sidebar"
+			"board"
+			"bottom";
+		grid-template-columns: 1fr;
+		grid-template-rows: auto auto 1fr auto;
+	}
+
+	.mp-sidebar {
+		flex-direction: row;
+		align-items: center;
+		overflow-x: auto;
+		overflow-y: hidden;
+		border-right: none;
+		border-bottom: 1px solid rgba(255,255,255,0.06);
+		padding: 0 6px;
+	}
+
+	.mp-scoreboard {
+		flex-direction: row;
+		flex-wrap: nowrap;
+		gap: 6px;
+		padding: 6px 4px;
+	}
+
+	.mp-score-row {
+		flex: 0 0 auto;
+		min-width: 190px;
+		padding: 6px 10px;
+	}
+
+	.mp-score-zones {
+		display: none;
+	}
+
+	.mp-opponent-panels {
+		display: none;
+	}
+
+	.mp-board-container {
+		padding: 10px;
+	}
+}
+
 @media (max-width: 768px) {
 	:root {
 		--mp-cell-size: 18px;
