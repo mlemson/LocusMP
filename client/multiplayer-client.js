@@ -354,7 +354,8 @@ class LocusMultiplayer {
 			console.log('[Locus MP] Joined game:', this.gameId);
 			return {
 				gameId: this.gameId,
-				alreadyJoined: result.alreadyJoined
+				alreadyJoined: result.alreadyJoined,
+				reconnected: result.reconnected || false
 			};
 		} catch (error) {
 			console.error('[Locus MP] Join game failed:', error);

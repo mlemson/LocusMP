@@ -96,6 +96,22 @@ function _startTimerForCurrentPlayer(gameId, forceFull = false) {
 	if (gameState.paused) return;
 	const currentPid = gameState.playerOrder[gameState.currentTurnIndex];
 	if (currentPid) {
+		// Als de huidige speler disconnected is, sla hun beurt direct over
+		if (gameState.players[currentPid]?.connected === false) {
+			const passResult = GameRules.passMove(gameState, currentPid, null);
+			if (!passResult?.error && !passResult?.gameEnded) {
+				_startTimerForCurrentPlayer(gameId, true);
+				broadcastGameState(io, gameId);
+			} else if (passResult?.gameEnded) {
+				broadcastGameState(io, gameId);
+				io.to(gameId).emit('levelComplete', {
+					levelScores: gameState.levelScores,
+					levelWinner: gameState.levelWinner,
+					level: gameState.level
+				});
+			}
+			return;
+		}
 		const duration = forceFull
 			? TURN_TIMER_MS
 			: Math.max(1, Number(gameState._turnTimerRemainingMs) || TURN_TIMER_MS);
@@ -401,13 +417,18 @@ io.on('connection', (socket) => {
 				});
 			}
 
-			// Check voor gedisconnecteerde speler met dezelfde naam (herverbinden zonder sessionStorage)
-			const disconnectedEntry = Object.entries(gameState.players || {}).find(([pid, p]) =>
-				p.connected === false &&
+			// Check voor speler met dezelfde naam (herverbinden — ook bij race-conditions waar connected nog true is)
+			const nameMatch = Object.entries(gameState.players || {}).find(([pid, p]) =>
 				String(p.name || '').trim().toLowerCase() === playerName.trim().toLowerCase()
 			);
-			if (disconnectedEntry) {
-				const [existingPlayerId, existingPlayer] = disconnectedEntry;
+			if (nameMatch) {
+				const [existingPlayerId, existingPlayer] = nameMatch;
+				// Verwijder stale socket-mapping voor deze speler (race condition fix)
+				for (const [sid, mappedInfo] of socketToPlayer.entries()) {
+					if (mappedInfo.gameId === gameId && mappedInfo.playerId === existingPlayerId && sid !== socket.id) {
+						socketToPlayer.delete(sid);
+					}
+				}
 				existingPlayer.connected = true;
 				socketToPlayer.set(socket.id, { gameId, playerId: existingPlayerId });
 				socket.join(gameId);
@@ -1020,6 +1041,7 @@ io.on('connection', (socket) => {
 				playerName: player?.name || 'Speler',
 				type,
 				mode: data.mode || null,
+				cardId: data.cardId ? String(data.cardId) : null,
 				cardName: data.cardName || null,
 				colorCode: data.colorCode || null,
 				zoneName: data.zoneName || null,

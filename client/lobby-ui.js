@@ -439,8 +439,13 @@ class LocusLobbyUI {
 		this._setLoading(true);
 		try {
 			await this.mp.init();
-			await this.mp.joinGame(name, code);
-			this._showWaitingRoom(code, false);
+			const joinResult = await this.mp.joinGame(name, code);
+			if (joinResult.reconnected) {
+				// Spel loopt al — navigeer direct naar het juiste scherm
+				this.handleReconnect();
+			} else {
+				this._showWaitingRoom(code, false);
+			}
 		} catch (err) {
 			this._showToast('Kan niet joinen: ' + (err.message || err), 'error');
 		}
