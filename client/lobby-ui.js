@@ -73,7 +73,16 @@ class LocusLobbyUI {
 		this._bindMobileGestureGuards();
 		this._registerCallbacks();
 		this._bindKeyboard();
+		this._setVersionBadge();
 		this._showScreen('lobby-screen');
+	}
+
+	_setVersionBadge() {
+		const el = document.getElementById('mp-version-badge');
+		if (!el) return;
+		const now = new Date();
+		const pad = (n) => String(n).padStart(2, '0');
+		el.textContent = `v${now.getFullYear()}.${pad(now.getMonth() + 1)}.${pad(now.getDate())}-${pad(now.getHours())}${pad(now.getMinutes())}`;
 	}
 
 	_bindMobileGestureGuards() {

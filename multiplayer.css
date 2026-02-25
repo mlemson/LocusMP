@@ -102,6 +102,7 @@ html, body {
 
 /* ── SCREENS ── */
 .mp-screen {
+	position: relative;
 	display: flex;
 	flex-direction: column;
 	align-items: center;
@@ -111,6 +112,20 @@ html, body {
 	min-height: 100dvh;
 	padding: 20px;
 	gap: 16px;
+}
+
+/* ── VERSION BADGE ── */
+.mp-version-badge {
+	position: absolute;
+	top: 10px;
+	right: 14px;
+	font-size: 0.62rem;
+	font-weight: 600;
+	color: var(--mp-text-dim);
+	opacity: 0.55;
+	letter-spacing: 0.3px;
+	pointer-events: none;
+	z-index: 1;
 }
 
 /* ── LOGO ── */
@@ -2068,18 +2083,17 @@ body.mp-loading .mp-btn {
 
 @media (max-width: 768px) {
 	:root {
-		--mp-cell-size: 21px;
+		--mp-cell-size: 28px;
 		--mp-cell-radius: 4px;
 	}
 
 	.mp-game-layout {
 		grid-template-areas:
 			"top"
-			"sidebar"
 			"board"
 			"bottom";
 		grid-template-columns: 1fr;
-		grid-template-rows: auto auto 1fr auto;
+		grid-template-rows: auto 1fr auto;
 		height: 100dvh;
 		padding-bottom: env(safe-area-inset-bottom);
 	}
@@ -2091,9 +2105,9 @@ body.mp-loading .mp-btn {
 	.mp-scoreboard {
 		flex-direction: row;
 		flex-wrap: wrap;
-		padding: 4px 8px;
-		gap: 4px;
-		justify-content: center;
+		padding: 0;
+		gap: 3px;
+		justify-content: flex-end;
 	}
 
 	.mp-opponent-panels {
@@ -2102,9 +2116,10 @@ body.mp-loading .mp-btn {
 
 	.mp-score-row {
 		flex-shrink: 0;
-		padding: 3px 8px;
-		font-size: 0.72rem;
+		padding: 2px 6px;
+		font-size: 0.65rem;
 		min-width: 0;
+		gap: 4px;
 	}
 
 	.mp-score-zones {
@@ -2117,41 +2132,111 @@ body.mp-loading .mp-btn {
 
 	.mp-top-bar {
 		display: grid;
-		grid-template-columns: minmax(0, 1fr) minmax(0, 46vw);
+		grid-template-columns: 1fr auto;
 		align-items: start;
-		gap: 6px;
-		padding: 6px 10px;
+		gap: 2px 8px;
+		padding: 4px 8px;
+	}
+
+	.mp-my-objective {
+		grid-column: 1 / -1;
 	}
 
 	.mp-top-right {
-		width: 100%;
+		width: auto;
+		max-width: 52vw;
 		align-items: flex-end;
-		gap: 4px;
+		gap: 3px;
 	}
 
 	.mp-room-code-badge {
-		display: none;
+		display: none !important;
 	}
 
 	.mp-top-right .mp-scoreboard.mp-scoreboard-inline {
-		display: flex;
+		display: flex !important;
+		flex-direction: column;
 		align-items: flex-end;
 		max-width: 100%;
+		gap: 2px;
+	}
+
+	.mp-top-right .mp-scoreboard.mp-scoreboard-inline .mp-score-row {
+		padding: 1px 6px;
+		font-size: 0.64rem;
+		border-radius: 6px;
+		background: rgba(255,255,255,0.04);
+	}
+
+	.mp-top-right .mp-scoreboard.mp-scoreboard-inline .mp-score-name {
+		max-width: 14vw;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+
+	.mp-top-right .mp-scoreboard.mp-scoreboard-inline .mp-score-value-big {
+		font-size: 0.78rem;
+		min-width: 0;
 	}
 
 	.mp-taunt-bar {
 		justify-content: flex-end;
-		gap: 4px;
+		gap: 3px;
 	}
 
 	.mp-taunt-btn {
-		font-size: 0.66rem;
-		padding: 4px 8px;
+		font-size: 0.6rem;
+		padding: 2px 6px;
+	}
+
+	.mp-turn-indicator {
+		gap: 2px;
+	}
+
+	.mp-turn-label {
+		font-size: 0.62rem;
+	}
+
+	.mp-turn-player {
+		font-size: 0.78rem;
+		line-height: 1.2;
+	}
+
+	.mp-turn-meta-row {
+		gap: 6px;
+	}
+
+	.mp-turn-inline-timer .mp-timer-bar {
+		width: 100px;
+		height: 6px;
+	}
+
+	.mp-turn-inline-timer .mp-timer-text {
+		font-size: 0.65rem;
+	}
+
+	.mp-gold-counter {
+		font-size: 0.7rem;
+	}
+
+	.mp-objective-badge {
+		padding: 2px 8px;
+		gap: 4px;
+		font-size: 0.68rem;
+	}
+
+	.mp-objective-title {
+		font-size: 0.68rem;
+	}
+
+	.mp-objective-desc {
+		font-size: 0.6rem;
 	}
 
 	.mp-taunt-feed {
 		left: 8px;
-		top: 126px;
+		top: 100px;
 		max-width: min(320px, 84vw);
 		gap: 6px;
 	}
@@ -2196,7 +2281,7 @@ body.mp-loading .mp-btn {
 
 	.mp-zone {
 		padding: 6px;
-		padding-top: 22px;
+		padding-top: 20px;
 	}
 
 	.mp-zone-label {
@@ -2239,14 +2324,14 @@ body.mp-loading .mp-btn {
 	}
 
 	.mp-board-container {
-		padding: 6px 4px calc(10px + env(safe-area-inset-bottom));
+		padding: 2px 2px calc(4px + env(safe-area-inset-bottom));
 		overflow: hidden;
 		display: block;
 	}
 
 	.mp-bottom-bar {
-		padding: 4px 6px calc(8px + env(safe-area-inset-bottom));
-		gap: 6px;
+		padding: 3px 6px calc(6px + env(safe-area-inset-bottom));
+		gap: 4px;
 		flex-direction: column;
 	}
 
@@ -2283,7 +2368,7 @@ body.mp-loading .mp-btn {
 
 @media (max-width: 480px) {
 	:root {
-		--mp-cell-size: 19px;
+		--mp-cell-size: 24px;
 		--mp-cell-radius: 3px;
 	}
 
@@ -2338,7 +2423,7 @@ body.mp-loading .mp-btn {
 	}
 
 	.mp-board-container {
-		padding: 6px 6px calc(12px + env(safe-area-inset-bottom));
+		padding: 2px 4px calc(4px + env(safe-area-inset-bottom));
 	}
 
 	.mp-grid {
@@ -2355,24 +2440,23 @@ body.mp-loading .mp-btn {
 	}
 
 	.mp-score-row {
-		padding: 2px 6px;
-		font-size: 0.65rem;
+		padding: 1px 5px;
+		font-size: 0.6rem;
 	}
 
 	.mp-score-value-big {
-		font-size: 1rem;
-		min-width: 36px;
+		font-size: 0.88rem;
+		min-width: 28px;
 	}
 
 	.mp-top-bar {
-		padding: 4px 6px;
-		gap: 2px;
+		padding: 3px 6px;
+		gap: 1px 6px;
 	}
 
 	.mp-top-right {
-		width: 100%;
-		align-items: flex-end;
-		gap: 4px;
+		max-width: 48vw;
+		gap: 2px;
 	}
 
 	.mp-taunt-btn {
@@ -2394,29 +2478,29 @@ body.mp-loading .mp-btn {
 	}
 
 	.mp-turn-label {
-		font-size: 0.65rem;
+		font-size: 0.58rem;
 	}
 
 	.mp-turn-player {
-		font-size: 0.85rem;
-	}
-
-	.mp-objective-badge {
-		padding: 3px 8px;
-		gap: 4px;
-	}
-
-	.mp-objective-title {
 		font-size: 0.72rem;
 	}
 
+	.mp-objective-badge {
+		padding: 2px 6px;
+		gap: 3px;
+	}
+
+	.mp-objective-title {
+		font-size: 0.64rem;
+	}
+
 	.mp-objective-desc {
-		font-size: 0.65rem;
+		font-size: 0.58rem;
 	}
 
 	.mp-bottom-bar {
-		padding: 4px 6px calc(10px + env(safe-area-inset-bottom));
-		gap: 4px;
+		padding: 3px 6px calc(6px + env(safe-area-inset-bottom));
+		gap: 3px;
 	}
 
 	#mp-placement-controls {
