@@ -79,13 +79,11 @@ class LocusLobbyUI {
 
 	_setVersionBadge() {
 		const lobbyEl = document.getElementById('mp-version-badge');
-		const gameEl = document.getElementById('mp-version-badge-game');
-		if (!lobbyEl && !gameEl) return;
+		if (!lobbyEl) return;
 		const now = new Date();
 		const pad = (n) => String(n).padStart(2, '0');
 		const version = `v${now.getFullYear()}.${pad(now.getMonth() + 1)}.${pad(now.getDate())}-${pad(now.getHours())}${pad(now.getMinutes())}`;
-		if (lobbyEl) lobbyEl.textContent = version;
-		if (gameEl) gameEl.textContent = version;
+		lobbyEl.textContent = version;
 	}
 
 	_bindMobileGestureGuards() {
@@ -202,7 +200,7 @@ class LocusLobbyUI {
 		this.elements['shop-ready-btn']?.addEventListener('click', () => this._handleShopReady());
 		this.elements['mp-deck-overview-btn']?.addEventListener('click', () => this._toggleDeckOverview());
 		this.elements['mp-deck-close-btn']?.addEventListener('click', () => this._closeDeckOverview());
-		this.elements['mp-taunt-bar']?.querySelectorAll('.mp-taunt-btn').forEach(btn => {
+		document.querySelectorAll('.mp-taunt-btn').forEach(btn => {
 			btn.addEventListener('click', () => this._handleTaunt(btn.dataset.taunt || ''));
 		});
 		this.elements['invite-code-input']?.addEventListener('keydown', (e) => {
@@ -1339,6 +1337,8 @@ class LocusLobbyUI {
 
 		try {
 			await this.mp.sendTaunt(text);
+			const tauntMenu = document.getElementById('mp-taunt-menu');
+			if (tauntMenu && tauntMenu.hasAttribute('open')) tauntMenu.removeAttribute('open');
 		} catch (err) {
 			this._showToast('Taunt mislukt: ' + (err.message || err), 'warning');
 		}

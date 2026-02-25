@@ -673,6 +673,57 @@ html, body {
 	justify-content: flex-end;
 }
 
+.mp-taunt-menu {
+	display: none;
+	position: relative;
+	z-index: 15;
+}
+
+.mp-taunt-menu-toggle {
+	list-style: none;
+	border: 1px solid rgba(255,255,255,0.2);
+	background: rgba(255,255,255,0.08);
+	color: var(--mp-text);
+	border-radius: 8px;
+	padding: 3px 8px;
+	font-size: 0.78rem;
+	font-weight: 700;
+	cursor: pointer;
+	line-height: 1;
+	user-select: none;
+}
+
+.mp-taunt-menu-toggle::-webkit-details-marker {
+	display: none;
+}
+
+.mp-taunt-menu-panel {
+	display: none;
+	position: absolute;
+	top: calc(100% + 6px);
+	left: 0;
+	min-width: 132px;
+	padding: 6px;
+	border-radius: 10px;
+	border: 1px solid rgba(255,255,255,0.14);
+	background: rgba(20, 25, 34, 0.96);
+	box-shadow: 0 8px 24px rgba(0, 0, 0, 0.38);
+	gap: 4px;
+	flex-direction: column;
+}
+
+.mp-taunt-menu[open] .mp-taunt-menu-panel {
+	display: flex;
+}
+
+.mp-taunt-menu-panel .mp-taunt-btn {
+	width: 100%;
+	text-align: left;
+	justify-content: flex-start;
+	font-size: 0.68rem;
+	padding: 5px 8px;
+}
+
 .mp-taunt-btn {
 	border: 1px solid rgba(255,255,255,0.18);
 	background: rgba(255,255,255,0.06);
@@ -2148,21 +2199,40 @@ body.mp-loading .mp-btn {
 
 	.mp-top-bar {
 		display: grid;
-		grid-template-columns: 1fr auto;
+		grid-template-columns: auto minmax(0, 1fr) auto;
 		align-items: start;
 		gap: 2px 8px;
 		padding: 4px 8px;
 	}
 
-	.mp-my-objective {
-		grid-column: 1 / -1;
+	.mp-taunt-menu {
+		display: block;
+		grid-column: 1;
+		grid-row: 1;
+		align-self: start;
+	}
+
+	#mp-turn-indicator {
+		grid-column: 2;
+		grid-row: 1;
 	}
 
 	.mp-top-right {
+		grid-column: 3;
+		grid-row: 1;
 		width: auto;
 		max-width: 52vw;
 		align-items: flex-end;
 		gap: 3px;
+	}
+
+	.mp-my-objective {
+		grid-row: 2;
+		grid-column: 1 / -1;
+	}
+
+	.mp-taunt-bar {
+		display: none;
 	}
 
 	.mp-room-code-badge {
@@ -2475,6 +2545,11 @@ body.mp-loading .mp-btn {
 	.mp-top-bar {
 		padding: 3px 6px;
 		gap: 1px 6px;
+	}
+
+	.mp-taunt-menu-toggle {
+		padding: 2px 7px;
+		font-size: 0.72rem;
 	}
 
 	.mp-top-right {

@@ -114,6 +114,16 @@
 	<div id="game-screen" class="mp-screen mp-game-layout" style="display:none;">
 		<!-- Top bar: scoreboard + turn -->
 		<div class="mp-top-bar">
+			<details id="mp-taunt-menu" class="mp-taunt-menu" aria-label="Taunt menu">
+				<summary id="mp-taunt-menu-toggle" class="mp-taunt-menu-toggle" title="Taunts">💬</summary>
+				<div class="mp-taunt-menu-panel">
+					<button class="mp-taunt-btn" data-taunt="Nooo!">Nooo!</button>
+					<button class="mp-taunt-btn" data-taunt="HAHA">HAHA</button>
+					<button class="mp-taunt-btn" data-taunt="Well played!">Well played!</button>
+					<button class="mp-taunt-btn" data-taunt="Oeps...">Oeps...</button>
+					<button class="mp-taunt-btn" data-taunt="Kom op!">Kom op!</button>
+				</div>
+			</details>
 			<div id="mp-turn-indicator" class="mp-turn-indicator">
 				<div class="mp-turn-label">Ronde 0</div>
 				<div class="mp-turn-player">Wachten...</div>
@@ -121,7 +131,6 @@
 			<div id="mp-my-objective" class="mp-my-objective"></div>
 			<div class="mp-top-right">
 				<div id="mp-room-code-badge" class="mp-room-code-badge">Room: ------</div>
-				<div class="mp-version-badge-inline" id="mp-version-badge-game">v--</div>
 				<!-- scoreboard gets inserted here by JS on mobile -->
 				<div id="mp-taunt-bar" class="mp-taunt-bar" aria-label="Taunts">
 					<button class="mp-taunt-btn" data-taunt="Nooo!">Nooo!</button>
