@@ -432,7 +432,7 @@ function generateLevel1Board(rng, level) {
 			boldCells: yellowBold,
 			goldCells: yellowGold
 		});
-		placeBonusSymbols(zones.yellow, rng, 4, { preferredColor: 'red', preferredChance: 0.5 });
+		placeBonusSymbols(zones.yellow, rng, 4);
 	} else if (world === 2) {
 		// World 2: 11 kolommen, 7 rijen (groter, meer goud)
 		const yellowCols = 11;
@@ -452,7 +452,7 @@ function generateLevel1Board(rng, level) {
 			boldCells: yellowBold,
 			goldCells: yellowGold
 		});
-		placeBonusSymbols(zones.yellow, rng, 6, { preferredColor: 'red', preferredChance: 0.5 });
+		placeBonusSymbols(zones.yellow, rng, 6);
 	} else {
 		// World 3: 12 kolommen, 8 rijen (diamond-achtig, meeste goud)
 		const yellowCols = 12;
@@ -484,7 +484,7 @@ function generateLevel1Board(rng, level) {
 			goldCells: yellowGold,
 			voidCells: yellowVoid
 		});
-		placeBonusSymbols(zones.yellow, rng, 7, { preferredColor: 'red', preferredChance: 0.5 });
+		placeBonusSymbols(zones.yellow, rng, 7);
 	}
 
 	// ══════════════════════════════════════════
@@ -527,10 +527,7 @@ function generateLevel1Board(rng, level) {
 			cell.flags.push('gold');
 		}
 	}
-	placeBonusSymbols(zones.green, rng, world === 1 ? 3 : (world === 2 ? 5 : 7), {
-		preferredColor: 'red',
-		preferredChance: 0.35
-	});
+	placeBonusSymbols(zones.green, rng, world === 1 ? 3 : (world === 2 ? 5 : 7));
 
 	// ══════════════════════════════════════════
 	//  BLUE ZONE — Wereldafhankelijk toren
@@ -552,7 +549,7 @@ function generateLevel1Board(rng, level) {
 		}
 		zones.blue = createZoneGrid(blueHeight, blueWidth, { boldCells: blueBold, goldCells: blueGold });
 		zones.blue.boldRows = blueBoldRows;
-		placeBonusSymbols(zones.blue, rng, 3, { preferredColor: 'red', preferredChance: 0.5 });
+		placeBonusSymbols(zones.blue, rng, 3);
 	} else if (world === 2) {
 		// World 2: 7 breed, iets hoger met extra bold-laag
 		const blueWidth = 7;
@@ -570,7 +567,7 @@ function generateLevel1Board(rng, level) {
 		}
 		zones.blue = createZoneGrid(blueHeight, blueWidth, { boldCells: blueBold, goldCells: blueGold });
 		zones.blue.boldRows = blueBoldRows;
-		placeBonusSymbols(zones.blue, rng, 5, { preferredColor: 'red', preferredChance: 0.5 });
+		placeBonusSymbols(zones.blue, rng, 5);
 	} else {
 		// World 3: 9 breed, iets hoger met extra bold-laag
 		const blueWidth = 9;
@@ -588,7 +585,7 @@ function generateLevel1Board(rng, level) {
 		}
 		zones.blue = createZoneGrid(blueHeight, blueWidth, { boldCells: blueBold, goldCells: blueGold });
 		zones.blue.boldRows = blueBoldRows;
-		placeBonusSymbols(zones.blue, rng, 7, { preferredColor: 'red', preferredChance: 0.5 });
+		placeBonusSymbols(zones.blue, rng, 7);
 	}
 
 	// ══════════════════════════════════════════
@@ -712,10 +709,7 @@ function generateLevel1Board(rng, level) {
 		tagCellFlag(zones.purple, purpleSize - 2, i, 'outer-ring-1');
 	}
 
-	placeBonusSymbols(zones.purple, rng, world === 1 ? 3 : (world === 2 ? 5 : 7), {
-		preferredColor: 'red',
-		preferredChance: 0.35
-	});
+	placeBonusSymbols(zones.purple, rng, world === 1 ? 3 : (world === 2 ? 5 : 7));
 
 	// Vanaf level 5: plaats parel-schatten (wit/ronde marker) die 5 munten geven
 	if (lvl >= 5 && zones.yellow) {
@@ -818,14 +812,14 @@ function spawnBonusesAfterRoundFour(gameState, options = {}) {
 			if (zonePick === 'red') {
 				const subgrids = shuffleWithRNG([...(gameState.boardState.zones.red?.subgrids || [])], rng);
 				for (const sg of subgrids) {
-					if (placeSingleBonusSymbol(sg, rng, { preferredColor: 'red', preferredChance: 0.35 })) {
+					if (placeSingleBonusSymbol(sg, rng)) {
 						placed = true;
 						break;
 					}
 				}
 			} else {
 				const zoneData = gameState.boardState.zones[zonePick];
-				placed = placeSingleBonusSymbol(zoneData, rng, { preferredColor: 'red', preferredChance: 0.25 });
+				placed = placeSingleBonusSymbol(zoneData, rng);
 			}
 		}
 		if (placed) spawned++;
