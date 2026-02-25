@@ -7,6 +7,19 @@
 	<link rel="stylesheet" href="multiplayer.css">
 </head>
 <body>
+	<!-- ═══════════════════════════════════
+	     THEME SWITCHER (linksboven)
+	     ═══════════════════════════════════ -->
+	<div id="mp-theme-switcher" class="mp-theme-switcher">
+		<label class="mp-theme-toggle" title="Wissel tussen Classic en Aurora thema">
+			<input type="checkbox" id="mp-theme-checkbox" />
+			<span class="mp-theme-slider">
+				<span class="mp-theme-label-left">Classic</span>
+				<span class="mp-theme-label-right">Aurora</span>
+			</span>
+		</label>
+	</div>
+
 	<!-- ════════════════════════════════════════
 	     SCREEN 1: LOBBY
 	     ════════════════════════════════════════ -->
@@ -312,12 +325,35 @@
 			badgeEl.title = badgeText;
 		}
 
+		// ── Theme switcher logic ──
+		function _initThemeSwitcher() {
+			const cb = document.getElementById('mp-theme-checkbox');
+			if (!cb) return;
+			const saved = localStorage.getItem('locus-theme') || 'classic';
+			if (saved === 'aurora') {
+				cb.checked = true;
+				document.documentElement.classList.add('theme-aurora');
+			}
+			cb.addEventListener('change', () => {
+				const isAurora = cb.checked;
+				document.documentElement.classList.toggle('theme-aurora', isAurora);
+				localStorage.setItem('locus-theme', isAurora ? 'aurora' : 'classic');
+			});
+		}
+		// Apply theme immediately to avoid flash
+		(function() {
+			if (localStorage.getItem('locus-theme') === 'aurora') {
+				document.documentElement.classList.add('theme-aurora');
+			}
+		})();
+
 		// Wacht iets langer zodat dynamisch geladen scripts (socket.io, peerjs fallback) tijd hebben
 		window.addEventListener('load', () => {
 			setTimeout(_bootstrapApp, 150);
 		});
 
 		async function _bootstrapApp() {
+			_initThemeSwitcher();
 			await _setLobbyVersionBadge();
 
 			// Detecteer of Socket.IO server beschikbaar is
