@@ -249,7 +249,13 @@ function sanitizeGameStateForPlayer(gameState, playerId) {
 				sanitized.players[pid].objectiveFailed = !sanitized.players[pid].objectiveAchieved && !!objResult.failed;
 				sanitized.players[pid].objectiveAchievedPoints = gameState.players[pid].objectiveAchievedPoints || 0;
 			}
-			sanitized.players[pid].objectiveProgress = { current: objResult.current, target: objResult.target, points: objResult.points };
+			sanitized.players[pid].objectiveProgress = {
+				current: objResult.current,
+				target: objResult.target,
+				points: objResult.points,
+				coins: objResult.coins || 0,
+				randomBonuses: objResult.randomBonuses || 0
+			};
 		}
 
 		// Verberg objective keuzes van anderen

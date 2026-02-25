@@ -1563,8 +1563,7 @@ function checkAndAwardObjective(gameState, playerId) {
 
 	const result = checkObjective(gameState, playerId, player.chosenObjective);
 	if (result.achieved) {
-		player.objectiveAchieved = true;
-		player.objectiveAchievedPoints = result.points || 15;
+		awardObjectiveRewards(gameState, playerId, player.chosenObjective, result);
 	}
 }
 
@@ -1819,6 +1818,135 @@ function buildObjectiveContext(gameState, playerId) {
 	};
 }
 
+const OBJECTIVE_BONUS_COLORS = ['yellow', 'red', 'green', 'purple', 'blue'];
+
+function getObjectiveRewardPoints(objective, fallback = 15) {
+	if (Number.isFinite(objective?.points)) return Math.max(0, Math.floor(objective.points));
+	return Math.max(0, Math.floor(fallback || 0));
+}
+
+function getObjectiveRewardCoins(objective) {
+	if (!Number.isFinite(objective?.coins)) return 0;
+	return Math.max(0, Math.floor(objective.coins));
+}
+
+function getObjectiveRandomBonuses(objective) {
+	if (!Number.isFinite(objective?.randomBonuses)) return 0;
+	return Math.max(0, Math.floor(objective.randomBonuses));
+}
+
+function objectiveRewardsToText(objective) {
+	const parts = [];
+	const pts = getObjectiveRewardPoints(objective, 0);
+	const coins = getObjectiveRewardCoins(objective);
+	const randomBonuses = getObjectiveRandomBonuses(objective);
+	if (pts > 0) parts.push(`${pts} punten`);
+	if (coins > 0) parts.push(`${coins} coins`);
+	if (randomBonuses > 0) parts.push(`${randomBonuses} random bonussen`);
+	return parts.join(' + ');
+}
+
+function pickRandomBonusColors(rng, count) {
+	const picked = [];
+	for (let i = 0; i < count; i++) {
+		picked.push(OBJECTIVE_BONUS_COLORS[Math.floor(rng() * OBJECTIVE_BONUS_COLORS.length)]);
+	}
+	return picked;
+}
+
+function awardObjectiveRewards(gameState, playerId, objective, result) {
+	const player = gameState?.players?.[playerId];
+	if (!player) return;
+	if (player.objectiveAchieved) return;
+
+	const points = Number.isFinite(result?.points)
+		? getObjectiveRewardPoints({ points: result.points }, 0)
+		: getObjectiveRewardPoints(objective, 15);
+	const coins = Number.isFinite(result?.coins)
+		? getObjectiveRewardCoins({ coins: result.coins })
+		: getObjectiveRewardCoins(objective);
+	const randomBonuses = Number.isFinite(result?.randomBonuses)
+		? getObjectiveRandomBonuses({ randomBonuses: result.randomBonuses })
+		: getObjectiveRandomBonuses(objective);
+
+	player.objectiveAchieved = true;
+	player.objectiveAchievedPoints = points;
+
+	if (coins > 0) {
+		player.goldCoins = (player.goldCoins || 0) + coins;
+	}
+
+	if (randomBonuses > 0) {
+		const rngSeed = (gameState.seed | 0)
+			^ hashStringToInt(`objective-reward-${gameState.level || 1}-${playerId}-${gameState.turnCount || 0}-${gameState.moveHistory?.length || 0}`)
+			^ hashStringToInt(objective?.id || 'objective');
+		const rewardRng = createRNG(rngSeed);
+		const colors = pickRandomBonusColors(rewardRng, randomBonuses);
+		for (const color of colors) {
+			player.bonusInventory[color] = (player.bonusInventory[color] || 0) + 1;
+		}
+	}
+}
+
+function pickTargetObjectiveForSabotage(gameState, sourcePlayerId, rng, levelHint = 1) {
+	const playerOrder = Array.isArray(gameState?.playerOrder) ? gameState.playerOrder : [];
+	const candidates = playerOrder.filter(pid => pid && pid !== sourcePlayerId && gameState.players?.[pid]?.connected !== false);
+	if (candidates.length === 0) return null;
+
+	const targetPlayerId = candidates[Math.floor(rng() * candidates.length)];
+	const targetPlayer = gameState.players[targetPlayerId] || {};
+	const chosen = targetPlayer.chosenObjective && !targetPlayer.chosenObjective.endOnly
+		? targetPlayer.chosenObjective
+		: null;
+	const offered = (gameState.objectiveChoices?.[targetPlayerId] || []).filter(o => o && !o.endOnly);
+	let fallback = offered.length > 0 ? offered[Math.floor(rng() * offered.length)] : null;
+
+	if (!fallback) {
+		const lvl = Math.min(Math.max(Number(gameState?.level || levelHint || 1), 1), 3);
+		const levelPool = (LEVEL_OBJECTIVES[lvl] || LEVEL_OBJECTIVES[1] || [])
+			.filter(o => o && !o.endOnly && o.id !== 'deny_named_l1' && o.id !== 'deny_named_l2' && o.id !== 'deny_named_l3');
+		if (levelPool.length > 0) {
+			const picked = levelPool[Math.floor(rng() * levelPool.length)];
+			fallback = {
+				id: picked.id,
+				name: picked.name,
+				description: picked.description
+			};
+		}
+	}
+
+	const objective = chosen || fallback || { id: 'unknown-target-objective', name: 'Doelstelling', description: '' };
+
+	return {
+		targetPlayerId,
+		targetPlayerName: targetPlayer.name || targetPlayerId,
+		targetObjectiveId: objective.id,
+		targetObjectiveName: objective.name || 'Doelstelling',
+		targetObjectiveDescription: objective.description || ''
+	};
+}
+
+function materializeObjectiveForPlayer(baseObjective, gameState, playerId, rng) {
+	const objective = { ...baseObjective };
+	if (!objective.dynamicType || objective.dynamicType !== 'deny_named_objective') {
+		return objective;
+	}
+
+	const targetInfo = pickTargetObjectiveForSabotage(gameState, playerId, rng, gameState?.level || 1);
+	if (!targetInfo) {
+		objective.name = 'Sabotage Opdracht';
+		objective.description = `Zorg dat een andere speler zijn of haar doelstelling niet haalt. Reward: ${objectiveRewardsToText(objective)}.`;
+		return objective;
+	}
+
+	objective.targetPlayerId = targetInfo.targetPlayerId;
+	objective.targetObjectiveId = targetInfo.targetObjectiveId;
+	objective.targetObjectiveName = targetInfo.targetObjectiveName;
+	objective.name = `Blokkeer ${targetInfo.targetPlayerName}`;
+	objective.description = `Zorg dat ${targetInfo.targetPlayerName} zijn/haar doel niet haalt: ${targetInfo.targetObjectiveName} — ${targetInfo.targetObjectiveDescription} Reward: ${objectiveRewardsToText(objective)}.`;
+	return objective;
+}
+
 function countPlayerCompletedYellowCols(boardState, playerId) {
 	const zone = boardState?.zones?.yellow;
 	if (!zone || !playerId) return 0;
@@ -1937,63 +2065,108 @@ function countPlayerGoldCells(boardState, playerId) {
 const LEVEL_OBJECTIVES = {
 	// Level 1: Makkelijke doelstellingen (8-12 punten)
 	1: [
-		{ id: 'fill_2_yellow_cols', name: 'Gele Start', description: 'Vul minstens 1 kolom in de gele zone.', target: 1, points: 8,
+		{ id: 'fill_2_yellow_cols', name: 'Gele Start', description: 'Vul minstens 2 kolommen in de gele zone. Reward: 10 punten + 2 coins.', target: 2, points: 10, coins: 2,
 		  useContext: true, check: (ctx) => countPlayerCompletedYellowCols(ctx.boardState, ctx.playerId)},
-		{ id: 'reach_2_green_ends', name: 'Groene Verkenner', description: 'Bereik minstens 1 eindpunt in de groene zone.', target: 1, points: 8,
+		{ id: 'reach_2_green_ends', name: 'Groene Verkenner', description: 'Bereik minstens 1 eindpunt in de groene zone. Reward: 10 punten + 2 coins.', target: 1, points: 10, coins: 2,
 		  useContext: true, check: (ctx) => countPlayerGreenEnds(ctx.boardState, ctx.playerId)},
-		{ id: 'fill_1_blue_row', name: 'Blauwe Basis', description: 'Bereik minstens 1 rij in de blauwe zone.', target: 1, points: 8,
+		{ id: 'fill_1_blue_row', name: 'Blauwe Basis', description: 'Bereik minstens 1 rij in de blauwe zone. Reward: 10 punten.', target: 1, points: 10,
 		  useContext: true, check: (ctx) => getPlayerBlueHighestTier(ctx.boardState, ctx.playerId)},
-		{ id: 'connect_2_purple', name: 'Paars Verbinden', description: 'Verbind minstens 2 bold-cellen in één paars cluster.', target: 2, points: 10,
+		{ id: 'connect_2_purple', name: 'Paars Verbinden', description: 'Verbind minstens 3 bold-cellen in één paars cluster. Reward: 10 punten + 1 bonus.', target: 3, points: 10, randomBonuses: 1,
 		  useContext: true, check: (ctx) => getPlayerPurpleMaxBoldCluster(ctx.boardState, ctx.playerId)},
-		{ id: 'collect_2_gold', name: 'Goudzoeker', description: 'Verzamel minstens 3 gouden munten.', target: 3, points: 8,
+		{ id: 'collect_2_gold', name: 'Goudzoeker', description: 'Verzamel minstens 3 gouden munten. Reward: 10 punten.', target: 3, points: 10,
 		  useContext: true, check: (ctx) => countPlayerGoldCells(ctx.boardState, ctx.playerId)},
+		{ id: 'deny_named_l1', name: 'Lichte Sabotage', description: 'Zorg dat een gekozen speler zijn/haar doel niet haalt. Reward: 10 punten + 2 coins.', target: 1, points: 10, coins: 2, useContext: true, endOnly: true, dynamicType: 'deny_named_objective',
+		  check: (ctx, objective) => {
+			const targetPid = objective?.targetPlayerId;
+			if (!targetPid || targetPid === ctx?.playerId) return 0;
+			const targetPlayer = ctx?.gameState?.players?.[targetPid];
+			if (!targetPlayer?.chosenObjective) return 0;
+			if (objective?.targetObjectiveId && targetPlayer.chosenObjective.id !== objective.targetObjectiveId) return 0;
+			return targetPlayer.objectiveAchieved ? 0 : 1;
+		  },
+		  failCheck: (ctx, objective) => {
+			const targetPid = objective?.targetPlayerId;
+			if (!targetPid || targetPid === ctx?.playerId) return true;
+			const targetPlayer = ctx?.gameState?.players?.[targetPid];
+			if (!targetPlayer?.chosenObjective) return false;
+			if (objective?.targetObjectiveId && targetPlayer.chosenObjective.id !== objective.targetObjectiveId) return true;
+			return !!targetPlayer.objectiveAchieved;
+		  }},
 	],
 	// Level 2: Medium doelstellingen (12-18 punten)
 	2: [
-		{ id: 'fill_4_yellow_cols', name: 'Gele Muur', description: 'Vul minstens 3 kolommen in de gele zone.', target: 3, points: 14,
+		{ id: 'fill_4_yellow_cols', name: 'Gele Muur', description: 'Vul minstens 4 kolommen in de gele zone. Reward: 15 punten + 2 coins.', target: 4, points: 15, coins: 2,
 		  useContext: true, check: (ctx) => countPlayerCompletedYellowCols(ctx.boardState, ctx.playerId)},
-		{ id: 'reach_5_green_ends', name: 'Groene Expeditie', description: 'Bereik minstens 3 eindpunten in de groene zone.', target: 3, points: 14,
+		{ id: 'reach_5_green_ends', name: 'Groene Expeditie', description: 'Bereik minstens 2 eindpunten in de groene zone. Reward: 15 punten + 2 coins.', target: 2, points: 15, coins: 2,
 		  useContext: true, check: (ctx) => countPlayerGreenEnds(ctx.boardState, ctx.playerId)},
-		{ id: 'fill_2_blue_rows', name: 'Blauwe Toren', description: 'Bereik minstens 3 rijen in de blauwe zone.', target: 3, points: 14,
+		{ id: 'fill_2_blue_rows', name: 'Blauwe Toren', description: 'Bereik minstens 2 rijen in de blauwe zone. Reward: 15 punten + 2 bonussen.', target: 2, points: 15, randomBonuses: 2,
 		  useContext: true, check: (ctx) => getPlayerBlueHighestTier(ctx.boardState, ctx.playerId)},
-		{ id: 'fill_2_red_grids', name: 'Rode Grids', description: 'Vul een rood grid volledig.', target: 1, points: 20,
+		{ id: 'fill_2_red_grids', name: 'Rode Grids', description: 'Vul een rood grid volledig. Reward: 4 coins.', target: 1, points: 0, coins: 4,
 		  useContext: true, check: (ctx) => countPlayerCompletedRedSubgrids(ctx.boardState, ctx.playerId)},
-		{ id: 'connect_3_purple', name: 'Paars Netwerk', description: 'Verbind minstens 4 bold-cellen in één paars cluster.', target: 4, points: 10,
+		{ id: 'connect_3_purple', name: 'Paars Netwerk', description: 'Verbind minstens 4 bold-cellen in één paars cluster. Reward: 15 punten + 2 bonussen.', target: 4, points: 15, randomBonuses: 2,
 		  useContext: true, check: (ctx) => getPlayerPurpleMaxBoldCluster(ctx.boardState, ctx.playerId)},
-		{ id: 'combo_green8_yellow16', name: 'Groen + Geel Combo', description: 'Scoor minstens 8 in groen én 16 in geel.', target: 2, points: 18, useContext: true,
-		  check: (ctx) => { const s = ctx?.playerScore || {}; let done = 0; if ((s.green || 0) >= 8) done++; if ((s.yellow || 0) >= 16) done++; return done; }},
-		{ id: 'collect_5_gold', name: 'Goudmijn', description: 'Verzamel minstens 5 gouden munten.', target: 5, points: 14,
+		{ id: 'combo_yellow2_green1end', name: 'Geel + Groen Combo', description: 'Haal minstens 3 gele kolommen én 2 groen eindpunten. Reward: 40 punten + 2 coins.', target: 2, points: 40, coins: 2, useContext: true,
+		  check: (ctx) => {
+			let done = 0;
+			if (countPlayerCompletedYellowCols(ctx.boardState, ctx.playerId) >= 3) done++;
+			if (countPlayerGreenEnds(ctx.boardState, ctx.playerId) >= 2) done++;
+			return done;
+		  }},
+		{ id: 'combo_blue2_purple4', name: 'Blauw + Paars Combo', description: 'Bereik 2 blauwe rijen én verbind 4 paarse bold-cellen. Reward: 40 punten + 2 bonussen.', target: 2, points: 40, randomBonuses: 2, useContext: true,
+		  check: (ctx) => {
+			let done = 0;
+			if (getPlayerBlueHighestTier(ctx.boardState, ctx.playerId) >= 2) done++;
+			if (getPlayerPurpleMaxBoldCluster(ctx.boardState, ctx.playerId) >= 4) done++;
+			return done;
+		  }},
+		{ id: 'collect_5_gold', name: 'Goudmijn', description: 'Verzamel minstens 5 gouden munten. Reward: 20 punten.', target: 5, points: 20,
 		  useContext: true, check: (ctx) => countPlayerGoldCells(ctx.boardState, ctx.playerId)},
-		{ id: 'balance_10', name: 'Meester Evenwicht', description: 'Behaal overal tenminste 10 punten.', target: 10, points: 30,
+		{ id: 'balance_10', name: 'Meester Evenwicht', description: 'Behaal overal tenminste 10 punten. Reward: 5 coins.', target: 10, coins: 5,
 		  useContext: true, check: (ctx) => ctx?.playerScore?.bonus || 0 },
+		{ id: 'deny_named_l2', name: 'Gerichte Sabotage', description: 'Zorg dat een gekozen speler zijn/haar doel niet haalt. Reward: 16 punten + 3 coins.', target: 1, points: 16, coins: 3, useContext: true, endOnly: true, dynamicType: 'deny_named_objective',
+		  check: (ctx, objective) => {
+			const targetPid = objective?.targetPlayerId;
+			if (!targetPid || targetPid === ctx?.playerId) return 0;
+			const targetPlayer = ctx?.gameState?.players?.[targetPid];
+			if (!targetPlayer?.chosenObjective) return 0;
+			if (objective?.targetObjectiveId && targetPlayer.chosenObjective.id !== objective.targetObjectiveId) return 0;
+			return targetPlayer.objectiveAchieved ? 0 : 1;
+		  },
+		  failCheck: (ctx, objective) => {
+			const targetPid = objective?.targetPlayerId;
+			if (!targetPid || targetPid === ctx?.playerId) return true;
+			const targetPlayer = ctx?.gameState?.players?.[targetPid];
+			if (!targetPlayer?.chosenObjective) return false;
+			if (objective?.targetObjectiveId && targetPlayer.chosenObjective.id !== objective.targetObjectiveId) return true;
+			return !!targetPlayer.objectiveAchieved;
+		  }},
 	],
 	// Level 3: Moeilijke doelstellingen (18-25 punten)
 	3: [
-		{ id: 'fill_6_yellow_cols', name: 'Gele Dominantie', description: 'Vul minstens 6 kolommen in de gele zone.', target: 6, points: 20,
+		{ id: 'fill_6_yellow_cols', name: 'Gele Dominantie', description: 'Vul minstens 6 kolommen in de gele zone. Reward: 25 punten + 3 coins.', target: 6, points: 25, coins: 3,
 		  useContext: true, check: (ctx) => countPlayerCompletedYellowCols(ctx.boardState, ctx.playerId)},
-		{ id: 'reach_8_green_ends', name: 'Groene Meester', description: 'Bereik minstens 8 eindpunten in de groene zone.', target: 8, points: 20,
+		{ id: 'reach_8_green_ends', name: 'Groene Meester', description: 'Bereik minstens 6 eindpunten in de groene zone. Reward: 25 punten + 4 coins.', target: 6, points: 25, coins: 4,
 		  useContext: true, check: (ctx) => countPlayerGreenEnds(ctx.boardState, ctx.playerId)},
-		{ id: 'fill_3_blue_rows', name: 'Blauwe Hemel', description: 'Bereik minstens 4 rijen in de blauwe zone.', target: 4, points: 22,
+		{ id: 'fill_3_blue_rows', name: 'Blauwe Hemel', description: 'Bereik minstens 3 rijen in de blauwe zone. Reward: 25 punten + 3 bonussen.', target: 3, points: 25, randomBonuses: 3,
 		  useContext: true, check: (ctx) => getPlayerBlueHighestTier(ctx.boardState, ctx.playerId)},
-		{ id: 'fill_3_red_grids', name: 'Rode Dominantie', description: 'Vul minstens 2 rode subgrids volledig.', target: 2, points: 25,
+		{ id: 'fill_3_red_grids', name: 'Rode Dominantie', description: 'Vul minstens 2 rode subgrids volledig. Reward: 8 coins + 2 bonussen.', target: 2, points: 0, coins: 8, randomBonuses: 2,
 		  useContext: true, check: (ctx) => countPlayerCompletedRedSubgrids(ctx.boardState, ctx.playerId)},
-		{ id: 'connect_4_purple', name: 'Paars Imperium', description: 'Verbind minstens 6 bold-cellen in één paars cluster.', target: 6, points: 22,
+		{ id: 'connect_4_purple', name: 'Paars Imperium', description: 'Verbind minstens 6 bold-cellen in één paars cluster. Reward: 20 punten + 3 bonussen.', target: 6, points: 20, randomBonuses: 3,
 		  useContext: true, check: (ctx) => getPlayerPurpleMaxBoldCluster(ctx.boardState, ctx.playerId)},
-		{ id: 'collect_8_gold', name: 'Gouden Schatkist', description: 'Verzamel minstens 8 munten.', target: 8, points: 20,
+		{ id: 'collect_8_gold', name: 'Gouden Schatkist', description: 'Verzamel minstens 8 munten. Reward: 20 punten.', target: 8, points: 20,
 		  useContext: true, check: (ctx) => countPlayerGoldCells(ctx.boardState, ctx.playerId)},
-		{ id: 'deny_adjacent_green', name: 'Groene Blokkade', description: 'Laat speler voor/na jou op 0 punten in groen eindigen.', target: 1, points: 24, useContext: true, endOnly: true,
+		{ id: 'deny_adjacent_green', name: 'Groene Blokkade', description: 'Laat de speler na jou op 0 punten in groen eindigen. Reward: 20 punten + 3 coins.', target: 1, points: 20, coins: 3, useContext: true, endOnly: true,
 		  check: (ctx) => {
-			const pids = [...new Set([ctx?.previousPlayerId, ctx?.nextPlayerId].filter(pid => pid && pid !== ctx.playerId))];
-			if (pids.length === 0) return 0;
-			const ok = pids.every(pid => ((ctx?.playerScores?.[pid]?.green) || 0) === 0);
-			return ok ? 1 : 0;
+			const nextPid = ctx?.nextPlayerId;
+			if (!nextPid || nextPid === ctx?.playerId) return 0;
+			return (((ctx?.playerScores?.[nextPid]?.green) || 0) === 0) ? 1 : 0;
 		  },
 		  failCheck: (ctx) => {
-			const pids = [...new Set([ctx?.previousPlayerId, ctx?.nextPlayerId].filter(pid => pid && pid !== ctx.playerId))];
-			if (pids.length === 0) return false;
-			return pids.some(pid => ((ctx?.playerScores?.[pid]?.green) || 0) > 0);
+			const nextPid = ctx?.nextPlayerId;
+			if (!nextPid || nextPid === ctx?.playerId) return false;
+			return ((ctx?.playerScores?.[nextPid]?.green) || 0) > 0;
 		  }},
-		{ id: 'deny_blue_top_anyone', name: 'Blauw Afstoppen', description: 'Zorg dat niemand de top van blauw bereikt.', target: 1, points: 22, useContext: true, endOnly: true,
+		{ id: 'deny_blue_top_anyone', name: 'Blauw Afstoppen', description: 'Zorg dat niemand de top van blauw bereikt. Reward: 20 punten + 5 coins.', target: 1, points: 20, coins: 5, useContext: true, endOnly: true,
 		  check: (ctx) => {
 			const zone = ctx?.boardState?.zones?.blue;
 			if (!zone) return 0;
@@ -2010,24 +2183,63 @@ const LEVEL_OBJECTIVES = {
 			if (maxTier <= 0) return false;
 			return reachedTier >= maxTier;
 		  }},
-		{ id: 'balance_15', name: 'Perfecte Balans', description: 'Behaal overal tenminste 15 punten.', target: 15, points: 25,
+		{ id: 'balance_15', name: 'Perfecte Balans', description: 'Behaal overal tenminste 15 punten. Reward: 8 coins.', target: 15, coins: 8,
 		  useContext: true, check: (ctx) => ctx?.playerScore?.bonus || 0 },
+		{ id: 'combo_yellow4_green3', name: 'Strakke Route', description: 'Haal 4 gele kolommen én 3 groene eindpunten. Reward: 25 punten + 6 coins.', target: 2, points: 25, coins: 6, useContext: true,
+		  check: (ctx) => {
+			let done = 0;
+			if (countPlayerCompletedYellowCols(ctx.boardState, ctx.playerId) >= 4) done++;
+			if (countPlayerGreenEnds(ctx.boardState, ctx.playerId) >= 3) done++;
+			return done;
+		  }},
+		{ id: 'combo_red1_purple6', name: 'Diepe Impact', description: 'Vul 1 rood grid én verbind 6 paarse bold-cellen. Reward: 20 punten + 6 coins + 2 bonussen.', target: 2, points: 20, coins: 6, randomBonuses: 2, useContext: true,
+		  check: (ctx) => {
+			let done = 0;
+			if (countPlayerCompletedRedSubgrids(ctx.boardState, ctx.playerId) >= 1) done++;
+			if (getPlayerPurpleMaxBoldCluster(ctx.boardState, ctx.playerId) >= 6) done++;
+			return done;
+		  }},
+		{ id: 'deny_named_l3', name: 'Elite Sabotage', description: 'Zorg dat een gekozen speler zijn/haar doel niet haalt. Reward: 25 punten + 5 coins + 2 bonussen.', target: 1, points: 25, coins: 5, randomBonuses: 2, useContext: true, endOnly: true, dynamicType: 'deny_named_objective',
+		  check: (ctx, objective) => {
+			const targetPid = objective?.targetPlayerId;
+			if (!targetPid || targetPid === ctx?.playerId) return 0;
+			const targetPlayer = ctx?.gameState?.players?.[targetPid];
+			if (!targetPlayer?.chosenObjective) return 0;
+			if (objective?.targetObjectiveId && targetPlayer.chosenObjective.id !== objective.targetObjectiveId) return 0;
+			return targetPlayer.objectiveAchieved ? 0 : 1;
+		  },
+		  failCheck: (ctx, objective) => {
+			const targetPid = objective?.targetPlayerId;
+			if (!targetPid || targetPid === ctx?.playerId) return true;
+			const targetPlayer = ctx?.gameState?.players?.[targetPid];
+			if (!targetPlayer?.chosenObjective) return false;
+			if (objective?.targetObjectiveId && targetPlayer.chosenObjective.id !== objective.targetObjectiveId) return true;
+			return !!targetPlayer.objectiveAchieved;
+		  }},
 	]
 };
 
 /** Genereer 3 objectives voor een level (level-afhankelijk) */
-function generateObjectiveChoices(rng, level) {
+function generateObjectiveChoices(rng, level, gameState = null, playerId = null) {
 	const lvl = Math.min(level || 1, 3);
 	const pool = LEVEL_OBJECTIVES[lvl] || LEVEL_OBJECTIVES[1];
 	const shuffled = shuffleWithRNG([...pool], rng);
-	return shuffled.slice(0, 3).map(obj => ({
-		id: obj.id,
-		name: obj.name,
-		description: obj.description,
-		target: obj.target,
-		points: obj.points,
-		endOnly: !!obj.endOnly
-	}));
+	return shuffled.slice(0, 3).map(obj => {
+		const materialized = materializeObjectiveForPlayer(obj, gameState, playerId, rng);
+		return {
+			id: materialized.id,
+			name: materialized.name,
+			description: materialized.description,
+			target: materialized.target,
+			points: getObjectiveRewardPoints(materialized, 15),
+			coins: getObjectiveRewardCoins(materialized),
+			randomBonuses: getObjectiveRandomBonuses(materialized),
+			endOnly: !!materialized.endOnly,
+			targetPlayerId: materialized.targetPlayerId || null,
+			targetObjectiveId: materialized.targetObjectiveId || null,
+			targetObjectiveName: materialized.targetObjectiveName || null
+		};
+	});
 }
 
 function checkObjective(gameStateOrBoardState, playerIdOrObjective, maybeObjective) {
@@ -2055,31 +2267,53 @@ function checkObjective(gameStateOrBoardState, playerIdOrObjective, maybeObjecti
 		const tmpl = LEVEL_OBJECTIVES[lvl]?.find(t => t.id === objective.id);
 		if (tmpl) {
 			if (tmpl.useContext && !objectiveCtx) {
-				return { achieved: false, failed: false, current: 0, target: objective.target, points: objective.points || 15 };
+				return {
+					achieved: false,
+					failed: false,
+					current: 0,
+					target: objective.target,
+					points: getObjectiveRewardPoints(objective, 15),
+					coins: getObjectiveRewardCoins(objective),
+					randomBonuses: getObjectiveRandomBonuses(objective)
+				};
 			}
-			const current = tmpl.useContext ? tmpl.check(objectiveCtx) : tmpl.check(activeBoardState);
+			const current = tmpl.useContext ? tmpl.check(objectiveCtx, objective) : tmpl.check(activeBoardState, objective);
 			const failed = tmpl.failCheck
-				? !!(tmpl.useContext ? tmpl.failCheck(objectiveCtx) : tmpl.failCheck(activeBoardState))
+				? !!(tmpl.useContext ? tmpl.failCheck(objectiveCtx, objective) : tmpl.failCheck(activeBoardState, objective))
 				: false;
 			return {
 				achieved: !failed && current >= objective.target,
 				failed,
 				current,
 				target: objective.target,
-				points: objective.points || 15
+				points: getObjectiveRewardPoints(objective, 15),
+				coins: getObjectiveRewardCoins(objective),
+				randomBonuses: getObjectiveRandomBonuses(objective)
 			};
 		}
 	}
 	// Fallback naar oude OBJECTIVE_TEMPLATES
 	const template = OBJECTIVE_TEMPLATES.find(t => t.id === objective.id);
-	if (!template) return { achieved: false, failed: false, current: 0, target: objective.target, points: objective.points || 15 };
+	if (!template) {
+		return {
+			achieved: false,
+			failed: false,
+			current: 0,
+			target: objective.target,
+			points: getObjectiveRewardPoints(objective, 15),
+			coins: getObjectiveRewardCoins(objective),
+			randomBonuses: getObjectiveRandomBonuses(objective)
+		};
+	}
 	const current = template.check(activeBoardState);
 	return {
 		achieved: current >= objective.target,
 		failed: false,
 		current,
 		target: objective.target,
-		points: objective.points || 15
+		points: getObjectiveRewardPoints(objective, 15),
+		coins: getObjectiveRewardCoins(objective),
+		randomBonuses: getObjectiveRandomBonuses(objective)
 	};
 }
 
@@ -2375,7 +2609,7 @@ function initializeLevelOneAfterDeckChoice(gameState) {
 	// 3. Objective keuzes
 	gameState.objectiveChoices = {};
 	for (const playerId of gameState.playerOrder) {
-		gameState.objectiveChoices[playerId] = generateObjectiveChoices(rng, 1);
+		gameState.objectiveChoices[playerId] = generateObjectiveChoices(rng, 1, gameState, playerId);
 	}
 
 	// 4. Shuffle beurtvolgorde
@@ -2492,7 +2726,9 @@ function playMove(gameState, playerId, cardId, zoneName, baseX, baseY, rotation,
 	const objectiveSnapshot = {
 		objectiveAchieved: !!player.objectiveAchieved,
 		objectiveAchievedPoints: player.objectiveAchievedPoints || 0,
-		objectiveProgress: player.objectiveProgress ? { ...player.objectiveProgress } : null
+		objectiveProgress: player.objectiveProgress ? { ...player.objectiveProgress } : null,
+		goldCoins: player.goldCoins || 0,
+		bonusInventory: player.bonusInventory ? { ...player.bonusInventory } : { yellow: 0, red: 0, green: 0, purple: 0, blue: 0 }
 	};
 
 	// Max 1 regular kaart per beurt — gouden kaarten mogen als EXTRA gespeeld worden
@@ -2937,6 +3173,12 @@ function undoMove(gameState, playerId) {
 		player.objectiveProgress = undo.objectiveSnapshot.objectiveProgress
 			? { ...undo.objectiveSnapshot.objectiveProgress }
 			: null;
+		if (typeof undo.objectiveSnapshot.goldCoins === 'number') {
+			player.goldCoins = Math.max(0, undo.objectiveSnapshot.goldCoins);
+		}
+		if (undo.objectiveSnapshot.bonusInventory) {
+			player.bonusInventory = { ...undo.objectiveSnapshot.bonusInventory };
+		}
 	}
 
 	// 7. Herbereken scores (alleen actieve speler)
@@ -2997,7 +3239,9 @@ function advanceTurn(gameState) {
 					objectiveSnapshot: {
 						objectiveAchieved: !!nextPlayer.objectiveAchieved,
 						objectiveAchievedPoints: nextPlayer.objectiveAchievedPoints || 0,
-						objectiveProgress: nextPlayer.objectiveProgress ? { ...nextPlayer.objectiveProgress } : null
+						objectiveProgress: nextPlayer.objectiveProgress ? { ...nextPlayer.objectiveProgress } : null,
+						goldCoins: nextPlayer.goldCoins || 0,
+						bonusInventory: nextPlayer.bonusInventory ? { ...nextPlayer.bonusInventory } : { yellow: 0, red: 0, green: 0, purple: 0, blue: 0 }
 					},
 					placedCells: [],
 					zoneName: null,
@@ -3037,21 +3281,24 @@ function checkGameEnd(gameState) {
 	const levelScores = {};
 	for (const pid of gameState.playerOrder) {
 		const p = gameState.players[pid];
-		const objResult = p.chosenObjective ? checkObjective(gameState, pid, p.chosenObjective) : { achieved: false, current: 0, target: 0, points: 0 };
+		const objResult = p.chosenObjective
+			? checkObjective(gameState, pid, p.chosenObjective)
+			: { achieved: false, current: 0, target: 0, points: 0, coins: 0, randomBonuses: 0 };
 		// If objective was already awarded during play, don't add again
-		const alreadyAwarded = p.objectiveAchieved && p.objectiveAchievedPoints;
-		const objectiveBonus = alreadyAwarded ? p.objectiveAchievedPoints : (objResult.achieved ? (objResult.points || 15) : 0);
+		const alreadyAwarded = !!p.objectiveAchieved;
+		const objectiveBonus = alreadyAwarded ? (p.objectiveAchievedPoints || 0) : (objResult.achieved ? getObjectiveRewardPoints(objResult, 15) : 0);
 		// For players who didn't get real-time award, add now
 		if (!alreadyAwarded && objResult.achieved) {
-			p.objectiveAchieved = true;
-			p.objectiveAchievedPoints = objectiveBonus;
-			p.score = (p.score || 0) + objectiveBonus;
+			awardObjectiveRewards(gameState, pid, p.chosenObjective, objResult);
+			p.score = (p.score || 0) + (p.objectiveAchievedPoints || 0);
 		}
 		levelScores[pid] = {
 			...(p.scoreBreakdown || { yellow: 0, green: 0, blue: 0, red: 0, purple: 0, bonus: 0, gold: 0, total: 0 }),
-			objectiveBonus,
+			objectiveBonus: alreadyAwarded ? (p.objectiveAchievedPoints || 0) : objectiveBonus,
 			objectiveAchieved: p.objectiveAchieved || objResult.achieved,
 			objectiveCurrent: objResult.current,
+			objectiveCoins: getObjectiveRewardCoins(objResult),
+			objectiveRandomBonuses: getObjectiveRandomBonuses(objResult),
 			finalTotal: p.score || 0,
 			goldCoins: p.goldCoins || 0
 		};
@@ -3458,7 +3705,7 @@ function startNextLevel(gameState) {
 	// Nieuwe objective keuzes per level
 	gameState.objectiveChoices = {};
 	for (const pid of gameState.playerOrder) {
-		gameState.objectiveChoices[pid] = generateObjectiveChoices(rng, gameState.level);
+		gameState.objectiveChoices[pid] = generateObjectiveChoices(rng, gameState.level, gameState, pid);
 	}
 
 	gameState.phase = 'choosingGoals';
