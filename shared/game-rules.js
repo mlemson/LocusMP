@@ -1835,7 +1835,7 @@ function objectiveRewardsToText(objective) {
 	const coins = getObjectiveRewardCoins(objective);
 	const randomBonuses = getObjectiveRandomBonuses(objective);
 	if (pts > 0) parts.push(`${pts} punten`);
-	if (coins > 0) parts.push(`${coins} coins`);
+	if (coins > 0) parts.push(`${coins} munten`);
 	if (randomBonuses > 0) parts.push(`${randomBonuses} random bonussen`);
 	return parts.join(' + ');
 }
@@ -1929,7 +1929,7 @@ function materializeObjectiveForPlayer(baseObjective, gameState, playerId, rng) 
 	const targetInfo = pickTargetObjectiveForSabotage(gameState, playerId, rng, gameState?.level || 1);
 	if (!targetInfo) {
 		objective.name = 'Sabotage Opdracht';
-		objective.description = `Zorg dat een andere speler zijn of haar doelstelling niet haalt. Reward: ${objectiveRewardsToText(objective)}.`;
+		objective.description = 'Zorg dat een andere speler zijn of haar doelstelling niet haalt.';
 		return objective;
 	}
 
@@ -1937,7 +1937,7 @@ function materializeObjectiveForPlayer(baseObjective, gameState, playerId, rng) 
 	objective.targetObjectiveId = targetInfo.targetObjectiveId;
 	objective.targetObjectiveName = targetInfo.targetObjectiveName;
 	objective.name = `Blokkeer ${targetInfo.targetPlayerName}`;
-	objective.description = `Zorg dat ${targetInfo.targetPlayerName} zijn/haar doel niet haalt: ${targetInfo.targetObjectiveName} — ${targetInfo.targetObjectiveDescription} Reward: ${objectiveRewardsToText(objective)}.`;
+	objective.description = `Zorg dat ${targetInfo.targetPlayerName} zijn/haar doel niet haalt: ${targetInfo.targetObjectiveName} — ${targetInfo.targetObjectiveDescription}`;
 	return objective;
 }
 
@@ -2059,17 +2059,17 @@ function countPlayerGoldCells(boardState, playerId) {
 const LEVEL_OBJECTIVES = {
 	// Level 1: Makkelijke doelstellingen (8-12 punten)
 	1: [
-		{ id: 'fill_2_yellow_cols', name: 'Gele Start', description: 'Vul minstens 2 kolommen in de gele zone. Reward: 10 punten + 2 coins.', target: 2, points: 10, coins: 2,
+		{ id: 'fill_2_yellow_cols', name: 'Gele Start', description: 'Vul minstens 2 kolommen in de gele zone.', target: 2, points: 10, coins: 2,
 		  useContext: true, check: (ctx) => countPlayerCompletedYellowCols(ctx.boardState, ctx.playerId)},
-		{ id: 'reach_2_green_ends', name: 'Groene Verkenner', description: 'Bereik minstens 1 eindpunt in de groene zone. Reward: 10 punten + 2 coins.', target: 1, points: 10, coins: 2,
+		{ id: 'reach_2_green_ends', name: 'Groene Verkenner', description: 'Bereik minstens 1 eindpunt in de groene zone.', target: 1, points: 10, coins: 2,
 		  useContext: true, check: (ctx) => countPlayerGreenEnds(ctx.boardState, ctx.playerId)},
-		{ id: 'fill_1_blue_row', name: 'Blauwe Basis', description: 'Bereik minstens 1 rij in de blauwe zone. Reward: 10 punten.', target: 1, points: 10,
+		{ id: 'fill_1_blue_row', name: 'Blauwe Basis', description: 'Bereik minstens 1 rij in de blauwe zone.', target: 1, points: 10,
 		  useContext: true, check: (ctx) => getPlayerBlueHighestTier(ctx.boardState, ctx.playerId)},
-		{ id: 'connect_2_purple', name: 'Paars Verbinden', description: 'Verbind minstens 3 bold-cellen in één paars cluster. Reward: 10 punten + 1 bonus.', target: 3, points: 10, randomBonuses: 1,
+		{ id: 'connect_2_purple', name: 'Paars Verbinden', description: 'Verbind minstens 3 bold-cellen in één paars cluster.', target: 3, points: 10, randomBonuses: 1,
 		  useContext: true, check: (ctx) => getPlayerPurpleMaxBoldCluster(ctx.boardState, ctx.playerId)},
-		{ id: 'collect_2_gold', name: 'Goudzoeker', description: 'Verzamel minstens 3 gouden munten. Reward: 10 punten.', target: 3, points: 10,
+		{ id: 'collect_2_gold', name: 'Goudzoeker', description: 'Verzamel minstens 3 gouden munten.', target: 3, points: 10,
 		  useContext: true, check: (ctx) => countPlayerGoldCells(ctx.boardState, ctx.playerId)},
-		{ id: 'deny_named_l1', name: 'Lichte Sabotage', description: 'Zorg dat een gekozen speler zijn/haar doel niet haalt. Reward: 10 punten + 2 coins.', target: 1, points: 10, coins: 2, useContext: true, endOnly: true, dynamicType: 'deny_named_objective',
+		{ id: 'deny_named_l1', name: 'Lichte Sabotage', description: 'Zorg dat een gekozen speler zijn/haar doel niet haalt.', target: 1, points: 10, coins: 2, useContext: true, endOnly: true, dynamicType: 'deny_named_objective',
 		  check: (ctx, objective) => {
 			const targetPid = objective?.targetPlayerId;
 			if (!targetPid || targetPid === ctx?.playerId) return 0;
@@ -2089,35 +2089,35 @@ const LEVEL_OBJECTIVES = {
 	],
 	// Level 2: Medium doelstellingen (12-18 punten)
 	2: [
-		{ id: 'fill_4_yellow_cols', name: 'Gele Muur', description: 'Vul minstens 4 kolommen in de gele zone. Reward: 15 punten + 2 coins.', target: 4, points: 15, coins: 2,
+		{ id: 'fill_4_yellow_cols', name: 'Gele Muur', description: 'Vul minstens 4 kolommen in de gele zone.', target: 4, points: 15, coins: 2,
 		  useContext: true, check: (ctx) => countPlayerCompletedYellowCols(ctx.boardState, ctx.playerId)},
-		{ id: 'reach_5_green_ends', name: 'Groene Expeditie', description: 'Bereik minstens 2 eindpunten in de groene zone. Reward: 15 punten + 2 coins.', target: 2, points: 15, coins: 2,
+		{ id: 'reach_5_green_ends', name: 'Groene Expeditie', description: 'Bereik minstens 2 eindpunten in de groene zone.', target: 2, points: 15, coins: 2,
 		  useContext: true, check: (ctx) => countPlayerGreenEnds(ctx.boardState, ctx.playerId)},
-		{ id: 'fill_2_blue_rows', name: 'Blauwe Toren', description: 'Bereik minstens 2 rijen in de blauwe zone. Reward: 15 punten + 2 bonussen.', target: 2, points: 15, randomBonuses: 2,
+		{ id: 'fill_2_blue_rows', name: 'Blauwe Toren', description: 'Bereik minstens 2 rijen in de blauwe zone.', target: 2, points: 15, randomBonuses: 2,
 		  useContext: true, check: (ctx) => getPlayerBlueHighestTier(ctx.boardState, ctx.playerId)},
-		{ id: 'fill_2_red_grids', name: 'Rode Grids', description: 'Vul een rood grid volledig. Reward: 4 coins.', target: 1, points: 0, coins: 4,
+		{ id: 'fill_2_red_grids', name: 'Rode Grids', description: 'Vul een rood grid volledig.', target: 1, points: 0, coins: 4,
 		  useContext: true, check: (ctx) => countPlayerCompletedRedSubgrids(ctx.boardState, ctx.playerId)},
-		{ id: 'connect_3_purple', name: 'Paars Netwerk', description: 'Verbind minstens 4 bold-cellen in één paars cluster. Reward: 15 punten + 2 bonussen.', target: 4, points: 15, randomBonuses: 2,
+		{ id: 'connect_3_purple', name: 'Paars Netwerk', description: 'Verbind minstens 4 bold-cellen in één paars cluster.', target: 4, points: 15, randomBonuses: 2,
 		  useContext: true, check: (ctx) => getPlayerPurpleMaxBoldCluster(ctx.boardState, ctx.playerId)},
-		{ id: 'combo_yellow2_green1end', name: 'Geel + Groen Combo', description: 'Haal minstens 3 gele kolommen én 2 groen eindpunten. Reward: 40 punten + 2 coins.', target: 2, points: 40, coins: 2, useContext: true,
+		{ id: 'combo_yellow2_green1end', name: 'Geel + Groen Combo', description: 'Haal minstens 3 gele kolommen én 2 groen eindpunten.', target: 2, points: 40, coins: 2, useContext: true,
 		  check: (ctx) => {
 			let done = 0;
 			if (countPlayerCompletedYellowCols(ctx.boardState, ctx.playerId) >= 3) done++;
 			if (countPlayerGreenEnds(ctx.boardState, ctx.playerId) >= 2) done++;
 			return done;
 		  }},
-		{ id: 'combo_blue2_purple4', name: 'Blauw + Paars Combo', description: 'Bereik 2 blauwe rijen én verbind 4 paarse bold-cellen. Reward: 40 punten + 2 bonussen.', target: 2, points: 40, randomBonuses: 2, useContext: true,
+		{ id: 'combo_blue2_purple4', name: 'Blauw + Paars Combo', description: 'Bereik 2 blauwe rijen én verbind 4 paarse bold-cellen.', target: 2, points: 40, randomBonuses: 2, useContext: true,
 		  check: (ctx) => {
 			let done = 0;
 			if (getPlayerBlueHighestTier(ctx.boardState, ctx.playerId) >= 2) done++;
 			if (getPlayerPurpleMaxBoldCluster(ctx.boardState, ctx.playerId) >= 4) done++;
 			return done;
 		  }},
-		{ id: 'collect_5_gold', name: 'Goudmijn', description: 'Verzamel minstens 5 gouden munten. Reward: 20 punten.', target: 5, points: 20,
+		{ id: 'collect_5_gold', name: 'Goudmijn', description: 'Verzamel minstens 5 gouden munten.', target: 5, points: 20,
 		  useContext: true, check: (ctx) => countPlayerGoldCells(ctx.boardState, ctx.playerId)},
-		{ id: 'balance_10', name: 'Meester Evenwicht', description: 'Behaal overal tenminste 10 punten. Reward: 5 coins.', target: 10, coins: 5,
+		{ id: 'balance_10', name: 'Meester Evenwicht', description: 'Behaal overal tenminste 10 punten.', target: 10, coins: 5,
 		  useContext: true, check: (ctx) => ctx?.playerScore?.bonus || 0 },
-		{ id: 'deny_named_l2', name: 'Gerichte Sabotage', description: 'Zorg dat een gekozen speler zijn/haar doel niet haalt. Reward: 16 punten + 3 coins.', target: 1, points: 16, coins: 3, useContext: true, endOnly: true, dynamicType: 'deny_named_objective',
+		{ id: 'deny_named_l2', name: 'Gerichte Sabotage', description: 'Zorg dat een gekozen speler zijn/haar doel niet haalt.', target: 1, points: 16, coins: 3, useContext: true, endOnly: true, dynamicType: 'deny_named_objective',
 		  check: (ctx, objective) => {
 			const targetPid = objective?.targetPlayerId;
 			if (!targetPid || targetPid === ctx?.playerId) return 0;
@@ -2137,19 +2137,19 @@ const LEVEL_OBJECTIVES = {
 	],
 	// Level 3: Moeilijke doelstellingen (18-25 punten)
 	3: [
-		{ id: 'fill_6_yellow_cols', name: 'Gele Dominantie', description: 'Vul minstens 6 kolommen in de gele zone. Reward: 25 punten + 3 coins.', target: 6, points: 25, coins: 3,
+		{ id: 'fill_6_yellow_cols', name: 'Gele Dominantie', description: 'Vul minstens 6 kolommen in de gele zone.', target: 6, points: 25, coins: 3,
 		  useContext: true, check: (ctx) => countPlayerCompletedYellowCols(ctx.boardState, ctx.playerId)},
-		{ id: 'reach_8_green_ends', name: 'Groene Meester', description: 'Bereik minstens 6 eindpunten in de groene zone. Reward: 25 punten + 4 coins.', target: 6, points: 25, coins: 4,
+		{ id: 'reach_8_green_ends', name: 'Groene Meester', description: 'Bereik minstens 6 eindpunten in de groene zone.', target: 6, points: 25, coins: 4,
 		  useContext: true, check: (ctx) => countPlayerGreenEnds(ctx.boardState, ctx.playerId)},
-		{ id: 'fill_3_blue_rows', name: 'Blauwe Hemel', description: 'Bereik minstens 3 rijen in de blauwe zone. Reward: 25 punten + 3 bonussen.', target: 3, points: 25, randomBonuses: 3,
+		{ id: 'fill_3_blue_rows', name: 'Blauwe Hemel', description: 'Bereik minstens 3 rijen in de blauwe zone.', target: 3, points: 25, randomBonuses: 3,
 		  useContext: true, check: (ctx) => getPlayerBlueHighestTier(ctx.boardState, ctx.playerId)},
-		{ id: 'fill_3_red_grids', name: 'Rode Dominantie', description: 'Vul minstens 2 rode subgrids volledig. Reward: 8 coins + 2 bonussen.', target: 2, points: 0, coins: 8, randomBonuses: 2,
+		{ id: 'fill_3_red_grids', name: 'Rode Dominantie', description: 'Vul minstens 2 rode subgrids volledig.', target: 2, points: 0, coins: 8, randomBonuses: 2,
 		  useContext: true, check: (ctx) => countPlayerCompletedRedSubgrids(ctx.boardState, ctx.playerId)},
-		{ id: 'connect_4_purple', name: 'Paars Imperium', description: 'Verbind minstens 6 bold-cellen in één paars cluster. Reward: 20 punten + 3 bonussen.', target: 6, points: 20, randomBonuses: 3,
+		{ id: 'connect_4_purple', name: 'Paars Imperium', description: 'Verbind minstens 6 bold-cellen in één paars cluster.', target: 6, points: 20, randomBonuses: 3,
 		  useContext: true, check: (ctx) => getPlayerPurpleMaxBoldCluster(ctx.boardState, ctx.playerId)},
-		{ id: 'collect_8_gold', name: 'Gouden Schatkist', description: 'Verzamel minstens 8 munten. Reward: 20 punten.', target: 8, points: 20,
+		{ id: 'collect_8_gold', name: 'Gouden Schatkist', description: 'Verzamel minstens 8 munten.', target: 8, points: 20,
 		  useContext: true, check: (ctx) => countPlayerGoldCells(ctx.boardState, ctx.playerId)},
-		{ id: 'deny_adjacent_green', name: 'Groene Blokkade', description: 'Laat de speler na jou op 0 punten in groen eindigen. Reward: 20 punten + 3 coins.', target: 1, points: 20, coins: 3, useContext: true, endOnly: true,
+		{ id: 'deny_adjacent_green', name: 'Groene Blokkade', description: 'Laat de speler na jou op 0 punten in groen eindigen.', target: 1, points: 20, coins: 3, useContext: true, endOnly: true,
 		  check: (ctx) => {
 			const nextPid = ctx?.nextPlayerId;
 			if (!nextPid || nextPid === ctx?.playerId) return 0;
@@ -2160,7 +2160,7 @@ const LEVEL_OBJECTIVES = {
 			if (!nextPid || nextPid === ctx?.playerId) return false;
 			return ((ctx?.playerScores?.[nextPid]?.green) || 0) > 0;
 		  }},
-		{ id: 'deny_blue_top_anyone', name: 'Blauw Afstoppen', description: 'Zorg dat niemand de top van blauw bereikt. Reward: 20 punten + 5 coins.', target: 1, points: 20, coins: 5, useContext: true, endOnly: true,
+		{ id: 'deny_blue_top_anyone', name: 'Blauw Afstoppen', description: 'Zorg dat niemand de top van blauw bereikt.', target: 1, points: 20, coins: 5, useContext: true, endOnly: true,
 		  check: (ctx) => {
 			const zone = ctx?.boardState?.zones?.blue;
 			if (!zone) return 0;
@@ -2177,23 +2177,23 @@ const LEVEL_OBJECTIVES = {
 			if (maxTier <= 0) return false;
 			return reachedTier >= maxTier;
 		  }},
-		{ id: 'balance_15', name: 'Perfecte Balans', description: 'Behaal overal tenminste 15 punten. Reward: 8 coins.', target: 15, coins: 8,
+		{ id: 'balance_15', name: 'Perfecte Balans', description: 'Behaal overal tenminste 15 punten.', target: 15, coins: 8,
 		  useContext: true, check: (ctx) => ctx?.playerScore?.bonus || 0 },
-		{ id: 'combo_yellow4_green3', name: 'Strakke Route', description: 'Haal 4 gele kolommen én 3 groene eindpunten. Reward: 25 punten + 6 coins.', target: 2, points: 25, coins: 6, useContext: true,
+		{ id: 'combo_yellow4_green3', name: 'Strakke Route', description: 'Haal 4 gele kolommen én 3 groene eindpunten.', target: 2, points: 25, coins: 6, useContext: true,
 		  check: (ctx) => {
 			let done = 0;
 			if (countPlayerCompletedYellowCols(ctx.boardState, ctx.playerId) >= 4) done++;
 			if (countPlayerGreenEnds(ctx.boardState, ctx.playerId) >= 3) done++;
 			return done;
 		  }},
-		{ id: 'combo_red1_purple6', name: 'Diepe Impact', description: 'Vul 1 rood grid én verbind 6 paarse bold-cellen. Reward: 20 punten + 6 coins + 2 bonussen.', target: 2, points: 20, coins: 6, randomBonuses: 2, useContext: true,
+		{ id: 'combo_red1_purple6', name: 'Diepe Impact', description: 'Vul 1 rood grid én verbind 6 paarse bold-cellen.', target: 2, points: 20, coins: 6, randomBonuses: 2, useContext: true,
 		  check: (ctx) => {
 			let done = 0;
 			if (countPlayerCompletedRedSubgrids(ctx.boardState, ctx.playerId) >= 1) done++;
 			if (getPlayerPurpleMaxBoldCluster(ctx.boardState, ctx.playerId) >= 6) done++;
 			return done;
 		  }},
-		{ id: 'deny_named_l3', name: 'Elite Sabotage', description: 'Zorg dat een gekozen speler zijn/haar doel niet haalt. Reward: 25 punten + 5 coins + 2 bonussen.', target: 1, points: 25, coins: 5, randomBonuses: 2, useContext: true, endOnly: true, dynamicType: 'deny_named_objective',
+		{ id: 'deny_named_l3', name: 'Elite Sabotage', description: 'Zorg dat een gekozen speler zijn/haar doel niet haalt.', target: 1, points: 25, coins: 5, randomBonuses: 2, useContext: true, endOnly: true, dynamicType: 'deny_named_objective',
 		  check: (ctx, objective) => {
 			const targetPid = objective?.targetPlayerId;
 			if (!targetPid || targetPid === ctx?.playerId) return 0;

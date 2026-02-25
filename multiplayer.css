@@ -588,15 +588,37 @@ html, body {
 	line-height: 1.4;
 }
 
-.mp-goal-points {
-	font-size: 0.9rem;
+.mp-goal-rewards,
+.mp-objective-rewards {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 6px;
+	margin-top: 8px;
+}
+
+.mp-goal-reward-badge {
+	font-size: 0.86rem;
 	font-weight: 700;
-	color: var(--mp-gold);
-	margin-top: 6px;
 	padding: 3px 10px;
-	background: rgba(245, 215, 110, 0.1);
-	border-radius: 12px;
-	display: inline-block;
+	border-radius: 999px;
+	display: inline-flex;
+	align-items: center;
+	gap: 5px;
+}
+
+.mp-goal-reward-badge.is-points {
+	color: var(--mp-gold);
+	background: rgba(245, 215, 110, 0.12);
+}
+
+.mp-goal-reward-badge.is-coins {
+	color: var(--mp-gold);
+	background: rgba(255, 255, 255, 0.08);
+}
+
+.mp-goal-reward-badge.is-bonuses {
+	color: var(--mp-accent);
+	background: rgba(255, 255, 255, 0.08);
 }
 
 /* ── GAME LAYOUT ── */

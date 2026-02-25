@@ -739,6 +739,50 @@ class LocusLobbyUI {
 		}
 	}
 
+	_normalizeObjectiveReward(value) {
+		if (!Number.isFinite(value)) return 0;
+		return Math.max(0, Math.floor(value));
+	}
+
+	_stripObjectiveRewardText(description) {
+		const raw = String(description || '');
+		return raw
+			.replace(/\s*Reward:\s*[^.]*\.?/gi, '')
+			.replace(/\s{2,}/g, ' ')
+			.trim();
+	}
+
+	_renderObjectiveRewardBadges(objective, options = {}) {
+		const points = this._normalizeObjectiveReward(objective?.points);
+		const coins = this._normalizeObjectiveReward(objective?.coins);
+		const randomBonuses = this._normalizeObjectiveReward(objective?.randomBonuses);
+		const includeFallbackPoints = options.includeFallbackPoints === true;
+		const fallbackPoints = this._normalizeObjectiveReward(options.fallbackPoints ?? 15);
+
+		const rewards = [];
+		if (points > 0) rewards.push({ icon: '🏆', value: points, label: 'punten', cls: 'is-points' });
+		if (coins > 0) rewards.push({ icon: '🪙', value: coins, label: 'munten', cls: 'is-coins' });
+		if (randomBonuses > 0) {
+			rewards.push({
+				icon: '🎁',
+				value: randomBonuses,
+				label: randomBonuses === 1 ? 'bonus' : 'bonussen',
+				cls: 'is-bonuses'
+			});
+		}
+
+		if (rewards.length === 0 && includeFallbackPoints && fallbackPoints > 0) {
+			rewards.push({ icon: '🏆', value: fallbackPoints, label: 'punten', cls: 'is-points' });
+		}
+
+		if (rewards.length === 0) return '';
+
+		const wrapperClass = options.wrapperClass || 'mp-goal-rewards';
+		return `<div class="${wrapperClass}">${rewards.map(r =>
+			`<span class="mp-goal-reward-badge ${r.cls}">${r.icon} ${r.value} ${r.label}</span>`
+		).join('')}</div>`;
+	}
+
 	// ──────────────────────────────────────────
 	//  GOAL KEUZE
 	// ──────────────────────────────────────────
@@ -765,8 +809,8 @@ class LocusLobbyUI {
 					${choices.map((goal, i) => `
 						<button class="mp-goal-card" data-index="${i}">
 							<div class="mp-goal-name">${this._escapeHtml(goal?.name || 'Onbekend doel')}</div>
-							<div class="mp-goal-desc">${this._escapeHtml(goal?.description || '')}</div>
-							<div class="mp-goal-points">🏆 ${goal?.points || 15} punten</div>
+							<div class="mp-goal-desc">${this._escapeHtml(this._stripObjectiveRewardText(goal?.description || ''))}</div>
+							${this._renderObjectiveRewardBadges(goal, { includeFallbackPoints: true, fallbackPoints: 15 })}
 						</button>
 					`).join('')}
 				</div>
@@ -3311,7 +3355,8 @@ class LocusLobbyUI {
 		container.innerHTML = `
 			<div class="mp-objective-badge ${achieved ? 'objective-achieved' : ''} ${failed ? 'objective-failed' : ''}">
 				<div class="mp-objective-title">${achieved ? '✅' : (failed ? '❌' : '🎯')} ${this._escapeHtml(obj.name)} ${pts ? `<span style="color: var(--mp-gold); font-size: 0.8rem;">(${pts}pt)</span>` : ''}</div>
-				<div class="mp-objective-desc">${this._escapeHtml(obj.description)}</div>
+				<div class="mp-objective-desc">${this._escapeHtml(this._stripObjectiveRewardText(obj.description))}</div>
+				${this._renderObjectiveRewardBadges(progress || obj, { wrapperClass: 'mp-objective-rewards' })}
 				${failed
 					? `<div class="mp-objective-progress objective-progress-failed">❌ Niet meer haalbaar</div>`
 					: (progressText ? `<div class="mp-objective-progress">${achieved ? `🏆 Behaald! +${pts}pt` : `Voortgang: ${progressText}`}</div>` : '')}
