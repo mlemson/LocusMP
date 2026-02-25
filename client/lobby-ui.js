@@ -78,11 +78,14 @@ class LocusLobbyUI {
 	}
 
 	_setVersionBadge() {
-		const el = document.getElementById('mp-version-badge');
-		if (!el) return;
+		const lobbyEl = document.getElementById('mp-version-badge');
+		const gameEl = document.getElementById('mp-version-badge-game');
+		if (!lobbyEl && !gameEl) return;
 		const now = new Date();
 		const pad = (n) => String(n).padStart(2, '0');
-		el.textContent = `v${now.getFullYear()}.${pad(now.getMonth() + 1)}.${pad(now.getDate())}-${pad(now.getHours())}${pad(now.getMinutes())}`;
+		const version = `v${now.getFullYear()}.${pad(now.getMonth() + 1)}.${pad(now.getDate())}-${pad(now.getHours())}${pad(now.getMinutes())}`;
+		if (lobbyEl) lobbyEl.textContent = version;
+		if (gameEl) gameEl.textContent = version;
 	}
 
 	_bindMobileGestureGuards() {
