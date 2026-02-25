@@ -119,6 +119,14 @@ html, body {
 	position: absolute;
 	top: calc(8px + env(safe-area-inset-top));
 	right: 14px;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: max-content;
+	max-width: calc(100vw - 28px);
+	white-space: nowrap;
+	overflow: visible;
+	text-overflow: clip;
 	font-size: 0.72rem;
 	font-weight: 600;
 	color: #d8e7ff;

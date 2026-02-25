@@ -82,8 +82,12 @@ class LocusLobbyUI {
 		if (!lobbyEl) return;
 		const now = new Date();
 		const pad = (n) => String(n).padStart(2, '0');
-		const version = `v${now.getFullYear()}.${pad(now.getMonth() + 1)}.${pad(now.getDate())}-${pad(now.getHours())}${pad(now.getMinutes())}`;
-		lobbyEl.textContent = version;
+		const buildTag = `${now.getFullYear()}.${pad(now.getMonth() + 1)}.${pad(now.getDate())}-${pad(now.getHours())}${pad(now.getMinutes())}`;
+		const dateText = now.toLocaleDateString('nl-BE', { day: '2-digit', month: '2-digit', year: 'numeric' });
+		const timeText = now.toLocaleTimeString('nl-BE', { hour: '2-digit', minute: '2-digit' });
+		const badgeText = `Build ${buildTag} • ${dateText} ${timeText}`;
+		lobbyEl.textContent = badgeText;
+		lobbyEl.title = badgeText;
 	}
 
 	_bindMobileGestureGuards() {
