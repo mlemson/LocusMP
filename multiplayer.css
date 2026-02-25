@@ -1478,7 +1478,11 @@ html, body {
 .mp-zone-red .mp-cell { background: var(--cell-red-bg); border-color: var(--cell-red-border); }
 .mp-zone-red .mp-cell.active { background: var(--cell-red-active) !important; border-color: var(--cell-red-active-border) !important; }
 
-.mp-zone-purple .mp-cell { background: var(--cell-purple-bg); border-color: var(--cell-purple-border); }
+.mp-zone-purple .mp-cell {
+	background: rgba(143, 118, 184, 0.18);
+	border-color: var(--cell-purple-border);
+	transition: transform 0.15s ease, box-shadow 0.25s ease;
+}
 .mp-zone-purple .mp-cell.active { background: var(--cell-purple-active) !important; border-color: var(--cell-purple-active-border) !important; }
 
 .mp-purple-points-guide {
@@ -1566,12 +1570,14 @@ html, body {
 	background: rgba(255,255,255,0.08);
 }
 
-.mp-cell.outer-ring-0 {
-	background: rgba(143, 118, 184, 0.05);
+.mp-zone-purple .mp-cell.outer-ring-0:not(.active) {
+	background: rgba(143, 118, 184, 0.03);
+	border-color: rgba(143, 118, 184, 0.16);
 }
 
-.mp-cell.outer-ring-1 {
-	background: rgba(143, 118, 184, 0.08);
+.mp-zone-purple .mp-cell.outer-ring-1:not(.active) {
+	background: rgba(143, 118, 184, 0.07);
+	border-color: rgba(143, 118, 184, 0.2);
 }
 
 /* ── RED SUBGRID LABELS ── */
