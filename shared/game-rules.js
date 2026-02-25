@@ -1882,42 +1882,53 @@ function awardObjectiveRewards(gameState, playerId, objective, result) {
 	}
 }
 
-function pickTargetObjectiveForSabotage(gameState, sourcePlayerId, rng, levelHint = 1) {
+function pickTargetPlayerForSabotage(gameState, sourcePlayerId, rng) {
 	const playerOrder = Array.isArray(gameState?.playerOrder) ? gameState.playerOrder : [];
 	const candidates = playerOrder.filter(pid => pid && pid !== sourcePlayerId && gameState.players?.[pid]?.connected !== false);
 	if (candidates.length === 0) return null;
 
 	const targetPlayerId = candidates[Math.floor(rng() * candidates.length)];
-	const targetPlayer = gameState.players[targetPlayerId] || {};
-	const chosen = targetPlayer.chosenObjective && !targetPlayer.chosenObjective.endOnly
-		? targetPlayer.chosenObjective
-		: null;
-	const offered = (gameState.objectiveChoices?.[targetPlayerId] || []).filter(o => o && !o.endOnly);
-	let fallback = offered.length > 0 ? offered[Math.floor(rng() * offered.length)] : null;
+	return targetPlayerId;
+}
 
-	if (!fallback) {
-		const lvl = Math.min(Math.max(Number(gameState?.level || levelHint || 1), 1), 3);
-		const levelPool = (LEVEL_OBJECTIVES[lvl] || LEVEL_OBJECTIVES[1] || [])
-			.filter(o => o && !o.endOnly && o.id !== 'deny_named_l1' && o.id !== 'deny_named_l2' && o.id !== 'deny_named_l3');
-		if (levelPool.length > 0) {
-			const picked = levelPool[Math.floor(rng() * levelPool.length)];
-			fallback = {
-				id: picked.id,
-				name: picked.name,
-				description: picked.description
-			};
-		}
+function isNamedSabotageObjective(objective) {
+	if (!objective) return false;
+	if (objective.dynamicType === 'deny_named_objective') return true;
+	return typeof objective.id === 'string' && /^deny_named_l\d+$/i.test(objective.id);
+}
+
+function syncSabotageObjectiveTarget(gameState, sourcePlayerId, objective) {
+	if (!isNamedSabotageObjective(objective)) return objective;
+	const targetPid = objective.targetPlayerId;
+	const targetPlayer = targetPid ? gameState?.players?.[targetPid] : null;
+	if (!targetPid || !targetPlayer) return objective;
+
+	const targetPlayerName = targetPlayer.name || targetPid;
+	const chosen = targetPlayer.chosenObjective || null;
+	objective.name = `Blokkeer ${targetPlayerName}`;
+
+	if (!chosen) {
+		objective.targetObjectiveId = null;
+		objective.targetObjectiveName = null;
+		objective.description = `Zorg dat ${targetPlayerName} zijn/haar gekozen doel niet haalt.`;
+		return objective;
 	}
 
-	const objective = chosen || fallback || { id: 'unknown-target-objective', name: 'Doelstelling', description: '' };
+	objective.targetObjectiveId = chosen.id || null;
+	objective.targetObjectiveName = chosen.name || 'Doelstelling';
+	objective.description = `Zorg dat ${targetPlayerName} zijn/haar doel niet haalt: ${chosen.name || 'Doelstelling'} — ${chosen.description || ''}`;
+	return objective;
+}
 
-	return {
-		targetPlayerId,
-		targetPlayerName: targetPlayer.name || targetPlayerId,
-		targetObjectiveId: objective.id,
-		targetObjectiveName: objective.name || 'Doelstelling',
-		targetObjectiveDescription: objective.description || ''
-	};
+function refreshSabotageObjectivesForTarget(gameState, targetPlayerId) {
+	if (!gameState || !targetPlayerId) return;
+	for (const pid of gameState.playerOrder || []) {
+		const player = gameState.players?.[pid];
+		if (!player?.chosenObjective) continue;
+		if (!isNamedSabotageObjective(player.chosenObjective)) continue;
+		if (player.chosenObjective.targetPlayerId !== targetPlayerId) continue;
+		syncSabotageObjectiveTarget(gameState, pid, player.chosenObjective);
+	}
 }
 
 function materializeObjectiveForPlayer(baseObjective, gameState, playerId, rng) {
@@ -1926,18 +1937,15 @@ function materializeObjectiveForPlayer(baseObjective, gameState, playerId, rng) 
 		return objective;
 	}
 
-	const targetInfo = pickTargetObjectiveForSabotage(gameState, playerId, rng, gameState?.level || 1);
-	if (!targetInfo) {
+	const targetPlayerId = pickTargetPlayerForSabotage(gameState, playerId, rng);
+	if (!targetPlayerId) {
 		objective.name = 'Sabotage Opdracht';
 		objective.description = 'Zorg dat een andere speler zijn of haar doelstelling niet haalt.';
 		return objective;
 	}
 
-	objective.targetPlayerId = targetInfo.targetPlayerId;
-	objective.targetObjectiveId = targetInfo.targetObjectiveId;
-	objective.targetObjectiveName = targetInfo.targetObjectiveName;
-	objective.name = `Blokkeer ${targetInfo.targetPlayerName}`;
-	objective.description = `Zorg dat ${targetInfo.targetPlayerName} zijn/haar doel niet haalt: ${targetInfo.targetObjectiveName} — ${targetInfo.targetObjectiveDescription}`;
+	objective.targetPlayerId = targetPlayerId;
+	syncSabotageObjectiveTarget(gameState, playerId, objective);
 	return objective;
 }
 
@@ -2061,7 +2069,7 @@ const LEVEL_OBJECTIVES = {
 	1: [
 		{ id: 'fill_2_yellow_cols', name: 'Gele Start', description: 'Vul minstens 2 kolommen in de gele zone.', target: 2, points: 10, coins: 2,
 		  useContext: true, check: (ctx) => countPlayerCompletedYellowCols(ctx.boardState, ctx.playerId)},
-		{ id: 'reach_2_green_ends', name: 'Groene Verkenner', description: 'Bereik minstens 1 eindpunt in de groene zone.', target: 1, points: 10, coins: 2,
+		{ id: 'reach_1_green_end', legacyIds: ['reach_2_green_ends'], name: 'Groene Verkenner', description: 'Bereik minstens 1 eindpunt in de groene zone.', target: 1, points: 10, coins: 2,
 		  useContext: true, check: (ctx) => countPlayerGreenEnds(ctx.boardState, ctx.playerId)},
 		{ id: 'fill_1_blue_row', name: 'Blauwe Basis', description: 'Bereik minstens 1 rij in de blauwe zone.', target: 1, points: 10,
 		  useContext: true, check: (ctx) => getPlayerBlueHighestTier(ctx.boardState, ctx.playerId)},
@@ -2075,7 +2083,6 @@ const LEVEL_OBJECTIVES = {
 			if (!targetPid || targetPid === ctx?.playerId) return 0;
 			const targetPlayer = ctx?.gameState?.players?.[targetPid];
 			if (!targetPlayer?.chosenObjective) return 0;
-			if (objective?.targetObjectiveId && targetPlayer.chosenObjective.id !== objective.targetObjectiveId) return 0;
 			return targetPlayer.objectiveAchieved ? 0 : 1;
 		  },
 		  failCheck: (ctx, objective) => {
@@ -2083,7 +2090,6 @@ const LEVEL_OBJECTIVES = {
 			if (!targetPid || targetPid === ctx?.playerId) return true;
 			const targetPlayer = ctx?.gameState?.players?.[targetPid];
 			if (!targetPlayer?.chosenObjective) return false;
-			if (objective?.targetObjectiveId && targetPlayer.chosenObjective.id !== objective.targetObjectiveId) return true;
 			return !!targetPlayer.objectiveAchieved;
 		  }},
 	],
@@ -2091,19 +2097,19 @@ const LEVEL_OBJECTIVES = {
 	2: [
 		{ id: 'fill_4_yellow_cols', name: 'Gele Muur', description: 'Vul minstens 4 kolommen in de gele zone.', target: 4, points: 15, coins: 2,
 		  useContext: true, check: (ctx) => countPlayerCompletedYellowCols(ctx.boardState, ctx.playerId)},
-		{ id: 'reach_5_green_ends', name: 'Groene Expeditie', description: 'Bereik minstens 2 eindpunten in de groene zone.', target: 2, points: 15, coins: 2,
+		{ id: 'reach_2_green_ends_l2', legacyIds: ['reach_5_green_ends'], name: 'Groene Expeditie', description: 'Bereik minstens 2 eindpunten in de groene zone.', target: 2, points: 15, coins: 2,
 		  useContext: true, check: (ctx) => countPlayerGreenEnds(ctx.boardState, ctx.playerId)},
 		{ id: 'fill_2_blue_rows', name: 'Blauwe Toren', description: 'Bereik minstens 2 rijen in de blauwe zone.', target: 2, points: 15, randomBonuses: 2,
 		  useContext: true, check: (ctx) => getPlayerBlueHighestTier(ctx.boardState, ctx.playerId)},
-		{ id: 'fill_2_red_grids', name: 'Rode Grids', description: 'Vul een rood grid volledig.', target: 1, points: 0, coins: 4,
+		{ id: 'fill_1_red_grid', legacyIds: ['fill_2_red_grids'], name: 'Rode Grids', description: 'Vul een rood grid volledig.', target: 1, points: 0, coins: 4,
 		  useContext: true, check: (ctx) => countPlayerCompletedRedSubgrids(ctx.boardState, ctx.playerId)},
 		{ id: 'connect_3_purple', name: 'Paars Netwerk', description: 'Verbind minstens 4 bold-cellen in één paars cluster.', target: 4, points: 15, randomBonuses: 2,
 		  useContext: true, check: (ctx) => getPlayerPurpleMaxBoldCluster(ctx.boardState, ctx.playerId)},
-		{ id: 'combo_yellow2_green1end', name: 'Geel + Groen Combo', description: 'Haal minstens 3 gele kolommen én 2 groen eindpunten.', target: 2, points: 40, coins: 2, useContext: true,
+		{ id: 'combo_yellow2_green1end', name: 'Geel + Groen Combo', description: 'Haal minstens 3 gele kolommen én 1 groen eindpunt.', target: 2, points: 40, coins: 2, useContext: true,
 		  check: (ctx) => {
 			let done = 0;
 			if (countPlayerCompletedYellowCols(ctx.boardState, ctx.playerId) >= 3) done++;
-			if (countPlayerGreenEnds(ctx.boardState, ctx.playerId) >= 2) done++;
+			if (countPlayerGreenEnds(ctx.boardState, ctx.playerId) >= 1) done++;
 			return done;
 		  }},
 		{ id: 'combo_blue2_purple4', name: 'Blauw + Paars Combo', description: 'Bereik 2 blauwe rijen én verbind 4 paarse bold-cellen.', target: 2, points: 40, randomBonuses: 2, useContext: true,
@@ -2123,7 +2129,6 @@ const LEVEL_OBJECTIVES = {
 			if (!targetPid || targetPid === ctx?.playerId) return 0;
 			const targetPlayer = ctx?.gameState?.players?.[targetPid];
 			if (!targetPlayer?.chosenObjective) return 0;
-			if (objective?.targetObjectiveId && targetPlayer.chosenObjective.id !== objective.targetObjectiveId) return 0;
 			return targetPlayer.objectiveAchieved ? 0 : 1;
 		  },
 		  failCheck: (ctx, objective) => {
@@ -2131,7 +2136,6 @@ const LEVEL_OBJECTIVES = {
 			if (!targetPid || targetPid === ctx?.playerId) return true;
 			const targetPlayer = ctx?.gameState?.players?.[targetPid];
 			if (!targetPlayer?.chosenObjective) return false;
-			if (objective?.targetObjectiveId && targetPlayer.chosenObjective.id !== objective.targetObjectiveId) return true;
 			return !!targetPlayer.objectiveAchieved;
 		  }},
 	],
@@ -2139,11 +2143,11 @@ const LEVEL_OBJECTIVES = {
 	3: [
 		{ id: 'fill_6_yellow_cols', name: 'Gele Dominantie', description: 'Vul minstens 6 kolommen in de gele zone.', target: 6, points: 25, coins: 3,
 		  useContext: true, check: (ctx) => countPlayerCompletedYellowCols(ctx.boardState, ctx.playerId)},
-		{ id: 'reach_8_green_ends', name: 'Groene Meester', description: 'Bereik minstens 6 eindpunten in de groene zone.', target: 6, points: 25, coins: 4,
+		{ id: 'reach_6_green_ends', legacyIds: ['reach_8_green_ends'], name: 'Groene Meester', description: 'Bereik minstens 6 eindpunten in de groene zone.', target: 6, points: 25, coins: 4,
 		  useContext: true, check: (ctx) => countPlayerGreenEnds(ctx.boardState, ctx.playerId)},
 		{ id: 'fill_3_blue_rows', name: 'Blauwe Hemel', description: 'Bereik minstens 3 rijen in de blauwe zone.', target: 3, points: 25, randomBonuses: 3,
 		  useContext: true, check: (ctx) => getPlayerBlueHighestTier(ctx.boardState, ctx.playerId)},
-		{ id: 'fill_3_red_grids', name: 'Rode Dominantie', description: 'Vul minstens 2 rode subgrids volledig.', target: 2, points: 0, coins: 8, randomBonuses: 2,
+		{ id: 'fill_2_red_grids_l3', legacyIds: ['fill_3_red_grids'], name: 'Rode Dominantie', description: 'Vul minstens 2 rode subgrids volledig.', target: 2, points: 0, coins: 8, randomBonuses: 2,
 		  useContext: true, check: (ctx) => countPlayerCompletedRedSubgrids(ctx.boardState, ctx.playerId)},
 		{ id: 'connect_4_purple', name: 'Paars Imperium', description: 'Verbind minstens 6 bold-cellen in één paars cluster.', target: 6, points: 20, randomBonuses: 3,
 		  useContext: true, check: (ctx) => getPlayerPurpleMaxBoldCluster(ctx.boardState, ctx.playerId)},
@@ -2199,7 +2203,6 @@ const LEVEL_OBJECTIVES = {
 			if (!targetPid || targetPid === ctx?.playerId) return 0;
 			const targetPlayer = ctx?.gameState?.players?.[targetPid];
 			if (!targetPlayer?.chosenObjective) return 0;
-			if (objective?.targetObjectiveId && targetPlayer.chosenObjective.id !== objective.targetObjectiveId) return 0;
 			return targetPlayer.objectiveAchieved ? 0 : 1;
 		  },
 		  failCheck: (ctx, objective) => {
@@ -2207,7 +2210,6 @@ const LEVEL_OBJECTIVES = {
 			if (!targetPid || targetPid === ctx?.playerId) return true;
 			const targetPlayer = ctx?.gameState?.players?.[targetPid];
 			if (!targetPlayer?.chosenObjective) return false;
-			if (objective?.targetObjectiveId && targetPlayer.chosenObjective.id !== objective.targetObjectiveId) return true;
 			return !!targetPlayer.objectiveAchieved;
 		  }},
 	]
@@ -2228,6 +2230,7 @@ function generateObjectiveChoices(rng, level, gameState = null, playerId = null)
 			points: getObjectiveRewardPoints(materialized, 15),
 			coins: getObjectiveRewardCoins(materialized),
 			randomBonuses: getObjectiveRandomBonuses(materialized),
+			dynamicType: materialized.dynamicType || null,
 			endOnly: !!materialized.endOnly,
 			targetPlayerId: materialized.targetPlayerId || null,
 			targetObjectiveId: materialized.targetObjectiveId || null,
@@ -2258,8 +2261,11 @@ function checkObjective(gameStateOrBoardState, playerIdOrObjective, maybeObjecti
 
 	// Zoek in alle levels
 	for (const lvl of [1, 2, 3]) {
-		const tmpl = LEVEL_OBJECTIVES[lvl]?.find(t => t.id === objective.id);
+		const tmpl = LEVEL_OBJECTIVES[lvl]?.find(t => t.id === objective.id || (Array.isArray(t.legacyIds) && t.legacyIds.includes(objective.id)));
 		if (tmpl) {
+			if (gameState && isNamedSabotageObjective(objective)) {
+				syncSabotageObjectiveTarget(gameState, playerId, objective);
+			}
 			if (tmpl.useContext && !objectiveCtx) {
 				return {
 					achieved: false,
@@ -2671,6 +2677,10 @@ function chooseObjective(gameState, playerId, objectiveIndex) {
 	if (player.chosenObjective) return { error: 'Al een objective gekozen' };
 
 	player.chosenObjective = { ...choices[objectiveIndex] };
+	if (isNamedSabotageObjective(player.chosenObjective)) {
+		syncSabotageObjectiveTarget(gameState, playerId, player.chosenObjective);
+	}
+	refreshSabotageObjectivesForTarget(gameState, playerId);
 	gameState.updatedAt = Date.now();
 
 	const allChosen = gameState.playerOrder.every(pid => {
