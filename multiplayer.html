@@ -262,12 +262,27 @@
 
 	<!-- App bootstrap -->
 	<script>
+		function _setLobbyVersionBadge() {
+			const badgeEl = document.getElementById('mp-version-badge');
+			if (!badgeEl) return;
+			const now = new Date();
+			const pad = (n) => String(n).padStart(2, '0');
+			const buildTag = `${now.getFullYear()}.${pad(now.getMonth() + 1)}.${pad(now.getDate())}-${pad(now.getHours())}${pad(now.getMinutes())}`;
+			const dateText = now.toLocaleDateString('nl-BE', { day: '2-digit', month: '2-digit', year: 'numeric' });
+			const timeText = now.toLocaleTimeString('nl-BE', { hour: '2-digit', minute: '2-digit' });
+			const badgeText = `Build ${buildTag} • ${dateText} ${timeText}`;
+			badgeEl.textContent = badgeText;
+			badgeEl.title = badgeText;
+		}
+
 		// Wacht iets langer zodat dynamisch geladen scripts (socket.io, peerjs fallback) tijd hebben
 		window.addEventListener('load', () => {
 			setTimeout(_bootstrapApp, 150);
 		});
 
 		async function _bootstrapApp() {
+			_setLobbyVersionBadge();
+
 			// Detecteer of Socket.IO server beschikbaar is
 			const hasSocketIO = typeof io !== 'undefined';
 			const hasPeerJS = typeof Peer !== 'undefined';
