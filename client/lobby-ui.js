@@ -155,7 +155,7 @@ class LocusLobbyUI {
 			'mp-scoreboard', 'mp-turn-indicator', 'mp-hand-container',
 			'mp-board-container', 'mp-pass-btn', 'mp-timer',
 			'mp-my-objective', 'mp-bonus-bar',
-			'mp-taunt-bar', 'mp-room-code-badge',
+			'mp-room-code-badge',
 			'mp-end-turn-btn', 'mp-undo-btn', 'mp-turn-timer',
 			'mp-deck-overview-btn', 'mp-deck-overlay', 'mp-deck-close-btn', 'mp-deck-cards', 'mp-deck-count',
 			'results-container', 'play-again-btn',
