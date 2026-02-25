@@ -1036,6 +1036,28 @@ class LocusLobbyUI {
 		badge.textContent = `Room: ${code || '------'}`;
 	}
 
+	_repositionScoreboardForMobile() {
+		const scoreboard = this.elements['mp-scoreboard'];
+		if (!scoreboard) return;
+		const isTouch = this._isTouchLikeDevice();
+		const topRight = document.querySelector('.mp-top-right');
+		const sidebar = document.querySelector('.mp-sidebar');
+
+		if (isTouch && topRight) {
+			if (scoreboard.parentElement !== topRight) {
+				topRight.insertBefore(scoreboard, topRight.firstChild || null);
+			}
+			scoreboard.classList.add('mp-scoreboard-inline');
+			scoreboard.style.display = '';
+			return;
+		}
+
+		scoreboard.classList.remove('mp-scoreboard-inline');
+		if (sidebar && scoreboard.parentElement !== sidebar) {
+			sidebar.insertBefore(scoreboard, sidebar.firstChild || null);
+		}
+	}
+
 	// ──────────────────────────────────────────
 	//  SCOREBOARD
 	// ──────────────────────────────────────────
@@ -1043,6 +1065,7 @@ class LocusLobbyUI {
 	_renderScoreboard() {
 		const container = this.elements['mp-scoreboard'];
 		if (!container) return;
+		this._repositionScoreboardForMobile();
 
 		const scoreboard = this.mp.getScoreboard();
 		const sorted = [...scoreboard];
@@ -2311,6 +2334,7 @@ class LocusLobbyUI {
 				btn.addEventListener('pointerdown', (e) => {
 					if (e.pointerType !== 'touch' && e.pointerType !== 'pen') return;
 					e.preventDefault();
+					try { btn.setPointerCapture?.(e.pointerId); } catch (_) {}
 					this._ignoreNextBonusClickUntil = Date.now() + 500;
 					this._activateBonusMode(btn.dataset.bonusColor, e);
 				});
@@ -2434,6 +2458,10 @@ class LocusLobbyUI {
 		// Touch-start: toon ghost direct onder vinger zodat hold+sleep meteen werkt
 		if (startPointerEvent) {
 			this._bonusMoveHandler(startPointerEvent);
+			setTimeout(() => {
+				if (!this._bonusMode || !this._bonusMoveHandler) return;
+				this._bonusMoveHandler(startPointerEvent);
+			}, 0);
 		}
 
 		// Klik om te plaatsen (event delegation op container)
@@ -4341,12 +4369,19 @@ class LocusLobbyUI {
 	_showToast(message, type = 'info') {
 		const existing = document.getElementById('mp-toast');
 		if (existing) existing.remove();
+		let layer = document.getElementById('mp-toast-layer');
+		if (!layer) {
+			layer = document.createElement('div');
+			layer.id = 'mp-toast-layer';
+			layer.className = 'mp-toast-layer';
+			document.body.appendChild(layer);
+		}
 
 		const toast = document.createElement('div');
 		toast.id = 'mp-toast';
 		toast.className = `mp-toast mp-toast-${type}`;
 		toast.textContent = message;
-		document.body.appendChild(toast);
+		layer.appendChild(toast);
 
 		requestAnimationFrame(() => toast.classList.add('visible'));
 

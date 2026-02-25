@@ -596,6 +596,32 @@ html, body {
 	gap: 6px;
 }
 
+.mp-top-right .mp-scoreboard.mp-scoreboard-inline {
+	padding: 0;
+	gap: 4px;
+	width: 100%;
+	max-width: 320px;
+}
+
+.mp-top-right .mp-scoreboard.mp-scoreboard-inline .mp-score-row {
+	padding: 3px 7px;
+	font-size: 0.68rem;
+	border-radius: 999px;
+	min-width: 0;
+}
+
+.mp-top-right .mp-scoreboard.mp-scoreboard-inline .mp-score-details,
+.mp-top-right .mp-scoreboard.mp-scoreboard-inline .mp-score-zones,
+.mp-top-right .mp-scoreboard.mp-scoreboard-inline .mp-score-meta,
+.mp-top-right .mp-scoreboard.mp-scoreboard-inline .mp-score-rank {
+	display: none;
+}
+
+.mp-top-right .mp-scoreboard.mp-scoreboard-inline .mp-score-value-big {
+	font-size: 0.88rem;
+	min-width: 0;
+}
+
 .mp-room-code-badge {
 	font-size: 0.66rem;
 	font-weight: 700;
@@ -1548,6 +1574,7 @@ html, body {
 	font-weight: 600;
 	cursor: pointer;
 	transition: all var(--mp-transition);
+	touch-action: none;
 }
 
 .mp-bonus-btn:hover:not(.disabled) {
@@ -1720,24 +1747,34 @@ html, body {
 
 /* ── TOAST ── */
 .mp-toast {
-	position: fixed;
-	top: 20px;
-	left: 50%;
-	transform: translateX(-50%) translateY(-20px);
+	position: relative;
+	transform: translateY(-20px);
 	padding: 10px 24px;
 	border-radius: 10px;
 	font-size: 0.88rem;
 	font-weight: 500;
 	box-shadow: 0 8px 32px rgba(0,0,0,0.4);
-	z-index: 9999;
 	opacity: 0;
 	transition: all 0.3s ease;
 	pointer-events: none;
+	max-width: min(92vw, 560px);
+}
+
+.mp-toast-layer {
+	position: fixed;
+	top: max(10px, env(safe-area-inset-top));
+	left: 0;
+	right: 0;
+	padding: 0 12px;
+	display: flex;
+	justify-content: center;
+	pointer-events: none;
+	z-index: 9999;
 }
 
 .mp-toast.visible {
 	opacity: 1;
-	transform: translateX(-50%) translateY(0);
+	transform: translateY(0);
 }
 
 .mp-toast-info { background: var(--mp-accent); color: white; }
@@ -2031,7 +2068,7 @@ body.mp-loading .mp-btn {
 
 @media (max-width: 768px) {
 	:root {
-		--mp-cell-size: 18px;
+		--mp-cell-size: 21px;
 		--mp-cell-radius: 4px;
 	}
 
@@ -2048,12 +2085,7 @@ body.mp-loading .mp-btn {
 	}
 
 	.mp-sidebar {
-		flex-direction: row;
-		flex-wrap: wrap;
-		overflow-x: auto;
-		border-right: none;
-		border-bottom: 1px solid rgba(255,255,255,0.06);
-		gap: 0;
+		display: none;
 	}
 
 	.mp-scoreboard {
@@ -2084,14 +2116,31 @@ body.mp-loading .mp-btn {
 	}
 
 	.mp-top-bar {
-		flex-direction: column;
-		align-items: stretch;
+		display: grid;
+		grid-template-columns: minmax(0, 1fr) minmax(0, 46vw);
+		align-items: start;
+		gap: 6px;
+		padding: 6px 10px;
+	}
+
+	.mp-top-right {
+		width: 100%;
+		align-items: flex-end;
 		gap: 4px;
-		padding: 6px 12px;
+	}
+
+	.mp-room-code-badge {
+		display: none;
+	}
+
+	.mp-top-right .mp-scoreboard.mp-scoreboard-inline {
+		display: flex;
+		align-items: flex-end;
+		max-width: 100%;
 	}
 
 	.mp-taunt-bar {
-		justify-content: center;
+		justify-content: flex-end;
 		gap: 4px;
 	}
 
@@ -2139,6 +2188,10 @@ body.mp-loading .mp-btn {
 		box-sizing: border-box;
 		scroll-snap-align: start;
 		scroll-snap-stop: always;
+		height: 100%;
+		overflow-y: auto;
+		overscroll-behavior: contain;
+		-webkit-overflow-scrolling: touch;
 	}
 
 	.mp-zone {
@@ -2186,23 +2239,34 @@ body.mp-loading .mp-btn {
 	}
 
 	.mp-board-container {
-		padding: 10px 6px calc(14px + env(safe-area-inset-bottom));
+		padding: 6px 4px calc(10px + env(safe-area-inset-bottom));
 		overflow: hidden;
 		display: block;
 	}
 
 	.mp-bottom-bar {
-		padding: 6px 8px calc(10px + env(safe-area-inset-bottom));
+		padding: 4px 6px calc(8px + env(safe-area-inset-bottom));
 		gap: 6px;
 		flex-direction: column;
 	}
 
 	.mp-hand-row {
 		gap: 6px;
+		align-items: stretch;
+	}
+
+	.mp-hand-container {
+		min-width: 0;
+	}
+
+	.mp-hand-row #mp-pass-btn {
+		min-width: 74px;
+		padding: 8px 10px;
+		font-size: 0.84rem;
 	}
 
 	.mp-bottom-actions {
-		padding: 4px 8px;
+		padding: 2px 4px;
 		gap: 6px;
 	}
 
@@ -2219,7 +2283,7 @@ body.mp-loading .mp-btn {
 
 @media (max-width: 480px) {
 	:root {
-		--mp-cell-size: 16px;
+		--mp-cell-size: 19px;
 		--mp-cell-radius: 3px;
 	}
 
@@ -2301,19 +2365,14 @@ body.mp-loading .mp-btn {
 	}
 
 	.mp-top-bar {
-		padding: 4px 8px;
+		padding: 4px 6px;
 		gap: 2px;
 	}
 
 	.mp-top-right {
 		width: 100%;
-		align-items: flex-start;
+		align-items: flex-end;
 		gap: 4px;
-	}
-
-	.mp-room-code-badge {
-		font-size: 0.58rem;
-		padding: 2px 6px;
 	}
 
 	.mp-taunt-btn {
@@ -3939,6 +3998,12 @@ body.mp-placing * {
 	align-items: center;
 	gap: 10px;
 	width: 100%;
+}
+
+.mp-hand-row #mp-pass-btn {
+	flex-shrink: 0;
+	min-width: 88px;
+	padding: 8px 12px;
 }
 
 .mp-deck-btn {
