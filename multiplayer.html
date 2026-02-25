@@ -262,15 +262,52 @@
 
 	<!-- App bootstrap -->
 	<script>
-		function _setLobbyVersionBadge() {
+		async function _resolveLatestBuildDate() {
+			if (window.__locusBuildMeta?.buildDate instanceof Date && !Number.isNaN(window.__locusBuildMeta.buildDate.getTime())) {
+				return window.__locusBuildMeta.buildDate;
+			}
+
+			const candidates = [
+				'multiplayer.html',
+				'multiplayer.css',
+				'shared/game-rules.js',
+				'client/multiplayer-client.js',
+				'client/p2p-host.js',
+				'client/lobby-ui.js'
+			];
+
+			let latestTs = 0;
+			for (const file of candidates) {
+				try {
+					const res = await fetch(file, { method: 'HEAD', cache: 'no-store' });
+					const lm = res?.headers?.get('last-modified');
+					if (!lm) continue;
+					const ts = new Date(lm).getTime();
+					if (Number.isFinite(ts) && ts > latestTs) latestTs = ts;
+				} catch (_) {
+					// ignore and fallback below
+				}
+			}
+
+			if (!latestTs) {
+				const docTs = new Date(document.lastModified || '').getTime();
+				if (Number.isFinite(docTs)) latestTs = docTs;
+			}
+
+			if (!latestTs) latestTs = Date.now();
+			return new Date(latestTs);
+		}
+
+		async function _setLobbyVersionBadge() {
 			const badgeEl = document.getElementById('mp-version-badge');
 			if (!badgeEl) return;
-			const now = new Date();
+			const now = await _resolveLatestBuildDate();
 			const pad = (n) => String(n).padStart(2, '0');
 			const buildTag = `${now.getFullYear()}.${pad(now.getMonth() + 1)}.${pad(now.getDate())}-${pad(now.getHours())}${pad(now.getMinutes())}`;
 			const dateText = now.toLocaleDateString('nl-BE', { day: '2-digit', month: '2-digit', year: 'numeric' });
 			const timeText = now.toLocaleTimeString('nl-BE', { hour: '2-digit', minute: '2-digit' });
 			const badgeText = `Build ${buildTag} • ${dateText} ${timeText}`;
+			window.__locusBuildMeta = { buildDate: now, badgeText };
 			badgeEl.textContent = badgeText;
 			badgeEl.title = badgeText;
 		}
@@ -281,7 +318,7 @@
 		});
 
 		async function _bootstrapApp() {
-			_setLobbyVersionBadge();
+			await _setLobbyVersionBadge();
 
 			// Detecteer of Socket.IO server beschikbaar is
 			const hasSocketIO = typeof io !== 'undefined';

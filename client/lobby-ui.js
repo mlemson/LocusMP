@@ -80,12 +80,20 @@ class LocusLobbyUI {
 	_setVersionBadge() {
 		const lobbyEl = document.getElementById('mp-version-badge');
 		if (!lobbyEl) return;
-		const now = new Date();
+		if (window.__locusBuildMeta?.badgeText) {
+			lobbyEl.textContent = window.__locusBuildMeta.badgeText;
+			lobbyEl.title = window.__locusBuildMeta.badgeText;
+			return;
+		}
+
+		const fallbackDate = new Date(document.lastModified || Date.now());
+		const now = Number.isNaN(fallbackDate.getTime()) ? new Date() : fallbackDate;
 		const pad = (n) => String(n).padStart(2, '0');
 		const buildTag = `${now.getFullYear()}.${pad(now.getMonth() + 1)}.${pad(now.getDate())}-${pad(now.getHours())}${pad(now.getMinutes())}`;
 		const dateText = now.toLocaleDateString('nl-BE', { day: '2-digit', month: '2-digit', year: 'numeric' });
 		const timeText = now.toLocaleTimeString('nl-BE', { hour: '2-digit', minute: '2-digit' });
 		const badgeText = `Build ${buildTag} • ${dateText} ${timeText}`;
+		window.__locusBuildMeta = { buildDate: now, badgeText };
 		lobbyEl.textContent = badgeText;
 		lobbyEl.title = badgeText;
 	}
