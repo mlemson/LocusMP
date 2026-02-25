@@ -2503,50 +2503,46 @@ class LocusLobbyUI {
 				}
 			}
 
-			if (!zoneName) return;
-
 			// Alleen op matching zone plaatsen
 			if (zoneName !== this._bonusMode.color) return;
 
-			// Client-side validatie
-			const RulesC = window.LocusGameRules;
-			const bs = this.mp.gameState?.boardState;
-			if (RulesC && bs) {
-				let valid = false;
-				if (zoneName === 'red' && bs.zones.red?.subgrids) {
-					if (subgridId) {
-						const sg = bs.zones.red.subgrids.find(s => s.id === subgridId);
-						if (sg) {
-							const cells = RulesC.collectPlacementCellsData(sg, baseX, baseY, this._bonusMode.matrix);
-							if (cells && RulesC.validatePlacement('red', sg, cells)) valid = true;
-						}
-					} else {
-						for (const sg of bs.zones.red.subgrids) {
-							const cells = RulesC.collectPlacementCellsData(sg, baseX, baseY, this._bonusMode.matrix);
-							if (cells && RulesC.validatePlacement('red', sg, cells)) { valid = true; break; }
-						}
-					}
-				} else {
-					const zd = bs.zones[zoneName];
-					if (zd) {
-						const cells = RulesC.collectPlacementCellsData(zd, baseX, baseY, this._bonusMode.matrix);
-						if (cells && RulesC.validatePlacement(zoneName, zd, cells)) valid = true;
-					}
-				}
-				if (!valid) {
-					const sameZone = this._lastBonusZone === zoneName && (this._lastBonusSubgridId || null) === (subgridId || null);
-					const hasFallback = sameZone && Number.isFinite(this._lastBonusBaseX) && Number.isFinite(this._lastBonusBaseY);
-					if (hasFallback) {
-						baseX = this._lastBonusBaseX;
-						baseY = this._lastBonusBaseY;
-					} else {
-						this._showToast('Ongeldige positie', 'warning');
-						return;
-					}
-				}
+			const directPreview = this.mp.previewPlacement(zoneName, baseX, baseY, matrix, subgridId);
+			if (directPreview.valid) {
+				await this._attemptBonusPlacement(
+					zoneName,
+					baseX,
+					baseY,
+					directPreview.subgridId || subgridId || null
+				);
+				return;
 			}
 
-			await this._attemptBonusPlacement(zoneName, baseX, baseY, subgridId);
+			const sameZone = this._lastBonusZone === zoneName;
+			const hasFallback = sameZone && Number.isFinite(this._lastBonusBaseX) && Number.isFinite(this._lastBonusBaseY);
+			if (!hasFallback) {
+				this._showToast('Ongeldige positie', 'warning');
+				return;
+			}
+
+			const fallbackSubgrid = this._lastBonusSubgridId || null;
+			const fallbackPreview = this.mp.previewPlacement(
+				zoneName,
+				this._lastBonusBaseX,
+				this._lastBonusBaseY,
+				matrix,
+				fallbackSubgrid
+			);
+			if (!fallbackPreview.valid) {
+				this._showToast('Ongeldige positie', 'warning');
+				return;
+			}
+
+			await this._attemptBonusPlacement(
+				zoneName,
+				this._lastBonusBaseX,
+				this._lastBonusBaseY,
+				fallbackPreview.subgridId || fallbackSubgrid
+			);
 		};
 
 		container.addEventListener('click', this._bonusClickHandler);
@@ -2560,8 +2556,6 @@ class LocusLobbyUI {
 		const matrix = this._bonusMode.matrix;
 		if (!ghost || !matrix || !matrix.length) return;
 
-		const RulesH = window.LocusGameRules;
-		if (!RulesH) return;
 		const boardState = this.mp.gameState?.boardState;
 		if (!boardState) return;
 
@@ -2584,9 +2578,9 @@ class LocusLobbyUI {
 		this._lastBonusBaseX = baseX;
 		this._lastBonusBaseY = baseY;
 
-		const subgridId = zoneHits[0]?.subgridId || null;
+		const hoverSubgridId = zoneHits[0]?.subgridId || null;
 		this._lastBonusZone = bestZone;
-		this._lastBonusSubgridId = subgridId;
+		this._lastBonusSubgridId = hoverSubgridId;
 
 		// Verkeerde zone? 
 		if (bestZone !== this._bonusMode.color) {
@@ -2595,48 +2589,27 @@ class LocusLobbyUI {
 			return;
 		}
 
-		let placed = false;
-
-		if (bestZone === 'red' && boardState.zones.red?.subgrids) {
-			const subgridsToCheck = subgridId
-				? boardState.zones.red.subgrids.filter(s => s.id === subgridId)
-				: boardState.zones.red.subgrids;
-			for (const sg of subgridsToCheck) {
-				const cells = RulesH.collectPlacementCellsData(sg, baseX, baseY, matrix);
-				if (cells && RulesH.validatePlacement('red', sg, cells)) {
-					cells.forEach(coord => {
-						const sel = subgridId
-							? `.mp-cell[data-zone="red"][data-subgrid="${subgridId}"][data-x="${coord.x}"][data-y="${coord.y}"]`
-							: `.mp-cell[data-zone="red"][data-x="${coord.x}"][data-y="${coord.y}"]`;
-						const el = document.querySelector(sel);
-						if (el) el.classList.add('preview-valid');
-					});
-					placed = true;
-					break;
-				}
-			}
-		} else {
-			const zoneData = boardState.zones[bestZone];
-			if (zoneData?.cells) {
-				const cells = RulesH.collectPlacementCellsData(zoneData, baseX, baseY, matrix);
-				if (cells && RulesH.validatePlacement(bestZone, zoneData, cells)) {
-					cells.forEach(coord => {
-						const el = document.querySelector(`.mp-cell[data-zone="${bestZone}"][data-x="${coord.x}"][data-y="${coord.y}"]`);
-						if (el) el.classList.add('preview-valid');
-					});
-					placed = true;
-				}
-			}
+		const preview = this.mp.previewPlacement(bestZone, baseX, baseY, matrix, hoverSubgridId);
+		const resolvedSubgridId = preview.subgridId || hoverSubgridId;
+		if (preview.valid) {
+			this._lastBonusSubgridId = resolvedSubgridId || null;
+			preview.cells.forEach(coord => {
+				const sel = resolvedSubgridId
+					? `.mp-cell[data-zone="${bestZone}"][data-subgrid="${resolvedSubgridId}"][data-x="${coord.x}"][data-y="${coord.y}"]`
+					: `.mp-cell[data-zone="${bestZone}"][data-x="${coord.x}"][data-y="${coord.y}"]`;
+				const el = document.querySelector(sel);
+				if (el) el.classList.add('preview-valid');
+			});
 		}
 
-		if (placed) {
+		if (preview.valid) {
 			this._sendInteraction('move', {
 				mode: 'bonus',
 				cardName: `${this._bonusMode.color} bonus`,
 				zoneName: bestZone,
 				baseX,
 				baseY,
-				subgridId,
+				subgridId: resolvedSubgridId || null,
 				matrix,
 				isValid: true
 			});
@@ -2648,7 +2621,7 @@ class LocusLobbyUI {
 				zoneName: bestZone,
 				baseX,
 				baseY,
-				subgridId,
+				subgridId: hoverSubgridId || null,
 				matrix,
 				isValid: false
 			});
@@ -2698,38 +2671,6 @@ class LocusLobbyUI {
 				this._cancelBonusMode();
 			}
 		} catch (err) {
-			const fallbackZone = this._lastBonusZone;
-			const fallbackSubgrid = this._lastBonusSubgridId || null;
-			const fallbackX = this._lastBonusBaseX;
-			const fallbackY = this._lastBonusBaseY;
-			const hasFallback =
-				fallbackZone === zoneName &&
-				Number.isFinite(fallbackX) &&
-				Number.isFinite(fallbackY) &&
-				(fallbackX !== baseX || fallbackY !== baseY || fallbackSubgrid !== (subgridId || null));
-
-			if (hasFallback) {
-				try {
-					const fallbackResult = await this.mp.playBonus(
-						this._bonusMode.color,
-						fallbackZone,
-						fallbackX,
-						fallbackY,
-						fallbackSubgrid,
-						this._bonusMode.rotation || 0
-					);
-					if (fallbackResult?.error) throw new Error(fallbackResult.error);
-					if (fallbackResult?.success) {
-						this._playPlaceSound();
-						this._cancelBonusMode();
-						return;
-					}
-				} catch (fallbackErr) {
-					this._showToast('Bonus mislukt: ' + (fallbackErr.message || fallbackErr), 'error');
-					return;
-				}
-			}
-
 			this._showToast('Bonus mislukt: ' + (err.message || err), 'error');
 		}
 	}
