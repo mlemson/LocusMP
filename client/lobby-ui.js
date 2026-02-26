@@ -2509,9 +2509,8 @@ class LocusLobbyUI {
 			}
 			const ox = this._bonusGhostOffsetX || 0;
 			const oy = this._bonusGhostOffsetY || 0;
-			const touchOffsetY = this._getFingerLiftOffset(e);
 			this._bonusMode.ghostEl.style.left = (e.clientX - ox) + 'px';
-			this._bonusMode.ghostEl.style.top = (e.clientY - oy - touchOffsetY) + 'px';
+			this._bonusMode.ghostEl.style.top = (e.clientY - oy) + 'px';
 
 			// Throttled preview
 			if (this._throttleTimer) return;
@@ -2771,25 +2770,29 @@ class LocusLobbyUI {
 		void ghost.offsetHeight;
 		const matrix = this._bonusMode.matrix;
 		if (!matrix || !matrix.length) { this._bonusGhostOffsetX = 0; this._bonusGhostOffsetY = 0; return; }
-		const cells = ghost.querySelectorAll('.mp-mini-cell');
-		if (!cells.length) { this._bonusGhostOffsetX = 0; this._bonusGhostOffsetY = 0; return; }
-		const ghostRect = ghost.getBoundingClientRect();
-		let sumX = 0, sumY = 0, count = 0;
-		let idx = 0;
+
+		const sampleCell = ghost.querySelector('.mp-mini-cell');
+		if (!sampleCell) { this._bonusGhostOffsetX = 0; this._bonusGhostOffsetY = 0; return; }
+
+		const cellRect = sampleCell.getBoundingClientRect();
+		const cellSize = Math.min(cellRect.width, cellRect.height);
+		const gridEl = ghost.querySelector('.mp-mini-grid');
+		const gridStyle = gridEl ? getComputedStyle(gridEl) : null;
+		const gap = gridStyle ? (parseFloat(gridStyle.gap) || parseFloat(gridStyle.columnGap) || 0) : 0;
+		const step = cellSize + gap;
+
+		let sumC = 0, sumR = 0, count = 0;
 		for (let r = 0; r < matrix.length; r++) {
 			for (let c = 0; c < (matrix[r]?.length || 0); c++) {
-				if (idx >= cells.length) break;
-				if (matrix[r][c]) {
-					const cr = cells[idx].getBoundingClientRect();
-					sumX += (cr.left + cr.right) / 2 - ghostRect.left;
-					sumY += (cr.top + cr.bottom) / 2 - ghostRect.top;
-					count++;
-				}
-				idx++;
+				if (matrix[r][c]) { sumR += r; sumC += c; count++; }
 			}
 		}
-		this._bonusGhostOffsetX = count > 0 ? Math.round(sumX / count) : 0;
-		this._bonusGhostOffsetY = count > 0 ? Math.round(sumY / count) : 0;
+		if (count === 0) { this._bonusGhostOffsetX = 0; this._bonusGhostOffsetY = 0; return; }
+
+		const avgC = sumC / count;
+		const avgR = sumR / count;
+		this._bonusGhostOffsetX = (avgC + 0.5) * step;
+		this._bonusGhostOffsetY = (avgR + 0.5) * step;
 	}
 
 	_cancelBonusMode() {

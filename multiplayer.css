@@ -6529,14 +6529,14 @@ html.theme-bloom .mp-zone-green .mp-cell.active {
 
 html.theme-bloom .mp-zone-green .mp-cell.end:not(.active),
 html.theme-bloom .mp-zone-green .mp-cell.green-end:not(.active) {
-	background: rgba(61,138,82,0.18);
-	border-color: rgba(61,138,82,0.40);
+	background: rgba(92,182,118,0.18);
+	border-color: rgba(92,182,118,0.42);
 }
 
 html.theme-bloom .mp-zone-green .mp-cell.end.active,
 html.theme-bloom .mp-zone-green .mp-cell.end.end-claimed,
 html.theme-bloom .mp-zone-green .mp-cell.green-end.green-end-claimed {
-	background: linear-gradient(145deg, #4a9a60, #3d8a52) !important;
+	background: linear-gradient(145deg, #6bbe80, #52a96a) !important;
 	border-color: #7bcf8f !important;
 	box-shadow: 0 0 10px rgba(90,171,110,0.30), inset 0 0 0 1px rgba(123,207,143,0.20) !important;
 }
@@ -7222,10 +7222,12 @@ html.theme-bloom .mp-bomb-overlay.active {
 
 /* ── Gold dot — flower coin ── */
 html.theme-bloom .mp-cell-gold-dot {
-	background: var(--icon-coin) no-repeat center / 90%;
-	box-shadow: none;
-	width: 16px;
-	height: 16px;
+	background: radial-gradient(circle at 35% 35%, #fff4ad, #f3d46a 52%, #cca030 100%);
+	border: 1px solid rgba(200,146,10,0.55);
+	box-shadow: 0 0 0 1px rgba(255,255,255,0.65) inset, 0 1px 3px rgba(0,0,0,0.18);
+	width: 12px;
+	height: 12px;
+	border-radius: 50%;
 }
 
 /* ── Pearl dot — dewdrop ── */

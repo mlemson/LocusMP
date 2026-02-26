@@ -432,6 +432,7 @@ function generateLevel1Board(rng, level) {
 			boldCells: yellowBold,
 			goldCells: yellowGold
 		});
+		placeGoldFlags(zones.yellow, rng, 2);
 		placeBonusSymbols(zones.yellow, rng, 4);
 	} else if (world === 2) {
 		// World 2: 11 kolommen, 7 rijen (groter, meer goud)
@@ -452,6 +453,7 @@ function generateLevel1Board(rng, level) {
 			boldCells: yellowBold,
 			goldCells: yellowGold
 		});
+		placeGoldFlags(zones.yellow, rng, 4);
 		placeBonusSymbols(zones.yellow, rng, 6);
 	} else {
 		// World 3: 12 kolommen, 8 rijen (diamond-achtig, meeste goud)
@@ -484,6 +486,7 @@ function generateLevel1Board(rng, level) {
 			goldCells: yellowGold,
 			voidCells: yellowVoid
 		});
+		placeGoldFlags(zones.yellow, rng, 5);
 		placeBonusSymbols(zones.yellow, rng, 7);
 	}
 
@@ -518,15 +521,8 @@ function generateLevel1Board(rng, level) {
 	}
 
 	// Gold en bonus in green zone
-	const greenCellKeys = Object.keys(zones.green.cells);
 	const greenGoldCount = world === 1 ? 3 : (world === 2 ? 5 : 7);
-	for (let i = 0; i < greenGoldCount && greenCellKeys.length > 0; i++) {
-		const idx = Math.floor(rng() * greenCellKeys.length);
-		const cell = zones.green.cells[greenCellKeys[idx]];
-		if (cell && !cell.flags.includes('bold') && !cell.flags.includes('end') && !cell.flags.includes('gold')) {
-			cell.flags.push('gold');
-		}
-	}
+	placeGoldFlags(zones.green, rng, greenGoldCount);
 	placeBonusSymbols(zones.green, rng, world === 1 ? 3 : (world === 2 ? 5 : 7));
 
 	// ══════════════════════════════════════════
@@ -549,6 +545,7 @@ function generateLevel1Board(rng, level) {
 		}
 		zones.blue = createZoneGrid(blueHeight, blueWidth, { boldCells: blueBold, goldCells: blueGold });
 		zones.blue.boldRows = blueBoldRows;
+		placeGoldFlags(zones.blue, rng, 2);
 		placeBonusSymbols(zones.blue, rng, 3);
 	} else if (world === 2) {
 		// World 2: 7 breed, iets hoger met extra bold-laag
@@ -567,6 +564,7 @@ function generateLevel1Board(rng, level) {
 		}
 		zones.blue = createZoneGrid(blueHeight, blueWidth, { boldCells: blueBold, goldCells: blueGold });
 		zones.blue.boldRows = blueBoldRows;
+		placeGoldFlags(zones.blue, rng, 4);
 		placeBonusSymbols(zones.blue, rng, 5);
 	} else {
 		// World 3: 9 breed, iets hoger met extra bold-laag
@@ -585,6 +583,7 @@ function generateLevel1Board(rng, level) {
 		}
 		zones.blue = createZoneGrid(blueHeight, blueWidth, { boldCells: blueBold, goldCells: blueGold });
 		zones.blue.boldRows = blueBoldRows;
+		placeGoldFlags(zones.blue, rng, 6);
 		placeBonusSymbols(zones.blue, rng, 7);
 	}
 
@@ -624,12 +623,7 @@ function generateLevel1Board(rng, level) {
 
 	// Gold en bonus in rode subgrids
 	for (const sg of zones.red.subgrids) {
-		const sgKeys = Object.keys(sg.cells);
-		if (sgKeys.length > 0) {
-			const gIdx = Math.floor(rng() * sgKeys.length);
-			const gCell = sg.cells[sgKeys[gIdx]];
-			if (gCell && !gCell.flags.includes('gold')) gCell.flags.push('gold');
-		}
+		placeGoldFlags(sg, rng, 1);
 		const redBonusBase = world === 1 ? 3 : (world === 2 ? 4 : 5);
 		placeBonusSymbols(sg, rng, redBonusBase * 0.55);
 	}
@@ -694,6 +688,7 @@ function generateLevel1Board(rng, level) {
 		boldCells: purpleBold,
 		goldCells: purpleGold
 	});
+	placeGoldFlags(zones.purple, rng, purpleGoldCount);
 
 	// Tag outer ring cellen
 	for (let i = 0; i < purpleSize; i++) {
@@ -729,6 +724,34 @@ function tagCellFlag(zoneData, x, y, flag) {
 	}
 }
 
+function placeGoldFlags(zoneData, rng, count) {
+	if (!zoneData?.cells) return 0;
+	const targetCount = Math.max(0, Math.floor(Number(count) || 0));
+
+	for (const cell of Object.values(zoneData.cells)) {
+		if (!cell || !Array.isArray(cell.flags)) continue;
+		cell.flags = cell.flags.filter(f => f !== 'gold');
+	}
+
+	const availableCells = Object.values(zoneData.cells).filter(c =>
+		c && !c.active &&
+		!c.flags.includes('bold') &&
+		!c.flags.includes('end') &&
+		!c.flags.includes('portal')
+	);
+
+	const shuffled = shuffleWithRNG(availableCells, rng);
+	let placed = 0;
+	for (let i = 0; i < Math.min(targetCount, shuffled.length); i++) {
+		const cell = shuffled[i];
+		if (!cell.flags.includes('gold')) {
+			cell.flags.push('gold');
+			placed++;
+		}
+	}
+	return placed;
+}
+
 /**
  * Plaats bonus-symbolen willekeurig in een zone.
  * Bonus symbolen geven bij activatie een bonus-charge
@@ -742,6 +765,7 @@ function placeBonusSymbols(zoneData, rng, count, options = {}) {
 	const availableCells = Object.values(zoneData.cells).filter(c =>
 		!c.active &&
 		!c.flags.includes('bold') &&
+		!c.flags.includes('end') &&
 		!c.flags.includes('portal') && !c.flags.includes('gold') &&
 		!c.bonusSymbol
 	);
@@ -763,6 +787,7 @@ function placeSingleBonusSymbol(zoneData, rng, options = {}) {
 	const availableCells = Object.values(zoneData.cells).filter(c =>
 		!c.active &&
 		!c.flags.includes('bold') &&
+		!c.flags.includes('end') &&
 		!c.flags.includes('portal') && !c.flags.includes('gold') &&
 		!c.bonusSymbol && !c.treasureCoins
 	);
