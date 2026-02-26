@@ -1514,8 +1514,6 @@ html, body {
 	width: 10px;
 	height: 10px;
 	border-radius: 2px;
-	background: var(--bonus-dot-color, #888);
-	border: 1px solid var(--bonus-dot-border, rgba(0,0,0,0.35));
 	position: absolute;
 	top: 50%;
 	left: 50%;

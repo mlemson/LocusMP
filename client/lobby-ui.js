@@ -3206,14 +3206,10 @@ class LocusLobbyUI {
 		let inner = '';
 		if (cell.bonusSymbol && !cell.active) {
 			const bonusColors = {
-				yellow: { fill: '#cfba51', border: 'rgba(120,96,16,0.6)' },
-				green: { fill: '#92c28c', border: 'rgba(45,122,66,0.6)' },
-				blue: { fill: '#5689b0', border: 'rgba(45,106,142,0.6)' },
-				red: { fill: '#b56069', border: 'rgba(160,64,80,0.6)' },
-				purple: { fill: '#8f76b8', border: 'rgba(94,62,160,0.6)' }
+				yellow: '#cfba51', green: '#92c28c', blue: '#5689b0',
+				red: '#b56069', purple: '#8f76b8'
 			};
-			const tone = bonusColors[cell.bonusSymbol] || { fill: '#888', border: 'rgba(0,0,0,0.35)' };
-			inner = `<span class="mp-cell-bonus-dot" style="--bonus-dot-color:${tone.fill}; --bonus-dot-border:${tone.border};"></span>`;
+			inner = `<span class="mp-cell-bonus-dot" style="background:${bonusColors[cell.bonusSymbol] || '#888'}"></span>`;
 		}
 		if (cell.flags.includes('gold') && !cell.active) {
 			inner += `<span class="mp-cell-gold-dot"></span>`;
@@ -4246,6 +4242,11 @@ class LocusLobbyUI {
 					if (!nameEl) continue;
 					if (nameEl.textContent.includes(p.name)) {
 						this._createScorePopup(row, `+${totalDelta} pt`);
+						const isBloom = document.documentElement.classList.contains('theme-bloom');
+						if (isBloom) {
+							const rr = row.getBoundingClientRect();
+							this._showConfetti(rr.left + rr.width / 2, rr.top + rr.height / 2, 8);
+						}
 						break;
 					}
 				}
@@ -4289,8 +4290,7 @@ class LocusLobbyUI {
 	}
 
 	/** Confetti burst (Bloom theme dopamine) */
-	_showConfetti(x, y, count = 8) {
-		const colors = ['#e07a5f', '#4caf68', '#5a9ec9', '#d4a820', '#9678c4', '#f0a030', '#d46b7a'];
+	_showConfetti(x, y, count = 8, colors = ['#e07a5f', '#4caf68', '#5a9ec9', '#d4a820', '#9678c4', '#f0a030', '#d46b7a']) {
 		for (let i = 0; i < count; i++) {
 			const c = document.createElement('div');
 			c.className = 'mp-confetti';
@@ -4346,11 +4346,8 @@ class LocusLobbyUI {
 			setTimeout(() => zoneEl.classList.remove('mp-zone-flash'), 700);
 		}
 
-		// Bloom: extra confetti burst on own moves
+		// Bloom effects policy: geen confetti op gewone plaatsing
 		const isBloom = document.documentElement.classList.contains('theme-bloom');
-		if (isBloom && isMe) {
-			this._showConfetti(cx, cy, 10);
-		}
 
 		// Goud sparkle + tekst
 		if (goldCollected > 0) {
@@ -4358,8 +4355,11 @@ class LocusLobbyUI {
 			this._showSparkle(cx, cy, sparkleCount);
 			this._showFloatingScore(zoneEl, `💰 +${goldCollected} goud`, '#f5d76e');
 			this._playGoldSound();
-			// Bloom: extra coin bounce emoji
-			if (isBloom) this._showCoinBounce(cx, cy);
+			// Bloom: coin bounce + geel spray/confetti op coin pickup
+			if (isBloom) {
+				this._showCoinBounce(cx, cy);
+				this._showConfetti(cx, cy, 10, ['#fff3a1', '#f5d76e', '#e8c547', '#d4a820']);
+			}
 		}
 
 		// Bonus collectie tekst
@@ -4371,8 +4371,7 @@ class LocusLobbyUI {
 			for (let i = 0; i < bonusesCollected.length; i++) {
 				const bc = bonusesCollected[i];
 				setTimeout(() => {
-					this._showFloatingScore(zoneEl, '✨ BONUS', bonusColors[bc] || '#fff');
-					if (isBloom) this._showConfetti(cx, cy, 6);
+					this._showFloatingScore(zoneEl, '↙ BONUS', bonusColors[bc] || '#fff');
 				}, 200 + i * 300);
 			}
 		}
