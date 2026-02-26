@@ -1173,8 +1173,8 @@ class LocusLobbyUI {
 							<span class="mp-sz" style="background:#8f76b8" title="Paars">${bd.purple || 0}</span>
 						</div>
 						<div class="mp-score-meta">
-							<span class="mp-score-cards" title="Kaarten over">🃏 ${cardsRemaining}</span>
-							${discardCount > 0 ? `<span class="mp-score-discard" title="Aflegstapel">🗑 ${discardCount}</span>` : ''}
+							<span class="mp-score-cards" title="Kaarten over" data-count="${cardsRemaining}">🃏 ${cardsRemaining}</span>
+							${discardCount > 0 ? `<span class="mp-score-discard" title="Aflegstapel" data-count="${discardCount}">🗑 ${discardCount}</span>` : ''}
 							${totalBonuses > 0 ? `<span class="mp-score-bonuses" title="Bonussen">${bonusDots}</span>` : ''}
 						</div>
 					</div>
@@ -1304,7 +1304,7 @@ class LocusLobbyUI {
 						<div class="mp-opp-hand-cards">${handCards || '<span class="mp-opp-no-cards">leeg</span>'}</div>
 					</div>
 					<div class="mp-opp-stats">
-						<span title="Totaal kaarten over">🃏 ${totalCards}</span>
+						<span class="mp-opp-cards-left" title="Totaal kaarten over" data-count="${totalCards}">🃏 ${totalCards}</span>
 						<span title="Kaarten gespeeld">✅ ${cardsPlayed} gespeeld</span>
 					</div>
 					${objectiveHtml}

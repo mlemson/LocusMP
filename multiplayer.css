@@ -6203,6 +6203,7 @@ html.theme-bloom .mp-top-bar {
 	background: linear-gradient(180deg, rgba(255,253,248,0.96), rgba(250,247,240,0.92));
 	border-bottom: 1px solid rgba(180,160,130,0.08);
 	box-shadow: 0 3px 16px rgba(180,160,130,0.06);
+	-webkit-backdrop-filter: blur(12px);
 	backdrop-filter: blur(12px);
 }
 
@@ -6211,6 +6212,7 @@ html.theme-bloom .mp-sidebar {
 	background: linear-gradient(180deg, rgba(255,253,248,0.96), rgba(245,240,232,0.94));
 	border-right: 1px solid rgba(180,160,130,0.08);
 	box-shadow: 4px 0 20px rgba(180,160,130,0.05);
+	-webkit-backdrop-filter: blur(12px);
 	backdrop-filter: blur(12px);
 }
 
@@ -6219,6 +6221,7 @@ html.theme-bloom .mp-bottom-bar {
 	background: linear-gradient(0deg, rgba(255,253,248,0.96), rgba(250,247,240,0.92));
 	border-top: 1px solid rgba(180,160,130,0.08);
 	box-shadow: 0 -3px 16px rgba(180,160,130,0.06);
+	-webkit-backdrop-filter: blur(12px);
 	backdrop-filter: blur(12px);
 }
 
@@ -6968,6 +6971,7 @@ html.theme-bloom .mp-level-score-row.winner {
 /* ── Level overlay ── */
 html.theme-bloom .mp-level-overlay {
 	background: rgba(248,245,237,0.88);
+	-webkit-backdrop-filter: blur(6px);
 	backdrop-filter: blur(6px);
 }
 
@@ -7146,6 +7150,7 @@ html.theme-bloom .mp-startdeck-meta {
 /* ── Deck overlay ── */
 html.theme-bloom .mp-deck-overlay {
 	background: rgba(248,245,237,0.95);
+	-webkit-backdrop-filter: blur(6px);
 	backdrop-filter: blur(6px);
 }
 
@@ -7470,4 +7475,158 @@ html.theme-bloom .mp-card-extra-badge {
 	border-radius: 10px;
 	color: var(--mp-gold);
 	font-weight: 700;
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   BLOOM — Rank icon replacement (CSS-only, emoji → SVG)
+   ══════════════════════════════════════════════════════════════════ */
+
+/* Scoreboard rank icons */
+html.theme-bloom .mp-score-row:nth-child(1) .mp-score-rank,
+html.theme-bloom .mp-score-row:nth-child(2) .mp-score-rank,
+html.theme-bloom .mp-score-row:nth-child(3) .mp-score-rank {
+	font-size: 0;
+	line-height: 0;
+	display: inline-block;
+	width: 24px; height: 24px;
+	vertical-align: middle;
+	background-repeat: no-repeat;
+	background-position: center;
+	background-size: contain;
+}
+
+html.theme-bloom .mp-score-row:nth-child(1) .mp-score-rank { background-image: var(--icon-rank-1st); }
+html.theme-bloom .mp-score-row:nth-child(2) .mp-score-rank { background-image: var(--icon-rank-2nd); }
+html.theme-bloom .mp-score-row:nth-child(3) .mp-score-rank { background-image: var(--icon-rank-3rd); }
+
+/* Results rank icons */
+html.theme-bloom .mp-result-row:nth-child(1) .mp-result-rank,
+html.theme-bloom .mp-result-row:nth-child(2) .mp-result-rank,
+html.theme-bloom .mp-result-row:nth-child(3) .mp-result-rank {
+	font-size: 0;
+	line-height: 0;
+	display: inline-block;
+	width: 28px; height: 28px;
+	vertical-align: middle;
+	background-repeat: no-repeat;
+	background-position: center;
+	background-size: contain;
+}
+
+html.theme-bloom .mp-result-row:nth-child(1) .mp-result-rank { background-image: var(--icon-rank-1st); }
+html.theme-bloom .mp-result-row:nth-child(2) .mp-result-rank { background-image: var(--icon-rank-2nd); }
+html.theme-bloom .mp-result-row:nth-child(3) .mp-result-rank { background-image: var(--icon-rank-3rd); }
+
+/* Level score rank icons */
+html.theme-bloom .mp-level-score-row:nth-child(1) .mp-result-rank,
+html.theme-bloom .mp-level-score-row:nth-child(2) .mp-result-rank,
+html.theme-bloom .mp-level-score-row:nth-child(3) .mp-result-rank {
+	font-size: 0;
+	line-height: 0;
+	display: inline-block;
+	width: 26px; height: 26px;
+	vertical-align: middle;
+	background-repeat: no-repeat;
+	background-position: center;
+	background-size: contain;
+}
+
+html.theme-bloom .mp-level-score-row:nth-child(1) .mp-result-rank { background-image: var(--icon-rank-1st); }
+html.theme-bloom .mp-level-score-row:nth-child(2) .mp-result-rank { background-image: var(--icon-rank-2nd); }
+html.theme-bloom .mp-level-score-row:nth-child(3) .mp-result-rank { background-image: var(--icon-rank-3rd); }
+
+/* Opponent panel rank icons */
+html.theme-bloom .mp-opponent-panel:nth-child(1) .mp-opp-name,
+html.theme-bloom .mp-opponent-panel:nth-child(2) .mp-opp-name,
+html.theme-bloom .mp-opponent-panel:nth-child(3) .mp-opp-name {
+	position: relative;
+}
+
+/* ── Card extra badge — hide ⭐ emoji, show flower icon ── */
+html.theme-bloom .mp-card-extra-badge {
+	font-size: 0;
+	line-height: 1;
+	padding: 4px 10px;
+}
+
+html.theme-bloom .mp-card-extra-badge::before {
+	content: '';
+	display: inline-block;
+	width: 16px; height: 16px;
+	background: var(--icon-bonus-star) no-repeat center / contain;
+	vertical-align: middle;
+	margin-right: 4px;
+}
+
+html.theme-bloom .mp-card-extra-badge::after {
+	content: 'EXTRA';
+	font-size: 0.65rem;
+	font-weight: 800;
+	letter-spacing: 1px;
+	vertical-align: middle;
+}
+
+/* ── Score meta icons — replace emoji with botanical icons ── */
+html.theme-bloom .mp-score-cards,
+html.theme-bloom .mp-score-discard {
+	font-size: 0;
+	line-height: 1;
+}
+
+html.theme-bloom .mp-score-cards::before {
+	content: '';
+	display: inline-block;
+	width: 14px; height: 14px;
+	background: var(--icon-deck) no-repeat center / contain;
+	vertical-align: middle;
+	margin-right: 3px;
+}
+
+html.theme-bloom .mp-score-discard::before {
+	content: '';
+	display: inline-block;
+	width: 14px; height: 14px;
+	background: var(--icon-pass) no-repeat center / contain;
+	vertical-align: middle;
+	margin-right: 3px;
+}
+
+/* Re-show just the numeric count */
+html.theme-bloom .mp-score-cards::after {
+	content: attr(data-count);
+	font-size: 0.7rem;
+	font-weight: 600;
+	vertical-align: middle;
+	color: var(--mp-text-dim);
+}
+
+html.theme-bloom .mp-score-discard::after {
+	content: attr(data-count);
+	font-size: 0.7rem;
+	font-weight: 600;
+	vertical-align: middle;
+	color: var(--mp-text-dim);
+}
+
+/* Opponent panel card count icon */
+html.theme-bloom .mp-opp-cards-left {
+	font-size: 0;
+	line-height: 1;
+}
+
+html.theme-bloom .mp-opp-cards-left::before {
+	content: '';
+	display: inline-block;
+	width: 14px; height: 14px;
+	background: var(--icon-deck) no-repeat center / contain;
+	vertical-align: middle;
+	margin-right: 3px;
+}
+
+html.theme-bloom .mp-opp-cards-left::after {
+	content: attr(data-count);
+	font-size: 0.7rem;
+	font-weight: 600;
+	vertical-align: middle;
+	color: var(--mp-text-dim);
 }
