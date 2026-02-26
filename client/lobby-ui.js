@@ -3029,17 +3029,24 @@ class LocusLobbyUI {
 		this._lastMobileBoardIndex = clamped;
 		const zoneName = target.dataset.zone || null;
 		if (zoneName === 'blue' && (this._forceBlueBottomOnce || this._lastMobileZoneName !== 'blue')) {
-			requestAnimationFrame(() => this._scrollBlueZoneToBottom(target));
+			this._scrollBlueZoneToBottom(target, true);
 		}
 		this._lastMobileZoneName = zoneName;
 		this._forceBlueBottomOnce = false;
 	}
 
-	_scrollBlueZoneToBottom(zoneEl = null) {
+	_scrollBlueZoneToBottom(zoneEl = null, settle = false) {
 		const board = this.elements['mp-board-container']?.querySelector('.mp-board');
 		const target = zoneEl || board?.querySelector('.mp-zone[data-zone="blue"]');
 		if (!target) return;
-		target.scrollTop = Math.max(0, target.scrollHeight - target.clientHeight);
+		const applyBottom = () => {
+			target.scrollTop = Math.max(0, target.scrollHeight - target.clientHeight);
+		};
+		applyBottom();
+		if (settle) {
+			requestAnimationFrame(applyBottom);
+			setTimeout(applyBottom, 80);
+		}
 	}
 
 	_getMobileZoneIndex(zoneName) {
@@ -3066,7 +3073,7 @@ class LocusLobbyUI {
 		});
 		if (zoneName === 'blue') {
 			this._forceBlueBottomOnce = true;
-			requestAnimationFrame(() => this._scrollBlueZoneToBottom(zoneEl));
+			this._scrollBlueZoneToBottom(zoneEl, true);
 		}
 		const zones = Array.from(board.querySelectorAll('.mp-zone'));
 		const idx = zones.indexOf(zoneEl);
@@ -3106,7 +3113,7 @@ class LocusLobbyUI {
 						const zoneName = order[idx] || null;
 						if (zoneName === 'blue' && prevIdx !== 2) {
 							const blueZone = boardEl.querySelector('.mp-zone[data-zone="blue"]');
-							if (blueZone) this._scrollBlueZoneToBottom(blueZone);
+							if (blueZone) this._scrollBlueZoneToBottom(blueZone, true);
 						}
 						this._lastMobileZoneName = zoneName;
 					});
