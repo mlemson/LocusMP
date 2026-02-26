@@ -5681,9 +5681,9 @@ html.theme-aurora .mp-opp-selection {
 
 
 /* ══════════════════════════════════════════════════════════════════════
-   THEME: BLOOM
-   Warm, joyful light theme — vanilla cream, terracotta accents,
-   cheerful pastels. Inspired by Pinterest / Notion / Linear aesthetics.
+   THEME: BLOOM v2 — "Botanical Garden"
+   Lush, organic game board with nature-inspired aesthetics.
+   Handcrafted SVG icons, terrarium-style zones, living card garden.
    Activated via html.theme-bloom
    ══════════════════════════════════════════════════════════════════════ */
 
@@ -5691,61 +5691,99 @@ html.theme-aurora .mp-opp-selection {
 
 /* Celebration pulse when card is placed */
 @keyframes bloom-place-celebrate {
-	0%   { transform: scale(1);    filter: brightness(1);   }
-	15%  { transform: scale(1.08); filter: brightness(1.3); }
-	30%  { transform: scale(0.98); filter: brightness(1.1); }
-	50%  { transform: scale(1.03); filter: brightness(1.15);}
-	100% { transform: scale(1);    filter: brightness(1);   }
+	0%   { transform: scale(1);    filter: brightness(1) saturate(1);   }
+	15%  { transform: scale(1.06); filter: brightness(1.25) saturate(1.4); }
+	30%  { transform: scale(0.97); filter: brightness(1.08) saturate(1.2); }
+	50%  { transform: scale(1.02); filter: brightness(1.12) saturate(1.1);}
+	100% { transform: scale(1);    filter: brightness(1) saturate(1);   }
 }
 
-/* Floating confetti particles */
+/* Floating confetti — petal-like */
 @keyframes bloom-confetti {
 	0%   { transform: translateY(0) rotate(0deg) scale(1); opacity: 1; }
-	100% { transform: translateY(-80px) rotate(720deg) scale(0); opacity: 0; }
+	100% { transform: translateY(-90px) rotate(540deg) scale(0); opacity: 0; }
 }
 
-/* Gold coin bounce */
+/* Gold coin bounce — organic spring */
 @keyframes bloom-coin-bounce {
-	0%   { transform: translateY(0) scale(1);     }
-	30%  { transform: translateY(-20px) scale(1.2);}
-	50%  { transform: translateY(-12px) scale(1.05);}
-	70%  { transform: translateY(-16px) scale(1.1);}
-	100% { transform: translateY(0) scale(1);      }
+	0%   { transform: translateY(0) scale(1) rotate(0deg);     }
+	25%  { transform: translateY(-22px) scale(1.25) rotate(15deg);}
+	50%  { transform: translateY(-8px) scale(1.05) rotate(-5deg);}
+	75%  { transform: translateY(-14px) scale(1.12) rotate(8deg);}
+	100% { transform: translateY(0) scale(1) rotate(0deg);      }
 }
 
-/* Score number counter pop */
+/* Score pop — grows from seed */
 @keyframes bloom-score-pop {
-	0%   { transform: scale(0.5)  translateY(0);     opacity: 0;   }
-	20%  { transform: scale(1.4)  translateY(-12px); opacity: 1;   }
-	40%  { transform: scale(0.9)  translateY(-8px);  opacity: 1;   }
-	60%  { transform: scale(1.1)  translateY(-10px); opacity: 0.9; }
-	100% { transform: scale(0.8)  translateY(-40px); opacity: 0;   }
+	0%   { transform: scale(0.3)  translateY(0);     opacity: 0; filter: blur(4px);  }
+	20%  { transform: scale(1.5)  translateY(-14px); opacity: 1; filter: blur(0);    }
+	40%  { transform: scale(0.85) translateY(-8px);  opacity: 1; filter: blur(0);    }
+	60%  { transform: scale(1.15) translateY(-10px); opacity: 0.9; filter: blur(0);  }
+	100% { transform: scale(0.7)  translateY(-45px); opacity: 0; filter: blur(2px);  }
 }
 
-/* Bonus earned shimmer */
+/* Bonus shimmer — golden sweep */
 @keyframes bloom-bonus-shimmer {
-	0%   { background-position: -100% 0; }
-	100% { background-position: 200% 0;  }
+	0%   { background-position: -200% 0; }
+	100% { background-position: 300% 0;  }
 }
 
-/* Card hover wobble */
+/* Card hover — breathing leaf */
 @keyframes bloom-card-wobble {
-	0%   { transform: translateY(-6px) rotate(0deg);    }
-	25%  { transform: translateY(-8px) rotate(-1.5deg); }
-	75%  { transform: translateY(-8px) rotate(1.5deg);  }
-	100% { transform: translateY(-6px) rotate(0deg);    }
+	0%   { transform: translateY(-5px) rotate(0deg) scale(1.02);    }
+	25%  { transform: translateY(-8px) rotate(-1deg) scale(1.03); }
+	50%  { transform: translateY(-6px) rotate(0.5deg) scale(1.025);  }
+	75%  { transform: translateY(-9px) rotate(-0.5deg) scale(1.03);  }
+	100% { transform: translateY(-5px) rotate(0deg) scale(1.02);    }
 }
 
-/* Turn indicator pulse */
+/* Turn indicator — pulsing bloom */
 @keyframes bloom-your-turn-pulse {
-	0%, 100% { box-shadow: 0 0 0 0    rgba(224,122,95,0.4); }
-	50%      { box-shadow: 0 0 0 12px rgba(224,122,95,0);   }
+	0%, 100% { box-shadow: 0 0 0 0    rgba(224,122,95,0.5), 0 0 0 0 rgba(212,168,32,0.2); }
+	50%      { box-shadow: 0 0 0 10px rgba(224,122,95,0), 0 0 18px 4px rgba(212,168,32,0); }
 }
 
 /* Invite code shimmer */
 @keyframes bloom-code-shimmer {
 	0%   { background-position: -200% center; }
 	100% { background-position:  200% center; }
+}
+
+/* Zone glow breathing */
+@keyframes bloom-zone-breathe {
+	0%, 100% { box-shadow: var(--zone-shadow-base); }
+	50%      { box-shadow: var(--zone-shadow-glow); }
+}
+
+/* Cell placement ripple */
+@keyframes bloom-cell-ripple {
+	0%   { box-shadow: 0 0 0 0 rgba(224,122,95,0.4); }
+	100% { box-shadow: 0 0 0 8px rgba(224,122,95,0); }
+}
+
+/* Floating particles background */
+@keyframes bloom-float-particle {
+	0%, 100% { transform: translateY(0) rotate(0deg); opacity: 0.3; }
+	50%      { transform: translateY(-15px) rotate(180deg); opacity: 0.6; }
+}
+
+/* Bonus button glow */
+@keyframes bloom-bonus-glow {
+	0%, 100% { box-shadow: 0 0 0 0 rgba(200,146,10,0.3); }
+	50%      { box-shadow: 0 0 12px 2px rgba(200,146,10,0.15); }
+}
+
+/* Deck shine */
+@keyframes bloom-deck-shine {
+	0%   { background-position: -200% 0; }
+	100% { background-position:  200% 0; }
+}
+
+/* Score count up */
+@keyframes bloom-score-tick {
+	0%   { transform: scale(1); }
+	50%  { transform: scale(1.15); }
+	100% { transform: scale(1); }
 }
 
 /* ── CSS Variables ───────────────────────────────────────────────── */
@@ -5810,59 +5848,166 @@ html.theme-bloom {
 	--cell-purple-border: rgba(150,120,196,0.38);
 	--cell-purple-active: #9678c4;
 	--cell-purple-active-border: #b99ee0;
+
+	/* ── Bloom SVG Icon Library ──────────────────────────────────── */
+
+	/* 1. Coin / gold — flower-shaped coin with 5 petals & radial-gradient disc */
+	--icon-coin: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cdefs%3E%3CradialGradient id='cg' cx='0.38' cy='0.32' r='0.6'%3E%3Cstop offset='0' stop-color='%23f0d060'/%3E%3Cstop offset='1' stop-color='%23c8920a'/%3E%3C/radialGradient%3E%3C/defs%3E%3Cg fill='%23d4a820' opacity='0.65'%3E%3Cellipse cx='12' cy='5' rx='2.8' ry='3.5'/%3E%3Cellipse cx='18.6' cy='9' rx='2.8' ry='3.5' transform='rotate(72,18.6,9)'/%3E%3Cellipse cx='16.1' cy='17' rx='2.8' ry='3.5' transform='rotate(144,16.1,17)'/%3E%3Cellipse cx='7.9' cy='17' rx='2.8' ry='3.5' transform='rotate(216,7.9,17)'/%3E%3Cellipse cx='5.4' cy='9' rx='2.8' ry='3.5' transform='rotate(288,5.4,9)'/%3E%3C/g%3E%3Ccircle cx='12' cy='12' r='6' fill='url(%23cg)' stroke='%23c8920a' stroke-width='0.7'/%3E%3Ccircle cx='12' cy='12' r='4.2' fill='none' stroke='%23b0820a' stroke-width='0.4' opacity='0.5'/%3E%3Cellipse cx='10.5' cy='10' rx='2' ry='1.2' fill='white' opacity='0.35' transform='rotate(-25,10.5,10)'/%3E%3C/svg%3E");
+
+	/* 2. Bonus star — 6-petal blooming flower in terracotta */
+	--icon-bonus-star: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cg fill='%23e07a5f'%3E%3Cellipse cx='12' cy='4.5' rx='2.5' ry='4' transform='rotate(0,12,12)'/%3E%3Cellipse cx='12' cy='4.5' rx='2.5' ry='4' transform='rotate(60,12,12)'/%3E%3Cellipse cx='12' cy='4.5' rx='2.5' ry='4' transform='rotate(120,12,12)'/%3E%3Cellipse cx='12' cy='4.5' rx='2.5' ry='4' transform='rotate(180,12,12)'/%3E%3Cellipse cx='12' cy='4.5' rx='2.5' ry='4' transform='rotate(240,12,12)'/%3E%3Cellipse cx='12' cy='4.5' rx='2.5' ry='4' transform='rotate(300,12,12)'/%3E%3C/g%3E%3Ccircle cx='12' cy='12' r='3' fill='%23f4c4a0'/%3E%3Ccircle cx='12' cy='12' r='1.5' fill='%23d4a820'/%3E%3Cellipse cx='11' cy='11' rx='1.2' ry='0.7' fill='white' opacity='0.3' transform='rotate(-30,11,11)'/%3E%3C/svg%3E");
+
+	/* 3. Pearl / treasure — dewdrop with radial pearl gradient & highlights */
+	--icon-pearl: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cdefs%3E%3CradialGradient id='pg' cx='0.35' cy='0.30' r='0.65'%3E%3Cstop offset='0' stop-color='%23f0ece6'/%3E%3Cstop offset='0.6' stop-color='%23e8e4de'/%3E%3Cstop offset='1' stop-color='%23b0a89e'/%3E%3C/radialGradient%3E%3C/defs%3E%3Cpath d='M12 3Q15.5 9 15.5 13A3.5 3.5 0 0 1 8.5 13Q8.5 9 12 3Z' fill='url(%23pg)' stroke='%23b0a89e' stroke-width='0.6'/%3E%3Cellipse cx='10.8' cy='11' rx='1.8' ry='1.2' fill='white' opacity='0.5' transform='rotate(-20,10.8,11)'/%3E%3Cellipse cx='11.5' cy='9.5' rx='0.7' ry='0.5' fill='white' opacity='0.7'/%3E%3C/svg%3E");
+
+	/* 4. Score trophy — sprouting plant with golden leaves */
+	--icon-score: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 20L12 8' stroke='%23c8920a' stroke-width='1.5' stroke-linecap='round' fill='none'/%3E%3Cpath d='M12 14Q8 11 6 7Q9 8 12 12' fill='%23c8920a' opacity='0.8'/%3E%3Cpath d='M12 11Q16 8 18 5Q15 7 12 9' fill='%23d4a820' opacity='0.8'/%3E%3Cpath d='M12 8Q10 4 9 3Q11 4 12 6' fill='%23c8920a' opacity='0.7'/%3E%3Cpath d='M12 8Q14 4 15 3Q13 4 12 6' fill='%23d4a820' opacity='0.7'/%3E%3Cellipse cx='12' cy='20.5' rx='3' ry='1' fill='%23c8920a' opacity='0.4'/%3E%3C/svg%3E");
+
+	/* 5. Card deck — three stacked leaves */
+	--icon-deck: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M7 18Q12 12 18 10Q14 16 7 18Z' fill='%238a7a5a' opacity='0.4' stroke='%237a6a4a' stroke-width='0.3'/%3E%3Cpath d='M6 15Q12 9 18 7Q13 13 6 15Z' fill='%236a8a50' opacity='0.6' stroke='%235a7a40' stroke-width='0.3'/%3E%3Cpath d='M5 12Q12 6 19 4Q12 10 5 12Z' fill='%237a9a60' stroke='%235a7a40' stroke-width='0.5'/%3E%3Cpath d='M6 11.5Q12 7 18 4.5' fill='none' stroke='%235a7a40' stroke-width='0.3' opacity='0.5'/%3E%3C/svg%3E");
+
+	/* 6. Pass / discard — falling leaf with motion lines */
+	--icon-pass: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M8 4Q14 6 16 12Q18 16 16 20Q14 16 12 14Q8 10 8 4Z' fill='%23f0a030' stroke='%23d08820' stroke-width='0.6'/%3E%3Cpath d='M8.5 5Q13 9 15.5 18' fill='none' stroke='%23d08820' stroke-width='0.5' opacity='0.6'/%3E%3Cpath d='M5 8Q6 9 5 10' fill='none' stroke='%23d0a050' stroke-width='0.5' opacity='0.4'/%3E%3Cpath d='M4 12Q5 13 4 14' fill='none' stroke='%23d0a050' stroke-width='0.5' opacity='0.3'/%3E%3C/svg%3E");
+
+	/* 7. Turn indicator — sun-bloom with 8 rays and 5-petal center */
+	--icon-turn: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cg stroke='%23e07a5f' stroke-width='1.2' stroke-linecap='round' opacity='0.6'%3E%3Cline x1='12' y1='2' x2='12' y2='5'/%3E%3Cline x1='19.1' y1='4.9' x2='17.3' y2='6.7'/%3E%3Cline x1='22' y1='12' x2='19' y2='12'/%3E%3Cline x1='19.1' y1='19.1' x2='17.3' y2='17.3'/%3E%3Cline x1='12' y1='22' x2='12' y2='19'/%3E%3Cline x1='4.9' y1='19.1' x2='6.7' y2='17.3'/%3E%3Cline x1='2' y1='12' x2='5' y2='12'/%3E%3Cline x1='4.9' y1='4.9' x2='6.7' y2='6.7'/%3E%3C/g%3E%3Cg fill='%23e07a5f'%3E%3Cellipse cx='12' cy='8' rx='1.8' ry='2.8' transform='rotate(0,12,12)'/%3E%3Cellipse cx='12' cy='8' rx='1.8' ry='2.8' transform='rotate(72,12,12)'/%3E%3Cellipse cx='12' cy='8' rx='1.8' ry='2.8' transform='rotate(144,12,12)'/%3E%3Cellipse cx='12' cy='8' rx='1.8' ry='2.8' transform='rotate(216,12,12)'/%3E%3Cellipse cx='12' cy='8' rx='1.8' ry='2.8' transform='rotate(288,12,12)'/%3E%3C/g%3E%3Ccircle cx='12' cy='12' r='2.5' fill='%23f4c090'/%3E%3Ccircle cx='12' cy='12' r='1.2' fill='%23e07a5f'/%3E%3C/svg%3E");
+
+	/* 8a. Rank badge 1st — gold botanical wreath */
+	--icon-rank-1st: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M5 18Q4 12 7 7Q9 4 12 3' fill='none' stroke='%23c8920a' stroke-width='1.2' stroke-linecap='round'/%3E%3Cpath d='M19 18Q20 12 17 7Q15 4 12 3' fill='none' stroke='%23c8920a' stroke-width='1.2' stroke-linecap='round'/%3E%3Cellipse cx='5.5' cy='15' rx='2' ry='1' fill='%23d4a820' transform='rotate(-30,5.5,15)'/%3E%3Cellipse cx='6' cy='11' rx='2' ry='1' fill='%23d4a820' transform='rotate(-50,6,11)'/%3E%3Cellipse cx='8' cy='7.5' rx='2' ry='1' fill='%23d4a820' transform='rotate(-70,8,7.5)'/%3E%3Cellipse cx='18.5' cy='15' rx='2' ry='1' fill='%23d4a820' transform='rotate(30,18.5,15)'/%3E%3Cellipse cx='18' cy='11' rx='2' ry='1' fill='%23d4a820' transform='rotate(50,18,11)'/%3E%3Cellipse cx='16' cy='7.5' rx='2' ry='1' fill='%23d4a820' transform='rotate(70,16,7.5)'/%3E%3Ccircle cx='12' cy='3.5' r='2' fill='%23f0d060'/%3E%3Ccircle cx='12' cy='3.5' r='1' fill='%23c8920a'/%3E%3Ccircle cx='5' cy='17' r='1.2' fill='%23f0d060' opacity='0.8'/%3E%3Ccircle cx='19' cy='17' r='1.2' fill='%23f0d060' opacity='0.8'/%3E%3Ctext x='12' y='16' font-size='7' font-weight='bold' fill='%23c8920a' text-anchor='middle' font-family='serif'%3E1%3C/text%3E%3C/svg%3E");
+
+	/* 8b. Rank badge 2nd — silver botanical wreath */
+	--icon-rank-2nd: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M5 18Q4 12 7 7Q9 4 12 3' fill='none' stroke='%23969696' stroke-width='1.2' stroke-linecap='round'/%3E%3Cpath d='M19 18Q20 12 17 7Q15 4 12 3' fill='none' stroke='%23969696' stroke-width='1.2' stroke-linecap='round'/%3E%3Cellipse cx='5.5' cy='15' rx='2' ry='1' fill='%23b0b0b0' transform='rotate(-30,5.5,15)'/%3E%3Cellipse cx='6' cy='11' rx='2' ry='1' fill='%23b0b0b0' transform='rotate(-50,6,11)'/%3E%3Cellipse cx='8' cy='7.5' rx='2' ry='1' fill='%23b0b0b0' transform='rotate(-70,8,7.5)'/%3E%3Cellipse cx='18.5' cy='15' rx='2' ry='1' fill='%23b0b0b0' transform='rotate(30,18.5,15)'/%3E%3Cellipse cx='18' cy='11' rx='2' ry='1' fill='%23b0b0b0' transform='rotate(50,18,11)'/%3E%3Cellipse cx='16' cy='7.5' rx='2' ry='1' fill='%23b0b0b0' transform='rotate(70,16,7.5)'/%3E%3Ccircle cx='12' cy='3.5' r='2' fill='%23d0d0d0'/%3E%3Ccircle cx='12' cy='3.5' r='1' fill='%23969696'/%3E%3Ccircle cx='5' cy='17' r='1.2' fill='%23d0d0d0' opacity='0.8'/%3E%3Ccircle cx='19' cy='17' r='1.2' fill='%23d0d0d0' opacity='0.8'/%3E%3Ctext x='12' y='16' font-size='7' font-weight='bold' fill='%23969696' text-anchor='middle' font-family='serif'%3E2%3C/text%3E%3C/svg%3E");
+
+	/* 8c. Rank badge 3rd — bronze botanical wreath */
+	--icon-rank-3rd: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M5 18Q4 12 7 7Q9 4 12 3' fill='none' stroke='%23a06830' stroke-width='1.2' stroke-linecap='round'/%3E%3Cpath d='M19 18Q20 12 17 7Q15 4 12 3' fill='none' stroke='%23a06830' stroke-width='1.2' stroke-linecap='round'/%3E%3Cellipse cx='5.5' cy='15' rx='2' ry='1' fill='%23c88050' transform='rotate(-30,5.5,15)'/%3E%3Cellipse cx='6' cy='11' rx='2' ry='1' fill='%23c88050' transform='rotate(-50,6,11)'/%3E%3Cellipse cx='8' cy='7.5' rx='2' ry='1' fill='%23c88050' transform='rotate(-70,8,7.5)'/%3E%3Cellipse cx='18.5' cy='15' rx='2' ry='1' fill='%23c88050' transform='rotate(30,18.5,15)'/%3E%3Cellipse cx='18' cy='11' rx='2' ry='1' fill='%23c88050' transform='rotate(50,18,11)'/%3E%3Cellipse cx='16' cy='7.5' rx='2' ry='1' fill='%23c88050' transform='rotate(70,16,7.5)'/%3E%3Ccircle cx='12' cy='3.5' r='2' fill='%23e0a070'/%3E%3Ccircle cx='12' cy='3.5' r='1' fill='%23a06830'/%3E%3Ccircle cx='5' cy='17' r='1.2' fill='%23e0a070' opacity='0.8'/%3E%3Ccircle cx='19' cy='17' r='1.2' fill='%23e0a070' opacity='0.8'/%3E%3Ctext x='12' y='16' font-size='7' font-weight='bold' fill='%23a06830' text-anchor='middle' font-family='serif'%3E3%3C/text%3E%3C/svg%3E");
+
+	/* 9a. Zone corner — yellow / sunflower motif */
+	--icon-corner-yellow: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M0 0Q6 2 8 8Q10 14 8 20' fill='none' stroke='%23d4a820' stroke-width='0.7' opacity='0.35'/%3E%3Cpath d='M0 0Q2 6 8 8Q14 10 20 8' fill='none' stroke='%23d4a820' stroke-width='0.7' opacity='0.35'/%3E%3Cg fill='%23d4a820' opacity='0.3'%3E%3Cellipse cx='3' cy='3' rx='1.5' ry='2.5' transform='rotate(-45,3,3)'/%3E%3Cellipse cx='7' cy='5' rx='1' ry='2' transform='rotate(-20,7,5)'/%3E%3Cellipse cx='5' cy='7' rx='2' ry='1' transform='rotate(-20,5,7)'/%3E%3C/g%3E%3Ccircle cx='3' cy='3' r='1.5' fill='%23e8c040' opacity='0.35'/%3E%3Ccircle cx='3' cy='3' r='0.7' fill='%238a6a10' opacity='0.4'/%3E%3C/svg%3E");
+
+	/* 9b. Zone corner — green / leaf vine */
+	--icon-corner-green: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M0 0Q5 3 7 9Q8 14 6 20' fill='none' stroke='%235aab6e' stroke-width='0.7' opacity='0.35'/%3E%3Cpath d='M0 0Q3 5 9 7Q14 8 20 6' fill='none' stroke='%235aab6e' stroke-width='0.7' opacity='0.35'/%3E%3Cpath d='M4 2Q6 4 4 6Q2 4 4 2Z' fill='%235aab6e' opacity='0.3'/%3E%3Cpath d='M2 4Q4 6 2 8Q0 6 2 4Z' fill='%237bcf8f' opacity='0.25'/%3E%3Cpath d='M7 5Q8 8 5 8Q6 6 7 5Z' fill='%235aab6e' opacity='0.3'/%3E%3Cpath d='M5 7Q8 8 8 5Q6 6 5 7Z' fill='%237bcf8f' opacity='0.25'/%3E%3C/svg%3E");
+
+	/* 9c. Zone corner — blue / water lily */
+	--icon-corner-blue: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M0 0Q4 4 6 10Q7 16 4 22' fill='none' stroke='%235a9ec9' stroke-width='0.7' opacity='0.3'/%3E%3Cpath d='M0 0Q4 4 10 6Q16 7 22 4' fill='none' stroke='%235a9ec9' stroke-width='0.7' opacity='0.3'/%3E%3Cg fill='%235a9ec9' opacity='0.3' transform='translate(5,5)'%3E%3Cellipse cx='0' cy='-2' rx='1.2' ry='2'/%3E%3Cellipse cx='2' cy='0' rx='2' ry='1.2'/%3E%3Cellipse cx='0' cy='2' rx='1.2' ry='2'/%3E%3Cellipse cx='-2' cy='0' rx='2' ry='1.2'/%3E%3C/g%3E%3Ccircle cx='5' cy='5' r='1' fill='%237dbde3' opacity='0.35'/%3E%3C/svg%3E");
+
+	/* 9d. Zone corner — red / rose */
+	--icon-corner-red: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M0 0Q5 2 8 7Q10 13 7 20' fill='none' stroke='%23d46b7a' stroke-width='0.7' opacity='0.3'/%3E%3Cpath d='M0 0Q2 5 7 8Q13 10 20 7' fill='none' stroke='%23d46b7a' stroke-width='0.7' opacity='0.3'/%3E%3Ccircle cx='5' cy='5' r='2.5' fill='%23d46b7a' opacity='0.25'/%3E%3Cpath d='M5 3Q6.5 5 5 7Q3.5 5 5 3Z' fill='%23e8909e' opacity='0.35'/%3E%3Ccircle cx='5' cy='5' r='0.8' fill='%23d46b7a' opacity='0.4'/%3E%3Cpath d='M3.5 7Q5 8 4 5' fill='none' stroke='%23d46b7a' stroke-width='0.4' opacity='0.25'/%3E%3Cpath d='M7 3.5Q8 5 5 4' fill='none' stroke='%23d46b7a' stroke-width='0.4' opacity='0.25'/%3E%3C/svg%3E");
+
+	/* 9e. Zone corner — purple / lavender */
+	--icon-corner-purple: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M0 0Q3 5 5 10Q6 16 3 22' fill='none' stroke='%239678c4' stroke-width='0.7' opacity='0.3'/%3E%3Cpath d='M0 0Q5 3 10 5Q16 6 22 3' fill='none' stroke='%239678c4' stroke-width='0.7' opacity='0.3'/%3E%3Cg fill='%239678c4' opacity='0.3'%3E%3Cellipse cx='3' cy='3' rx='1' ry='1.5' transform='rotate(-45,3,3)'/%3E%3Cellipse cx='5' cy='5' rx='0.8' ry='1.2' transform='rotate(-45,5,5)'/%3E%3Cellipse cx='4' cy='7' rx='0.8' ry='1.2'/%3E%3Cellipse cx='7' cy='4' rx='1.2' ry='0.8'/%3E%3C/g%3E%3Cellipse cx='2' cy='2' rx='0.8' ry='1.3' fill='%23b99ee0' opacity='0.3' transform='rotate(-45,2,2)'/%3E%3C/svg%3E");
+
+	/* 10a. Cell bonus dot — yellow flower bud */
+	--icon-bud-yellow: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cellipse cx='8' cy='6' rx='2' ry='2.5' fill='%23d4a820' opacity='0.8'/%3E%3Cellipse cx='6' cy='8' rx='2.5' ry='2' fill='%23d4a820' opacity='0.6'/%3E%3Cellipse cx='10' cy='8' rx='2.5' ry='2' fill='%23e8c040' opacity='0.6'/%3E%3Ccircle cx='8' cy='8' r='1.5' fill='%23c8920a'/%3E%3Cpath d='M8 10L8 14' stroke='%23a08020' stroke-width='0.8' stroke-linecap='round'/%3E%3C/svg%3E");
+
+	/* 10b. Cell bonus dot — green flower bud */
+	--icon-bud-green: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cellipse cx='8' cy='6' rx='2' ry='2.5' fill='%235aab6e' opacity='0.8'/%3E%3Cellipse cx='6' cy='8' rx='2.5' ry='2' fill='%235aab6e' opacity='0.6'/%3E%3Cellipse cx='10' cy='8' rx='2.5' ry='2' fill='%237bcf8f' opacity='0.6'/%3E%3Ccircle cx='8' cy='8' r='1.5' fill='%233d8a52'/%3E%3Cpath d='M8 10L8 14' stroke='%233d8a52' stroke-width='0.8' stroke-linecap='round'/%3E%3C/svg%3E");
+
+	/* 10c. Cell bonus dot — blue flower bud */
+	--icon-bud-blue: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cellipse cx='8' cy='6' rx='2' ry='2.5' fill='%235a9ec9' opacity='0.8'/%3E%3Cellipse cx='6' cy='8' rx='2.5' ry='2' fill='%235a9ec9' opacity='0.6'/%3E%3Cellipse cx='10' cy='8' rx='2.5' ry='2' fill='%237dbde3' opacity='0.6'/%3E%3Ccircle cx='8' cy='8' r='1.5' fill='%234080a0'/%3E%3Cpath d='M8 10L8 14' stroke='%234080a0' stroke-width='0.8' stroke-linecap='round'/%3E%3C/svg%3E");
+
+	/* 10d. Cell bonus dot — red flower bud */
+	--icon-bud-red: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cellipse cx='8' cy='6' rx='2' ry='2.5' fill='%23d46b7a' opacity='0.8'/%3E%3Cellipse cx='6' cy='8' rx='2.5' ry='2' fill='%23d46b7a' opacity='0.6'/%3E%3Cellipse cx='10' cy='8' rx='2.5' ry='2' fill='%23e8909e' opacity='0.6'/%3E%3Ccircle cx='8' cy='8' r='1.5' fill='%23b05060'/%3E%3Cpath d='M8 10L8 14' stroke='%23b05060' stroke-width='0.8' stroke-linecap='round'/%3E%3C/svg%3E");
+
+	/* 10e. Cell bonus dot — purple flower bud */
+	--icon-bud-purple: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cellipse cx='8' cy='6' rx='2' ry='2.5' fill='%239678c4' opacity='0.8'/%3E%3Cellipse cx='6' cy='8' rx='2.5' ry='2' fill='%239678c4' opacity='0.6'/%3E%3Cellipse cx='10' cy='8' rx='2.5' ry='2' fill='%23b99ee0' opacity='0.6'/%3E%3Ccircle cx='8' cy='8' r='1.5' fill='%237a5ea0'/%3E%3Cpath d='M8 10L8 14' stroke='%237a5ea0' stroke-width='0.8' stroke-linecap='round'/%3E%3C/svg%3E");
 }
 
-/* ── Body — warm parchment gradient ─────────────────────────────── */
+/* ── Body — botanical garden canvas ──────────────────────────────── */
 
 html.theme-bloom body {
 	background:
-		radial-gradient(ellipse at 20% 0%, rgba(253,246,224,0.50) 0%, transparent 60%),
-		radial-gradient(ellipse at 80% 100%, rgba(240,232,248,0.35) 0%, transparent 55%),
-		linear-gradient(168deg, #f8f5ed 0%, #fdf3e6 40%, #f6efe4 70%, #f8f5ed 100%);
+		radial-gradient(ellipse at 15% 10%, rgba(212,168,32,0.08) 0%, transparent 50%),
+		radial-gradient(ellipse at 85% 90%, rgba(150,120,196,0.06) 0%, transparent 50%),
+		radial-gradient(ellipse at 50% 50%, rgba(90,171,110,0.04) 0%, transparent 60%),
+		url("data:image/svg+xml,%3Csvg width='60' height='60' xmlns='http://www.w3.org/2000/svg'%3E%3Ccircle cx='30' cy='30' r='1' fill='%23d4a820' opacity='0.06'/%3E%3Ccircle cx='10' cy='50' r='0.5' fill='%235aab6e' opacity='0.05'/%3E%3Ccircle cx='50' cy='10' r='0.7' fill='%239678c4' opacity='0.04'/%3E%3C/svg%3E"),
+		linear-gradient(155deg, #faf7f0 0%, #f5eee2 25%, #fdf6e8 50%, #f0ebe2 75%, #f8f4ec 100%);
 	background-attachment: fixed;
 	color: var(--mp-text);
 }
 
 /* ── Scrollbar ── */
 html.theme-bloom *::-webkit-scrollbar-thumb {
-	background: linear-gradient(180deg, rgba(224,122,95,0.40), rgba(201,107,82,0.40));
+	background: linear-gradient(180deg, rgba(224,122,95,0.35), rgba(90,171,110,0.30));
 	border-radius: 10px;
 }
 
 html.theme-bloom *::-webkit-scrollbar-thumb:hover {
-	background: linear-gradient(180deg, rgba(224,122,95,0.60), rgba(201,107,82,0.60));
+	background: linear-gradient(180deg, rgba(224,122,95,0.55), rgba(90,171,110,0.45));
 }
 
 html.theme-bloom *::-webkit-scrollbar-track {
-	background: rgba(61,52,41,0.04);
+	background: rgba(61,52,41,0.03);
 }
 
 html.theme-bloom * {
-	scrollbar-color: rgba(224,122,95,0.35) rgba(61,52,41,0.04);
+	scrollbar-color: rgba(224,122,95,0.30) rgba(61,52,41,0.03);
 }
 
-/* ── Lobby Logo ── */
+/* ── Lobby Logo — botanical script ── */
 html.theme-bloom .mp-logo {
-	background: linear-gradient(135deg, #d4a820, #5aab6e, #5a9ec9, #9678c4);
+	background: linear-gradient(135deg, #c8920a 0%, #d4a820 20%, #5aab6e 40%, #5a9ec9 60%, #9678c4 80%, #d46b7a 100%);
 	-webkit-background-clip: text;
 	background-clip: text;
+	filter: drop-shadow(0 2px 8px rgba(200,146,10,0.15));
 }
 
 html.theme-bloom .mp-logo-sub {
 	color: var(--mp-text-dim);
-	letter-spacing: 10px;
+	letter-spacing: 12px;
+	font-style: italic;
+	position: relative;
 }
 
-/* ── Panels — paper-white with warm glow ─────────────────────────── */
+html.theme-bloom .mp-logo-sub::before,
+html.theme-bloom .mp-logo-sub::after {
+	content: '🌿';
+	font-style: normal;
+	opacity: 0.5;
+	font-size: 0.8em;
+}
+
+/* ── Panels — frosted botanical glass ─────────────────────────────── */
 
 html.theme-bloom .mp-lobby-card,
 html.theme-bloom .mp-waiting-card,
 html.theme-bloom .mp-goal-container,
 html.theme-bloom .mp-results-container {
-	background: #ffffff;
-	border: 1px solid rgba(180,160,130,0.14);
-	border-radius: 20px;
-	box-shadow: 0 4px 24px rgba(180,160,130,0.12), 0 0 0 1px rgba(180,160,130,0.05);
+	background: linear-gradient(160deg, rgba(255,255,255,0.95) 0%, rgba(250,247,240,0.92) 100%);
+	border: 1px solid rgba(180,160,130,0.12);
+	border-radius: 24px;
+	box-shadow:
+		0 8px 32px rgba(180,160,130,0.10),
+		0 2px 8px rgba(0,0,0,0.04),
+		inset 0 1px 0 rgba(255,255,255,0.8);
+	backdrop-filter: blur(8px);
+	position: relative;
+	overflow: hidden;
+}
+
+/* Botanical corner decoration on panels */
+html.theme-bloom .mp-lobby-card::before,
+html.theme-bloom .mp-waiting-card::before {
+	content: '';
+	position: absolute;
+	top: 0; left: 0;
+	width: 80px; height: 80px;
+	background: var(--icon-corner-green) no-repeat;
+	background-size: contain;
+	opacity: 0.4;
+	pointer-events: none;
+}
+
+html.theme-bloom .mp-lobby-card::after,
+html.theme-bloom .mp-waiting-card::after {
+	content: '';
+	position: absolute;
+	bottom: 0; right: 0;
+	width: 80px; height: 80px;
+	background: var(--icon-corner-yellow) no-repeat;
+	background-size: contain;
+	transform: rotate(180deg);
+	opacity: 0.3;
+	pointer-events: none;
 }
 
 /* ── Inputs ── */
