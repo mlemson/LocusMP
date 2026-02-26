@@ -1280,17 +1280,10 @@ function scoreRedData(redZone) {
  * Zo geldt altijd: meer verbonden bold-cellen = meer punten.
  */
 function getPurpleConnectionPoints(boldCount) {
+	// Cumulatieve increments: +6 voor 2e, +12 voor 3e, +18 voor 4e, ...
+	// Totaal = 6 + 12 + ... + 6*(n-1) = 3 * n * (n-1)
 	if (!Number.isFinite(boldCount) || boldCount < 2) return 0;
-	const pointsByBoldCount = {
-		2: 6,
-		3: 12,
-		4: 18,
-		5: 24,
-		6: 32
-	};
-	if (pointsByBoldCount[boldCount]) return pointsByBoldCount[boldCount];
-	if (boldCount > 6) return 32 + ((boldCount - 6) * 8);
-	return 0;
+	return 3 * boldCount * (boldCount - 1);
 }
 
 function scorePurpleData(zoneData) {
@@ -1331,7 +1324,7 @@ function scorePurpleData(zoneData) {
 			}
 		}
 
-		// Score: progressief per verbinding (+6, +8, +10, ...)
+		// Score: cumulatief per verbinding (+6, +12, +18, ... → formule: 3·n·(n-1))
 		if (boldCount >= 2) {
 			score += getPurpleConnectionPoints(boldCount);
 		}
@@ -1591,6 +1584,8 @@ function checkAndAwardObjective(gameState, playerId) {
 	const result = checkObjective(gameState, playerId, player.chosenObjective);
 	if (result.achieved) {
 		awardObjectiveRewards(gameState, playerId, player.chosenObjective, result);
+	} else if (result.failed && !player.objectiveFailed) {
+		player.objectiveFailed = true;
 	}
 }
 
@@ -1897,6 +1892,7 @@ function awardObjectiveRewards(gameState, playerId, objective, result) {
 		: getObjectiveRandomBonuses(objective);
 
 	player.objectiveAchieved = true;
+	player.objectiveFailed = false; // Kan nooit gelijktijdig behaald én mislukt zijn
 	player.objectiveAchievedPoints = points;
 
 	if (coins > 0) {
@@ -3460,8 +3456,8 @@ function generateShopCardOfferings(gameState, playerId) {
 		const deck = buildDeck(1, rng, {
 			enableGolden,
 			enableMultikleur,
-			goldenChance: enableGolden ? 0.35 : 0.10,
-			multikleurChance: enableMultikleur ? 0.35 : 0.10,
+			goldenChance: 0.35,
+			multikleurChance: 0.35,
 		});
 		const card = deck[0];
 		let price = getCardPrice(card);
@@ -3528,10 +3524,10 @@ function buyShopItem(gameState, playerId, itemId, extra) {
 			const seed = (gameState.seed | 0) ^ ((gameState.level || 1) * 1777) ^ hashStringToInt(`${playerId}-shop-random-${seedEntropy}`);
 			const rngRandomOffer = createRNG(seed);
 			const deck = buildDeck(1, rngRandomOffer, {
-				enableGolden: player.unlockedGolden || false,
-				enableMultikleur: player.unlockedMultikleur || false,
-				goldenChance: player.unlockedGolden ? 0.20 : 0.05,
-				multikleurChance: player.unlockedMultikleur ? 0.20 : 0.05,
+				enableGolden: true,
+				enableMultikleur: true,
+				goldenChance: 0.10,
+				multikleurChance: 0.10,
 			});
 			boughtCard = deck[0];
 		}
@@ -3566,10 +3562,10 @@ function buyShopItem(gameState, playerId, itemId, extra) {
 			const seed = (gameState.seed | 0) ^ ((gameState.level || 1) * 1291) ^ hashStringToInt(`${playerId}-${seedEntropy}`);
 			const rngRandomCard = createRNG(seed);
 			const deck = buildDeck(1, rngRandomCard, {
-				enableGolden: player.unlockedGolden || false,
-				enableMultikleur: player.unlockedMultikleur || false,
-				goldenChance: player.unlockedGolden ? 0.20 : 0.05,
-				multikleurChance: player.unlockedMultikleur ? 0.20 : 0.05,
+				enableGolden: true,
+				enableMultikleur: true,
+				goldenChance: 0.10,
+				multikleurChance: 0.10,
 			});
 			const randomCard = deck[0];
 			player.shopCards.push(randomCard);
@@ -3732,6 +3728,7 @@ function startNextLevel(gameState) {
 		player.shopPurchasesThisLevel = {};
 		player.chosenObjective = null;
 		player.objectiveAchieved = false;
+		player.objectiveFailed = false;
 		player.objectiveAchievedPoints = 0;
 		player.objectiveProgress = null;
 		player.score = 0;

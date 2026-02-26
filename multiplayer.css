@@ -985,6 +985,17 @@ html, body {
 	animation: objectiveCelebrate 2s ease-out;
 }
 
+.mp-objective-badge.objective-fail-flash {
+	animation: objectiveFailFlash 1.5s ease-out;
+}
+
+@keyframes objectiveFailFlash {
+	0% { transform: scale(1); box-shadow: 0 0 0 rgba(212,85,85,0); }
+	20% { transform: scale(1.06); box-shadow: 0 0 18px rgba(212,85,85,0.55); }
+	50% { transform: scale(1.02); box-shadow: 0 0 10px rgba(212,85,85,0.30); }
+	100% { transform: scale(1); box-shadow: 0 0 10px rgba(181,96,105,0.2); }
+}
+
 @keyframes objectiveCelebrate {
 	0% { transform: scale(1); box-shadow: 0 0 0 rgba(76, 175, 80, 0); }
 	15% { transform: scale(1.1); box-shadow: 0 0 30px rgba(76, 175, 80, 0.6); }
@@ -5831,8 +5842,8 @@ html.theme-bloom {
 	--cell-green-border: rgba(90,171,110,0.38);
 	--cell-green-active: #5aab6e;
 	--cell-green-active-border: #7bcf8f;
-	--cell-green-end: #3d8a52;
-	--cell-green-end-border: #2e7040;
+	--cell-green-end: #7bbf8e;
+	--cell-green-end-border: #4d9060;
 
 	--cell-blue-bg: rgba(90,158,201,0.18);
 	--cell-blue-border: rgba(90,158,201,0.38);
@@ -5983,32 +5994,6 @@ html.theme-bloom .mp-results-container {
 	backdrop-filter: blur(8px);
 	position: relative;
 	overflow: hidden;
-}
-
-/* Botanical corner decoration on panels */
-html.theme-bloom .mp-lobby-card::before,
-html.theme-bloom .mp-waiting-card::before {
-	content: '';
-	position: absolute;
-	top: 0; left: 0;
-	width: 80px; height: 80px;
-	background: var(--icon-corner-green) no-repeat;
-	background-size: contain;
-	opacity: 0.4;
-	pointer-events: none;
-}
-
-html.theme-bloom .mp-lobby-card::after,
-html.theme-bloom .mp-waiting-card::after {
-	content: '';
-	position: absolute;
-	bottom: 0; right: 0;
-	width: 80px; height: 80px;
-	background: var(--icon-corner-yellow) no-repeat;
-	background-size: contain;
-	transform: rotate(180deg);
-	opacity: 0.3;
-	pointer-events: none;
 }
 
 /* ── Inputs — organic pill shapes ── */
@@ -6297,8 +6282,9 @@ html.theme-bloom .mp-objective-badge.objective-achieved {
 }
 
 html.theme-bloom .mp-objective-badge.objective-failed {
-	background: rgba(212,85,85,0.05);
-	border-color: rgba(212,85,85,0.20);
+	background: rgba(212,85,85,0.10);
+	border-color: rgba(212,85,85,0.40);
+	box-shadow: 0 0 10px rgba(212,85,85,0.14);
 }
 
 html.theme-bloom .mp-objective-title {
@@ -6389,44 +6375,6 @@ html.theme-bloom .mp-zone {
 	position: relative;
 	overflow: visible;
 }
-
-/* Corner botanical flourishes on each zone */
-html.theme-bloom .mp-zone::before {
-	content: '';
-	position: absolute;
-	top: -1px; left: -1px;
-	width: 48px; height: 48px;
-	background-size: contain;
-	background-repeat: no-repeat;
-	opacity: 0.5;
-	pointer-events: none;
-	z-index: 1;
-}
-
-html.theme-bloom .mp-zone::after {
-	content: '';
-	position: absolute;
-	bottom: -1px; right: -1px;
-	width: 40px; height: 40px;
-	background-size: contain;
-	background-repeat: no-repeat;
-	transform: rotate(180deg);
-	opacity: 0.35;
-	pointer-events: none;
-	z-index: 1;
-}
-
-/* Zone-specific corner art */
-html.theme-bloom .mp-zone-yellow::before { background-image: var(--icon-corner-yellow); }
-html.theme-bloom .mp-zone-yellow::after  { background-image: var(--icon-corner-yellow); }
-html.theme-bloom .mp-zone-green::before  { background-image: var(--icon-corner-green);  }
-html.theme-bloom .mp-zone-green::after   { background-image: var(--icon-corner-green);  }
-html.theme-bloom .mp-zone-blue::before   { background-image: var(--icon-corner-blue);   }
-html.theme-bloom .mp-zone-blue::after    { background-image: var(--icon-corner-blue);   }
-html.theme-bloom .mp-zone-red::before    { background-image: var(--icon-corner-red);    }
-html.theme-bloom .mp-zone-red::after     { background-image: var(--icon-corner-red);    }
-html.theme-bloom .mp-zone-purple::before { background-image: var(--icon-corner-purple); }
-html.theme-bloom .mp-zone-purple::after  { background-image: var(--icon-corner-purple); }
 
 /* Zone backgrounds — lush gradients with inner glow */
 html.theme-bloom .mp-zone-yellow {
@@ -7240,38 +7188,43 @@ html.theme-bloom .mp-cell-pearl-dot {
 
 /* ── Bonus dots — flower buds per zone color ── */
 html.theme-bloom .mp-cell.bonus-yellow .mp-cell-bonus-dot {
-	background: #cfba51;
-	width: 10px; height: 10px;
-	border-radius: 2px;
-	box-shadow: 0 0 4px rgba(0,0,0,0.28);
+	background: #d4c055;
+	width: 12px; height: 12px;
+	border-radius: 3px;
+	border: 1.5px solid #9e8c20;
+	box-shadow: 0 1px 4px rgba(0,0,0,0.32);
 }
 
 html.theme-bloom .mp-cell.bonus-green .mp-cell-bonus-dot {
 	background: #92c28c;
-	width: 10px; height: 10px;
-	border-radius: 2px;
-	box-shadow: 0 0 4px rgba(0,0,0,0.28);
+	width: 12px; height: 12px;
+	border-radius: 3px;
+	border: 1.5px solid #4a8a52;
+	box-shadow: 0 1px 4px rgba(0,0,0,0.32);
 }
 
 html.theme-bloom .mp-cell.bonus-blue .mp-cell-bonus-dot {
 	background: #5689b0;
-	width: 10px; height: 10px;
-	border-radius: 2px;
-	box-shadow: 0 0 4px rgba(0,0,0,0.28);
+	width: 12px; height: 12px;
+	border-radius: 3px;
+	border: 1.5px solid #2d5878;
+	box-shadow: 0 1px 4px rgba(0,0,0,0.32);
 }
 
 html.theme-bloom .mp-cell.bonus-red .mp-cell-bonus-dot {
 	background: #b56069;
-	width: 10px; height: 10px;
-	border-radius: 2px;
-	box-shadow: 0 0 4px rgba(0,0,0,0.28);
+	width: 12px; height: 12px;
+	border-radius: 3px;
+	border: 1.5px solid #7a2e36;
+	box-shadow: 0 1px 4px rgba(0,0,0,0.32);
 }
 
 html.theme-bloom .mp-cell.bonus-purple .mp-cell-bonus-dot {
 	background: #8f76b8;
-	width: 10px; height: 10px;
-	border-radius: 2px;
-	box-shadow: 0 0 4px rgba(0,0,0,0.28);
+	width: 12px; height: 12px;
+	border-radius: 3px;
+	border: 1.5px solid #5a3e8a;
+	box-shadow: 0 1px 4px rgba(0,0,0,0.32);
 }
 
 /* ── Score bonuses ── */

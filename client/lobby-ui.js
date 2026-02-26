@@ -2538,7 +2538,6 @@ class LocusLobbyUI {
 		this._bonusClickHandler = async (e) => {
 			if (!this._bonusMode || !this.mp.isMyTurn()) return;
 
-			// Use clicked grid cell as primary source (betrouwbaar bij snelle taps/kliks)
 			const matrix = this._bonusMode.matrix;
 			if (!matrix || !matrix.length) return;
 
@@ -2555,83 +2554,54 @@ class LocusLobbyUI {
 			const subgridId = cell.dataset.subgrid || null;
 			if (!zoneName || !Number.isFinite(rawX) || !Number.isFinite(rawY)) return;
 
-			// Als de preview al groen/geldig was op deze zone/subgrid,
-			// plaats exact die preview-locatie (zelfde gedrag als kaart-plaatsing).
-			const samePreviewTarget = this._lastBonusZone === zoneName && (this._lastBonusSubgridId || null) === subgridId;
-			if (samePreviewTarget && Number.isFinite(this._lastBonusBaseX) && Number.isFinite(this._lastBonusBaseY)) {
-				const previewPlacement = this.mp.previewPlacement(
+			// Alleen plaatsen op de passende zone
+			if (zoneName !== this._bonusMode.color) return;
+
+			// Prioriteit 1: gebruik de actieve preview-positie als die geldig was op dezelfde zone
+			const hasPreview = this._lastBonusZone === zoneName
+				&& Number.isFinite(this._lastBonusBaseX)
+				&& Number.isFinite(this._lastBonusBaseY);
+			if (hasPreview) {
+				const previewResult = this.mp.previewPlacement(
 					zoneName,
 					this._lastBonusBaseX,
 					this._lastBonusBaseY,
 					matrix,
 					this._lastBonusSubgridId || null
 				);
-				if (previewPlacement.valid) {
+				if (previewResult.valid) {
 					await this._attemptBonusPlacement(
 						zoneName,
 						this._lastBonusBaseX,
 						this._lastBonusBaseY,
-						previewPlacement.subgridId || this._lastBonusSubgridId || null
+						previewResult.subgridId || this._lastBonusSubgridId || null
 					);
 					return;
 				}
 			}
 
+			// Prioriteit 2: aangepaste basis op basis van matrixvorm (centroid-offset)
 			const adj = this._adjustBaseForMatrix(rawX, rawY, matrix);
-			let baseX = adj.x;
-			let baseY = adj.y;
-
-			// Gebruik preview-base alleen als die bij exact dezelfde zone/subgrid hoort én dichtbij ligt
-			const nearbyPreviewTarget = this._lastBonusZone === zoneName && (this._lastBonusSubgridId || null) === subgridId;
-			if (nearbyPreviewTarget && Number.isFinite(this._lastBonusBaseX) && Number.isFinite(this._lastBonusBaseY)) {
-				const dx = Math.abs(this._lastBonusBaseX - adj.x);
-				const dy = Math.abs(this._lastBonusBaseY - adj.y);
-				if (dx <= 1 && dy <= 1) {
-					baseX = this._lastBonusBaseX;
-					baseY = this._lastBonusBaseY;
-				}
-			}
-
-			// Alleen op matching zone plaatsen
-			if (zoneName !== this._bonusMode.color) return;
-
-			const directPreview = this.mp.previewPlacement(zoneName, baseX, baseY, matrix, subgridId);
-			if (directPreview.valid) {
+			const adjResult = this.mp.previewPlacement(zoneName, adj.x, adj.y, matrix, subgridId);
+			if (adjResult.valid) {
 				await this._attemptBonusPlacement(
-					zoneName,
-					baseX,
-					baseY,
-					directPreview.subgridId || subgridId || null
+					zoneName, adj.x, adj.y,
+					adjResult.subgridId || subgridId || null
 				);
 				return;
 			}
 
-			const sameZone = this._lastBonusZone === zoneName;
-			const hasFallback = sameZone && Number.isFinite(this._lastBonusBaseX) && Number.isFinite(this._lastBonusBaseY);
-			if (!hasFallback) {
-				this._showToast('Ongeldige positie', 'warning');
+			// Prioriteit 3: onbewerkte klikpositie
+			const rawResult = this.mp.previewPlacement(zoneName, rawX, rawY, matrix, subgridId);
+			if (rawResult.valid) {
+				await this._attemptBonusPlacement(
+					zoneName, rawX, rawY,
+					rawResult.subgridId || subgridId || null
+				);
 				return;
 			}
 
-			const fallbackSubgrid = this._lastBonusSubgridId || null;
-			const fallbackPreview = this.mp.previewPlacement(
-				zoneName,
-				this._lastBonusBaseX,
-				this._lastBonusBaseY,
-				matrix,
-				fallbackSubgrid
-			);
-			if (!fallbackPreview.valid) {
-				this._showToast('Ongeldige positie', 'warning');
-				return;
-			}
-
-			await this._attemptBonusPlacement(
-				zoneName,
-				this._lastBonusBaseX,
-				this._lastBonusBaseY,
-				fallbackPreview.subgridId || fallbackSubgrid
-			);
+			this._showToast('Ongeldige positie — hover eerst over de gewenste plek', 'warning');
 		};
 
 		container.addEventListener('click', this._bonusClickHandler);
@@ -3428,6 +3398,25 @@ class LocusLobbyUI {
 				} else {
 					// Notification for opponent achievement
 					this._showToast(`🎯 ${this._escapeHtml(name)} heeft een doelstelling behaald! +${pts}pt`, 'info');
+				}
+			}
+
+			// Detect newly-failed objective
+			const wasFailed = prev?.objectiveFailed || false;
+			const nowFailed = cur.objectiveFailed || false;
+			if (nowFailed && !wasFailed && !cur.objectiveAchieved) {
+				const isMe = pid === this.mp.userId;
+				const name = cur.name || '???';
+				if (isMe) {
+					this._showToast('❌ Doelstelling niet meer haalbaar!', 'error');
+					const badge = document.querySelector('.mp-objective-badge');
+					if (badge) {
+						badge.classList.add('objective-failed');
+						badge.classList.add('objective-fail-flash');
+						setTimeout(() => badge.classList.remove('objective-fail-flash'), 1500);
+					}
+				} else {
+					this._showToast(`❌ ${this._escapeHtml(name)} heeft de doelstelling niet gehaald.`, 'info');
 				}
 			}
 		}
