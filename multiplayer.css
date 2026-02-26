@@ -1514,6 +1514,8 @@ html, body {
 	width: 10px;
 	height: 10px;
 	border-radius: 2px;
+	background: var(--bonus-dot-color, #888);
+	border: 1px solid var(--bonus-dot-border, rgba(0,0,0,0.35));
 	position: absolute;
 	top: 50%;
 	left: 50%;
@@ -6578,13 +6580,13 @@ html.theme-bloom .mp-zone-purple .mp-cell.active {
 }
 
 html.theme-bloom .mp-zone-purple .mp-cell.outer-ring-0:not(.active) {
-	background: rgba(150,120,196,0.06);
-	border-color: rgba(150,120,196,0.16);
+	background: rgba(120,94,160,0.16);
+	border-color: rgba(120,94,160,0.34);
 }
 
 html.theme-bloom .mp-zone-purple .mp-cell.outer-ring-1:not(.active) {
-	background: rgba(150,120,196,0.10);
-	border-color: rgba(150,120,196,0.22);
+	background: rgba(120,94,160,0.16);
+	border-color: rgba(120,94,160,0.34);
 }
 
 /* ── Stone cells — garden rock with moss texture ── */
@@ -7238,38 +7240,43 @@ html.theme-bloom .mp-cell-pearl-dot {
 
 /* ── Bonus dots — flower buds per zone color ── */
 html.theme-bloom .mp-cell.bonus-yellow .mp-cell-bonus-dot {
-	background: var(--icon-bud-yellow) no-repeat center / contain;
-	box-shadow: none;
-	width: 14px; height: 14px;
-	border-radius: 0;
+	background: #cfba51;
+	border: 1.5px solid rgba(138,106,16,0.45);
+	box-shadow: 0 0 0 1px rgba(255,255,255,0.65) inset;
+	width: 10px; height: 10px;
+	border-radius: 50%;
 }
 
 html.theme-bloom .mp-cell.bonus-green .mp-cell-bonus-dot {
-	background: var(--icon-bud-green) no-repeat center / contain;
-	box-shadow: none;
-	width: 14px; height: 14px;
-	border-radius: 0;
+	background: #92c28c;
+	border: 1.5px solid rgba(45,122,66,0.45);
+	box-shadow: 0 0 0 1px rgba(255,255,255,0.65) inset;
+	width: 10px; height: 10px;
+	border-radius: 50%;
 }
 
 html.theme-bloom .mp-cell.bonus-blue .mp-cell-bonus-dot {
-	background: var(--icon-bud-blue) no-repeat center / contain;
-	box-shadow: none;
-	width: 14px; height: 14px;
-	border-radius: 0;
+	background: #5689b0;
+	border: 1.5px solid rgba(45,106,142,0.45);
+	box-shadow: 0 0 0 1px rgba(255,255,255,0.65) inset;
+	width: 10px; height: 10px;
+	border-radius: 50%;
 }
 
 html.theme-bloom .mp-cell.bonus-red .mp-cell-bonus-dot {
-	background: var(--icon-bud-red) no-repeat center / contain;
-	box-shadow: none;
-	width: 14px; height: 14px;
-	border-radius: 0;
+	background: #b56069;
+	border: 1.5px solid rgba(160,64,80,0.45);
+	box-shadow: 0 0 0 1px rgba(255,255,255,0.65) inset;
+	width: 10px; height: 10px;
+	border-radius: 50%;
 }
 
 html.theme-bloom .mp-cell.bonus-purple .mp-cell-bonus-dot {
-	background: var(--icon-bud-purple) no-repeat center / contain;
-	box-shadow: none;
-	width: 14px; height: 14px;
-	border-radius: 0;
+	background: #8f76b8;
+	border: 1.5px solid rgba(94,62,160,0.45);
+	box-shadow: 0 0 0 1px rgba(255,255,255,0.65) inset;
+	width: 10px; height: 10px;
+	border-radius: 50%;
 }
 
 /* ── Score bonuses ── */
@@ -7552,18 +7559,14 @@ html.theme-bloom .mp-card-extra-badge {
 
 html.theme-bloom .mp-card-extra-badge::before {
 	content: '';
-	display: inline-block;
-	width: 16px; height: 16px;
-	background: var(--icon-bonus-star) no-repeat center / contain;
-	vertical-align: middle;
-	margin-right: 4px;
+	display: none;
 }
 
 html.theme-bloom .mp-card-extra-badge::after {
 	content: 'EXTRA';
 	font-size: 0.65rem;
 	font-weight: 800;
-	letter-spacing: 1px;
+	letter-spacing: 0.8px;
 	vertical-align: middle;
 }
 

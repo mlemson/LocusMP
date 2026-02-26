@@ -631,7 +631,7 @@ function generateLevel1Board(rng, level) {
 			if (gCell && !gCell.flags.includes('gold')) gCell.flags.push('gold');
 		}
 		const redBonusBase = world === 1 ? 3 : (world === 2 ? 4 : 5);
-		placeBonusSymbols(sg, rng, redBonusBase * 0.75);
+		placeBonusSymbols(sg, rng, redBonusBase * 0.55);
 	}
 
 	// ══════════════════════════════════════════
@@ -799,10 +799,10 @@ function spawnBonusesAfterRoundFour(gameState, options = {}) {
 	const rng = createRNG(seed);
 
 	const weightedZones = world === 1
-		? ['yellow', 'yellow', 'blue', 'blue', 'red', 'red', 'green', 'purple']
+		? ['yellow', 'yellow', 'blue', 'blue', 'red', 'green', 'purple']
 		: (world === 2
-			? ['yellow', 'blue', 'blue', 'red', 'red', 'green', 'green', 'purple']
-			: ['yellow', 'blue', 'blue', 'red', 'red', 'green', 'green', 'green', 'purple']);
+			? ['yellow', 'blue', 'blue', 'red', 'green', 'green', 'purple']
+			: ['yellow', 'blue', 'blue', 'red', 'green', 'green', 'green', 'purple']);
 	let spawned = 0;
 
 	for (let i = 0; i < spawnCount; i++) {
@@ -1256,8 +1256,16 @@ function scoreRedData(redZone) {
  */
 function getPurpleConnectionPoints(boldCount) {
 	if (!Number.isFinite(boldCount) || boldCount < 2) return 0;
-	const connections = boldCount - 1;
-	return 6 * ((connections * (connections + 1)) / 2);
+	const pointsByBoldCount = {
+		2: 6,
+		3: 12,
+		4: 18,
+		5: 24,
+		6: 32
+	};
+	if (pointsByBoldCount[boldCount]) return pointsByBoldCount[boldCount];
+	if (boldCount > 6) return 32 + ((boldCount - 6) * 8);
+	return 0;
 }
 
 function scorePurpleData(zoneData) {

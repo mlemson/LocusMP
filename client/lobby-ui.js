@@ -3156,7 +3156,7 @@ class LocusLobbyUI {
 		if (zoneName === 'purple') {
 			purplePointsGuideHtml = `
 				<div class="mp-purple-points-guide" title="Punten per verbonden bold-cellen">
-					2 bold=6 • 3 bold=12 • 4 bold=18 • 5 bold=24
+					2 bold=6 • 3 bold=12 • 4 bold=18 • 5 bold=24 • 6 bold=32
 				</div>
 			`;
 		}
@@ -3206,10 +3206,14 @@ class LocusLobbyUI {
 		let inner = '';
 		if (cell.bonusSymbol && !cell.active) {
 			const bonusColors = {
-				yellow: '#cfba51', green: '#92c28c', blue: '#5689b0',
-				red: '#b56069', purple: '#8f76b8'
+				yellow: { fill: '#cfba51', border: 'rgba(120,96,16,0.6)' },
+				green: { fill: '#92c28c', border: 'rgba(45,122,66,0.6)' },
+				blue: { fill: '#5689b0', border: 'rgba(45,106,142,0.6)' },
+				red: { fill: '#b56069', border: 'rgba(160,64,80,0.6)' },
+				purple: { fill: '#8f76b8', border: 'rgba(94,62,160,0.6)' }
 			};
-			inner = `<span class="mp-cell-bonus-dot" style="background:${bonusColors[cell.bonusSymbol] || '#888'}"></span>`;
+			const tone = bonusColors[cell.bonusSymbol] || { fill: '#888', border: 'rgba(0,0,0,0.35)' };
+			inner = `<span class="mp-cell-bonus-dot" style="--bonus-dot-color:${tone.fill}; --bonus-dot-border:${tone.border};"></span>`;
 		}
 		if (cell.flags.includes('gold') && !cell.active) {
 			inner += `<span class="mp-cell-gold-dot"></span>`;
