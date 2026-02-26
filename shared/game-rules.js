@@ -706,6 +706,7 @@ function generateLevel1Board(rng, level) {
 	}
 
 	placeBonusSymbols(zones.purple, rng, world === 1 ? 3 : (world === 2 ? 5 : 7));
+	ensureAnyBonusSymbolOnBoard(zones, rng);
 
 	// Vanaf level 5: plaats parel-schatten (wit/ronde marker) die 5 munten geven
 	if (lvl >= 5 && zones.yellow) {
@@ -810,6 +811,48 @@ function placeSingleBonusSymbol(zoneData, rng, options = {}) {
 		color = bonusColors[Math.floor(rng() * bonusColors.length)];
 	}
 	cell.bonusSymbol = color;
+	return true;
+}
+
+function ensureAnyBonusSymbolOnBoard(zones, rng) {
+	if (!zones) return false;
+
+	const bonusCells = [];
+	const emptyCandidates = [];
+
+	const scanZone = (zoneData) => {
+		if (!zoneData?.cells) return;
+		for (const cell of Object.values(zoneData.cells)) {
+			if (!cell || cell.active) continue;
+			if (cell.bonusSymbol === 'any') return true;
+			if (cell.bonusSymbol) {
+				bonusCells.push(cell);
+				continue;
+			}
+			if (cell.flags?.includes('bold') || cell.flags?.includes('end') || cell.flags?.includes('portal') || cell.flags?.includes('gold')) continue;
+			if (cell.treasureCoins) continue;
+			emptyCandidates.push(cell);
+		}
+		return false;
+	};
+
+	for (const zoneName of ['yellow', 'green', 'blue', 'purple']) {
+		if (scanZone(zones[zoneName])) return true;
+	}
+
+	for (const sg of (zones.red?.subgrids || [])) {
+		if (scanZone(sg)) return true;
+	}
+
+	let target = null;
+	if (bonusCells.length > 0) {
+		target = bonusCells[Math.floor(rng() * bonusCells.length)];
+	} else if (emptyCandidates.length > 0) {
+		target = emptyCandidates[Math.floor(rng() * emptyCandidates.length)];
+	}
+
+	if (!target) return false;
+	target.bonusSymbol = 'any';
 	return true;
 }
 

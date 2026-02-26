@@ -704,7 +704,7 @@ html, body {
 }
 
 .mp-taunt-menu {
-	display: none;
+	display: block;
 	position: relative;
 	z-index: 15;
 }
@@ -2408,6 +2408,7 @@ body.mp-loading .mp-btn {
 		overflow-y: hidden;
 		scroll-snap-type: x mandatory;
 		-webkit-overflow-scrolling: touch;
+		touch-action: pan-x;
 		width: 100%;
 		height: 100%;
 		min-height: 0;
@@ -2429,6 +2430,7 @@ body.mp-loading .mp-btn {
 		overflow-y: auto;
 		overscroll-behavior: contain;
 		-webkit-overflow-scrolling: touch;
+		touch-action: pan-y;
 	}
 
 	.mp-zone {

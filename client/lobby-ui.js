@@ -51,6 +51,8 @@ class LocusLobbyUI {
 		this._interactionMoveThrottleTs = 0;
 		this._lastMobileBoardIndex = 0;
 		this._forcedMobileBoardIndex = null;
+		this._lastMobileZoneName = null;
+		this._forceBlueBottomOnce = false;
 		this._lastBonusBaseX = null;
 		this._lastBonusBaseY = null;
 		this._lastBonusZone = null;
@@ -2967,6 +2969,19 @@ class LocusLobbyUI {
 		if (!target) return;
 		board.scrollTo({ left: target.offsetLeft, top: 0, behavior: 'auto' });
 		this._lastMobileBoardIndex = clamped;
+		const zoneName = target.dataset.zone || null;
+		if (zoneName === 'blue' && (this._forceBlueBottomOnce || this._lastMobileZoneName !== 'blue')) {
+			requestAnimationFrame(() => this._scrollBlueZoneToBottom(target));
+		}
+		this._lastMobileZoneName = zoneName;
+		this._forceBlueBottomOnce = false;
+	}
+
+	_scrollBlueZoneToBottom(zoneEl = null) {
+		const board = this.elements['mp-board-container']?.querySelector('.mp-board');
+		const target = zoneEl || board?.querySelector('.mp-zone[data-zone="blue"]');
+		if (!target) return;
+		target.scrollTop = Math.max(0, target.scrollHeight - target.clientHeight);
 	}
 
 	_getMobileZoneIndex(zoneName) {
@@ -2991,9 +3006,14 @@ class LocusLobbyUI {
 			top: 0,
 			behavior: smooth ? 'smooth' : 'auto'
 		});
+		if (zoneName === 'blue') {
+			this._forceBlueBottomOnce = true;
+			requestAnimationFrame(() => this._scrollBlueZoneToBottom(zoneEl));
+		}
 		const zones = Array.from(board.querySelectorAll('.mp-zone'));
 		const idx = zones.indexOf(zoneEl);
 		if (idx >= 0) this._lastMobileBoardIndex = idx;
+		this._lastMobileZoneName = zoneName || null;
 	}
 
 	_renderBoard(boardState) {
@@ -3013,6 +3033,27 @@ class LocusLobbyUI {
 					${this._renderZone('purple', zones.purple, 'Paars')}
 				</div>
 			`;
+			const boardEl = container.querySelector('.mp-board');
+			if (boardEl) {
+				let rafId = null;
+				boardEl.addEventListener('scroll', () => {
+					if (rafId) return;
+					rafId = requestAnimationFrame(() => {
+						rafId = null;
+						const width = Math.max(1, boardEl.clientWidth || 1);
+						const idx = Math.max(0, Math.round(boardEl.scrollLeft / width));
+						const prevIdx = this._lastMobileBoardIndex;
+						this._lastMobileBoardIndex = idx;
+						const order = ['yellow', 'green', 'blue', 'red', 'purple'];
+						const zoneName = order[idx] || null;
+						if (zoneName === 'blue' && prevIdx !== 2) {
+							const blueZone = boardEl.querySelector('.mp-zone[data-zone="blue"]');
+							if (blueZone) this._scrollBlueZoneToBottom(blueZone);
+						}
+						this._lastMobileZoneName = zoneName;
+					});
+				}, { passive: true });
+			}
 		} else {
 			container.innerHTML = `
 				<div class="mp-board mp-board-desktop">
