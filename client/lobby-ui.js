@@ -4246,18 +4246,53 @@ class LocusLobbyUI {
 
 	/** Sparkle burst effect (bij goud) */
 	_showSparkle(x, y, count = 6) {
+		const isBloom = document.documentElement.classList.contains('theme-bloom');
 		for (let i = 0; i < count; i++) {
 			const s = document.createElement('div');
 			s.className = 'mp-sparkle';
 			const angle = Math.random() * 2 * Math.PI;
-			const dist = 30 + Math.random() * 20;
+			const dist = isBloom ? (35 + Math.random() * 30) : (30 + Math.random() * 20);
 			s.style.left = `${x}px`;
 			s.style.top = `${y}px`;
 			s.style.setProperty('--dx', `${Math.cos(angle) * dist}px`);
 			s.style.setProperty('--dy', `${Math.sin(angle) * dist}px`);
+			if (isBloom) s.style.animationDelay = `${i * 40}ms`;
 			document.body.appendChild(s);
-			setTimeout(() => s.remove(), 900);
+			setTimeout(() => s.remove(), isBloom ? 1100 : 900);
 		}
+	}
+
+	/** Confetti burst (Bloom theme dopamine) */
+	_showConfetti(x, y, count = 8) {
+		const colors = ['#e07a5f', '#4caf68', '#5a9ec9', '#d4a820', '#9678c4', '#f0a030', '#d46b7a'];
+		for (let i = 0; i < count; i++) {
+			const c = document.createElement('div');
+			c.className = 'mp-confetti';
+			const angle = Math.random() * 2 * Math.PI;
+			const dist = 40 + Math.random() * 60;
+			c.style.left = `${x + (Math.random() - 0.5) * 20}px`;
+			c.style.top = `${y + (Math.random() - 0.5) * 20}px`;
+			c.style.background = colors[Math.floor(Math.random() * colors.length)];
+			c.style.setProperty('--dx', `${Math.cos(angle) * dist}px`);
+			c.style.setProperty('--dy', `${-20 - Math.random() * 80}px`);
+			c.style.setProperty('--rot', `${Math.random() * 720 - 360}deg`);
+			c.style.animationDelay = `${i * 30}ms`;
+			c.style.width = `${6 + Math.random() * 6}px`;
+			c.style.height = `${4 + Math.random() * 4}px`;
+			document.body.appendChild(c);
+			setTimeout(() => c.remove(), 1200);
+		}
+	}
+
+	/** Bouncing coin animation (Bloom gold reward) */
+	_showCoinBounce(x, y) {
+		const coin = document.createElement('div');
+		coin.className = 'mp-coin-bounce';
+		coin.textContent = '🪙';
+		coin.style.left = `${x}px`;
+		coin.style.top = `${y}px`;
+		document.body.appendChild(coin);
+		setTimeout(() => coin.remove(), 1000);
 	}
 
 	/** Wordt aangeroepen als een move wordt gebroadcast (met bonus/goud info) */
@@ -4282,14 +4317,23 @@ class LocusLobbyUI {
 		// Animate cells flashing on the zone
 		if (zoneEl) {
 			zoneEl.classList.add('mp-zone-flash');
-			setTimeout(() => zoneEl.classList.remove('mp-zone-flash'), 600);
+			setTimeout(() => zoneEl.classList.remove('mp-zone-flash'), 700);
+		}
+
+		// Bloom: extra confetti burst on own moves
+		const isBloom = document.documentElement.classList.contains('theme-bloom');
+		if (isBloom && isMe) {
+			this._showConfetti(cx, cy, 10);
 		}
 
 		// Goud sparkle + tekst
 		if (goldCollected > 0) {
-			this._showSparkle(cx, cy, 8);
+			const sparkleCount = isBloom ? 14 : 8;
+			this._showSparkle(cx, cy, sparkleCount);
 			this._showFloatingScore(zoneEl, `💰 +${goldCollected} goud`, '#f5d76e');
 			this._playGoldSound();
+			// Bloom: extra coin bounce emoji
+			if (isBloom) this._showCoinBounce(cx, cy);
 		}
 
 		// Bonus collectie tekst
@@ -4298,10 +4342,12 @@ class LocusLobbyUI {
 				yellow: '#cfba51', green: '#92c28c', blue: '#5689b0',
 				red: '#b56069', purple: '#8f76b8'
 			};
-			for (const bc of bonusesCollected) {
+			for (let i = 0; i < bonusesCollected.length; i++) {
+				const bc = bonusesCollected[i];
 				setTimeout(() => {
-					this._showFloatingScore(zoneEl, 'BONUS', bonusColors[bc] || '#fff');
-				}, 200);
+					this._showFloatingScore(zoneEl, '✨ BONUS', bonusColors[bc] || '#fff');
+					if (isBloom) this._showConfetti(cx, cy, 6);
+				}, 200 + i * 300);
 			}
 		}
 
