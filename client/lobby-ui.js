@@ -2374,7 +2374,7 @@ class LocusLobbyUI {
 			blue: { label: 'Blauw', color: '#5689b0' },
 			red: { label: 'Rood', color: '#b56069' },
 			purple: { label: 'Paars', color: '#8f76b8' },
-			any: { label: 'Multikleur', color: 'rainbow' }
+			any: { label: 'Multikleur', color: '#c47bd7' }
 		};
 
 		container.innerHTML = `
@@ -2481,7 +2481,8 @@ class LocusLobbyUI {
 		// Maak ghost element (zelfde patroon als kaarten)
 		const ghost = document.createElement('div');
 		ghost.className = 'mp-drag-ghost mp-bonus-ghost';
-		ghost.innerHTML = this._renderMiniGrid(matrix, { code: bInfo.color }, true, true);
+		const ghostColorCode = bonusColor === 'any' ? 'rainbow' : bInfo.color;
+		ghost.innerHTML = this._renderMiniGrid(matrix, { code: ghostColorCode }, true, true);
 		ghost.style.pointerEvents = 'none';
 		document.body.appendChild(ghost);
 		this._bonusMode.ghostEl = ghost;
