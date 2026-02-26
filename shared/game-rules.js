@@ -87,7 +87,7 @@ const ZONE_THEMES = {
 
 const BONUS_SHAPES = {
 	default: [[1],[1]],   // Domino (2 cells)
-	red: [[1]]            // Single cell voor rood
+	red: [[1],[1]]        // Domino (2 cells) voor rood
 };
 
 // ──────────────────────────────────────────────

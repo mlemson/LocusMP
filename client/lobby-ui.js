@@ -2556,13 +2556,35 @@ class LocusLobbyUI {
 			const subgridId = cell.dataset.subgrid || null;
 			if (!zoneName || !Number.isFinite(rawX) || !Number.isFinite(rawY)) return;
 
+			// Als de preview al groen/geldig was op deze zone/subgrid,
+			// plaats exact die preview-locatie (zelfde gedrag als kaart-plaatsing).
+			const samePreviewTarget = this._lastBonusZone === zoneName && (this._lastBonusSubgridId || null) === subgridId;
+			if (samePreviewTarget && Number.isFinite(this._lastBonusBaseX) && Number.isFinite(this._lastBonusBaseY)) {
+				const previewPlacement = this.mp.previewPlacement(
+					zoneName,
+					this._lastBonusBaseX,
+					this._lastBonusBaseY,
+					matrix,
+					this._lastBonusSubgridId || null
+				);
+				if (previewPlacement.valid) {
+					await this._attemptBonusPlacement(
+						zoneName,
+						this._lastBonusBaseX,
+						this._lastBonusBaseY,
+						previewPlacement.subgridId || this._lastBonusSubgridId || null
+					);
+					return;
+				}
+			}
+
 			const adj = this._adjustBaseForMatrix(rawX, rawY, matrix);
 			let baseX = adj.x;
 			let baseY = adj.y;
 
 			// Gebruik preview-base alleen als die bij exact dezelfde zone/subgrid hoort én dichtbij ligt
-			const samePreviewTarget = this._lastBonusZone === zoneName && (this._lastBonusSubgridId || null) === subgridId;
-			if (samePreviewTarget && Number.isFinite(this._lastBonusBaseX) && Number.isFinite(this._lastBonusBaseY)) {
+			const nearbyPreviewTarget = this._lastBonusZone === zoneName && (this._lastBonusSubgridId || null) === subgridId;
+			if (nearbyPreviewTarget && Number.isFinite(this._lastBonusBaseX) && Number.isFinite(this._lastBonusBaseY)) {
 				const dx = Math.abs(this._lastBonusBaseX - adj.x);
 				const dy = Math.abs(this._lastBonusBaseY - adj.y);
 				if (dx <= 1 && dy <= 1) {
