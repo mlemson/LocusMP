@@ -4528,7 +4528,7 @@ body.mp-placing * {
 }
 
 /* ══════════════════════════════════════════════════════════════
-   THEME SWITCHER TOGGLE (fixed, linksboven)
+   THEME SWITCHER — 3-Button Pill (fixed, linksboven)
    ══════════════════════════════════════════════════════════════ */
 .mp-theme-switcher {
 	position: fixed;
@@ -4537,77 +4537,88 @@ body.mp-placing * {
 	z-index: 9990;
 }
 
-.mp-theme-toggle {
+.mp-theme-pill {
 	position: relative;
 	display: inline-flex;
 	align-items: center;
+	height: 30px;
+	border-radius: 999px;
+	background: rgba(255,255,255,0.08);
+	border: 1px solid rgba(255,255,255,0.14);
+	overflow: hidden;
+	padding: 2px;
+}
+
+.mp-theme-btn {
+	position: relative;
+	z-index: 2;
+	border: none;
+	background: transparent;
+	color: rgba(255,255,255,0.50);
+	font-size: 0.60rem;
+	font-weight: 700;
+	letter-spacing: 0.4px;
+	text-transform: uppercase;
 	cursor: pointer;
+	padding: 0 12px;
+	height: 100%;
+	border-radius: 999px;
+	transition: color 0.3s ease;
+	white-space: nowrap;
+	-webkit-user-select: none;
 	user-select: none;
 }
 
-.mp-theme-toggle input {
-	position: absolute;
-	opacity: 0;
-	width: 0;
-	height: 0;
+.mp-theme-btn:hover {
+	color: rgba(255,255,255,0.75);
 }
 
-.mp-theme-slider {
-	position: relative;
-	display: inline-flex;
-	align-items: center;
-	width: 108px;
-	height: 28px;
-	border-radius: 999px;
-	background: rgba(255,255,255,0.08);
-	border: 1px solid rgba(255,255,255,0.16);
-	transition: all 0.35s ease;
-	overflow: hidden;
+.mp-theme-btn.active {
+	color: rgba(255,255,255,0.95);
 }
 
-.mp-theme-slider::before {
-	content: '';
+.mp-theme-indicator {
 	position: absolute;
 	top: 2px;
 	left: 2px;
-	width: 50px;
-	height: 22px;
+	width: calc(100% / 3 - 1px);
+	height: calc(100% - 4px);
 	border-radius: 999px;
 	background: rgba(255,255,255,0.15);
 	transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
 	z-index: 1;
 }
 
-.mp-theme-toggle input:checked + .mp-theme-slider {
-	background: rgba(99, 102, 241, 0.2);
-	border-color: rgba(99, 102, 241, 0.45);
+/* ── Bloom theme overrides for the switcher ── */
+html.theme-bloom .mp-theme-pill {
+	background: rgba(45,42,50,0.06);
+	border-color: rgba(45,42,50,0.10);
 }
 
-.mp-theme-toggle input:checked + .mp-theme-slider::before {
-	transform: translateX(52px);
-	background: linear-gradient(135deg, rgba(99, 102, 241, 0.5), rgba(167, 139, 250, 0.5));
+html.theme-bloom .mp-theme-btn {
+	color: rgba(45,42,50,0.45);
 }
 
-.mp-theme-label-left,
-.mp-theme-label-right {
-	flex: 1;
-	text-align: center;
-	font-size: 0.62rem;
-	font-weight: 700;
-	letter-spacing: 0.4px;
-	text-transform: uppercase;
-	color: rgba(255,255,255,0.55);
-	z-index: 2;
-	transition: color 0.3s ease;
-	pointer-events: none;
+html.theme-bloom .mp-theme-btn:hover {
+	color: rgba(45,42,50,0.70);
 }
 
-.mp-theme-toggle input:not(:checked) + .mp-theme-slider .mp-theme-label-left {
-	color: rgba(255,255,255,0.95);
+html.theme-bloom .mp-theme-btn.active {
+	color: rgba(45,42,50,0.90);
 }
 
-.mp-theme-toggle input:checked + .mp-theme-slider .mp-theme-label-right {
-	color: rgba(255,255,255,0.95);
+html.theme-bloom .mp-theme-indicator {
+	background: rgba(45,42,50,0.10);
+}
+
+/* ── Aurora theme overrides for the switcher ── */
+html.theme-aurora .mp-theme-pill {
+	background: rgba(99, 102, 241, 0.12);
+	border-color: rgba(99, 102, 241, 0.30);
+}
+
+html.theme-aurora .mp-theme-indicator {
+	background: linear-gradient(135deg, rgba(99, 102, 241, 0.35), rgba(167, 139, 250, 0.35));
 }
 
 /* ══════════════════════════════════════════════════════════════════════
@@ -5666,4 +5677,1142 @@ html.theme-aurora .mp-opp-selection {
 	background: rgba(99, 102, 241, 0.08);
 	border: 1px solid rgba(99, 102, 241, 0.2);
 	border-radius: 8px;
+}
+
+
+/* ══════════════════════════════════════════════════════════════════════
+   THEME: BLOOM
+   Fresh light theme with warm pastels, soft shadows, and a paper-like feel.
+   A fundamentally different visual experience from the dark themes.
+   Activated via html.theme-bloom
+   ══════════════════════════════════════════════════════════════════════ */
+
+html.theme-bloom {
+	/* ── Base colors ── */
+	--mp-bg: #faf7f2;
+	--mp-panel: #ffffff;
+	--mp-panel-light: #f5f0eb;
+	--mp-text: #2d2a32;
+	--mp-text-dim: #8a8594;
+	--mp-accent: #e8845c;
+	--mp-accent-hover: #d4724b;
+	--mp-success: #5cb85c;
+	--mp-warning: #f0a030;
+	--mp-error: #dc5656;
+	--mp-gold: #d4930a;
+	--mp-yellow: #e8c84a;
+	--mp-green: #5aab6e;
+	--mp-blue: #5a9ec9;
+	--mp-red: #d46b7a;
+	--mp-purple: #9678c4;
+	--mp-radius: 16px;
+	--mp-shadow: 0 2px 12px rgba(45,42,50,0.08);
+	--mp-transition: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+
+	/* ── Zone backgrounds (cheerful pastels) ── */
+	--zone-yellow-bg: #fdf8ed;
+	--zone-green-bg: #eef8f0;
+	--zone-blue-bg: #edf5fc;
+	--zone-red-bg: #fceff2;
+	--zone-purple-bg: #f3eef9;
+
+	/* ── Cell colors (pastel-light) ── */
+	--cell-yellow-bg: rgba(232,200,74,0.12);
+	--cell-yellow-border: rgba(232,200,74,0.25);
+	--cell-yellow-active: #e8c84a;
+	--cell-yellow-active-border: #f5dd6e;
+
+	--cell-green-bg: rgba(90,171,110,0.10);
+	--cell-green-border: rgba(90,171,110,0.22);
+	--cell-green-active: #5aab6e;
+	--cell-green-active-border: #7bcf8f;
+	--cell-green-end: #3d8a52;
+	--cell-green-end-border: #2e7040;
+
+	--cell-blue-bg: rgba(90,158,201,0.10);
+	--cell-blue-border: rgba(90,158,201,0.22);
+	--cell-blue-active: #5a9ec9;
+	--cell-blue-active-border: #7dbde3;
+
+	--cell-red-bg: rgba(212,107,122,0.10);
+	--cell-red-border: rgba(212,107,122,0.22);
+	--cell-red-active: #d46b7a;
+	--cell-red-active-border: #e8909e;
+
+	--cell-purple-bg: rgba(150,120,196,0.10);
+	--cell-purple-border: rgba(150,120,196,0.22);
+	--cell-purple-active: #9678c4;
+	--cell-purple-active-border: #b99ee0;
+}
+
+/* Body: warm cream with subtle peachy gradient */
+html.theme-bloom body {
+	background: linear-gradient(160deg, #faf7f2 0%, #fdf5ee 50%, #faf0e8 100%);
+	background-attachment: fixed;
+	color: var(--mp-text);
+}
+
+/* ── Scrollbar ── */
+html.theme-bloom *::-webkit-scrollbar-thumb {
+	background: linear-gradient(180deg, rgba(232,132,92,0.45), rgba(212,114,75,0.45));
+	border-radius: 10px;
+}
+
+html.theme-bloom *::-webkit-scrollbar-thumb:hover {
+	background: linear-gradient(180deg, rgba(232,132,92,0.65), rgba(212,114,75,0.65));
+}
+
+html.theme-bloom *::-webkit-scrollbar-track {
+	background: rgba(45,42,50,0.04);
+}
+
+/* ── Lobby Logo ── */
+html.theme-bloom .mp-logo {
+	background: linear-gradient(135deg, #e8c84a, #5aab6e, #5a9ec9, #9678c4);
+	-webkit-background-clip: text;
+	background-clip: text;
+}
+
+html.theme-bloom .mp-logo-sub {
+	color: var(--mp-text-dim);
+	letter-spacing: 10px;
+}
+
+/* ── Panels — Clean white with warm shadows ── */
+html.theme-bloom .mp-lobby-card,
+html.theme-bloom .mp-waiting-card,
+html.theme-bloom .mp-goal-container,
+html.theme-bloom .mp-results-container {
+	background: #ffffff;
+	border: 1px solid rgba(45,42,50,0.08);
+	border-radius: 18px;
+	box-shadow: 0 2px 16px rgba(45,42,50,0.07), 0 0 0 1px rgba(45,42,50,0.03);
+}
+
+/* ── Inputs ── */
+html.theme-bloom .mp-input-group input,
+html.theme-bloom .mp-input-group select {
+	background: #f9f6f1;
+	border: 1px solid rgba(45,42,50,0.12);
+	border-radius: 12px;
+	color: var(--mp-text);
+	transition: border-color 0.25s ease, box-shadow 0.25s ease;
+}
+
+html.theme-bloom .mp-input-group input:focus,
+html.theme-bloom .mp-input-group select:focus {
+	border-color: var(--mp-accent);
+	box-shadow: 0 0 0 3px rgba(232,132,92,0.12);
+	background: #ffffff;
+}
+
+html.theme-bloom .mp-input-group input::placeholder {
+	color: var(--mp-text-dim);
+}
+
+html.theme-bloom .mp-name-required {
+	border-color: rgba(232,132,92,0.25);
+	background: rgba(232,132,92,0.04);
+	border-radius: 14px;
+}
+
+html.theme-bloom .mp-name-callout {
+	color: var(--mp-accent);
+}
+
+html.theme-bloom .mp-name-required input:not(:placeholder-shown) {
+	border-color: var(--mp-success);
+	box-shadow: 0 0 0 3px rgba(92,184,92,0.10);
+}
+
+/* ── Buttons ── */
+html.theme-bloom .mp-btn {
+	border-radius: 12px;
+	font-weight: 600;
+	letter-spacing: 0.2px;
+	transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+html.theme-bloom .mp-btn-primary {
+	background: linear-gradient(135deg, #e8845c, #d4724b);
+	color: #ffffff;
+	box-shadow: 0 3px 10px rgba(232,132,92,0.25);
+}
+
+html.theme-bloom .mp-btn-primary:hover:not(:disabled) {
+	background: linear-gradient(135deg, #f29572, #e8845c);
+	transform: translateY(-2px);
+	box-shadow: 0 6px 18px rgba(232,132,92,0.35);
+}
+
+html.theme-bloom .mp-btn-secondary {
+	background: #f5f0eb;
+	border: 1px solid rgba(45,42,50,0.10);
+	border-radius: 12px;
+	color: var(--mp-text);
+}
+
+html.theme-bloom .mp-btn-secondary:hover:not(:disabled) {
+	background: #ede7df;
+	border-color: rgba(45,42,50,0.18);
+}
+
+html.theme-bloom .mp-btn-warning {
+	background: linear-gradient(135deg, #f0a030, #e89520);
+	color: #ffffff;
+	box-shadow: 0 3px 10px rgba(240,160,48,0.25);
+}
+
+html.theme-bloom .mp-btn-warning:hover:not(:disabled) {
+	background: linear-gradient(135deg, #f5b34a, #f0a030);
+	transform: translateY(-1px);
+}
+
+/* ── Invite code ── */
+html.theme-bloom .mp-invite-code {
+	background: linear-gradient(135deg, var(--mp-accent), var(--mp-purple));
+	-webkit-background-clip: text;
+	background-clip: text;
+	border-color: rgba(232,132,92,0.25);
+}
+
+html.theme-bloom .mp-invite-code:hover {
+	border-color: var(--mp-accent);
+	box-shadow: 0 0 16px rgba(232,132,92,0.12);
+}
+
+/* ── Player list items ── */
+html.theme-bloom .mp-player-item {
+	background: #faf7f2;
+	border: 1px solid rgba(45,42,50,0.06);
+	border-radius: 12px;
+	transition: all 0.25s ease;
+}
+
+html.theme-bloom .mp-player-item.is-me {
+	border-color: rgba(232,132,92,0.30);
+	background: rgba(232,132,92,0.05);
+}
+
+html.theme-bloom .mp-host-badge {
+	background: linear-gradient(135deg, #f0a030, #e89520);
+	color: #ffffff;
+	border-radius: 6px;
+}
+
+html.theme-bloom .mp-you-badge {
+	background: linear-gradient(135deg, #e8845c, #d4724b);
+	color: #ffffff;
+	border-radius: 6px;
+}
+
+/* ── Goal cards ── */
+html.theme-bloom .mp-goal-card {
+	background: #ffffff;
+	border: 2px solid rgba(45,42,50,0.08);
+	border-radius: 14px;
+	transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+html.theme-bloom .mp-goal-card:hover:not(:disabled) {
+	border-color: rgba(232,132,92,0.35);
+	box-shadow: 0 6px 20px rgba(232,132,92,0.12);
+	transform: translateY(-3px);
+}
+
+html.theme-bloom .mp-goal-card.selected {
+	border-color: var(--mp-success);
+	background: rgba(92,184,92,0.06);
+	box-shadow: 0 0 16px rgba(92,184,92,0.10);
+}
+
+/* ── Top Bar ── */
+html.theme-bloom .mp-top-bar {
+	background: rgba(255,255,255,0.88);
+	border-bottom: 1px solid rgba(45,42,50,0.06);
+	box-shadow: 0 1px 8px rgba(45,42,50,0.05);
+}
+
+/* ── Sidebar ── */
+html.theme-bloom .mp-sidebar {
+	background: rgba(255,255,255,0.92);
+	border-right: 1px solid rgba(45,42,50,0.06);
+	box-shadow: 2px 0 12px rgba(45,42,50,0.04);
+}
+
+/* ── Bottom bar ── */
+html.theme-bloom .mp-bottom-bar {
+	background: rgba(255,255,255,0.90);
+	border-top: 1px solid rgba(45,42,50,0.06);
+	box-shadow: 0 -1px 8px rgba(45,42,50,0.05);
+}
+
+/* ── Scoreboard ── */
+html.theme-bloom .mp-score-row {
+	border-radius: 12px;
+	transition: all 0.25s ease;
+}
+
+html.theme-bloom .mp-score-row.is-active {
+	background: rgba(232,132,92,0.06);
+	border-left: 3px solid var(--mp-accent);
+}
+
+html.theme-bloom .mp-score-row.is-me {
+	background: rgba(232,132,92,0.04);
+}
+
+html.theme-bloom .mp-score-value-big {
+	color: var(--mp-gold);
+	text-shadow: none;
+}
+
+/* ── Room code badge ── */
+html.theme-bloom .mp-room-code-badge {
+	background: rgba(232,132,92,0.08);
+	border-color: rgba(232,132,92,0.22);
+	color: var(--mp-text);
+}
+
+/* ── Version badge ── */
+html.theme-bloom .mp-version-badge {
+	background: #ffffff;
+	border-color: rgba(45,42,50,0.10);
+	color: var(--mp-text-dim);
+}
+
+/* ── Objective badge ── */
+html.theme-bloom .mp-objective-badge {
+	background: rgba(212,147,10,0.06);
+	border: 1px solid rgba(212,147,10,0.15);
+	border-radius: 12px;
+	color: var(--mp-text);
+}
+
+html.theme-bloom .mp-objective-badge.objective-achieved {
+	background: rgba(92,184,92,0.08);
+	border-color: rgba(92,184,92,0.30);
+	box-shadow: 0 0 12px rgba(92,184,92,0.10);
+}
+
+html.theme-bloom .mp-objective-badge.objective-failed {
+	background: rgba(220,86,86,0.06);
+	border-color: rgba(220,86,86,0.25);
+}
+
+/* ── Cards (hand) ── */
+html.theme-bloom .mp-card {
+	background: #ffffff;
+	border: 2px solid rgba(45,42,50,0.08);
+	border-radius: 14px;
+	box-shadow: 0 2px 8px rgba(45,42,50,0.06);
+	transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+html.theme-bloom .mp-card.playable:hover {
+	border-color: rgba(232,132,92,0.40);
+	transform: translateY(-6px);
+	box-shadow: 0 10px 24px rgba(45,42,50,0.12), 0 0 8px rgba(232,132,92,0.10);
+}
+
+html.theme-bloom .mp-card.selected {
+	border-color: var(--mp-success);
+	box-shadow: 0 0 0 2px var(--mp-success), 0 6px 20px rgba(92,184,92,0.14);
+	transform: translateY(-6px);
+}
+
+html.theme-bloom .mp-card.golden {
+	border-color: rgba(212,147,10,0.35);
+	box-shadow: 0 0 12px rgba(212,147,10,0.10);
+}
+
+/* ── Zones ── */
+html.theme-bloom .mp-zone {
+	border-radius: 18px;
+	border-width: 1px;
+	box-shadow: 0 2px 12px rgba(45,42,50,0.06);
+	transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+html.theme-bloom .mp-zone-yellow {
+	background: linear-gradient(160deg, #fdf8ed 0%, #fefcf5 100%);
+	border-color: rgba(232,200,74,0.28);
+	box-shadow: 0 2px 12px rgba(232,200,74,0.08);
+}
+
+html.theme-bloom .mp-zone-green {
+	background: linear-gradient(160deg, #eef8f0 0%, #f5fbf6 100%);
+	border-color: rgba(90,171,110,0.25);
+	box-shadow: 0 2px 12px rgba(90,171,110,0.06);
+}
+
+html.theme-bloom .mp-zone-blue {
+	background: linear-gradient(160deg, #edf5fc 0%, #f4f9fd 100%);
+	border-color: rgba(90,158,201,0.25);
+	box-shadow: 0 2px 12px rgba(90,158,201,0.06);
+}
+
+html.theme-bloom .mp-zone-red {
+	background: linear-gradient(160deg, #fceff2 0%, #fdf5f7 100%);
+	border-color: rgba(212,107,122,0.25);
+	box-shadow: 0 2px 12px rgba(212,107,122,0.06);
+}
+
+html.theme-bloom .mp-zone-purple {
+	background: linear-gradient(160deg, #f3eef9 0%, #f8f5fc 100%);
+	border-color: rgba(150,120,196,0.25);
+	box-shadow: 0 2px 12px rgba(150,120,196,0.06);
+}
+
+/* ── Cells (Bloom: clean inset, pastel tints) ── */
+html.theme-bloom .mp-cell {
+	border-radius: 8px;
+	box-shadow: inset 0 1px 2px rgba(45,42,50,0.06);
+	transition: background 0.2s ease, transform 0.15s ease, box-shadow 0.2s ease;
+}
+
+html.theme-bloom .mp-cell.active {
+	box-shadow: inset 0 1px 2px rgba(45,42,50,0.10), 0 0 6px rgba(45,42,50,0.08);
+}
+
+/* Yellow cells bloom */
+html.theme-bloom .mp-zone-yellow .mp-cell {
+	background: rgba(232,200,74,0.12);
+	border-color: rgba(232,200,74,0.25);
+}
+
+html.theme-bloom .mp-zone-yellow .mp-cell.active {
+	background: var(--cell-yellow-active) !important;
+	border-color: var(--cell-yellow-active-border) !important;
+	box-shadow: 0 0 8px rgba(232,200,74,0.25) !important;
+}
+
+/* Green cells bloom */
+html.theme-bloom .mp-zone-green .mp-cell {
+	background: rgba(90,171,110,0.10);
+	border-color: rgba(90,171,110,0.22);
+}
+
+html.theme-bloom .mp-zone-green .mp-cell.active {
+	background: var(--cell-green-active) !important;
+	border-color: var(--cell-green-active-border) !important;
+	box-shadow: 0 0 8px rgba(90,171,110,0.25) !important;
+}
+
+html.theme-bloom .mp-zone-green .mp-cell.end:not(.active),
+html.theme-bloom .mp-zone-green .mp-cell.green-end:not(.active) {
+	background: rgba(61,138,82,0.15);
+	border-color: rgba(61,138,82,0.35);
+}
+
+html.theme-bloom .mp-zone-green .mp-cell.end.active,
+html.theme-bloom .mp-zone-green .mp-cell.end.end-claimed,
+html.theme-bloom .mp-zone-green .mp-cell.green-end.green-end-claimed {
+	background: #3d8a52 !important;
+	border-color: #7bcf8f !important;
+	box-shadow: 0 0 6px rgba(90,171,110,0.25), inset 0 0 0 1px rgba(123,207,143,0.2) !important;
+}
+
+/* Blue cells bloom */
+html.theme-bloom .mp-zone-blue .mp-cell {
+	background: rgba(90,158,201,0.10);
+	border-color: rgba(90,158,201,0.22);
+}
+
+html.theme-bloom .mp-zone-blue .mp-cell.active {
+	background: var(--cell-blue-active) !important;
+	border-color: var(--cell-blue-active-border) !important;
+	box-shadow: 0 0 8px rgba(90,158,201,0.25) !important;
+}
+
+/* Red cells bloom */
+html.theme-bloom .mp-zone-red .mp-cell {
+	background: rgba(212,107,122,0.10);
+	border-color: rgba(212,107,122,0.22);
+}
+
+html.theme-bloom .mp-zone-red .mp-cell.active {
+	background: var(--cell-red-active) !important;
+	border-color: var(--cell-red-active-border) !important;
+	box-shadow: 0 0 8px rgba(212,107,122,0.25) !important;
+}
+
+/* Purple cells bloom */
+html.theme-bloom .mp-zone-purple .mp-cell {
+	background: rgba(150,120,196,0.10);
+	border-color: rgba(150,120,196,0.22);
+}
+
+html.theme-bloom .mp-zone-purple .mp-cell.active {
+	background: var(--cell-purple-active) !important;
+	border-color: var(--cell-purple-active-border) !important;
+	box-shadow: 0 0 8px rgba(150,120,196,0.25) !important;
+}
+
+html.theme-bloom .mp-zone-purple .mp-cell.outer-ring-0:not(.active) {
+	background: rgba(150,120,196,0.04);
+	border-color: rgba(150,120,196,0.12);
+}
+
+html.theme-bloom .mp-zone-purple .mp-cell.outer-ring-1:not(.active) {
+	background: rgba(150,120,196,0.07);
+	border-color: rgba(150,120,196,0.15);
+}
+
+/* ── Stone cells ── */
+html.theme-bloom .mp-cell.stone {
+	background: linear-gradient(135deg, #c5c0b8, #b0a99e, #9e968a) !important;
+	border-color: #9e968a !important;
+	box-shadow: inset 0 2px 3px rgba(45,42,50,0.15), inset 0 -1px 1px rgba(255,255,255,0.3) !important;
+}
+
+/* ── Portal cells ── */
+html.theme-bloom .mp-cell.portal {
+	box-shadow: inset 0 0 8px rgba(150,120,196,0.18);
+}
+
+/* ── Yellow column points ── */
+html.theme-bloom .mp-yellow-col-point {
+	color: #a68a10;
+	background: rgba(232,200,74,0.12);
+	border: 1px solid rgba(232,200,74,0.25);
+	border-radius: 8px;
+}
+
+html.theme-bloom .mp-yellow-col-point.is-complete {
+	color: #8a7008;
+	background: rgba(232,200,74,0.22);
+	border-color: rgba(232,200,74,0.45);
+}
+
+/* ── Blue row points ── */
+html.theme-bloom .mp-blue-row-point {
+	color: #3d7a9e;
+	background: rgba(90,158,201,0.10);
+	border: 1px solid rgba(90,158,201,0.25);
+	border-radius: 8px;
+}
+
+html.theme-bloom .mp-blue-row-point.is-claimed {
+	color: #2c6080;
+	background: rgba(90,158,201,0.20);
+	border-color: rgba(90,158,201,0.45);
+}
+
+/* ── Green points guide ── */
+html.theme-bloom .mp-green-points-guide {
+	color: #3d8a52;
+	background: rgba(90,171,110,0.10);
+	border: 1px solid rgba(90,171,110,0.25);
+	border-radius: 10px;
+}
+
+/* ── Purple points guide ── */
+html.theme-bloom .mp-purple-points-guide {
+	color: #6e4ea5;
+	background: rgba(150,120,196,0.10);
+	border: 1px solid rgba(150,120,196,0.25);
+	border-radius: 10px;
+}
+
+/* ── Red subgrid wrap ── */
+html.theme-bloom .mp-red-subgrid-wrap {
+	border-radius: 14px;
+}
+
+html.theme-bloom .mp-red-subgrid-wrap.is-partial {
+	background: rgba(212,147,10,0.06);
+	box-shadow: inset 0 0 0 1px rgba(212,147,10,0.18);
+}
+
+html.theme-bloom .mp-red-subgrid-wrap.is-full {
+	background: rgba(92,184,92,0.06);
+	box-shadow: inset 0 0 0 1px rgba(92,184,92,0.22), 0 0 8px rgba(92,184,92,0.08);
+}
+
+html.theme-bloom .mp-red-subgrid-label {
+	color: var(--mp-gold);
+	background: rgba(212,147,10,0.08);
+	border-radius: 8px;
+}
+
+html.theme-bloom .mp-red-subgrid-wrap.is-full .mp-red-subgrid-label {
+	color: #3d8a52;
+	background: rgba(92,184,92,0.10);
+}
+
+html.theme-bloom .mp-red-subgrid-progress span {
+	background: linear-gradient(90deg, rgba(232,200,74,0.55), rgba(212,147,10,0.85));
+}
+
+html.theme-bloom .mp-red-subgrid-wrap.is-full .mp-red-subgrid-progress span {
+	background: linear-gradient(90deg, rgba(92,184,92,0.6), rgba(90,171,110,0.90));
+}
+
+/* ── Zone labels ── */
+html.theme-bloom .mp-zone-label {
+	opacity: 0.55;
+	font-weight: 800;
+	letter-spacing: 1.5px;
+	color: var(--mp-text);
+}
+
+/* ── Zone score hint ── */
+html.theme-bloom .mp-zone-score-hint {
+	color: var(--mp-gold);
+	background: rgba(212,147,10,0.08);
+	border-radius: 10px;
+}
+
+/* ── Bonus buttons ── */
+html.theme-bloom .mp-bonus-btn {
+	border-radius: 12px;
+	background: #f5f0eb;
+	border: 1px solid rgba(45,42,50,0.06);
+	transition: all 0.25s ease;
+}
+
+html.theme-bloom .mp-bonus-btn:hover:not(.disabled) {
+	background: #ede7df;
+	transform: scale(1.06);
+	box-shadow: 0 3px 10px rgba(45,42,50,0.10);
+}
+
+/* ── Bonus bar ── */
+html.theme-bloom .mp-bonus-bar {
+	border-top: 1px solid rgba(45,42,50,0.06);
+}
+
+/* ── Preview cells (placement) ── */
+html.theme-bloom .mp-cell.preview-valid {
+	outline: 2px solid var(--mp-success) !important;
+	box-shadow: 0 0 10px rgba(92,184,92,0.30);
+}
+
+html.theme-bloom .mp-cell.preview-denied {
+	outline: 2px solid var(--mp-error) !important;
+	box-shadow: 0 0 10px rgba(220,86,86,0.25);
+	background: rgba(220,86,86,0.08) !important;
+}
+
+/* ── Placement controls ── */
+html.theme-bloom #mp-placement-controls {
+	background: #ffffff;
+	border: 1px solid rgba(45,42,50,0.08);
+	border-radius: 16px;
+	box-shadow: 0 8px 32px rgba(45,42,50,0.12);
+}
+
+html.theme-bloom .mp-ctrl-btn {
+	background: var(--mp-accent);
+	color: #ffffff;
+	border-radius: 50%;
+	transition: all 0.25s ease;
+}
+
+html.theme-bloom .mp-ctrl-btn:hover {
+	box-shadow: 0 0 10px rgba(232,132,92,0.30);
+}
+
+html.theme-bloom .mp-ctrl-cancel {
+	background: var(--mp-error);
+}
+
+/* ── Gold counter ── */
+html.theme-bloom .mp-gold-counter {
+	color: var(--mp-gold);
+	background: rgba(212,147,10,0.06);
+	border: 1px solid rgba(212,147,10,0.18);
+	border-radius: 14px;
+}
+
+/* ── Opponent panels ── */
+html.theme-bloom .mp-opponent-panel {
+	background: #faf7f2;
+	border: 1px solid rgba(45,42,50,0.06);
+	border-radius: 12px;
+}
+
+html.theme-bloom .mp-opponent-panel.is-active {
+	border-color: rgba(232,132,92,0.30);
+	background: rgba(232,132,92,0.04);
+	box-shadow: 0 0 10px rgba(232,132,92,0.08);
+}
+
+html.theme-bloom .mp-opp-score {
+	color: var(--mp-gold);
+	text-shadow: none;
+}
+
+/* ── Opponent timer ── */
+html.theme-bloom .mp-opp-timer {
+	color: #3d7a9e;
+	background: rgba(90,158,201,0.08);
+	border-color: rgba(90,158,201,0.20);
+	border-radius: 14px;
+}
+
+html.theme-bloom .mp-opp-timer.is-warning {
+	color: #a67808;
+	border-color: rgba(240,160,48,0.40);
+	background: rgba(240,160,48,0.08);
+}
+
+html.theme-bloom .mp-opp-timer.is-critical {
+	color: #c04040;
+	border-color: rgba(220,86,86,0.40);
+	background: rgba(220,86,86,0.08);
+}
+
+/* ── Opponent card details ── */
+html.theme-bloom .mp-opp-card-detail {
+	background: #faf7f2;
+	border: 1px solid rgba(45,42,50,0.06);
+	border-radius: 10px;
+}
+
+html.theme-bloom .mp-opp-card-detail.is-selected-by-player {
+	border-color: rgba(232,132,92,0.50) !important;
+	box-shadow: 0 0 8px rgba(232,132,92,0.20);
+	background: rgba(232,132,92,0.05);
+}
+
+html.theme-bloom .mp-opp-card-detail:hover {
+	background: #f5f0eb;
+	border-color: rgba(45,42,50,0.12);
+}
+
+/* ── Opponent objective ── */
+html.theme-bloom .mp-opp-objective-hidden {
+	background: rgba(45,42,50,0.02);
+	border: 1px dashed rgba(45,42,50,0.10);
+}
+
+html.theme-bloom .mp-opp-objective-revealed {
+	background: rgba(212,147,10,0.06);
+	border: 1px solid rgba(212,147,10,0.18);
+}
+
+html.theme-bloom .mp-opp-objective-achieved {
+	background: rgba(92,184,92,0.08);
+	border-color: rgba(92,184,92,0.28);
+	color: #3d8a52;
+}
+
+html.theme-bloom .mp-opp-objective-failed {
+	background: rgba(220,86,86,0.06);
+	border-color: rgba(220,86,86,0.25);
+	color: #c04040;
+}
+
+/* ── Toast ── */
+html.theme-bloom .mp-toast-info {
+	background: linear-gradient(135deg, #e8845c, #d4724b);
+	color: #ffffff;
+}
+
+html.theme-bloom .mp-toast-success {
+	background: linear-gradient(135deg, #4a9e4a, #5cb85c);
+	color: #ffffff;
+}
+
+html.theme-bloom .mp-toast-warning {
+	background: linear-gradient(135deg, #e89520, #f0a030);
+	color: #ffffff;
+}
+
+html.theme-bloom .mp-toast-error {
+	background: linear-gradient(135deg, #c04040, #dc5656);
+	color: #ffffff;
+}
+
+/* ── Results ── */
+html.theme-bloom .mp-result-row {
+	background: #faf7f2;
+	border: 1px solid rgba(45,42,50,0.06);
+	border-radius: 12px;
+}
+
+html.theme-bloom .mp-result-row.winner {
+	border-color: rgba(212,147,10,0.30);
+	background: rgba(212,147,10,0.04);
+}
+
+html.theme-bloom .mp-result-row.is-me {
+	border-color: rgba(232,132,92,0.25);
+}
+
+html.theme-bloom .mp-result-total {
+	color: var(--mp-gold);
+}
+
+/* ── Level popup ── */
+html.theme-bloom .mp-level-popup {
+	background: #ffffff;
+	border: 1px solid rgba(45,42,50,0.08);
+	border-radius: 20px;
+	box-shadow: 0 24px 56px rgba(45,42,50,0.16);
+}
+
+html.theme-bloom .mp-level-title {
+	color: var(--mp-gold);
+}
+
+html.theme-bloom .mp-level-score-row {
+	background: #faf7f2;
+	border-radius: 12px;
+}
+
+html.theme-bloom .mp-level-score-row.winner {
+	background: rgba(212,147,10,0.06);
+	border: 1px solid rgba(212,147,10,0.18);
+}
+
+/* ── Shop ── */
+html.theme-bloom .mp-shop-card {
+	background: #ffffff;
+	border: 1px solid rgba(45,42,50,0.08);
+	border-radius: 20px;
+	box-shadow: 0 4px 20px rgba(45,42,50,0.10);
+}
+
+html.theme-bloom .mp-shop-offering {
+	background: #faf7f2;
+	border: 2px solid rgba(45,42,50,0.06);
+	border-radius: 16px;
+}
+
+html.theme-bloom .mp-shop-offering:not(.sold):not(.cant-afford):hover {
+	border-color: rgba(212,147,10,0.35);
+	background: rgba(212,147,10,0.04);
+	box-shadow: 0 3px 12px rgba(212,147,10,0.08);
+}
+
+html.theme-bloom .mp-shop-buy-btn {
+	border: 1px solid rgba(212,147,10,0.30);
+	background: rgba(212,147,10,0.08);
+	color: var(--mp-gold);
+	border-radius: 12px;
+}
+
+html.theme-bloom .mp-shop-buy-btn:hover:not(:disabled) {
+	background: rgba(212,147,10,0.16);
+}
+
+html.theme-bloom .mp-shop-item {
+	background: #faf7f2;
+	border: 1px solid rgba(45,42,50,0.06);
+	border-radius: 14px;
+}
+
+html.theme-bloom .mp-shop-item:hover:not(:disabled) {
+	border-color: rgba(212,147,10,0.30);
+	background: rgba(212,147,10,0.04);
+}
+
+/* ── Card choice modal ── */
+html.theme-bloom .mp-card-choice-content {
+	background: #ffffff;
+	border: 1px solid rgba(45,42,50,0.08);
+	border-radius: 20px;
+	box-shadow: 0 24px 56px rgba(45,42,50,0.16);
+}
+
+html.theme-bloom .mp-card-choice-option {
+	background: #faf7f2;
+	border: 2px solid rgba(45,42,50,0.06);
+	border-radius: 16px;
+}
+
+html.theme-bloom .mp-card-choice-option:hover {
+	border-color: rgba(212,147,10,0.35);
+	background: rgba(212,147,10,0.04);
+}
+
+/* ── Random reveal ── */
+html.theme-bloom .mp-random-reveal-card {
+	background: linear-gradient(165deg, #ffffff 0%, #faf7f2 100%);
+	border: 1px solid rgba(212,147,10,0.25);
+	border-radius: 18px;
+	box-shadow: 0 16px 36px rgba(45,42,50,0.14), 0 0 18px rgba(212,147,10,0.08);
+}
+
+/* ── Taunt bubbles ── */
+html.theme-bloom .mp-taunt-bubble {
+	background: #ffffff;
+	border: 1px solid rgba(45,42,50,0.08);
+	border-radius: 16px;
+	box-shadow: 0 4px 16px rgba(45,42,50,0.10);
+}
+
+html.theme-bloom .mp-taunt-bubble.is-me {
+	border-color: rgba(92,184,92,0.30);
+}
+
+html.theme-bloom .mp-taunt-bubble.is-me .mp-taunt-bubble-name {
+	color: var(--mp-success);
+}
+
+html.theme-bloom .mp-taunt-bubble-name {
+	color: var(--mp-accent);
+}
+
+/* ── Taunt menu ── */
+html.theme-bloom .mp-taunt-menu-toggle {
+	border-color: rgba(45,42,50,0.10);
+	background: #f5f0eb;
+	border-radius: 12px;
+}
+
+html.theme-bloom .mp-taunt-menu-panel {
+	background: #ffffff;
+	border: 1px solid rgba(45,42,50,0.08);
+	border-radius: 14px;
+	box-shadow: 0 8px 28px rgba(45,42,50,0.12);
+}
+
+html.theme-bloom .mp-taunt-btn {
+	border-color: rgba(45,42,50,0.08);
+	background: #faf7f2;
+}
+
+html.theme-bloom .mp-taunt-btn:hover {
+	background: #f0eae2;
+	border-color: rgba(45,42,50,0.15);
+}
+
+/* ── Move notification ── */
+html.theme-bloom .mp-move-notification {
+	background: #ffffff;
+	border: 1px solid rgba(45,42,50,0.08);
+	border-radius: 14px;
+	box-shadow: 0 6px 20px rgba(45,42,50,0.10);
+}
+
+/* ── Discard modal ── */
+html.theme-bloom .mp-discard-modal {
+	background: #ffffff;
+	border: 1px solid rgba(45,42,50,0.08);
+	border-radius: 16px;
+	box-shadow: 0 16px 40px rgba(45,42,50,0.14);
+}
+
+html.theme-bloom .mp-discard-card {
+	border: 1px solid rgba(45,42,50,0.08);
+	background: #faf7f2;
+	border-radius: 14px;
+}
+
+html.theme-bloom .mp-discard-card:hover {
+	border-color: rgba(232,132,92,0.35);
+	background: rgba(232,132,92,0.05);
+}
+
+/* ── Startdeck modal ── */
+html.theme-bloom .mp-startdeck-modal {
+	background: #ffffff;
+	border: 1px solid rgba(45,42,50,0.08);
+	border-radius: 20px;
+	box-shadow: 0 24px 56px rgba(45,42,50,0.16);
+}
+
+html.theme-bloom .mp-startdeck-card {
+	border: 1px solid rgba(45,42,50,0.08);
+	background: #faf7f2;
+	border-radius: 14px;
+}
+
+html.theme-bloom .mp-startdeck-card.selected {
+	border-color: rgba(232,132,92,0.45);
+	background: rgba(232,132,92,0.05);
+	box-shadow: 0 6px 20px rgba(232,132,92,0.12);
+}
+
+html.theme-bloom .mp-startdeck-meta {
+	color: var(--mp-text);
+	background: rgba(232,132,92,0.08);
+	border: 1px solid rgba(232,132,92,0.18);
+}
+
+/* ── Deck overlay ── */
+html.theme-bloom .mp-deck-overlay {
+	background: rgba(250,247,242,0.96);
+}
+
+html.theme-bloom .mp-deck-card {
+	background: #ffffff;
+	border: 2px solid rgba(45,42,50,0.08);
+	border-radius: 14px;
+	box-shadow: 0 2px 10px rgba(45,42,50,0.06);
+}
+
+html.theme-bloom .mp-deck-close-x {
+	border-color: rgba(45,42,50,0.10);
+	background: #f5f0eb;
+	border-radius: 50%;
+}
+
+html.theme-bloom .mp-deck-close-x:hover {
+	background: #ede7df;
+}
+
+/* ── Timer ── */
+html.theme-bloom .mp-timer-bar {
+	background: rgba(45,42,50,0.06);
+	border-radius: 10px;
+}
+
+html.theme-bloom .mp-timer-fill {
+	background: linear-gradient(90deg, #5aab6e, #7bcf8f);
+	border-radius: 10px;
+}
+
+html.theme-bloom .mp-timer-fill.timer-warning {
+	background: linear-gradient(90deg, #e89520, #f0a030);
+}
+
+html.theme-bloom .mp-timer-fill.timer-critical {
+	background: linear-gradient(90deg, #c04040, #dc5656);
+}
+
+/* ── Divider ── */
+html.theme-bloom .mp-divider::before,
+html.theme-bloom .mp-divider::after {
+	background: rgba(45,42,50,0.08);
+}
+
+/* ── Waiting dots ── */
+html.theme-bloom .mp-dots span {
+	background: var(--mp-accent);
+}
+
+/* ── Bomb overlay ── */
+html.theme-bloom .mp-bomb-overlay.active {
+	background: rgba(220,86,86,0.15);
+}
+
+/* ── Gold dot ── */
+html.theme-bloom .mp-cell-gold-dot {
+	background: radial-gradient(circle at 35% 35%, #fff8e0, #e8c84a 50%, #a67808 100%);
+}
+
+/* ── Pearl dot ── */
+html.theme-bloom .mp-cell-pearl-dot {
+	background: radial-gradient(circle at 35% 35%, #ffffff, #e8e4de 58%, #b0a89e 100%);
+}
+
+/* ── Bold cells ── */
+html.theme-bloom .mp-cell.bold {
+	border-color: rgba(45,42,50,0.50) !important;
+}
+
+html.theme-bloom .mp-cell.bold::before {
+	border-color: rgba(45,42,50,0.35);
+}
+
+/* ── Score bonuses ── */
+html.theme-bloom .mp-sb-bonus-dot {
+	border-radius: 12px;
+}
+
+/* ── Free label ── */
+html.theme-bloom .mp-free-label {
+	background: rgba(92,184,92,0.12);
+	color: #3d8a52;
+	border-radius: 12px;
+}
+
+/* ── Ready player ── */
+html.theme-bloom .mp-ready-player {
+	background: #f5f0eb;
+	border-radius: 999px;
+}
+
+html.theme-bloom .mp-ready-player.is-ready {
+	background: rgba(92,184,92,0.10);
+	color: #3d8a52;
+}
+
+html.theme-bloom .mp-ready-player.is-me {
+	border: 1px solid rgba(232,132,92,0.22);
+}
+
+/* ── Level overlay ── */
+html.theme-bloom .mp-level-overlay {
+	background: rgba(250,247,242,0.88);
+}
+
+/* ── Selection highlight ── */
+html.theme-bloom .mp-opp-selection {
+	color: var(--mp-text);
+	background: rgba(232,132,92,0.06);
+	border: 1px solid rgba(232,132,92,0.18);
+	border-radius: 10px;
+}
+
+/* ── Mini cell filled ── */
+html.theme-bloom .mp-mini-cell.filled {
+	background: rgba(45,42,50,0.18);
+}
+
+html.theme-bloom .mp-opp-card-shape .mp-mini-cell {
+	border-color: rgba(45,42,50,0.10);
+}
+
+/* ── Name required styling ── */
+html.theme-bloom .mp-input-group label {
+	color: var(--mp-text);
+}
+
+/* ── P2P Host button ── */
+.mp-btn-p2p-host {
+	background: linear-gradient(135deg, #6b4fa2, #8f76b8) !important;
+}
+
+html.theme-bloom .mp-btn-p2p-host {
+	background: linear-gradient(135deg, #9678c4, #b99ee0) !important;
+	color: #ffffff !important;
+	box-shadow: 0 3px 10px rgba(150,120,196,0.25) !important;
+}
+
+html.theme-bloom .mp-btn-p2p-host:hover:not(:disabled) {
+	background: linear-gradient(135deg, #a88ad4, #c9b2e8) !important;
+	box-shadow: 0 6px 18px rgba(150,120,196,0.35) !important;
+}
+
+/* ── Bloom: light scrollbar for select dropdowns ── */
+html.theme-bloom * {
+	scrollbar-color: rgba(232,132,92,0.35) rgba(45,42,50,0.04);
+}
+
+/* ── Bloom: player number badge ── */
+html.theme-bloom .mp-player-number {
+	background: #f0eae2;
+	color: var(--mp-text-dim);
+}
+
+/* ── Bloom: divider text ── */
+html.theme-bloom .mp-divider {
+	color: var(--mp-text-dim);
+}
+
+/* ── Bloom: objective title ── */
+html.theme-bloom .mp-objective-title {
+	color: var(--mp-gold);
+}
+
+/* ── Bloom: hand empty ── */
+html.theme-bloom .mp-hand-empty.mp-hand-bonus-turn {
+	color: var(--mp-gold);
+	background: rgba(212,147,10,0.06);
+}
+
+/* ── Bloom: score zones ── */
+html.theme-bloom .mp-sz {
+	background: rgba(45,42,50,0.04);
+}
+
+/* ── Bloom: offline badge ── */
+html.theme-bloom .mp-offline-badge {
+	color: var(--mp-error);
 }

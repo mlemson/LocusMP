@@ -11,13 +11,12 @@
 	     THEME SWITCHER (linksboven)
 	     ═══════════════════════════════════ -->
 	<div id="mp-theme-switcher" class="mp-theme-switcher">
-		<label class="mp-theme-toggle" title="Wissel tussen Classic en Aurora thema">
-			<input type="checkbox" id="mp-theme-checkbox" />
-			<span class="mp-theme-slider">
-				<span class="mp-theme-label-left">Classic</span>
-				<span class="mp-theme-label-right">Aurora</span>
-			</span>
-		</label>
+		<div class="mp-theme-pill" title="Kies een thema">
+			<button class="mp-theme-btn" data-theme="classic">Classic</button>
+			<button class="mp-theme-btn" data-theme="aurora">Aurora</button>
+			<button class="mp-theme-btn" data-theme="bloom">Bloom</button>
+			<span class="mp-theme-indicator"></span>
+		</div>
 	</div>
 
 	<!-- ════════════════════════════════════════
@@ -32,7 +31,7 @@
 
 		<div class="mp-lobby-card">
 			<div class="mp-input-group mp-name-required">
-				<div class="mp-name-callout">⚠️ Vul eerst je naam in voordat je een spel maakt of joint</div>
+				<div class="mp-name-callout">⚠️ Vul eerst je naam in om te starten</div>
 				<label for="player-name-input">👤 Jouw naam</label>
 				<input type="text" id="player-name-input" placeholder="Vul hier je naam in..." maxlength="20" autocomplete="off" required />
 			</div>
@@ -65,19 +64,19 @@
 			</div>
 
 			<button id="create-game-btn" class="mp-btn mp-btn-primary">
-				🎮 Nieuw Spel Maken
+				🎮 Nieuw Spel
 			</button>
 
-			<div class="mp-divider"><span>OF</span></div>
+			<div class="mp-divider"><span>of doe mee</span></div>
 
 			<div class="mp-input-group">
-				<label for="invite-code-input">Invite Code</label>
+				<label for="invite-code-input">Spelcode</label>
 				<input type="text" id="invite-code-input" placeholder="bv. ABC123"
 					   maxlength="6" autocomplete="off" style="text-transform: uppercase; letter-spacing: 4px; text-align: center;" />
 			</div>
 
 			<button id="join-game-btn" class="mp-btn mp-btn-secondary">
-				🔗 Join Spel
+				🔗 Deelnemen
 			</button>
 		</div>
 	</div>
@@ -201,7 +200,7 @@
 			<!-- Dynamisch gevuld -->
 		</div>
 		<button id="play-again-btn" class="mp-btn mp-btn-primary" style="margin-top: 24px;">
-			🔄 Opnieuw Spelen
+			🔄 Nog een Ronde
 		</button>
 	</div>
 
@@ -326,25 +325,43 @@
 		}
 
 		// ── Theme switcher logic ──
+		function _applyTheme(theme) {
+			document.documentElement.classList.remove('theme-aurora', 'theme-bloom');
+			if (theme === 'aurora') document.documentElement.classList.add('theme-aurora');
+			else if (theme === 'bloom') document.documentElement.classList.add('theme-bloom');
+		}
+
 		function _initThemeSwitcher() {
-			const cb = document.getElementById('mp-theme-checkbox');
-			if (!cb) return;
+			const pill = document.querySelector('.mp-theme-pill');
+			if (!pill) return;
+			const btns = pill.querySelectorAll('.mp-theme-btn');
+			const indicator = pill.querySelector('.mp-theme-indicator');
 			const saved = localStorage.getItem('locus-theme') || 'classic';
-			if (saved === 'aurora') {
-				cb.checked = true;
-				document.documentElement.classList.add('theme-aurora');
+
+			function setActive(theme) {
+				btns.forEach((btn, i) => {
+					const isActive = btn.dataset.theme === theme;
+					btn.classList.toggle('active', isActive);
+					if (isActive && indicator) {
+						indicator.style.transform = `translateX(${i * 100}%)`;
+					}
+				});
+				_applyTheme(theme);
+				localStorage.setItem('locus-theme', theme);
 			}
-			cb.addEventListener('change', () => {
-				const isAurora = cb.checked;
-				document.documentElement.classList.toggle('theme-aurora', isAurora);
-				localStorage.setItem('locus-theme', isAurora ? 'aurora' : 'classic');
+
+			setActive(saved);
+
+			btns.forEach(btn => {
+				btn.addEventListener('click', () => setActive(btn.dataset.theme));
 			});
 		}
+
 		// Apply theme immediately to avoid flash
 		(function() {
-			if (localStorage.getItem('locus-theme') === 'aurora') {
-				document.documentElement.classList.add('theme-aurora');
-			}
+			const saved = localStorage.getItem('locus-theme') || 'classic';
+			if (saved === 'aurora') document.documentElement.classList.add('theme-aurora');
+			else if (saved === 'bloom') document.documentElement.classList.add('theme-bloom');
 		})();
 
 		// Wacht iets langer zodat dynamisch geladen scripts (socket.io, peerjs fallback) tijd hebben
@@ -552,20 +569,20 @@
 			const p2pSection = document.createElement('div');
 			p2pSection.className = 'mp-p2p-section';
 			p2pSection.innerHTML = `
-				<div class="mp-divider"><span>${hasServer ? 'OF P2P (geen server)' : 'P2P Spel'}</span></div>
-				<button id="p2p-host-btn" class="mp-btn mp-btn-primary" style="background: linear-gradient(135deg, #6b4fa2, #8f76b8);">
-					🌐 Host P2P Spel
+				<div class="mp-divider"><span>${hasServer ? 'of direct spelen' : 'Direct Spelen'}</span></div>
+				<button id="p2p-host-btn" class="mp-btn mp-btn-primary mp-btn-p2p-host">
+					🌐 Host Spel
 				</button>
 				<div class="mp-input-group" style="margin-top: 10px;">
-					<label for="p2p-room-code-input">Room Code</label>
+					<label for="p2p-room-code-input">Spelcode</label>
 					<input type="text" id="p2p-room-code-input" placeholder="bv. A3BK7X"
 						   maxlength="6" autocomplete="off" style="text-transform: uppercase; letter-spacing: 4px; text-align: center;" />
 				</div>
 				<button id="p2p-join-btn" class="mp-btn mp-btn-secondary" style="margin-top: 4px;">
-					🔗 Join P2P Spel
+					🔗 Deelnemen
 				</button>
 				<small style="display:block; text-align:center; margin-top:6px; opacity:0.6;">
-					Direct verbinden via WebRTC — geen server nodig
+					Direct verbinden — geen server nodig
 				</small>
 			`;
 			lobbyCard.appendChild(p2pSection);
