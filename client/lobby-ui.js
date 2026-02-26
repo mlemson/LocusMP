@@ -2611,6 +2611,21 @@ class LocusLobbyUI {
 				return;
 			}
 
+			// Prioriteit 4: ruimere acceptatie — zoek dichtbij een geldige plek
+			const nearby = this._findNearbyValidBonusPlacement(zoneName, matrix, subgridId, [
+				{ x: adj.x, y: adj.y },
+				{ x: rawX, y: rawY }
+			]);
+			if (nearby) {
+				await this._attemptBonusPlacement(
+					zoneName,
+					nearby.x,
+					nearby.y,
+					nearby.subgridId || subgridId || null
+				);
+				return;
+			}
+
 			this._showToast('Ongeldige positie — hover eerst over de gewenste plek', 'warning');
 		};
 
@@ -2620,6 +2635,49 @@ class LocusLobbyUI {
 	_isBonusZoneAllowed(zoneName) {
 		if (!this._bonusMode) return false;
 		return this._bonusMode.color === 'any' || zoneName === this._bonusMode.color;
+	}
+
+	_findNearbyValidBonusPlacement(zoneName, matrix, subgridId = null, anchorPoints = []) {
+		if (!this._bonusMode || !this._isBonusZoneAllowed(zoneName)) return null;
+		if (!matrix || !matrix.length) return null;
+
+		const seeds = anchorPoints.filter(p => Number.isFinite(p?.x) && Number.isFinite(p?.y));
+		if (seeds.length === 0 && Number.isFinite(this._lastBonusBaseX) && Number.isFinite(this._lastBonusBaseY)) {
+			seeds.push({ x: this._lastBonusBaseX, y: this._lastBonusBaseY });
+		}
+		if (seeds.length === 0) return null;
+
+		const candidateOffsets = [{ dx: 0, dy: 0 }];
+		for (let radius = 1; radius <= 2; radius++) {
+			for (let dy = -radius; dy <= radius; dy++) {
+				for (let dx = -radius; dx <= radius; dx++) {
+					if (Math.max(Math.abs(dx), Math.abs(dy)) !== radius) continue;
+					candidateOffsets.push({ dx, dy });
+				}
+			}
+		}
+
+		const tried = new Set();
+		for (const seed of seeds) {
+			for (const offset of candidateOffsets) {
+				const x = seed.x + offset.dx;
+				const y = seed.y + offset.dy;
+				const key = `${x},${y}`;
+				if (tried.has(key)) continue;
+				tried.add(key);
+
+				const preview = this.mp.previewPlacement(zoneName, x, y, matrix, subgridId || null);
+				if (preview.valid) {
+					return {
+						x,
+						y,
+						subgridId: preview.subgridId || subgridId || null
+					};
+				}
+			}
+		}
+
+		return null;
 	}
 
 	_updateBonusPreview(e) {
