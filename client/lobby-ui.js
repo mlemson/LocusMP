@@ -53,6 +53,8 @@ class LocusLobbyUI {
 		this._forcedMobileBoardIndex = null;
 		this._lastMobileZoneName = null;
 		this._forceBlueBottomOnce = false;
+		this._mobileSwipeStartX = null;
+		this._mobileSwipeStartY = null;
 		this._lastBonusBaseX = null;
 		this._lastBonusBaseY = null;
 		this._lastBonusZone = null;
@@ -2372,7 +2374,7 @@ class LocusLobbyUI {
 			blue: { label: 'Blauw', color: '#5689b0' },
 			red: { label: 'Rood', color: '#b56069' },
 			purple: { label: 'Paars', color: '#8f76b8' },
-			any: { label: 'Multikleur', color: '#c47bd7' }
+			any: { label: 'Multikleur', color: 'rainbow' }
 		};
 
 		container.innerHTML = `
@@ -2782,7 +2784,7 @@ class LocusLobbyUI {
 
 	_updateBonusGhost() {
 		if (!this._bonusMode?.ghostEl) return;
-		const bonusColors = { yellow: '#cfba51', green: '#92c28c', blue: '#5689b0', red: '#b56069', purple: '#8f76b8', any: '#c47bd7' };
+		const bonusColors = { yellow: '#cfba51', green: '#92c28c', blue: '#5689b0', red: '#b56069', purple: '#8f76b8', any: 'rainbow' };
 		const colorCode = bonusColors[this._bonusMode.color] || '#888';
 		this._bonusMode.ghostEl.innerHTML = this._renderMiniGrid(this._bonusMode.matrix, { code: colorCode }, true, true);
 		this._computeBonusGhostOffsets();
@@ -2885,16 +2887,42 @@ class LocusLobbyUI {
 
 		const isTouchLikeRelease = e.pointerType === 'touch' || e.pointerType === 'pen';
 		if (isTouchLikeRelease) {
+			const zoneName = this._lastBonusZone;
 			const hasPreview = Number.isFinite(this._lastBonusBaseX)
 				&& Number.isFinite(this._lastBonusBaseY)
-				&& this._lastBonusZone === this._bonusMode.color;
+				&& !!zoneName
+				&& this._isBonusZoneAllowed(zoneName);
 			if (hasPreview) {
-				void this._attemptBonusPlacement(
-					this._lastBonusZone,
+				const previewResult = this.mp.previewPlacement(
+					zoneName,
 					this._lastBonusBaseX,
 					this._lastBonusBaseY,
+					this._bonusMode.matrix,
 					this._lastBonusSubgridId || null
 				);
+				if (previewResult.valid) {
+					void this._attemptBonusPlacement(
+						zoneName,
+						this._lastBonusBaseX,
+						this._lastBonusBaseY,
+						previewResult.subgridId || this._lastBonusSubgridId || null
+					);
+				} else {
+					const nearby = this._findNearbyValidBonusPlacement(
+						zoneName,
+						this._bonusMode.matrix,
+						this._lastBonusSubgridId || null,
+						[{ x: this._lastBonusBaseX, y: this._lastBonusBaseY }]
+					);
+					if (nearby) {
+						void this._attemptBonusPlacement(
+							zoneName,
+							nearby.x,
+							nearby.y,
+							nearby.subgridId || this._lastBonusSubgridId || null
+						);
+					}
+				}
 			}
 			return;
 		}
@@ -3073,6 +3101,9 @@ class LocusLobbyUI {
 		});
 		if (zoneName === 'blue') {
 			this._forceBlueBottomOnce = true;
+			if (smooth) {
+				setTimeout(() => this._scrollBlueZoneToBottom(zoneEl, true), 220);
+			}
 			this._scrollBlueZoneToBottom(zoneEl, true);
 		}
 		const zones = Array.from(board.querySelectorAll('.mp-zone'));
@@ -3100,6 +3131,7 @@ class LocusLobbyUI {
 			`;
 			const boardEl = container.querySelector('.mp-board');
 			if (boardEl) {
+				const zoneOrder = ['yellow', 'green', 'blue', 'red', 'purple'];
 				let rafId = null;
 				boardEl.addEventListener('scroll', () => {
 					if (rafId) return;
@@ -3109,14 +3141,43 @@ class LocusLobbyUI {
 						const idx = Math.max(0, Math.round(boardEl.scrollLeft / width));
 						const prevIdx = this._lastMobileBoardIndex;
 						this._lastMobileBoardIndex = idx;
-						const order = ['yellow', 'green', 'blue', 'red', 'purple'];
-						const zoneName = order[idx] || null;
+						const zoneName = zoneOrder[idx] || null;
 						if (zoneName === 'blue' && prevIdx !== 2) {
 							const blueZone = boardEl.querySelector('.mp-zone[data-zone="blue"]');
 							if (blueZone) this._scrollBlueZoneToBottom(blueZone, true);
 						}
 						this._lastMobileZoneName = zoneName;
 					});
+				}, { passive: true });
+
+				boardEl.addEventListener('touchstart', (e) => {
+					const t = e.touches?.[0];
+					if (!t) return;
+					this._mobileSwipeStartX = t.clientX;
+					this._mobileSwipeStartY = t.clientY;
+				}, { passive: true });
+
+				boardEl.addEventListener('touchend', (e) => {
+					if (!Number.isFinite(this._mobileSwipeStartX) || !Number.isFinite(this._mobileSwipeStartY)) return;
+					const t = e.changedTouches?.[0];
+					if (!t) return;
+					const dx = t.clientX - this._mobileSwipeStartX;
+					const dy = t.clientY - this._mobileSwipeStartY;
+					this._mobileSwipeStartX = null;
+					this._mobileSwipeStartY = null;
+
+					if (Math.abs(dx) < 40 || Math.abs(dx) <= Math.abs(dy)) return;
+					const idx = Number.isFinite(this._lastMobileBoardIndex) ? this._lastMobileBoardIndex : this._getCurrentMobileBoardIndex();
+					if (!Number.isFinite(idx)) return;
+
+					const lastIdx = zoneOrder.length - 1;
+					if (idx === lastIdx && dx < 0) {
+						this._forcedMobileBoardIndex = 0;
+						this._scrollMobileBoardToZone(zoneOrder[0], false);
+					} else if (idx === 0 && dx > 0) {
+						this._forcedMobileBoardIndex = lastIdx;
+						this._scrollMobileBoardToZone(zoneOrder[lastIdx], false);
+					}
 				}, { passive: true });
 			}
 		} else {
