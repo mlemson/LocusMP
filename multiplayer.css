@@ -1533,6 +1533,23 @@ html, body {
 	box-shadow: 0 0 4px rgba(0,0,0,0.4);
 }
 
+.mp-cell.bonus-any .mp-cell-bonus-dot {
+	background: linear-gradient(135deg, #cfba51 0%, #92c28c 24%, #5689b0 48%, #b56069 72%, #8f76b8 100%) !important;
+	border: 1.2px solid rgba(255,255,255,0.55);
+	box-shadow: 0 0 6px rgba(255,255,255,0.4), 0 0 8px rgba(143, 118, 184, 0.35);
+}
+
+.mp-cell.bonus-just-spawned {
+	animation: mpBonusSpawnPulse 1.7s ease-out;
+}
+
+@keyframes mpBonusSpawnPulse {
+	0% { transform: scale(0.82); box-shadow: 0 0 0 rgba(245, 215, 110, 0); }
+	24% { transform: scale(1.12); box-shadow: 0 0 14px rgba(245, 215, 110, 0.75); }
+	48% { transform: scale(1.03); box-shadow: 0 0 8px rgba(196, 123, 215, 0.45); }
+	100% { transform: scale(1); box-shadow: 0 0 0 rgba(245, 215, 110, 0); }
+}
+
 .mp-cell-gold-dot {
 	display: block;
 	width: 14px;
@@ -7225,6 +7242,14 @@ html.theme-bloom .mp-cell.bonus-purple .mp-cell-bonus-dot {
 	border-radius: 3px;
 	border: 1.5px solid #5a3e8a;
 	box-shadow: 0 1px 4px rgba(0,0,0,0.32);
+}
+
+html.theme-bloom .mp-cell.bonus-any .mp-cell-bonus-dot {
+	background: linear-gradient(135deg, #d4c055 0%, #92c28c 24%, #5689b0 48%, #b56069 72%, #8f76b8 100%) !important;
+	width: 12px; height: 12px;
+	border-radius: 3px;
+	border: 1.5px solid #6f5a9f;
+	box-shadow: 0 1px 5px rgba(0,0,0,0.34), 0 0 8px rgba(143,118,184,0.22);
 }
 
 /* ── Score bonuses ── */

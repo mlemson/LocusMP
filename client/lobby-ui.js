@@ -51,8 +51,11 @@ class LocusLobbyUI {
 		this._interactionMoveThrottleTs = 0;
 		this._lastMobileBoardIndex = 0;
 		this._forcedMobileBoardIndex = null;
+		this._lastBonusBaseX = null;
+		this._lastBonusBaseY = null;
 		this._lastBonusZone = null;
 		this._lastBonusSubgridId = null;
+		this._pendingBonusSpawnCells = [];
 		this._mobileGestureGuardsBound = false;
 		this._startDeckOverlay = null;
 		this._oppTimerInterval = null;
@@ -1145,12 +1148,15 @@ class LocusLobbyUI {
 
 			const bonusColors = {
 				yellow: '#cfba51', green: '#92c28c', blue: '#5689b0',
-				red: '#b56069', purple: '#8f76b8'
+				red: '#b56069', purple: '#8f76b8', any: '#c47bd7'
 			};
 			const bonusDots = totalBonuses > 0
-				? Object.entries(inv).filter(([,v]) => v > 0).map(([c, v]) =>
-					`<span class="mp-sb-bonus-dot" style="background:${bonusColors[c]}" title="${c}: ${v}">x${v}</span>`
-				).join('')
+				? Object.entries(inv).filter(([,v]) => v > 0).map(([c, v]) => {
+					const dotStyle = c === 'any'
+						? 'background: linear-gradient(135deg, #cfba51 0%, #92c28c 24%, #5689b0 48%, #b56069 72%, #8f76b8 100%); border: 1px solid rgba(255,255,255,0.45);'
+						: `background:${bonusColors[c] || '#888'}`;
+					return `<span class="mp-sb-bonus-dot" style="${dotStyle}" title="${c}: ${v}">x${v}</span>`;
+				}).join('')
 				: '';
 
 			return `
@@ -2352,7 +2358,7 @@ class LocusLobbyUI {
 		if (newBonuses.length > 0) {
 			// Toon melding voor nieuwe bonussen
 			const bonusLabelsMap = {
-				yellow: 'Geel', green: 'Groen', blue: 'Blauw', red: 'Rood', purple: 'Paars'
+				yellow: 'Geel', green: 'Groen', blue: 'Blauw', red: 'Rood', purple: 'Paars', any: 'Multikleur'
 			};
 			const names = newBonuses.map(c => bonusLabelsMap[c] || c).join(', ');
 			this._showToast(`🎁 Nieuwe bonus: ${names}! Speel deze in je beurt.`, 'success');
@@ -2363,7 +2369,8 @@ class LocusLobbyUI {
 			green: { label: 'Groen', color: '#92c28c' },
 			blue: { label: 'Blauw', color: '#5689b0' },
 			red: { label: 'Rood', color: '#b56069' },
-			purple: { label: 'Paars', color: '#8f76b8' }
+			purple: { label: 'Paars', color: '#8f76b8' },
+			any: { label: 'Multikleur', color: '#c47bd7' }
 		};
 
 		container.innerHTML = `
@@ -2446,7 +2453,7 @@ class LocusLobbyUI {
 
 		const matrix = bonusColor === 'red'
 			? Rules.cloneMatrix(Rules.BONUS_SHAPES.red)
-			: Rules.cloneMatrix(Rules.BONUS_SHAPES.default);
+			: (bonusColor === 'any' ? Rules.cloneMatrix(Rules.BONUS_SHAPES.any) : Rules.cloneMatrix(Rules.BONUS_SHAPES.default));
 
 		this._bonusMode = { color: bonusColor, matrix, rotation: 0, baseRotation: 0, ghostEl: null };
 		this._setTouchDragScrollLock(this._isTouchLikeDevice());
@@ -2462,7 +2469,8 @@ class LocusLobbyUI {
 			green: { label: 'Groen', color: '#92c28c' },
 			blue: { label: 'Blauw', color: '#5689b0' },
 			red: { label: 'Rood', color: '#b56069' },
-			purple: { label: 'Paars', color: '#8f76b8' }
+			purple: { label: 'Paars', color: '#8f76b8' },
+			any: { label: 'Multikleur', color: '#c47bd7' }
 		};
 		const bInfo = bonusLabels[bonusColor] || { label: bonusColor, color: '#888' };
 
@@ -2484,7 +2492,7 @@ class LocusLobbyUI {
 		const controls = document.createElement('div');
 		controls.id = 'mp-placement-controls';
 		controls.innerHTML = `
-			<span class="mp-ctrl-label">Bonus: <strong>${bInfo.label}</strong> — klik op de ${bInfo.label} zone</span>
+			<span class="mp-ctrl-label">Bonus: <strong>${bInfo.label}</strong> — klik op ${bonusColor === 'any' ? 'een zone naar keuze' : `de ${bInfo.label} zone`}</span>
 			<button class="mp-ctrl-btn" id="mp-rotate-btn" title="Draai (R)">🔄</button>
 			<button class="mp-ctrl-btn mp-ctrl-cancel" id="mp-cancel-btn" title="Annuleer (Esc)">✕</button>
 		`;
@@ -2554,8 +2562,8 @@ class LocusLobbyUI {
 			const subgridId = cell.dataset.subgrid || null;
 			if (!zoneName || !Number.isFinite(rawX) || !Number.isFinite(rawY)) return;
 
-			// Alleen plaatsen op de passende zone
-			if (zoneName !== this._bonusMode.color) return;
+			// Alleen plaatsen op toegestane zone(s)
+			if (!this._isBonusZoneAllowed(zoneName)) return;
 
 			// Prioriteit 1: gebruik de actieve preview-positie als die geldig was op dezelfde zone
 			const hasPreview = this._lastBonusZone === zoneName
@@ -2607,6 +2615,11 @@ class LocusLobbyUI {
 		container.addEventListener('click', this._bonusClickHandler);
 	}
 
+	_isBonusZoneAllowed(zoneName) {
+		if (!this._bonusMode) return false;
+		return this._bonusMode.color === 'any' || zoneName === this._bonusMode.color;
+	}
+
 	_updateBonusPreview(e) {
 		if (!this._bonusMode) return;
 		this._clearPreview();
@@ -2641,8 +2654,8 @@ class LocusLobbyUI {
 		this._lastBonusZone = bestZone;
 		this._lastBonusSubgridId = hoverSubgridId;
 
-		// Verkeerde zone? 
-		if (bestZone !== this._bonusMode.color) {
+		// Verkeerde zone?
+		if (!this._isBonusZoneAllowed(bestZone)) {
 			if (ghost) { ghost.classList.add('preview-denied'); ghost.classList.remove('preview-ok'); }
 			this._showDeniedPreviewCells(bestZone, baseX, baseY, matrix, boardState, zoneHits[0]?.gridCell);
 			return;
@@ -2709,7 +2722,7 @@ class LocusLobbyUI {
 
 	_updateBonusGhost() {
 		if (!this._bonusMode?.ghostEl) return;
-		const bonusColors = { yellow: '#cfba51', green: '#92c28c', blue: '#5689b0', red: '#b56069', purple: '#8f76b8' };
+		const bonusColors = { yellow: '#cfba51', green: '#92c28c', blue: '#5689b0', red: '#b56069', purple: '#8f76b8', any: '#c47bd7' };
 		const colorCode = bonusColors[this._bonusMode.color] || '#888';
 		this._bonusMode.ghostEl.innerHTML = this._renderMiniGrid(this._bonusMode.matrix, { code: colorCode }, true, true);
 		this._computeBonusGhostOffsets();
@@ -3180,7 +3193,8 @@ class LocusLobbyUI {
 		if (cell.bonusSymbol && !cell.active) {
 			const bonusColors = {
 				yellow: '#cfba51', green: '#92c28c', blue: '#5689b0',
-				red: '#b56069', purple: '#8f76b8'
+				red: '#b56069', purple: '#8f76b8',
+				any: 'linear-gradient(135deg, #cfba51 0%, #92c28c 24%, #5689b0 48%, #b56069 72%, #8f76b8 100%)'
 			};
 			inner = `<span class="mp-cell-bonus-dot" style="background:${bonusColors[cell.bonusSymbol] || '#888'}"></span>`;
 		}
@@ -4080,6 +4094,7 @@ class LocusLobbyUI {
 			this._cancelBonusMode();
 
 			try { this._renderBoard(state.boardState); } catch (e) { console.error('[Locus UI] renderBoard error:', e); }
+			try { this._playPendingBonusSpawnAnimations(); } catch (e) { console.error('[Locus UI] playPendingBonusSpawnAnimations error:', e); }
 			try { this._renderScoreboard(); } catch (e) { console.error('[Locus UI] renderScoreboard error:', e); }
 			try { this._renderHand(); } catch (e) { console.error('[Locus UI] renderHand error:', e); }
 			try { this._updateTurnIndicator(); } catch (e) { console.error('[Locus UI] updateTurnIndicator error:', e); }
@@ -4160,10 +4175,76 @@ class LocusLobbyUI {
 					: `+${spawned} extra bonussen`;
 				this._showToast(isRoundStart ? `Ronde ${round}: ${detail}` : `Halverwege: ${detail}`, 'success');
 				this._playRevealSound();
+				this._pendingBonusSpawnCells = this._collectNewBonusSpawnCells(prevState?.boardState, state?.boardState);
 			} else if (isRoundStart) {
 				this._showToast(`Ronde ${round}: geen ruimte voor extra bonussen`, 'info');
 			}
 		}
+	}
+
+	_collectNewBonusSpawnCells(prevBoard, nextBoard) {
+		const additions = [];
+		if (!prevBoard?.zones || !nextBoard?.zones) return additions;
+
+		const zoneNames = ['yellow', 'green', 'blue', 'purple'];
+		for (const zoneName of zoneNames) {
+			const prevZone = prevBoard.zones?.[zoneName];
+			const nextZone = nextBoard.zones?.[zoneName];
+			if (!prevZone?.cells || !nextZone?.cells) continue;
+			for (const [key, nextCell] of Object.entries(nextZone.cells)) {
+				const prevCell = prevZone.cells?.[key];
+				if (!nextCell || nextCell.active) continue;
+				if (!prevCell?.bonusSymbol && nextCell.bonusSymbol) {
+					additions.push({ zoneName, subgridId: null, x: nextCell.x, y: nextCell.y, bonusSymbol: nextCell.bonusSymbol });
+				}
+			}
+		}
+
+		const prevRed = prevBoard.zones?.red?.subgrids || [];
+		const nextRed = nextBoard.zones?.red?.subgrids || [];
+		for (const nextSubgrid of nextRed) {
+			const prevSubgrid = prevRed.find(sg => sg.id === nextSubgrid.id);
+			if (!nextSubgrid?.cells || !prevSubgrid?.cells) continue;
+			for (const [key, nextCell] of Object.entries(nextSubgrid.cells)) {
+				const prevCell = prevSubgrid.cells?.[key];
+				if (!nextCell || nextCell.active) continue;
+				if (!prevCell?.bonusSymbol && nextCell.bonusSymbol) {
+					additions.push({ zoneName: 'red', subgridId: nextSubgrid.id, x: nextCell.x, y: nextCell.y, bonusSymbol: nextCell.bonusSymbol });
+				}
+			}
+		}
+
+		return additions;
+	}
+
+	_playPendingBonusSpawnAnimations() {
+		const pending = Array.isArray(this._pendingBonusSpawnCells) ? this._pendingBonusSpawnCells : [];
+		if (pending.length === 0) return;
+		this._pendingBonusSpawnCells = [];
+
+		const bonusColors = {
+			yellow: '#cfba51', green: '#92c28c', blue: '#5689b0',
+			red: '#b56069', purple: '#8f76b8', any: '#c47bd7'
+		};
+
+		pending.forEach((entry, idx) => {
+			const selector = entry.subgridId
+				? `.mp-cell[data-zone="${entry.zoneName}"][data-subgrid="${entry.subgridId}"][data-x="${entry.x}"][data-y="${entry.y}"]`
+				: `.mp-cell[data-zone="${entry.zoneName}"][data-x="${entry.x}"][data-y="${entry.y}"]`;
+			const cellEl = document.querySelector(selector);
+			if (!cellEl) return;
+
+			cellEl.classList.add('bonus-just-spawned');
+			setTimeout(() => cellEl.classList.remove('bonus-just-spawned'), 1700);
+
+			if (idx < 8) {
+				const rect = cellEl.getBoundingClientRect();
+				const cx = rect.left + rect.width / 2;
+				const cy = rect.top + rect.height / 2;
+				this._showSparkle(cx, cy, 4);
+				this._showConfetti(cx, cy, 6, [bonusColors[entry.bonusSymbol] || '#ffffff', '#ffffff']);
+			}
+		});
 	}
 
 	_capturePrevScores(prevState) {
@@ -4358,7 +4439,7 @@ class LocusLobbyUI {
 		if (bonusesCollected && bonusesCollected.length > 0) {
 			const bonusColors = {
 				yellow: '#cfba51', green: '#92c28c', blue: '#5689b0',
-				red: '#b56069', purple: '#8f76b8'
+				red: '#b56069', purple: '#8f76b8', any: '#c47bd7'
 			};
 			for (let i = 0; i < bonusesCollected.length; i++) {
 				const bc = bonusesCollected[i];

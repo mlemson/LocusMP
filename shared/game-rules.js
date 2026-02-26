@@ -87,7 +87,8 @@ const ZONE_THEMES = {
 
 const BONUS_SHAPES = {
 	default: [[1],[1]],   // Domino (2 cells)
-	red: [[1],[1]]        // Domino (2 cells) voor rood
+	red: [[1],[1]],       // Domino (2 cells) voor rood
+	any: [[1]]            // Multikleur bonus is 1x1 en overal plaatsbaar
 };
 
 // ──────────────────────────────────────────────
@@ -182,7 +183,7 @@ function rotateMatrixN(matrix, times) {
  *   color: null | { name, code },
  *   playerId: null | string,
  *   flags: ['bold', 'end', 'portal', 'gold', 'bonus-yellow', ...]
- *   bonusSymbol: null | 'yellow' | 'red' | 'green' | 'purple' | 'blue'
+ *   bonusSymbol: null | 'yellow' | 'red' | 'green' | 'purple' | 'blue' | 'any'
  * }
  */
 
@@ -761,6 +762,7 @@ function placeBonusSymbols(zoneData, rng, count, options = {}) {
 	const bonusColors = ['yellow', 'red', 'green', 'purple', 'blue'];
 	const preferredColor = bonusColors.includes(options.preferredColor) ? options.preferredColor : null;
 	const preferredChance = Math.max(0, Math.min(1, Number(options.preferredChance || 0)));
+	const multicolorChance = Math.max(0, Math.min(1, Number(options.multicolorChance || 0.08)));
 	const targetCount = Math.max(0, Math.floor((Number(count) || 0) * 2));
 	const availableCells = Object.values(zoneData.cells).filter(c =>
 		!c.active &&
@@ -772,9 +774,14 @@ function placeBonusSymbols(zoneData, rng, count, options = {}) {
 
 	const shuffled = shuffleWithRNG(availableCells, rng);
 	for (let i = 0; i < Math.min(targetCount, shuffled.length); i++) {
-		const color = (preferredColor && rng() < preferredChance)
-			? preferredColor
-			: bonusColors[Math.floor(rng() * bonusColors.length)];
+		let color;
+		if (preferredColor && rng() < preferredChance) {
+			color = preferredColor;
+		} else if (rng() < multicolorChance) {
+			color = 'any';
+		} else {
+			color = bonusColors[Math.floor(rng() * bonusColors.length)];
+		}
 		shuffled[i].bonusSymbol = color;
 	}
 }
@@ -784,6 +791,7 @@ function placeSingleBonusSymbol(zoneData, rng, options = {}) {
 	const bonusColors = ['yellow', 'red', 'green', 'purple', 'blue'];
 	const preferredColor = bonusColors.includes(options.preferredColor) ? options.preferredColor : null;
 	const preferredChance = Math.max(0, Math.min(1, Number(options.preferredChance || 0)));
+	const multicolorChance = Math.max(0, Math.min(1, Number(options.multicolorChance || 0.08)));
 	const availableCells = Object.values(zoneData.cells).filter(c =>
 		!c.active &&
 		!c.flags.includes('bold') &&
@@ -793,9 +801,14 @@ function placeSingleBonusSymbol(zoneData, rng, options = {}) {
 	);
 	if (availableCells.length === 0) return false;
 	const cell = availableCells[Math.floor(rng() * availableCells.length)];
-	const color = (preferredColor && rng() < preferredChance)
-		? preferredColor
-		: bonusColors[Math.floor(rng() * bonusColors.length)];
+	let color;
+	if (preferredColor && rng() < preferredChance) {
+		color = preferredColor;
+	} else if (rng() < multicolorChance) {
+		color = 'any';
+	} else {
+		color = bonusColors[Math.floor(rng() * bonusColors.length)];
+	}
 	cell.bonusSymbol = color;
 	return true;
 }
@@ -2581,7 +2594,7 @@ function addPlayer(gameState, playerId, playerName) {
 		chosenObjective: null,
 		score: 0,
 		scoreBreakdown: null,
-		bonusInventory: { yellow: 0, red: 0, green: 0, purple: 0, blue: 0 },
+		bonusInventory: { yellow: 0, red: 0, green: 0, purple: 0, blue: 0, any: 0 },
 		goldCoins: 0,
 		shopReady: false,
 		shopCards: [],
@@ -2761,7 +2774,7 @@ function playMove(gameState, playerId, cardId, zoneName, baseX, baseY, rotation,
 		objectiveAchievedPoints: player.objectiveAchievedPoints || 0,
 		objectiveProgress: player.objectiveProgress ? { ...player.objectiveProgress } : null,
 		goldCoins: player.goldCoins || 0,
-		bonusInventory: player.bonusInventory ? { ...player.bonusInventory } : { yellow: 0, red: 0, green: 0, purple: 0, blue: 0 }
+		bonusInventory: player.bonusInventory ? { ...player.bonusInventory } : { yellow: 0, red: 0, green: 0, purple: 0, blue: 0, any: 0 }
 	};
 
 	// Max 1 regular kaart per beurt — gouden kaarten mogen als EXTRA gespeeld worden
@@ -2896,7 +2909,9 @@ function playBonus(gameState, playerId, bonusColor, zoneName, baseX, baseY, subg
 	}
 
 	// Bonus shape — pas rotatie toe
-	let matrix = bonusColor === 'red' ? cloneMatrix(BONUS_SHAPES.red) : cloneMatrix(BONUS_SHAPES.default);
+	let matrix = bonusColor === 'red'
+		? cloneMatrix(BONUS_SHAPES.red)
+		: (bonusColor === 'any' ? cloneMatrix(BONUS_SHAPES.any) : cloneMatrix(BONUS_SHAPES.default));
 	const rot = (Number(rotation) || 0) % 4;
 	for (let r = 0; r < rot; r++) { matrix = rotateMatrix90(matrix); }
 
@@ -3274,7 +3289,7 @@ function advanceTurn(gameState) {
 						objectiveAchievedPoints: nextPlayer.objectiveAchievedPoints || 0,
 						objectiveProgress: nextPlayer.objectiveProgress ? { ...nextPlayer.objectiveProgress } : null,
 						goldCoins: nextPlayer.goldCoins || 0,
-						bonusInventory: nextPlayer.bonusInventory ? { ...nextPlayer.bonusInventory } : { yellow: 0, red: 0, green: 0, purple: 0, blue: 0 }
+						bonusInventory: nextPlayer.bonusInventory ? { ...nextPlayer.bonusInventory } : { yellow: 0, red: 0, green: 0, purple: 0, blue: 0, any: 0 }
 					},
 					placedCells: [],
 					zoneName: null,
