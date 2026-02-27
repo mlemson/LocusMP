@@ -3239,6 +3239,16 @@ class LocusLobbyUI {
 
 		const isTouchLikeRelease = e.pointerType === 'touch' || e.pointerType === 'pen';
 		if (isTouchLikeRelease) {
+			const target = e.target;
+			const directBoardHit = target?.closest?.('#mp-board-container .mp-cell:not(.void), #mp-board-container .mp-grid, #mp-board-container .mp-zone');
+			const pointEl = document.elementFromPoint(e.clientX, e.clientY);
+			const pointBoardHit = pointEl?.closest?.('#mp-board-container .mp-cell:not(.void), #mp-board-container .mp-grid, #mp-board-container .mp-zone');
+			if (!directBoardHit && !pointBoardHit) {
+				this._setTouchDragScrollLock(false);
+				this._showToast('Bonus niet geplaatst — zet hem op het grid om te plaatsen', 'info');
+				return;
+			}
+
 			const zoneName = this._lastBonusZone;
 			const hasPreview = Number.isFinite(this._lastBonusBaseX)
 				&& Number.isFinite(this._lastBonusBaseY)
