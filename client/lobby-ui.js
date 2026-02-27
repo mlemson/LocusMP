@@ -3566,6 +3566,9 @@ class LocusLobbyUI {
 				: (Number.isFinite(this._lastMobileBoardIndex)
 					? this._lastMobileBoardIndex
 					: (Number.isFinite(prevMobileIdx) ? prevMobileIdx : 0));
+			// Instantly restore scroll position to prevent zone flicker
+			this._restoreMobileBoardIndex(targetIdx || 0);
+			// Second pass in rAF to ensure layout has settled (e.g. blue bottom scroll)
 			requestAnimationFrame(() => this._restoreMobileBoardIndex(targetIdx || 0));
 			this._forcedMobileBoardIndex = null;
 		}
