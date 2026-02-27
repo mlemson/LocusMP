@@ -5741,6 +5741,604 @@ html.theme-aurora .mp-opp-selection {
 	border-radius: 8px;
 }
 
+/* ══════════════════════════════════════════════════════════════════════
+   AURORA — Extended polish & missing features
+   Ported from Bloom, adapted for dark/neon aesthetic
+   ══════════════════════════════════════════════════════════════════════ */
+
+/* ── Aurora Keyframes ──────────────────────────────────────────── */
+
+@keyframes aurora-place-celebrate {
+	0%   { transform: scale(1);    filter: brightness(1) saturate(1);   }
+	15%  { transform: scale(1.06); filter: brightness(1.3) saturate(1.5); }
+	30%  { transform: scale(0.97); filter: brightness(1.1) saturate(1.3); }
+	50%  { transform: scale(1.02); filter: brightness(1.15) saturate(1.15);}
+	100% { transform: scale(1);    filter: brightness(1) saturate(1);   }
+}
+
+@keyframes aurora-pulse-glow {
+	0%, 100% { box-shadow: 0 0 0 0 rgba(99,102,241,0.4), 0 0 0 0 rgba(52,211,153,0.2); }
+	50%      { box-shadow: 0 0 0 10px rgba(99,102,241,0), 0 0 18px 4px rgba(52,211,153,0); }
+}
+
+@keyframes aurora-score-pop {
+	0%   { transform: scale(0.3) translateY(0); opacity: 0; filter: blur(4px); }
+	20%  { transform: scale(1.5) translateY(-14px); opacity: 1; filter: blur(0); }
+	40%  { transform: scale(0.85) translateY(-8px); opacity: 1; }
+	60%  { transform: scale(1.15) translateY(-10px); opacity: 0.9; }
+	100% { transform: scale(0.7) translateY(-45px); opacity: 0; filter: blur(2px); }
+}
+
+@keyframes aurora-shimmer {
+	0%   { background-position: -200% 0; }
+	100% { background-position: 300% 0;  }
+}
+
+@keyframes aurora-timer-shine {
+	0%   { background-position: -200% 0; }
+	100% { background-position: 200% 0;  }
+}
+
+@keyframes aurora-bonus-glow {
+	0%, 100% { box-shadow: 0 0 0 0 rgba(99,102,241,0.3); }
+	50%      { box-shadow: 0 0 12px 2px rgba(99,102,241,0.15); }
+}
+
+/* ── Zone depth enhancement ── */
+html.theme-aurora .mp-zone {
+	border-radius: 16px;
+	border-width: 1px;
+	box-shadow: 0 4px 24px rgba(0,0,0,0.45), 0 1px 3px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.03);
+	transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+html.theme-aurora .mp-zone-yellow {
+	background: linear-gradient(160deg, rgba(240,192,64,0.10) 0%, rgba(240,192,64,0.03) 50%, rgba(240,192,64,0.06) 100%);
+	border-color: rgba(240,192,64,0.22);
+	box-shadow: 0 4px 24px rgba(0,0,0,0.45), inset 0 0 30px rgba(240,192,64,0.04), inset 0 1px 0 rgba(240,192,64,0.08);
+}
+
+html.theme-aurora .mp-zone-green {
+	background: linear-gradient(160deg, rgba(52,211,153,0.09) 0%, rgba(52,211,153,0.02) 50%, rgba(52,211,153,0.05) 100%);
+	border-color: rgba(52,211,153,0.22);
+	box-shadow: 0 4px 24px rgba(0,0,0,0.45), inset 0 0 30px rgba(52,211,153,0.03), inset 0 1px 0 rgba(52,211,153,0.08);
+}
+
+html.theme-aurora .mp-zone-blue {
+	background: linear-gradient(160deg, rgba(56,189,248,0.09) 0%, rgba(56,189,248,0.02) 50%, rgba(56,189,248,0.05) 100%);
+	border-color: rgba(56,189,248,0.22);
+	box-shadow: 0 4px 24px rgba(0,0,0,0.45), inset 0 0 30px rgba(56,189,248,0.03), inset 0 1px 0 rgba(56,189,248,0.08);
+}
+
+html.theme-aurora .mp-zone-red {
+	background: linear-gradient(160deg, rgba(251,113,133,0.09) 0%, rgba(251,113,133,0.02) 50%, rgba(251,113,133,0.05) 100%);
+	border-color: rgba(251,113,133,0.22);
+	box-shadow: 0 4px 24px rgba(0,0,0,0.45), inset 0 0 30px rgba(251,113,133,0.03), inset 0 1px 0 rgba(251,113,133,0.08);
+}
+
+html.theme-aurora .mp-zone-purple {
+	background: linear-gradient(160deg, rgba(167,139,250,0.09) 0%, rgba(167,139,250,0.02) 50%, rgba(167,139,250,0.05) 100%);
+	border-color: rgba(167,139,250,0.22);
+	box-shadow: 0 4px 24px rgba(0,0,0,0.45), inset 0 0 30px rgba(167,139,250,0.03), inset 0 1px 0 rgba(167,139,250,0.08);
+}
+
+/* ── Zone labels ── */
+html.theme-aurora .mp-zone-label {
+	opacity: 0.55;
+	font-weight: 800;
+	letter-spacing: 1.5px;
+	font-size: 0.65rem;
+}
+
+html.theme-aurora .mp-zone-yellow .mp-zone-label { color: #fde68a; }
+html.theme-aurora .mp-zone-green  .mp-zone-label { color: #6ee7b7; }
+html.theme-aurora .mp-zone-blue   .mp-zone-label { color: #7dd3fc; }
+html.theme-aurora .mp-zone-red    .mp-zone-label { color: #fda4af; }
+html.theme-aurora .mp-zone-purple .mp-zone-label { color: #c4b5fd; }
+
+/* ── Board layout tuning ── */
+html.theme-aurora .mp-board {
+	gap: 14px;
+	padding: 10px;
+}
+
+html.theme-aurora .mp-board-desktop {
+	gap: 16px;
+}
+
+html.theme-aurora .mp-board-col {
+	gap: 14px;
+}
+
+html.theme-aurora .mp-board-container {
+	background: radial-gradient(ellipse at 50% 40%, rgba(99,102,241,0.04) 0%, transparent 70%);
+}
+
+/* ── Bonus dots per zone color ── */
+html.theme-aurora .mp-cell.bonus-yellow .mp-cell-bonus-dot {
+	background: #f0c040;
+	width: 12px; height: 12px;
+	border-radius: 3px;
+	border: 1.5px solid #b8940a;
+	box-shadow: 0 0 6px rgba(240,192,64,0.5);
+}
+
+html.theme-aurora .mp-cell.bonus-green .mp-cell-bonus-dot {
+	background: #34d399;
+	width: 12px; height: 12px;
+	border-radius: 3px;
+	border: 1.5px solid #059669;
+	box-shadow: 0 0 6px rgba(52,211,153,0.5);
+}
+
+html.theme-aurora .mp-cell.bonus-blue .mp-cell-bonus-dot {
+	background: #38bdf8;
+	width: 12px; height: 12px;
+	border-radius: 3px;
+	border: 1.5px solid #0284c7;
+	box-shadow: 0 0 6px rgba(56,189,248,0.5);
+}
+
+html.theme-aurora .mp-cell.bonus-red .mp-cell-bonus-dot {
+	background: #fb7185;
+	width: 12px; height: 12px;
+	border-radius: 3px;
+	border: 1.5px solid #be123c;
+	box-shadow: 0 0 6px rgba(251,113,133,0.5);
+}
+
+html.theme-aurora .mp-cell.bonus-purple .mp-cell-bonus-dot {
+	background: #a78bfa;
+	width: 12px; height: 12px;
+	border-radius: 3px;
+	border: 1.5px solid #7c3aed;
+	box-shadow: 0 0 6px rgba(167,139,250,0.5);
+}
+
+html.theme-aurora .mp-cell.bonus-any .mp-cell-bonus-dot {
+	background: linear-gradient(135deg, #f0c040 0%, #34d399 24%, #38bdf8 48%, #fb7185 72%, #a78bfa 100%) !important;
+	width: 12px; height: 12px;
+	border-radius: 3px;
+	border: 1.5px solid rgba(167,139,250,0.6);
+	box-shadow: 0 0 8px rgba(167,139,250,0.4), 0 0 4px rgba(52,211,153,0.3);
+}
+
+/* ── Mini-cell colors per zone ── */
+html.theme-aurora .mp-zone-yellow .mp-mini-cell.filled { background: rgba(240,192,64,0.50); }
+html.theme-aurora .mp-zone-green  .mp-mini-cell.filled { background: rgba(52,211,153,0.50); }
+html.theme-aurora .mp-zone-blue   .mp-mini-cell.filled { background: rgba(56,189,248,0.50); }
+html.theme-aurora .mp-zone-red    .mp-mini-cell.filled { background: rgba(251,113,133,0.50); }
+html.theme-aurora .mp-zone-purple .mp-mini-cell.filled { background: rgba(167,139,250,0.50); }
+
+/* ── Bonus buttons — neon glass ── */
+html.theme-aurora .mp-bonus-btn {
+	border-radius: 10px;
+	background: rgba(255,255,255,0.04);
+	border: 1px solid rgba(99,102,241,0.15);
+	box-shadow: inset 0 1px 0 rgba(255,255,255,0.04);
+	transition: all 0.25s ease;
+}
+
+html.theme-aurora .mp-bonus-btn:hover:not(.disabled) {
+	background: rgba(99,102,241,0.12);
+	border-color: rgba(99,102,241,0.3);
+	transform: translateY(-2px);
+	box-shadow: 0 4px 16px rgba(99,102,241,0.2);
+}
+
+html.theme-aurora .mp-bonus-btn.mp-bonus-new {
+	box-shadow: 0 0 0 2px rgba(99,102,241,0.15);
+	animation: aurora-bonus-glow 2s ease infinite;
+}
+
+/* ── Gold counter — neon coin look ── */
+html.theme-aurora .mp-gold-counter {
+	color: var(--mp-gold);
+	background: rgba(252,211,77,0.06);
+	border: 1px solid rgba(252,211,77,0.18);
+	border-radius: 12px;
+	font-weight: 700;
+}
+
+/* ── Turn indicator — neon pulse ── */
+html.theme-aurora .mp-turn-indicator.my-turn {
+	animation: aurora-pulse-glow 2s ease infinite;
+	border-radius: 14px;
+	padding: 6px 14px;
+	background: linear-gradient(135deg, rgba(99,102,241,0.08), rgba(52,211,153,0.05));
+	color: var(--mp-success);
+	font-weight: 700;
+}
+
+/* ── Placement controls — refined dark glass ── */
+html.theme-aurora #mp-placement-controls {
+	background: rgba(15,18,30,0.88);
+	border: 1px solid rgba(99,102,241,0.15);
+	border-radius: 14px;
+	box-shadow: 0 12px 40px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.04);
+	-webkit-backdrop-filter: blur(14px) saturate(1.3);
+	backdrop-filter: blur(14px) saturate(1.3);
+}
+
+html.theme-aurora .mp-ctrl-btn {
+	background: linear-gradient(135deg, #6366f1, #818cf8);
+	border-radius: 50%;
+	box-shadow: 0 2px 8px rgba(99,102,241,0.3);
+	transition: all 0.25s ease;
+}
+
+html.theme-aurora .mp-ctrl-btn:hover {
+	box-shadow: 0 0 16px rgba(99,102,241,0.5);
+	transform: scale(1.08);
+}
+
+html.theme-aurora .mp-ctrl-cancel {
+	background: linear-gradient(135deg, #ef4444, #f87171);
+	box-shadow: 0 2px 8px rgba(239,68,68,0.3);
+}
+
+/* ── Opponent panels — deeper glass ── */
+html.theme-aurora .mp-opponent-panel {
+	background: linear-gradient(160deg, rgba(15,18,30,0.6) 0%, rgba(20,24,40,0.4) 100%);
+	border: 1px solid rgba(255,255,255,0.06);
+	border-radius: 12px;
+	box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+}
+
+html.theme-aurora .mp-opponent-panel.is-active {
+	border-color: rgba(99,102,241,0.4);
+	background: linear-gradient(160deg, rgba(99,102,241,0.08) 0%, rgba(99,102,241,0.03) 100%);
+	box-shadow: 0 0 16px rgba(99,102,241,0.12), 0 2px 8px rgba(0,0,0,0.2);
+}
+
+/* ── Opponent card details — richer dark glass ── */
+html.theme-aurora .mp-opp-card-detail {
+	background: rgba(255,255,255,0.03);
+	border: 1px solid rgba(255,255,255,0.08);
+	border-radius: 12px;
+	transition: all 0.2s ease;
+}
+
+html.theme-aurora .mp-opp-card-detail.is-selected-by-player {
+	border-color: rgba(99,102,241,0.6) !important;
+	box-shadow: 0 0 14px rgba(99,102,241,0.3);
+	background: rgba(99,102,241,0.08);
+}
+
+html.theme-aurora .mp-opp-card-detail:hover {
+	background: rgba(255,255,255,0.06);
+	border-color: rgba(255,255,255,0.15);
+	transform: translateY(-1px);
+}
+
+/* ── Toast enhancements ── */
+html.theme-aurora .mp-toast-info {
+	background: linear-gradient(135deg, #6366f1, #8b5cf6);
+	border-radius: 14px;
+	box-shadow: 0 4px 20px rgba(99,102,241,0.3);
+}
+
+html.theme-aurora .mp-toast-success {
+	background: linear-gradient(135deg, #059669, #34d399);
+	border-radius: 14px;
+	box-shadow: 0 4px 20px rgba(52,211,153,0.3);
+}
+
+html.theme-aurora .mp-toast-warning {
+	background: linear-gradient(135deg, #d97706, #fbbf24);
+	color: #1a1a1a;
+	border-radius: 14px;
+	box-shadow: 0 4px 20px rgba(251,191,36,0.3);
+}
+
+html.theme-aurora .mp-toast-error {
+	background: linear-gradient(135deg, #dc2626, #f87171);
+	border-radius: 14px;
+	box-shadow: 0 4px 20px rgba(248,113,113,0.3);
+}
+
+/* ── Result rows — richer glass ── */
+html.theme-aurora .mp-result-row {
+	background: linear-gradient(160deg, rgba(15,18,30,0.6) 0%, rgba(20,24,40,0.4) 100%);
+	border: 1px solid rgba(255,255,255,0.05);
+	border-radius: 14px;
+}
+
+html.theme-aurora .mp-result-row.winner {
+	border-color: rgba(252,211,77,0.35);
+	background: linear-gradient(160deg, rgba(252,211,77,0.08) 0%, rgba(252,211,77,0.02) 100%);
+	box-shadow: 0 0 16px rgba(252,211,77,0.08);
+}
+
+/* ── Level popup — neon-tinged glass ── */
+html.theme-aurora .mp-level-popup {
+	background: rgba(15,18,30,0.92);
+	border: 1px solid rgba(99,102,241,0.15);
+	border-radius: 20px;
+	-webkit-backdrop-filter: blur(24px) saturate(1.4);
+	backdrop-filter: blur(24px) saturate(1.4);
+	box-shadow: 0 32px 64px rgba(0,0,0,0.6), 0 0 40px rgba(99,102,241,0.06);
+}
+
+/* ── Shop — glass-card aesthetic ── */
+html.theme-aurora .mp-shop-card {
+	background: rgba(15,18,30,0.85);
+	border: 1px solid rgba(99,102,241,0.12);
+	border-radius: 20px;
+	-webkit-backdrop-filter: blur(20px) saturate(1.3);
+	backdrop-filter: blur(20px) saturate(1.3);
+	box-shadow: 0 16px 48px rgba(0,0,0,0.5);
+}
+
+html.theme-aurora .mp-shop-offering {
+	background: rgba(255,255,255,0.03);
+	border: 2px solid rgba(255,255,255,0.08);
+	border-radius: 14px;
+	transition: all 0.25s ease;
+}
+
+html.theme-aurora .mp-shop-offering:not(.sold):not(.cant-afford):hover {
+	border-color: rgba(252,211,77,0.4);
+	background: rgba(252,211,77,0.06);
+	box-shadow: 0 4px 20px rgba(252,211,77,0.12);
+	transform: translateY(-3px);
+}
+
+html.theme-aurora .mp-shop-buy-btn {
+	border: 1px solid rgba(252,211,77,0.3);
+	background: linear-gradient(135deg, rgba(252,211,77,0.08), rgba(252,211,77,0.12));
+	color: var(--mp-gold);
+	border-radius: 10px;
+	font-weight: 700;
+	transition: all 0.25s ease;
+}
+
+html.theme-aurora .mp-shop-buy-btn:hover:not(:disabled) {
+	background: linear-gradient(135deg, rgba(252,211,77,0.18), rgba(252,211,77,0.24));
+	box-shadow: 0 0 12px rgba(252,211,77,0.15);
+}
+
+/* ── Taunt bubble — neon dark glass ── */
+html.theme-aurora .mp-taunt-bubble {
+	background: linear-gradient(180deg, rgba(17,24,39,0.96), rgba(15,23,42,0.96));
+	border: 1px solid rgba(255,255,255,0.12);
+	border-radius: 16px;
+	box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+	-webkit-backdrop-filter: blur(10px);
+	backdrop-filter: blur(10px);
+}
+
+html.theme-aurora .mp-taunt-bubble-name {
+	color: var(--mp-accent);
+	font-weight: 700;
+}
+
+/* ── Taunt menu — deeper glass ── */
+html.theme-aurora .mp-taunt-menu-toggle {
+	border-color: rgba(99,102,241,0.25);
+	background: rgba(99,102,241,0.08);
+	border-radius: 10px;
+	transition: all 0.2s ease;
+}
+
+html.theme-aurora .mp-taunt-menu-panel {
+	background: rgba(15,18,30,0.96);
+	border: 1px solid rgba(99,102,241,0.15);
+	border-radius: 14px;
+	-webkit-backdrop-filter: blur(20px);
+	backdrop-filter: blur(20px);
+	box-shadow: 0 12px 36px rgba(0,0,0,0.5);
+}
+
+html.theme-aurora .mp-taunt-btn {
+	border-color: rgba(255,255,255,0.10);
+	background: rgba(255,255,255,0.04);
+	transition: all 0.2s ease;
+}
+
+html.theme-aurora .mp-taunt-btn:hover {
+	background: rgba(99,102,241,0.12);
+	border-color: rgba(99,102,241,0.3);
+}
+
+/* ── Timer — neon gauge ── */
+html.theme-aurora .mp-timer-bar {
+	background: rgba(255,255,255,0.06);
+	border-radius: 8px;
+	overflow: hidden;
+}
+
+html.theme-aurora .mp-timer-fill {
+	background: linear-gradient(90deg, #34d399, #6ee7b7, #34d399);
+	background-size: 200% 100%;
+	border-radius: 8px;
+	animation: aurora-timer-shine 3s linear infinite;
+}
+
+html.theme-aurora .mp-timer-fill.timer-warning {
+	background: linear-gradient(90deg, #f59e0b, #fbbf24, #f59e0b);
+	background-size: 200% 100%;
+}
+
+html.theme-aurora .mp-timer-fill.timer-critical {
+	background: linear-gradient(90deg, #ef4444, #f87171, #ef4444);
+	background-size: 200% 100%;
+}
+
+/* ── Card choice — neon glass modal ── */
+html.theme-aurora .mp-card-choice-content {
+	background: rgba(15,18,30,0.92);
+	border: 1px solid rgba(99,102,241,0.15);
+	border-radius: 20px;
+	-webkit-backdrop-filter: blur(24px) saturate(1.3);
+	backdrop-filter: blur(24px) saturate(1.3);
+	box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+}
+
+html.theme-aurora .mp-card-choice-option {
+	background: rgba(255,255,255,0.03);
+	border: 2px solid rgba(255,255,255,0.08);
+	border-radius: 14px;
+	transition: all 0.25s ease;
+}
+
+html.theme-aurora .mp-card-choice-option:hover {
+	border-color: rgba(252,211,77,0.4);
+	background: rgba(252,211,77,0.06);
+	transform: translateY(-2px);
+	box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+}
+
+/* ── Random reveal ── */
+html.theme-aurora .mp-random-reveal-card {
+	background: linear-gradient(165deg, rgba(17,24,39,0.96) 0%, rgba(15,23,42,0.96) 100%);
+	border: 1px solid rgba(252,211,77,0.30);
+	border-radius: 18px;
+	box-shadow: 0 20px 48px rgba(0,0,0,0.6), 0 0 24px rgba(252,211,77,0.10);
+}
+
+/* ── Move notification ── */
+html.theme-aurora .mp-move-notification {
+	background: rgba(15,18,30,0.90);
+	border: 1px solid rgba(99,102,241,0.15);
+	border-radius: 14px;
+	-webkit-backdrop-filter: blur(14px);
+	backdrop-filter: blur(14px);
+	box-shadow: 0 8px 28px rgba(0,0,0,0.4);
+}
+
+/* ── Discard modal — dark glass ── */
+html.theme-aurora .mp-discard-modal {
+	background: rgba(15,18,30,0.92);
+	border: 1px solid rgba(255,255,255,0.10);
+	border-radius: 16px;
+	-webkit-backdrop-filter: blur(20px) saturate(1.3);
+	backdrop-filter: blur(20px) saturate(1.3);
+	box-shadow: 0 16px 48px rgba(0,0,0,0.5);
+}
+
+html.theme-aurora .mp-discard-card {
+	border: 1px solid rgba(255,255,255,0.10);
+	background: rgba(255,255,255,0.02);
+	border-radius: 14px;
+	transition: all 0.2s ease;
+}
+
+html.theme-aurora .mp-discard-card:hover {
+	border-color: rgba(99,102,241,0.45);
+	background: rgba(99,102,241,0.10);
+	transform: translateY(-2px);
+}
+
+/* ── Startdeck modal — neon glass ── */
+html.theme-aurora .mp-startdeck-modal {
+	background: linear-gradient(160deg, rgba(15,18,30,0.96) 0%, rgba(17,24,39,0.96) 100%);
+	border: 1px solid rgba(99,102,241,0.12);
+	border-radius: 20px;
+	-webkit-backdrop-filter: blur(24px) saturate(1.3);
+	backdrop-filter: blur(24px) saturate(1.3);
+	box-shadow: 0 24px 60px rgba(0,0,0,0.5);
+}
+
+html.theme-aurora .mp-startdeck-card {
+	border: 1px solid rgba(255,255,255,0.08);
+	background: linear-gradient(160deg, rgba(255,255,255,0.04) 0%, rgba(255,255,255,0.01) 100%);
+	border-radius: 14px;
+	transition: all 0.25s ease;
+}
+
+html.theme-aurora .mp-startdeck-card.selected {
+	border-color: rgba(99,102,241,0.5);
+	background: linear-gradient(160deg, rgba(99,102,241,0.14) 0%, rgba(99,102,241,0.05) 100%);
+	box-shadow: 0 8px 28px rgba(99,102,241,0.18);
+}
+
+/* ── Deck close — neon disc ── */
+html.theme-aurora .mp-deck-close-x {
+	border-color: rgba(255,255,255,0.12);
+	background: rgba(255,255,255,0.06);
+	border-radius: 50%;
+	transition: all 0.3s ease;
+}
+
+html.theme-aurora .mp-deck-close-x:hover {
+	background: rgba(255,255,255,0.14);
+	transform: scale(1.1) rotate(90deg);
+}
+
+/* ── Hand empty / bonus turn ── */
+html.theme-aurora .mp-hand-empty.mp-hand-bonus-turn {
+	color: var(--mp-gold);
+	background: rgba(252,211,77,0.04);
+}
+
+/* ── Score zones ── */
+html.theme-aurora .mp-sz {
+	background: rgba(99,102,241,0.04);
+	border-radius: 6px;
+}
+
+/* ── Offline badge ── */
+html.theme-aurora .mp-offline-badge {
+	color: var(--mp-error);
+}
+
+/* ── Divider ── */
+html.theme-aurora .mp-divider {
+	color: var(--mp-text-dim);
+}
+
+/* ── P2P Host button ── */
+html.theme-aurora .mp-btn-p2p-host {
+	background: linear-gradient(135deg, #6366f1, #8b5cf6) !important;
+	color: #ffffff !important;
+	box-shadow: 0 4px 16px rgba(99,102,241,0.3) !important;
+}
+
+html.theme-aurora .mp-btn-p2p-host:hover:not(:disabled) {
+	background: linear-gradient(135deg, #818cf8, #a78bfa) !important;
+	box-shadow: 0 10px 28px rgba(99,102,241,0.4) !important;
+	transform: translateY(-3px);
+}
+
+/* ── Aurora Animation Classes ── */
+
+/* Zone flash — neon pulse */
+html.theme-aurora .mp-zone-flash {
+	animation: aurora-place-celebrate 0.7s ease !important;
+}
+
+/* Score popup — neon sprouting number */
+html.theme-aurora .mp-score-popup {
+	animation: aurora-score-pop 1.6s ease-out forwards !important;
+	color: var(--mp-success) !important;
+	font-size: 1.1rem !important;
+	text-shadow: 0 0 12px rgba(52,211,153,0.4) !important;
+	font-weight: 800 !important;
+}
+
+/* Floating score */
+html.theme-aurora .mp-float-score {
+	text-shadow: 0 0 16px rgba(52,211,153,0.5), 0 2px 4px rgba(0,0,0,0.4) !important;
+	font-size: 1.6rem !important;
+	font-weight: 800 !important;
+}
+
+/* Sparkle — neon particles */
+html.theme-aurora .mp-sparkle {
+	background: var(--mp-accent) !important;
+	box-shadow: 0 0 10px rgba(99,102,241,0.6), 0 0 20px rgba(99,102,241,0.3) !important;
+	width: 8px !important;
+	height: 8px !important;
+	border-radius: 50% !important;
+}
+
+/* ── Portal cells ── */
+html.theme-aurora .mp-cell.portal {
+	box-shadow: inset 0 0 10px rgba(167,139,250,0.25);
+	border-color: rgba(167,139,250,0.45);
+}
+
 
 /* ══════════════════════════════════════════════════════════════════════
    THEME: BLOOM v2 — "Botanical Garden"
@@ -6237,29 +6835,29 @@ html.theme-bloom .mp-goal-card.selected {
 
 /* ── Top Bar — greenhouse glass ceiling ── */
 html.theme-bloom .mp-top-bar {
-	background: linear-gradient(180deg, rgba(255,253,248,0.96), rgba(250,247,240,0.92));
-	border-bottom: 1px solid rgba(180,160,130,0.08);
-	box-shadow: 0 3px 16px rgba(180,160,130,0.06);
-	-webkit-backdrop-filter: blur(12px);
-	backdrop-filter: blur(12px);
+	background: linear-gradient(180deg, rgba(255,253,248,0.97), rgba(248,244,236,0.94));
+	border-bottom: 1px solid rgba(180,160,130,0.10);
+	box-shadow: 0 3px 18px rgba(140,120,90,0.07);
+	-webkit-backdrop-filter: blur(14px) saturate(1.1);
+	backdrop-filter: blur(14px) saturate(1.1);
 }
 
 /* ── Sidebar — wooden garden shelf ── */
 html.theme-bloom .mp-sidebar {
-	background: linear-gradient(180deg, rgba(255,253,248,0.96), rgba(245,240,232,0.94));
-	border-right: 1px solid rgba(180,160,130,0.08);
-	box-shadow: 4px 0 20px rgba(180,160,130,0.05);
-	-webkit-backdrop-filter: blur(12px);
-	backdrop-filter: blur(12px);
+	background: linear-gradient(180deg, rgba(255,253,248,0.97), rgba(243,238,228,0.95));
+	border-right: 1px solid rgba(180,160,130,0.10);
+	box-shadow: 4px 0 22px rgba(140,120,90,0.06);
+	-webkit-backdrop-filter: blur(14px) saturate(1.1);
+	backdrop-filter: blur(14px) saturate(1.1);
 }
 
 /* ── Bottom bar — potting bench ── */
 html.theme-bloom .mp-bottom-bar {
-	background: linear-gradient(0deg, rgba(255,253,248,0.96), rgba(250,247,240,0.92));
-	border-top: 1px solid rgba(180,160,130,0.08);
-	box-shadow: 0 -3px 16px rgba(180,160,130,0.06);
-	-webkit-backdrop-filter: blur(12px);
-	backdrop-filter: blur(12px);
+	background: linear-gradient(0deg, rgba(255,253,248,0.97), rgba(248,244,236,0.94));
+	border-top: 1px solid rgba(180,160,130,0.10);
+	box-shadow: 0 -3px 18px rgba(140,120,90,0.07);
+	-webkit-backdrop-filter: blur(14px) saturate(1.1);
+	backdrop-filter: blur(14px) saturate(1.1);
 }
 
 /* ── Scoreboard — garden journal ── */
@@ -6419,9 +7017,9 @@ html.theme-bloom .mp-zone-purple .mp-mini-cell.filled { background: rgba(150,120
 
 html.theme-bloom .mp-zone {
 	border-radius: 22px;
-	border-width: 2.5px;
+	border-width: 2px;
 	border-style: solid;
-	box-shadow: 0 4px 20px rgba(180,160,130,0.08);
+	box-shadow: 0 6px 28px rgba(120,100,70,0.10), 0 2px 6px rgba(120,100,70,0.06);
 	transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.4s ease;
 	position: relative;
 	overflow-x: visible;
@@ -6430,33 +7028,33 @@ html.theme-bloom .mp-zone {
 
 /* Zone backgrounds — lush gradients with inner glow */
 html.theme-bloom .mp-zone-yellow {
-	background: linear-gradient(155deg, #fef9e8 0%, #fdf6e0 40%, #fcf0d0 70%, #fef9e8 100%) !important;
-	border-color: rgba(212,168,32,0.45) !important;
-	box-shadow: 0 4px 20px rgba(212,168,32,0.08), inset 0 0 30px rgba(212,168,32,0.04);
+	background: linear-gradient(155deg, #fefae8 0%, #fdf6e0 35%, #faf0d2 65%, #fdf8e5 100%) !important;
+	border-color: rgba(190,150,28,0.35) !important;
+	box-shadow: 0 6px 28px rgba(180,148,40,0.10), 0 1px 3px rgba(180,148,40,0.06), inset 0 0 40px rgba(212,168,32,0.06), inset 0 1px 0 rgba(255,255,255,0.60);
 }
 
 html.theme-bloom .mp-zone-green {
-	background: linear-gradient(155deg, #ecf8e8 0%, #e4f3e0 40%, #d8eed2 70%, #ecf8e8 100%) !important;
-	border-color: rgba(90,171,110,0.40) !important;
-	box-shadow: 0 4px 20px rgba(90,171,110,0.06), inset 0 0 30px rgba(90,171,110,0.04);
+	background: linear-gradient(155deg, #eef9ea 0%, #e6f4e1 35%, #daf0d4 65%, #eaf7e6 100%) !important;
+	border-color: rgba(80,155,100,0.35) !important;
+	box-shadow: 0 6px 28px rgba(80,155,100,0.09), 0 1px 3px rgba(80,155,100,0.05), inset 0 0 40px rgba(90,171,110,0.05), inset 0 1px 0 rgba(255,255,255,0.60);
 }
 
 html.theme-bloom .mp-zone-blue {
-	background: linear-gradient(155deg, #e8f2fc 0%, #e0eefa 40%, #d4e6f6 70%, #e8f2fc 100%) !important;
-	border-color: rgba(90,158,201,0.40) !important;
-	box-shadow: 0 4px 20px rgba(90,158,201,0.06), inset 0 0 30px rgba(90,158,201,0.04);
+	background: linear-gradient(155deg, #eaf4fc 0%, #e2eefa 35%, #d6e8f8 65%, #e8f2fc 100%) !important;
+	border-color: rgba(75,140,180,0.35) !important;
+	box-shadow: 0 6px 28px rgba(75,140,180,0.09), 0 1px 3px rgba(75,140,180,0.05), inset 0 0 40px rgba(90,158,201,0.05), inset 0 1px 0 rgba(255,255,255,0.60);
 }
 
 html.theme-bloom .mp-zone-red {
-	background: linear-gradient(155deg, #fceaef 0%, #fce4ea 40%, #f8dae2 70%, #fceaef 100%) !important;
-	border-color: rgba(212,107,122,0.40) !important;
-	box-shadow: 0 4px 20px rgba(212,107,122,0.06), inset 0 0 30px rgba(212,107,122,0.04);
+	background: linear-gradient(155deg, #fcecf0 0%, #fce5eb 35%, #f9dce4 65%, #fceaef 100%) !important;
+	border-color: rgba(190,95,110,0.35) !important;
+	box-shadow: 0 6px 28px rgba(190,95,110,0.09), 0 1px 3px rgba(190,95,110,0.05), inset 0 0 40px rgba(212,107,122,0.05), inset 0 1px 0 rgba(255,255,255,0.60);
 }
 
 html.theme-bloom .mp-zone-purple {
-	background: linear-gradient(155deg, #f2ecfa 0%, #ede6f8 40%, #e4daf4 70%, #f2ecfa 100%) !important;
-	border-color: rgba(150,120,196,0.40) !important;
-	box-shadow: 0 4px 20px rgba(150,120,196,0.06), inset 0 0 30px rgba(150,120,196,0.04);
+	background: linear-gradient(155deg, #f3eefb 0%, #ede7f8 35%, #e6dcf5 65%, #f1ecfa 100%) !important;
+	border-color: rgba(130,100,175,0.35) !important;
+	box-shadow: 0 6px 28px rgba(130,100,175,0.09), 0 1px 3px rgba(130,100,175,0.05), inset 0 0 40px rgba(150,120,196,0.05), inset 0 1px 0 rgba(255,255,255,0.60);
 }
 
 /* ── Zone labels — botanical nameplates ── */
@@ -6490,7 +7088,7 @@ html.theme-bloom .mp-zone-score-hint {
 
 html.theme-bloom .mp-cell {
 	border-radius: 7px;
-	box-shadow: inset 0 1px 2px rgba(61,52,41,0.06), 0 1px 0 rgba(255,255,255,0.4);
+	box-shadow: inset 0 1px 2px rgba(61,52,41,0.08), 0 1px 0 rgba(255,255,255,0.50);
 	transition: background 0.25s ease, transform 0.2s ease, box-shadow 0.25s ease;
 }
 
@@ -6505,8 +7103,8 @@ html.theme-bloom .mp-cell.active {
 
 /* Yellow cells — sunflower soil */
 html.theme-bloom .mp-zone-yellow .mp-cell {
-	background: rgba(212,168,32,0.14);
-	border-color: rgba(212,168,32,0.30);
+	background: rgba(212,168,32,0.16);
+	border-color: rgba(212,168,32,0.32);
 }
 
 html.theme-bloom .mp-zone-yellow .mp-cell.active {
@@ -6517,8 +7115,8 @@ html.theme-bloom .mp-zone-yellow .mp-cell.active {
 
 /* Green cells — moss & fern */
 html.theme-bloom .mp-zone-green .mp-cell {
-	background: rgba(90,171,110,0.14);
-	border-color: rgba(90,171,110,0.28);
+	background: rgba(90,171,110,0.16);
+	border-color: rgba(90,171,110,0.30);
 }
 
 html.theme-bloom .mp-zone-green .mp-cell.active {
@@ -6543,8 +7141,8 @@ html.theme-bloom .mp-zone-green .mp-cell.green-end.green-end-claimed {
 
 /* Blue cells — pond water */
 html.theme-bloom .mp-zone-blue .mp-cell {
-	background: rgba(90,158,201,0.14);
-	border-color: rgba(90,158,201,0.28);
+	background: rgba(90,158,201,0.16);
+	border-color: rgba(90,158,201,0.30);
 }
 
 html.theme-bloom .mp-zone-blue .mp-cell.active {
@@ -6555,8 +7153,8 @@ html.theme-bloom .mp-zone-blue .mp-cell.active {
 
 /* Red cells — rose garden */
 html.theme-bloom .mp-zone-red .mp-cell {
-	background: rgba(212,107,122,0.14);
-	border-color: rgba(212,107,122,0.28);
+	background: rgba(212,107,122,0.16);
+	border-color: rgba(212,107,122,0.30);
 }
 
 html.theme-bloom .mp-zone-red .mp-cell.active {
@@ -6567,8 +7165,8 @@ html.theme-bloom .mp-zone-red .mp-cell.active {
 
 /* Purple cells — lavender field */
 html.theme-bloom .mp-zone-purple .mp-cell {
-	background: rgba(150,120,196,0.14);
-	border-color: rgba(150,120,196,0.28);
+	background: rgba(150,120,196,0.16);
+	border-color: rgba(150,120,196,0.30);
 }
 
 html.theme-bloom .mp-zone-purple .mp-cell.active {
@@ -7449,16 +8047,20 @@ html.theme-bloom .mp-sparkle {
 
 /* Board gets softer gap and organic feel */
 html.theme-bloom .mp-board {
-	gap: 16px;
-	padding: 12px;
+	gap: 14px;
+	padding: 10px;
 }
 
 html.theme-bloom .mp-board-desktop {
-	gap: 18px;
+	gap: 16px;
 }
 
 html.theme-bloom .mp-board-col {
-	gap: 16px;
+	gap: 14px;
+}
+
+html.theme-bloom .mp-board-container {
+	background: radial-gradient(ellipse at 50% 40%, rgba(240,230,210,0.35) 0%, transparent 70%);
 }
 
 /* Deck button — leaf-stack icon */
