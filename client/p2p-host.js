@@ -95,6 +95,7 @@ class LocusP2PHost {
 						{
 							seed,
 							maxPlayers: options.maxPlayers || 4,
+							mapSize: options.mapSize || 4,
 							cardsPerPlayer: options.cardsPerPlayer || 8,
 							handSize: 3
 						}

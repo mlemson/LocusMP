@@ -173,7 +173,7 @@ class LocusLobbyUI {
 			'game-screen', 'results-screen', 'shop-screen',
 			'level-complete-overlay',
 			'player-name-input', 'create-game-btn', 'join-game-btn',
-			'invite-code-input', 'max-players-select', 'cards-per-player-select',
+			'invite-code-input', 'max-players-select', 'cards-per-player-select', 'map-size-select',
 			'invite-code-display', 'player-list', 'start-game-btn',
 			'waiting-status',
 			'goal-choices-container',

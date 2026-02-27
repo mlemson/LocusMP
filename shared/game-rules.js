@@ -2605,6 +2605,7 @@ function createGameState(gameId, hostPlayerId, settings = {}) {
 		hostPlayerId,
 		settings: {
 			maxPlayers: settings.maxPlayers || 4,
+			mapSize: settings.mapSize || 4,
 			cardsPerPlayer: settings.cardsPerPlayer || 10,
 			handSize: settings.handSize || 3,
 			turnTimeLimit: settings.turnTimeLimit || 0
@@ -2685,8 +2686,8 @@ function initializeLevelOneAfterDeckChoice(gameState) {
 	const rng = createRNG(gameState.seed);
 
 	// 1. Genereer bord voor level 1
-	const playerCount = gameState.playerOrder.length || gameState.settings?.maxPlayers || 4;
-	gameState.boardState = generateLevel1Board(rng, 1, playerCount);
+	const mapSize = gameState.settings?.mapSize || 4;
+	gameState.boardState = generateLevel1Board(rng, 1, mapSize);
 
 	// 2. Genereer startdecks per speler op basis van keuze
 	for (const playerId of gameState.playerOrder) {
@@ -3772,8 +3773,8 @@ function startNextLevel(gameState) {
 	const rng = createRNG(gameState.seed + gameState.level * 1000);
 
 	// Nieuw bord genereren (level-afhankelijk)
-	const playerCount = gameState.playerOrder.length || gameState.settings?.maxPlayers || 4;
-	gameState.boardState = generateLevel1Board(rng, gameState.level, playerCount);
+	const mapSize = gameState.settings?.mapSize || 4;
+	gameState.boardState = generateLevel1Board(rng, gameState.level, mapSize);
 
 	// Nieuwe decks per speler (+ shop cards)
 	for (const pid of gameState.playerOrder) {
