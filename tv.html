@@ -622,21 +622,20 @@
 	 * ════════════════════════════════════════════
 	 * LOCUS TV Display Controller
 	 * ════════════════════════════════════════════
-	 * Receives game state from host via BroadcastChannel
-	 * and renders a spectator-optimized view for TV screens.
+	 * Receives game state from host via:
+	 *  1. Presentation Receiver API (Chromecast / wireless display)
+	 *  2. BroadcastChannel fallback (same-device popup window)
 	 */
 	(function() {
 		'use strict';
 
-		const channel = new BroadcastChannel('locus-tv');
 		let currentState = null;
 		let timerInterval = null;
+		let presentationConn = null;
 
-		// ── Listen for messages from host ──
-		channel.onmessage = (e) => {
-			const msg = e.data;
+		// ── Unified message handler ──
+		function handleMessage(msg) {
 			if (!msg || !msg.type) return;
-
 			switch (msg.type) {
 				case 'gameState':
 					onGameState(msg.state);
@@ -651,14 +650,65 @@
 					applyTheme(msg.theme);
 					break;
 				case 'ping':
-					// Host is checking if TV is alive
-					channel.postMessage({ type: 'pong' });
+					sendToHost({ type: 'pong' });
 					break;
 			}
-		};
+		}
 
-		// ── Notify host we're ready ──
-		channel.postMessage({ type: 'tvReady' });
+		// ── Send message back to host (via active channel) ──
+		function sendToHost(msg) {
+			if (presentationConn) {
+				try { presentationConn.send(JSON.stringify(msg)); return; } catch (_) {}
+			}
+			if (bcChannel) {
+				try { bcChannel.postMessage(msg); } catch (_) {}
+			}
+		}
+
+		// ── 1. Try Presentation Receiver API (Chromecast / wireless display) ──
+		let bcChannel = null;
+		if (navigator.presentation && navigator.presentation.receiver) {
+			navigator.presentation.receiver.connectionList.then(list => {
+				console.log('[TV] Presentation Receiver: verbonden');
+				for (const conn of list.connections) {
+					setupPresentationConnection(conn);
+				}
+				list.onconnectionavailable = (e) => {
+					setupPresentationConnection(e.connection);
+				};
+			}).catch(err => {
+				console.warn('[TV] Presentation Receiver niet beschikbaar:', err);
+				initBroadcastChannel();
+			});
+		} else {
+			// ── 2. Fallback: BroadcastChannel (same-device popup) ──
+			initBroadcastChannel();
+		}
+
+		function setupPresentationConnection(conn) {
+			presentationConn = conn;
+			conn.onmessage = (e) => {
+				try {
+					const msg = typeof e.data === 'string' ? JSON.parse(e.data) : e.data;
+					handleMessage(msg);
+				} catch (_) {}
+			};
+			conn.onclose = () => {
+				console.log('[TV] Presentation connection gesloten');
+				presentationConn = null;
+			};
+			sendToHost({ type: 'tvReady' });
+		}
+
+		function initBroadcastChannel() {
+			try {
+				bcChannel = new BroadcastChannel('locus-tv');
+				bcChannel.onmessage = (e) => handleMessage(e.data);
+				bcChannel.postMessage({ type: 'tvReady' });
+			} catch (err) {
+				console.warn('[TV] BroadcastChannel niet beschikbaar:', err);
+			}
+		}
 
 		// ── Apply theme from host ──
 		function applyTheme(theme) {

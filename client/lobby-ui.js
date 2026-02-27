@@ -69,10 +69,11 @@ class LocusLobbyUI {
 		this._touchDragScrollLocked = false;
 		this._ignoreNextBonusClickUntil = 0;
 
-		// TV Cast / BroadcastChannel
+		// TV Cast / BroadcastChannel + Presentation API
 		this._tvChannel = null;
 		this._tvConnected = false;
 		this._tvCastActive = false;
+		this._tvPresentationConn = null; // PresentationConnection for Chromecast
 	}
 
 	// ──────────────────────────────────────────
@@ -395,51 +396,110 @@ class LocusLobbyUI {
 	}
 
 	/**
-	 * Open the TV display in a new window / Presentation API.
-	 * Called by the cast button in lobby / waiting room.
+	 * Start casting to an external display (Chromecast / wireless display).
+	 * Uses the Presentation API to discover and connect to displays.
+	 * Messaging happens through PresentationConnection (cross-device),
+	 * with BroadcastChannel as fallback for same-device popup window.
 	 */
 	startTVCast() {
-		this._initTVChannel();
 		this._tvCastActive = true;
 
 		// Send current theme
 		const theme = localStorage.getItem('locus-theme') || 'classic';
-		this._tvPostMessage({ type: 'theme', theme });
 
-		// Try Presentation API (Chromecast etc.) first
+		// Determine the absolute URL for tv.html
+		const tvUrl = new URL('tv.html', window.location.href).href;
+
+		// Try Presentation API (discovers Chromecast, wireless displays)
 		if ('PresentationRequest' in window) {
 			try {
-				const req = new PresentationRequest(['tv.html']);
+				const req = new PresentationRequest([tvUrl]);
+
+				// Monitor availability of external displays
+				req.getAvailability?.()?.then(avail => {
+					if (avail.value) {
+						console.log('[Locus TV] Externe displays beschikbaar');
+					}
+				}).catch(() => {});
+
+				this._showToast('📺 Zoeken naar TV\'s...', 'info');
+
 				req.start().then(conn => {
-					console.log('[Locus TV] Presentatie gestart via Presentation API');
+					this._tvPresentationConn = conn;
+					console.log('[Locus TV] Verbonden met display via Presentation API');
 					this._showToast('📺 TV verbonden!', 'success');
+
+					conn.onclose = () => {
+						console.log('[Locus TV] Presentation display verbroken');
+						this._tvPresentationConn = null;
+						this._tvConnected = false;
+					};
+
+					conn.onterminate = () => {
+						console.log('[Locus TV] Presentation display terminated');
+						this._tvPresentationConn = null;
+						this._tvConnected = false;
+					};
+
+					conn.onmessage = (e) => {
+						try {
+							const msg = typeof e.data === 'string' ? JSON.parse(e.data) : e.data;
+							if (msg?.type === 'tvReady' || msg?.type === 'pong') {
+								this._tvConnected = true;
+								console.log('[Locus TV] TV display klaar via Presentation');
+							}
+						} catch (_) {}
+					};
+
+					// Send theme + current state to newly connected TV
+					this._tvPostMessage({ type: 'theme', theme });
+					setTimeout(() => this._broadcastTVState(), 500);
 				}).catch(err => {
-					console.log('[Locus TV] Presentation API geweigerd, open nieuw venster');
+					console.log('[Locus TV] Presentation API geweigerd of geen displays:', err?.message);
+					// Fallback: open same-device popup window
+					this._initTVChannel();
+					this._tvPostMessage({ type: 'theme', theme });
 					this._openTVWindow();
 				});
 				return;
 			} catch (err) {
-				console.log('[Locus TV] Presentation API niet ondersteund, fallback');
+				console.log('[Locus TV] Presentation API fout:', err?.message);
 			}
 		}
 
-		// Fallback: open new window
+		// Final fallback: open same-device popup window with BroadcastChannel
+		this._initTVChannel();
+		this._tvPostMessage({ type: 'theme', theme });
 		this._openTVWindow();
 	}
 
 	_openTVWindow() {
 		const w = window.open('tv.html', 'locus-tv', 'width=1280,height=720,menubar=no,toolbar=no');
 		if (w) {
-			this._showToast('📺 TV-scherm geopend! Sleep naar de TV.', 'success');
+			this._showToast('📺 TV-scherm geopend in nieuw venster', 'success');
 		} else {
 			this._showToast('Pop-up geblokkeerd — sta pop-ups toe.', 'warning');
 		}
 	}
 
-	/** Send a message to the TV channel (safe if not initialised). */
+	/**
+	 * Send a message to the TV display.
+	 * Prefers PresentationConnection (cross-device Chromecast) over BroadcastChannel (same-device).
+	 */
 	_tvPostMessage(msg) {
-		if (!this._tvChannel) return;
-		try { this._tvChannel.postMessage(msg); } catch (_) {}
+		// Prioritize Presentation API connection (works cross-device)
+		if (this._tvPresentationConn) {
+			try {
+				this._tvPresentationConn.send(JSON.stringify(msg));
+				return;
+			} catch (err) {
+				console.warn('[Locus TV] Presentation send failed:', err);
+			}
+		}
+		// Fallback: BroadcastChannel (same-device popup only)
+		if (this._tvChannel) {
+			try { this._tvChannel.postMessage(msg); } catch (_) {}
+		}
 	}
 
 	/**
@@ -519,10 +579,14 @@ class LocusLobbyUI {
 		this._tvPostMessage({ type: 'levelComplete', data: { levelScores: scores, levelWinner: winner, level } });
 	}
 
-	/** Stop TV cast and close channel. */
+	/** Stop TV cast and close all connections. */
 	stopTVCast() {
 		this._tvCastActive = false;
 		this._tvConnected = false;
+		if (this._tvPresentationConn) {
+			try { this._tvPresentationConn.terminate(); } catch (_) {}
+			this._tvPresentationConn = null;
+		}
 		if (this._tvChannel) {
 			try { this._tvChannel.close(); } catch (_) {}
 			this._tvChannel = null;
