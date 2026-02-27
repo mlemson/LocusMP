@@ -333,6 +333,7 @@ io.on('connection', (socket) => {
 			const playerName = String(data.playerName || 'Speler').slice(0, 20);
 			const maxPlayers = Math.min(8, Math.max(2, Number(data.maxPlayers) || 4));
 			const cardsPerPlayer = Math.min(16, Math.max(4, Number(data.cardsPerPlayer) || 8));
+			const mapSize = Math.min(8, Math.max(2, Number(data.mapSize) || 4));
 
 			const gameId = generateId();
 			const playerId = generatePlayerId();
@@ -342,6 +343,7 @@ io.on('connection', (socket) => {
 			const gameState = GameRules.createGameState(gameId, playerId, {
 				seed,
 				maxPlayers,
+				mapSize,
 				cardsPerPlayer,
 				handSize: 3
 			});

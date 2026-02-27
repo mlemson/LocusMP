@@ -313,6 +313,7 @@ class LocusMultiplayer {
 			const result = await this._emitWithAck('createGame', {
 				playerName,
 				maxPlayers: options.maxPlayers || 4,
+				mapSize: options.mapSize || 4,
 				cardsPerPlayer: options.cardsPerPlayer || 8
 			});
 

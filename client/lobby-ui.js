@@ -1027,7 +1027,9 @@ class LocusLobbyUI {
 		if (status) {
 			const count = players.length;
 			const max = this.mp.gameState.settings.maxPlayers;
-			status.textContent = `${count}/${max} spelers`;
+			const ms = this.mp.gameState.settings.mapSize || 4;
+			const mapLabel = ms <= 2 ? 'Klein' : ms <= 4 ? 'Middel' : ms <= 6 ? 'Groot' : 'Mega';
+			status.textContent = `${count}/${max} spelers · ${mapLabel} kaart`;
 		}
 
 		const startBtn = this.elements['start-game-btn'];
