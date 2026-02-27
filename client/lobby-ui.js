@@ -68,6 +68,11 @@ class LocusLobbyUI {
 		this._activeSelections = {};
 		this._touchDragScrollLocked = false;
 		this._ignoreNextBonusClickUntil = 0;
+
+		// TV Cast / BroadcastChannel
+		this._tvChannel = null;
+		this._tvConnected = false;
+		this._tvCastActive = false;
 	}
 
 	// ──────────────────────────────────────────
@@ -178,7 +183,8 @@ class LocusLobbyUI {
 			'mp-end-turn-btn', 'mp-undo-btn', 'mp-turn-timer',
 			'mp-deck-overview-btn', 'mp-deck-overlay', 'mp-deck-close-btn', 'mp-deck-cards', 'mp-deck-count',
 			'results-container', 'play-again-btn',
-			'shop-container', 'shop-ready-btn'
+			'shop-container', 'shop-ready-btn',
+			'tv-cast-btn', 'tv-cast-game-btn'
 		];
 		for (const id of ids) {
 			this.elements[id] = document.getElementById(id);
@@ -219,6 +225,18 @@ class LocusLobbyUI {
 		this.elements['shop-ready-btn']?.addEventListener('click', () => this._handleShopReady());
 		this.elements['mp-deck-overview-btn']?.addEventListener('click', () => this._toggleDeckOverview());
 		this.elements['mp-deck-close-btn']?.addEventListener('click', () => this._closeDeckOverview());
+		// TV Cast buttons
+		this.elements['tv-cast-btn']?.addEventListener('click', () => this.startTVCast());
+		this.elements['tv-cast-game-btn']?.addEventListener('click', () => {
+			if (this._tvCastActive) {
+				this.stopTVCast();
+				this.elements['tv-cast-game-btn']?.classList.remove('active');
+				this._showToast('📺 TV Cast gestopt', 'info');
+			} else {
+				this.startTVCast();
+				this.elements['tv-cast-game-btn']?.classList.add('active');
+			}
+		});
 		document.querySelectorAll('.mp-taunt-btn').forEach(btn => {
 			btn.addEventListener('click', () => this._handleTaunt(btn.dataset.taunt || ''));
 		});
@@ -350,6 +368,164 @@ class LocusLobbyUI {
 		this._showToast(paused ? `⏸ Pauze door ${name}` : `▶ Hervat door ${name}`, 'info');
 		if (paused) {
 			this._stopTurnTimer();
+		}
+	}
+
+	// ──────────────────────────────────────────
+	//  TV CAST / BROADCASTCHANNEL
+	// ──────────────────────────────────────────
+
+	/**
+	 * Initialise the BroadcastChannel used to send state to tv.html.
+	 * Safe to call multiple times — only creates one channel.
+	 */
+	_initTVChannel() {
+		if (this._tvChannel) return;
+		try {
+			this._tvChannel = new BroadcastChannel('locus-tv');
+			this._tvChannel.onmessage = (e) => {
+				if (e.data?.type === 'tvReady' || e.data?.type === 'pong') {
+					this._tvConnected = true;
+					console.log('[Locus TV] TV display verbonden');
+				}
+			};
+		} catch (err) {
+			console.warn('[Locus TV] BroadcastChannel niet beschikbaar:', err);
+		}
+	}
+
+	/**
+	 * Open the TV display in a new window / Presentation API.
+	 * Called by the cast button in lobby / waiting room.
+	 */
+	startTVCast() {
+		this._initTVChannel();
+		this._tvCastActive = true;
+
+		// Send current theme
+		const theme = localStorage.getItem('locus-theme') || 'classic';
+		this._tvPostMessage({ type: 'theme', theme });
+
+		// Try Presentation API (Chromecast etc.) first
+		if ('PresentationRequest' in window) {
+			try {
+				const req = new PresentationRequest(['tv.html']);
+				req.start().then(conn => {
+					console.log('[Locus TV] Presentatie gestart via Presentation API');
+					this._showToast('📺 TV verbonden!', 'success');
+				}).catch(err => {
+					console.log('[Locus TV] Presentation API geweigerd, open nieuw venster');
+					this._openTVWindow();
+				});
+				return;
+			} catch (err) {
+				console.log('[Locus TV] Presentation API niet ondersteund, fallback');
+			}
+		}
+
+		// Fallback: open new window
+		this._openTVWindow();
+	}
+
+	_openTVWindow() {
+		const w = window.open('tv.html', 'locus-tv', 'width=1280,height=720,menubar=no,toolbar=no');
+		if (w) {
+			this._showToast('📺 TV-scherm geopend! Sleep naar de TV.', 'success');
+		} else {
+			this._showToast('Pop-up geblokkeerd — sta pop-ups toe.', 'warning');
+		}
+	}
+
+	/** Send a message to the TV channel (safe if not initialised). */
+	_tvPostMessage(msg) {
+		if (!this._tvChannel) return;
+		try { this._tvChannel.postMessage(msg); } catch (_) {}
+	}
+
+	/**
+	 * Create a TV-specific sanitized copy of the game state.
+	 * Rules:
+	 *  – Board: fully visible (all zones)
+	 *  – Current player's hand: visible (card matrices)
+	 *  – All other players' hands: hidden (count only)
+	 *  – Objectives: hidden for all players
+	 *  – Scores, names, connected status: visible
+	 *  – Timer info: forwarded
+	 */
+	_sanitizeStateForTV(state) {
+		if (!state) return null;
+		const tv = JSON.parse(JSON.stringify(state));
+		const currentPid = tv.playerOrder?.[tv.currentTurnIndex] || null;
+
+		for (const pid of Object.keys(tv.players || {})) {
+			const p = tv.players[pid];
+			// Hide objectives for all players on TV
+			if (p.chosenObjective) p.chosenObjective = { hidden: true };
+			// Hide drawPile/discardPile detail
+			p.drawPile = Array.isArray(p.drawPile) ? p.drawPile.length : (p.drawPile || 0);
+			p.discardPile = Array.isArray(p.discardPile) ? p.discardPile.length : (p.discardPile || 0);
+			p.deck = [];
+			p.shopOfferings = [];
+			delete p._pendingFreeChoices;
+
+			// Only current player's hand is shown with full data
+			if (pid !== currentPid) {
+				p.hand = Array.isArray(p.hand) ? p.hand.length : 0;
+			}
+		}
+
+		// Remove objective choices entirely
+		delete tv.objectiveChoices;
+
+		// Forward timer info for the TV
+		if (tv._turnTimerStart) tv._turnTimerStart = tv._turnTimerStart;
+
+		return tv;
+	}
+
+	/**
+	 * Broadcast current game state to the TV display.
+	 * Called from _onGameStateChanged.
+	 */
+	_broadcastTVState() {
+		if (!this._tvCastActive) return;
+		// Use unsanitized host state when available (P2P host mode)
+		const host = window._p2pHost;
+		let rawState;
+		if (host && host.gameState) {
+			rawState = host.gameState;
+		} else {
+			// Socket.IO or guest mode — use whatever state we have
+			rawState = this.mp.gameState;
+		}
+		const tvState = this._sanitizeStateForTV(rawState);
+		if (!tvState) return;
+
+		// Add invite code for waiting screen
+		tvState.inviteCode = this.mp.inviteCode || null;
+
+		this._tvPostMessage({ type: 'gameState', state: tvState });
+	}
+
+	/** Forward a taunt event to the TV display. */
+	_broadcastTVTaunt(data) {
+		if (!this._tvCastActive) return;
+		this._tvPostMessage({ type: 'taunt', data });
+	}
+
+	/** Forward level complete data to TV. */
+	_broadcastTVLevelComplete(scores, winner, level) {
+		if (!this._tvCastActive) return;
+		this._tvPostMessage({ type: 'levelComplete', data: { levelScores: scores, levelWinner: winner, level } });
+	}
+
+	/** Stop TV cast and close channel. */
+	stopTVCast() {
+		this._tvCastActive = false;
+		this._tvConnected = false;
+		if (this._tvChannel) {
+			try { this._tvChannel.close(); } catch (_) {}
+			this._tvChannel = null;
 		}
 	}
 
@@ -720,7 +896,20 @@ class LocusLobbyUI {
 		const startBtn = this.elements['start-game-btn'];
 		if (startBtn) startBtn.style.display = isHost ? 'block' : 'none';
 
+		// Show cast button for host (P2P only for now)
+		const castBtn = this.elements['tv-cast-btn'];
+		if (castBtn) castBtn.style.display = isHost ? 'flex' : 'none';
+
+		// Also show cast toggle in game top bar for host
+		const castGameBtn = this.elements['tv-cast-game-btn'];
+		if (castGameBtn) castGameBtn.style.display = isHost ? 'inline-flex' : 'none';
+
 		this._updatePlayerList();
+
+		// Broadcast waiting state to TV if already casting
+		if (this._tvCastActive) {
+			this._broadcastTVState();
+		}
 	}
 
 	_updatePlayerList() {
@@ -1417,6 +1606,8 @@ class LocusLobbyUI {
 		const isMe = data?.playerId === this.mp.userId;
 		this._showTauntBubble(playerName, text, isMe);
 		this._playTauntSound();
+		// Forward to TV
+		try { this._broadcastTVTaunt(data); } catch (_) {}
 	}
 
 	_showTauntBubble(playerName, text, isMe = false) {
@@ -3705,6 +3896,9 @@ class LocusLobbyUI {
 		this._cancelBonusMode();
 		this._stopTurnTimer();
 
+		// Forward to TV
+		try { this._broadcastTVLevelComplete(levelScores, levelWinner, level); } catch (_) {}
+
 		const scores = levelScores || this.mp.gameState?.levelScores;
 		const winner = levelWinner || this.mp.gameState?.levelWinner;
 		const currentLevel = level || this.mp.gameState?.level || 1;
@@ -4235,6 +4429,9 @@ class LocusLobbyUI {
 		if (state.phase !== prevState?.phase) {
 			console.log('[Locus UI] Phase transition:', prevState?.phase, '→', state.phase);
 		}
+		// ── TV Cast: forward state to TV display ──
+		try { this._broadcastTVState(); } catch (e) { console.warn('[Locus TV] broadcast error:', e); }
+
 		try { this._checkBonusSpawnNotifications(state, prevState); } catch (e) { console.error('[Locus UI] bonus spawn notification error:', e); }
 		if (state.phase === 'playing') {
 			this._syncTurnTimerFromState(state);

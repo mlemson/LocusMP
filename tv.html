@@ -1,0 +1,1044 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+	<meta charset="utf-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<title>LOCUS — TV Display</title>
+	<style>
+		/* ══════════════════════════════════════════════
+		   LOCUS TV DISPLAY — Big Screen Spectator View
+		   ══════════════════════════════════════════════ */
+		:root {
+			--tv-bg: #0c0e14;
+			--tv-panel: rgba(20,22,34,0.92);
+			--tv-text: #e8e6e0;
+			--tv-dim: rgba(255,255,255,0.45);
+			--tv-accent: #6366f1;
+			--tv-gold: #f0c040;
+			--tv-radius: 12px;
+			--tv-cell-size: 32px;
+			--tv-cell-gap: 3px;
+			--tv-cell-radius: 6px;
+		}
+		* { margin: 0; padding: 0; box-sizing: border-box; }
+		body {
+			background: var(--tv-bg);
+			color: var(--tv-text);
+			font-family: 'Segoe UI', -apple-system, sans-serif;
+			overflow: hidden;
+			width: 100vw;
+			height: 100vh;
+		}
+
+		/* ── Waiting / Connection State ── */
+		.tv-waiting {
+			display: flex;
+			flex-direction: column;
+			align-items: center;
+			justify-content: center;
+			height: 100vh;
+			gap: 24px;
+		}
+		.tv-waiting h1 {
+			font-size: 3rem;
+			font-weight: 800;
+			letter-spacing: 8px;
+			background: linear-gradient(135deg, #6366f1, #818cf8, #c084fc);
+			-webkit-background-clip: text;
+			-webkit-text-fill-color: transparent;
+		}
+		.tv-waiting p {
+			font-size: 1.3rem;
+			color: var(--tv-dim);
+		}
+		.tv-waiting .tv-room-code {
+			font-size: 3.5rem;
+			font-weight: 800;
+			letter-spacing: 12px;
+			color: var(--tv-gold);
+			padding: 16px 40px;
+			background: rgba(240,192,64,0.08);
+			border: 2px solid rgba(240,192,64,0.2);
+			border-radius: 16px;
+		}
+		.tv-pulse {
+			animation: tvPulse 2s ease-in-out infinite;
+		}
+		@keyframes tvPulse {
+			0%, 100% { opacity: 0.5; }
+			50% { opacity: 1; }
+		}
+		.tv-player-list {
+			display: flex;
+			gap: 16px;
+			flex-wrap: wrap;
+			justify-content: center;
+			margin-top: 16px;
+		}
+		.tv-player-chip {
+			background: var(--tv-panel);
+			border: 1px solid rgba(255,255,255,0.1);
+			border-radius: 24px;
+			padding: 8px 20px;
+			font-size: 1.1rem;
+			display: flex;
+			align-items: center;
+			gap: 8px;
+		}
+		.tv-player-chip .tv-connected {
+			width: 8px; height: 8px;
+			border-radius: 50%;
+			background: #22c55e;
+		}
+		.tv-player-chip .tv-disconnected {
+			width: 8px; height: 8px;
+			border-radius: 50%;
+			background: #ef4444;
+		}
+
+		/* ── Game Layout ── */
+		.tv-game {
+			display: none;
+			width: 100vw;
+			height: 100vh;
+			grid-template-columns: 1fr auto;
+			grid-template-rows: auto 1fr auto;
+			grid-template-areas:
+				"top    top"
+				"board  sidebar"
+				"bottom bottom";
+		}
+		.tv-game.active { display: grid; }
+
+		/* ── Top Bar ── */
+		.tv-top-bar {
+			grid-area: top;
+			display: flex;
+			align-items: center;
+			justify-content: space-between;
+			padding: 12px 24px;
+			background: var(--tv-panel);
+			border-bottom: 1px solid rgba(255,255,255,0.06);
+			backdrop-filter: blur(12px);
+		}
+		.tv-turn-info {
+			display: flex;
+			align-items: center;
+			gap: 16px;
+		}
+		.tv-turn-label {
+			font-size: 0.9rem;
+			color: var(--tv-dim);
+			text-transform: uppercase;
+			letter-spacing: 1px;
+		}
+		.tv-turn-player {
+			font-size: 1.5rem;
+			font-weight: 700;
+		}
+		.tv-turn-player.my-turn {
+			color: var(--tv-gold);
+		}
+		.tv-round-badge {
+			font-size: 0.85rem;
+			color: var(--tv-dim);
+			background: rgba(255,255,255,0.06);
+			padding: 4px 12px;
+			border-radius: 8px;
+		}
+		.tv-logo-small {
+			font-size: 1.2rem;
+			font-weight: 800;
+			letter-spacing: 4px;
+			color: var(--tv-dim);
+		}
+
+		/* ── Timer ── */
+		.tv-timer {
+			display: flex;
+			align-items: center;
+			gap: 8px;
+			font-size: 1.1rem;
+			font-weight: 600;
+		}
+		.tv-timer-bar {
+			width: 120px;
+			height: 6px;
+			background: rgba(255,255,255,0.1);
+			border-radius: 3px;
+			overflow: hidden;
+		}
+		.tv-timer-fill {
+			height: 100%;
+			border-radius: 3px;
+			background: var(--tv-accent);
+			transition: width 1s linear, background 0.3s ease;
+			width: 100%;
+		}
+		.tv-timer-fill.warning { background: #f59e0b; }
+		.tv-timer-fill.danger { background: #ef4444; }
+
+		/* ── Board ── */
+		.tv-board-area {
+			grid-area: board;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			padding: 16px;
+			overflow: hidden;
+		}
+		.tv-board {
+			display: flex;
+			gap: 12px;
+			max-width: 100%;
+			max-height: 100%;
+		}
+		.tv-board-col {
+			display: flex;
+			flex-direction: column;
+			gap: 12px;
+		}
+		.tv-zone {
+			border-radius: var(--tv-radius);
+			padding: 10px;
+			position: relative;
+		}
+		.tv-zone-label {
+			position: absolute;
+			top: -8px;
+			left: 12px;
+			font-size: 0.65rem;
+			font-weight: 700;
+			text-transform: uppercase;
+			letter-spacing: 1.5px;
+			padding: 2px 8px;
+			border-radius: 4px;
+			z-index: 2;
+		}
+		.tv-grid {
+			display: grid;
+			gap: var(--tv-cell-gap);
+		}
+		.tv-cell {
+			width: var(--tv-cell-size);
+			height: var(--tv-cell-size);
+			border-radius: var(--tv-cell-radius);
+			border: 1px solid rgba(255,255,255,0.08);
+			background: rgba(255,255,255,0.04);
+			transition: background 0.3s ease;
+		}
+		.tv-cell.void { visibility: hidden; }
+		.tv-cell.active {
+			transform: scale(1.02);
+		}
+		/* Bonus dots on unclaimed cells */
+		.tv-bonus-dot {
+			display: block;
+			width: 6px;
+			height: 6px;
+			border-radius: 50%;
+			background: rgba(255,255,255,0.35);
+			margin: auto;
+		}
+		/* Zone colors */
+		.tv-zone-yellow { background: rgba(207,186,81,0.08); border: 1px solid rgba(207,186,81,0.18); }
+		.tv-zone-yellow .tv-zone-label { background: rgba(207,186,81,0.85); color: #1a1700; }
+		.tv-zone-yellow .tv-cell { background: rgba(207,186,81,0.10); border-color: rgba(207,186,81,0.20); }
+		.tv-zone-yellow .tv-cell.active { background: rgba(207,186,81,0.65); border-color: rgba(207,186,81,0.80); box-shadow: 0 0 6px rgba(207,186,81,0.3); }
+
+		.tv-zone-green { background: rgba(90,171,110,0.08); border: 1px solid rgba(90,171,110,0.18); }
+		.tv-zone-green .tv-zone-label { background: rgba(90,171,110,0.85); color: #0a1f0e; }
+		.tv-zone-green .tv-cell { background: rgba(90,171,110,0.10); border-color: rgba(90,171,110,0.20); }
+		.tv-zone-green .tv-cell.active { background: rgba(90,171,110,0.65); border-color: rgba(90,171,110,0.80); box-shadow: 0 0 6px rgba(90,171,110,0.3); }
+
+		.tv-zone-blue { background: rgba(86,137,176,0.08); border: 1px solid rgba(86,137,176,0.18); }
+		.tv-zone-blue .tv-zone-label { background: rgba(86,137,176,0.85); color: #0a1520; }
+		.tv-zone-blue .tv-cell { background: rgba(86,137,176,0.10); border-color: rgba(86,137,176,0.20); }
+		.tv-zone-blue .tv-cell.active { background: rgba(86,137,176,0.65); border-color: rgba(86,137,176,0.80); box-shadow: 0 0 6px rgba(86,137,176,0.3); }
+
+		.tv-zone-red { background: rgba(181,96,105,0.08); border: 1px solid rgba(181,96,105,0.18); }
+		.tv-zone-red .tv-zone-label { background: rgba(181,96,105,0.85); color: #200a0c; }
+		.tv-zone-red .tv-cell { background: rgba(181,96,105,0.10); border-color: rgba(181,96,105,0.20); }
+		.tv-zone-red .tv-cell.active { background: rgba(181,96,105,0.65); border-color: rgba(181,96,105,0.80); box-shadow: 0 0 6px rgba(181,96,105,0.3); }
+
+		.tv-zone-purple { background: rgba(143,118,184,0.08); border: 1px solid rgba(143,118,184,0.18); }
+		.tv-zone-purple .tv-zone-label { background: rgba(143,118,184,0.85); color: #120a20; }
+		.tv-zone-purple .tv-cell { background: rgba(143,118,184,0.10); border-color: rgba(143,118,184,0.20); }
+		.tv-zone-purple .tv-cell.active { background: rgba(143,118,184,0.65); border-color: rgba(143,118,184,0.80); box-shadow: 0 0 6px rgba(143,118,184,0.3); }
+
+		/* Red subgrids */
+		.tv-red-group {
+			display: flex;
+			flex-wrap: wrap;
+			gap: 8px;
+			justify-content: center;
+		}
+
+		/* ── Sidebar ── */
+		.tv-sidebar {
+			grid-area: sidebar;
+			width: 260px;
+			display: flex;
+			flex-direction: column;
+			gap: 8px;
+			padding: 12px;
+			background: var(--tv-panel);
+			border-left: 1px solid rgba(255,255,255,0.06);
+			overflow-y: auto;
+		}
+		.tv-score-row {
+			display: flex;
+			align-items: center;
+			gap: 10px;
+			padding: 10px 12px;
+			border-radius: 10px;
+			background: rgba(255,255,255,0.03);
+			border: 1px solid rgba(255,255,255,0.06);
+			transition: all 0.3s ease;
+		}
+		.tv-score-row.current-turn {
+			background: rgba(99,102,241,0.12);
+			border-color: rgba(99,102,241,0.3);
+			box-shadow: 0 0 12px rgba(99,102,241,0.15);
+		}
+		.tv-score-rank {
+			font-size: 0.75rem;
+			color: var(--tv-dim);
+			width: 16px;
+			text-align: center;
+		}
+		.tv-score-name {
+			flex: 1;
+			font-weight: 600;
+			font-size: 0.95rem;
+			white-space: nowrap;
+			overflow: hidden;
+			text-overflow: ellipsis;
+		}
+		.tv-score-pts {
+			font-weight: 700;
+			font-size: 1.1rem;
+			color: var(--tv-gold);
+			min-width: 36px;
+			text-align: right;
+		}
+		.tv-score-cards {
+			font-size: 0.7rem;
+			color: var(--tv-dim);
+		}
+
+		/* ── Bottom Bar (Current Player Hand) ── */
+		.tv-bottom-bar {
+			grid-area: bottom;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			gap: 16px;
+			padding: 12px 24px;
+			background: var(--tv-panel);
+			border-top: 1px solid rgba(255,255,255,0.06);
+			min-height: 80px;
+		}
+		.tv-hand-label {
+			font-size: 0.85rem;
+			color: var(--tv-dim);
+			text-transform: uppercase;
+			letter-spacing: 1px;
+		}
+		.tv-hand-cards {
+			display: flex;
+			gap: 12px;
+			align-items: center;
+		}
+		.tv-card {
+			background: var(--tv-panel);
+			border: 1px solid rgba(255,255,255,0.10);
+			border-radius: 10px;
+			padding: 8px;
+			display: flex;
+			flex-direction: column;
+			align-items: center;
+			gap: 4px;
+			min-width: 80px;
+		}
+		.tv-card-name {
+			font-size: 0.7rem;
+			color: var(--tv-dim);
+			text-align: center;
+			white-space: nowrap;
+		}
+		.tv-card-grid {
+			display: inline-grid;
+			gap: 2px;
+		}
+		.tv-card-cell {
+			width: 14px;
+			height: 14px;
+			border-radius: 3px;
+		}
+		.tv-card-cell.filled {
+			box-shadow: inset 0 0 2px rgba(0,0,0,0.2);
+		}
+		.tv-card-cell:not(.filled) {
+			background: rgba(255,255,255,0.04);
+		}
+		.tv-hidden-hand {
+			font-size: 1rem;
+			color: var(--tv-dim);
+			font-style: italic;
+		}
+
+		/* ── Taunt overlay ── */
+		.tv-taunt {
+			position: fixed;
+			top: 50%;
+			left: 50%;
+			transform: translate(-50%, -50%) scale(0);
+			background: rgba(20,22,34,0.95);
+			border: 2px solid rgba(99,102,241,0.3);
+			border-radius: 20px;
+			padding: 24px 48px;
+			z-index: 100;
+			text-align: center;
+			transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.3s ease;
+			opacity: 0;
+			pointer-events: none;
+		}
+		.tv-taunt.show {
+			transform: translate(-50%, -50%) scale(1);
+			opacity: 1;
+		}
+		.tv-taunt-name {
+			font-size: 0.9rem;
+			color: var(--tv-accent);
+			margin-bottom: 4px;
+		}
+		.tv-taunt-text {
+			font-size: 2rem;
+			font-weight: 700;
+		}
+
+		/* ── Level Complete overlay ── */
+		.tv-level-overlay {
+			position: fixed;
+			inset: 0;
+			background: rgba(0,0,0,0.85);
+			display: none;
+			align-items: center;
+			justify-content: center;
+			z-index: 50;
+		}
+		.tv-level-overlay.show { display: flex; }
+		.tv-level-card {
+			background: var(--tv-panel);
+			border: 1px solid rgba(255,255,255,0.1);
+			border-radius: 20px;
+			padding: 40px 60px;
+			text-align: center;
+		}
+		.tv-level-card h2 {
+			font-size: 2rem;
+			margin-bottom: 16px;
+		}
+		.tv-level-scores {
+			display: flex;
+			flex-direction: column;
+			gap: 8px;
+		}
+		.tv-level-score-row {
+			display: flex;
+			align-items: center;
+			justify-content: space-between;
+			gap: 24px;
+			padding: 8px 16px;
+			border-radius: 8px;
+			background: rgba(255,255,255,0.03);
+		}
+		.tv-level-score-row.winner {
+			background: rgba(240,192,64,0.12);
+			border: 1px solid rgba(240,192,64,0.3);
+		}
+
+		/* ── Responsive: smaller TVs ── */
+		@media (max-width: 1200px) {
+			:root {
+				--tv-cell-size: 26px;
+				--tv-cell-gap: 2px;
+			}
+			.tv-sidebar { width: 220px; }
+		}
+		@media (max-width: 900px) {
+			:root {
+				--tv-cell-size: 20px;
+				--tv-cell-gap: 2px;
+				--tv-cell-radius: 4px;
+			}
+			.tv-sidebar { width: 180px; }
+			.tv-turn-player { font-size: 1.2rem; }
+		}
+
+		/* ═══ AURORA THEME ═══ */
+		html.theme-aurora body {
+			background: #0a0c18;
+		}
+		html.theme-aurora .tv-panel,
+		html.theme-aurora .tv-top-bar,
+		html.theme-aurora .tv-sidebar,
+		html.theme-aurora .tv-bottom-bar {
+			background: rgba(12,14,28,0.90);
+			border-color: rgba(99,102,241,0.10);
+		}
+		html.theme-aurora .tv-waiting h1 {
+			background: linear-gradient(135deg, #6366f1, #818cf8, #c084fc);
+		}
+		html.theme-aurora .tv-cell.active {
+			box-shadow: 0 0 6px rgba(99,102,241,0.2);
+		}
+
+		/* ═══ BLOOM THEME ═══ */
+		html.theme-bloom body {
+			background: #faf5eb;
+			color: #3d3429;
+		}
+		html.theme-bloom .tv-waiting h1 {
+			background: linear-gradient(135deg, #c07050, #e0a070, #907050);
+			-webkit-background-clip: text;
+			-webkit-text-fill-color: transparent;
+		}
+		html.theme-bloom .tv-waiting p,
+		html.theme-bloom .tv-dim,
+		html.theme-bloom .tv-turn-label,
+		html.theme-bloom .tv-round-badge,
+		html.theme-bloom .tv-hand-label,
+		html.theme-bloom .tv-hidden-hand,
+		html.theme-bloom .tv-card-name,
+		html.theme-bloom .tv-score-rank {
+			color: rgba(61,52,41,0.55);
+		}
+		html.theme-bloom .tv-top-bar,
+		html.theme-bloom .tv-sidebar,
+		html.theme-bloom .tv-bottom-bar {
+			background: rgba(248,244,236,0.95);
+			border-color: rgba(180,160,130,0.12);
+		}
+		html.theme-bloom .tv-score-row {
+			background: rgba(180,160,130,0.06);
+			border-color: rgba(180,160,130,0.10);
+		}
+		html.theme-bloom .tv-score-row.current-turn {
+			background: rgba(224,122,95,0.08);
+			border-color: rgba(224,122,95,0.25);
+			box-shadow: 0 0 10px rgba(224,122,95,0.08);
+		}
+		html.theme-bloom .tv-score-pts {
+			color: #c07050;
+		}
+		html.theme-bloom .tv-room-code {
+			color: #c07050;
+			background: rgba(224,122,95,0.06);
+			border-color: rgba(224,122,95,0.18);
+		}
+		html.theme-bloom .tv-zone {
+			border-color: rgba(180,160,130,0.12);
+		}
+		html.theme-bloom .tv-cell {
+			border-color: rgba(180,160,130,0.15);
+			background: rgba(180,160,130,0.06);
+		}
+		html.theme-bloom .tv-cell.active {
+			border-radius: 7px;
+		}
+		html.theme-bloom .tv-card {
+			background: rgba(248,244,236,0.85);
+			border-color: rgba(180,160,130,0.15);
+		}
+		html.theme-bloom .tv-logo-small {
+			color: rgba(61,52,41,0.35);
+		}
+		html.theme-bloom .tv-taunt {
+			background: rgba(248,244,236,0.96);
+			border-color: rgba(224,122,95,0.25);
+			color: #3d3429;
+		}
+		html.theme-bloom .tv-taunt-name {
+			color: #c07050;
+		}
+	</style>
+</head>
+<body>
+	<!-- Waiting Screen -->
+	<div id="tv-waiting" class="tv-waiting">
+		<h1>LOCUS</h1>
+		<p id="tv-status" class="tv-pulse">Wachten op verbinding met host...</p>
+		<div id="tv-room-code" class="tv-room-code" style="display:none;">------</div>
+		<div id="tv-player-list" class="tv-player-list"></div>
+	</div>
+
+	<!-- Game Screen -->
+	<div id="tv-game" class="tv-game">
+		<div class="tv-top-bar">
+			<div class="tv-turn-info">
+				<span class="tv-turn-label">Beurt:</span>
+				<span id="tv-turn-player" class="tv-turn-player">—</span>
+				<span id="tv-round-badge" class="tv-round-badge">Ronde 1</span>
+			</div>
+			<div id="tv-timer" class="tv-timer" style="display:none;">
+				<div class="tv-timer-bar"><div id="tv-timer-fill" class="tv-timer-fill"></div></div>
+				<span id="tv-timer-text">40s</span>
+			</div>
+			<span class="tv-logo-small">LOCUS</span>
+		</div>
+
+		<div class="tv-board-area">
+			<div id="tv-board" class="tv-board"></div>
+		</div>
+
+		<div class="tv-sidebar">
+			<div id="tv-scoreboard" style="display: flex; flex-direction: column; gap: 6px;"></div>
+		</div>
+
+		<div class="tv-bottom-bar">
+			<span id="tv-hand-label" class="tv-hand-label"></span>
+			<div id="tv-hand-cards" class="tv-hand-cards"></div>
+		</div>
+	</div>
+
+	<!-- Taunt popup -->
+	<div id="tv-taunt" class="tv-taunt">
+		<div id="tv-taunt-name" class="tv-taunt-name"></div>
+		<div id="tv-taunt-text" class="tv-taunt-text"></div>
+	</div>
+
+	<!-- Level Complete overlay -->
+	<div id="tv-level-overlay" class="tv-level-overlay">
+		<div class="tv-level-card">
+			<h2 id="tv-level-title">Level Compleet!</h2>
+			<div id="tv-level-scores" class="tv-level-scores"></div>
+		</div>
+	</div>
+
+	<script>
+	/**
+	 * ════════════════════════════════════════════
+	 * LOCUS TV Display Controller
+	 * ════════════════════════════════════════════
+	 * Receives game state from host via BroadcastChannel
+	 * and renders a spectator-optimized view for TV screens.
+	 */
+	(function() {
+		'use strict';
+
+		const channel = new BroadcastChannel('locus-tv');
+		let currentState = null;
+		let timerInterval = null;
+
+		// ── Listen for messages from host ──
+		channel.onmessage = (e) => {
+			const msg = e.data;
+			if (!msg || !msg.type) return;
+
+			switch (msg.type) {
+				case 'gameState':
+					onGameState(msg.state);
+					break;
+				case 'taunt':
+					showTaunt(msg.data);
+					break;
+				case 'levelComplete':
+					showLevelComplete(msg.data);
+					break;
+				case 'theme':
+					applyTheme(msg.theme);
+					break;
+				case 'ping':
+					// Host is checking if TV is alive
+					channel.postMessage({ type: 'pong' });
+					break;
+			}
+		};
+
+		// ── Notify host we're ready ──
+		channel.postMessage({ type: 'tvReady' });
+
+		// ── Apply theme from host ──
+		function applyTheme(theme) {
+			document.documentElement.classList.remove('theme-aurora', 'theme-bloom');
+			if (theme === 'aurora') document.documentElement.classList.add('theme-aurora');
+			else if (theme === 'bloom') document.documentElement.classList.add('theme-bloom');
+		}
+
+		// ── State Update ──
+		function onGameState(state) {
+			if (!state) return;
+			currentState = state;
+
+			const waitingEl = document.getElementById('tv-waiting');
+			const gameEl = document.getElementById('tv-game');
+
+			if (state.phase === 'waiting' || state.phase === 'choosingStartDeck' || state.phase === 'choosingGoals') {
+				waitingEl.style.display = 'flex';
+				gameEl.classList.remove('active');
+				renderWaiting(state);
+			} else if (state.phase === 'playing' || state.phase === 'shopping') {
+				waitingEl.style.display = 'none';
+				gameEl.classList.add('active');
+				renderGame(state);
+				document.getElementById('tv-level-overlay').classList.remove('show');
+			} else if (state.phase === 'levelComplete') {
+				// Keep board visible, show overlay
+				if (!gameEl.classList.contains('active')) {
+					gameEl.classList.add('active');
+					waitingEl.style.display = 'none';
+				}
+				renderGame(state);
+			} else if (state.phase === 'ended') {
+				renderGame(state);
+			}
+		}
+
+		// ── Waiting Screen ──
+		function renderWaiting(state) {
+			const statusEl = document.getElementById('tv-status');
+			const codeEl = document.getElementById('tv-room-code');
+			const listEl = document.getElementById('tv-player-list');
+
+			if (state.inviteCode) {
+				codeEl.textContent = state.inviteCode;
+				codeEl.style.display = 'block';
+				statusEl.textContent = 'Wachten op spelers...';
+			}
+
+			if (state.phase === 'choosingGoals' || state.phase === 'choosingStartDeck') {
+				statusEl.textContent = state.phase === 'choosingStartDeck'
+					? 'Spelers kiezen hun startdeck...'
+					: 'Spelers kiezen hun doelstelling...';
+			}
+
+			const players = state.players || {};
+			const order = state.playerOrder || Object.keys(players);
+			listEl.innerHTML = order.map(pid => {
+				const p = players[pid];
+				if (!p) return '';
+				const dot = p.connected !== false
+					? '<span class="tv-connected"></span>'
+					: '<span class="tv-disconnected"></span>';
+				return `<div class="tv-player-chip">${dot} ${esc(p.name || 'Speler')}</div>`;
+			}).join('');
+		}
+
+		// ── Game Rendering ──
+		function renderGame(state) {
+			renderBoard(state.boardState);
+			renderScoreboard(state);
+			renderTurnInfo(state);
+			renderCurrentHand(state);
+			updateTimer(state);
+		}
+
+		// ── Board ──
+		function renderBoard(boardState) {
+			const container = document.getElementById('tv-board');
+			if (!container || !boardState) return;
+
+			const zones = boardState.zones;
+			container.innerHTML = `
+				<div class="tv-board-col">
+					${renderZone('yellow', zones.yellow, 'Geel')}
+					${renderZone('green', zones.green, 'Groen')}
+				</div>
+				<div class="tv-board-col">
+					${renderZone('blue', zones.blue, 'Blauw')}
+				</div>
+				<div class="tv-board-col">
+					${renderRedZone(zones.red)}
+					${renderZone('purple', zones.purple, 'Paars')}
+				</div>
+			`;
+		}
+
+		function renderZone(name, zoneData, label) {
+			if (!zoneData) return '';
+			const grid = zoneData.grid;
+			if (!grid || !grid.length) return '';
+			const cols = grid[0]?.length || 0;
+
+			let cellsHtml = '';
+			for (let y = 0; y < grid.length; y++) {
+				for (let x = 0; x < cols; x++) {
+					const cell = grid[y][x];
+					if (cell === null || cell === undefined) {
+						cellsHtml += '<div class="tv-cell void"></div>';
+					} else {
+						const isActive = cell.active || cell.owner || cell.filled || cell.playerId;
+						let style = '';
+						if (isActive && cell.color?.code) {
+							if (cell.color.code === 'rainbow') {
+								const zoneColors = { yellow: '#cfba51', green: '#92c28c', blue: '#5689b0', red: '#b56069', purple: '#8f76b8' };
+								style = `background:${zoneColors[name] || '#888'};`;
+							} else {
+								style = `background:${cell.color.code};`;
+							}
+						} else if (isActive && cell.isStone) {
+							style = 'background:#8a8a8a;';
+						}
+						const cls = isActive ? 'tv-cell active' : 'tv-cell';
+						const bonusDot = (!isActive && cell.bonusSymbol) ? '<span class="tv-bonus-dot"></span>' : '';
+						cellsHtml += `<div class="${cls}" style="${style}">${bonusDot}</div>`;
+					}
+				}
+			}
+
+			return `
+				<div class="tv-zone tv-zone-${name}">
+					<span class="tv-zone-label">${label}</span>
+					<div class="tv-grid" style="grid-template-columns: repeat(${cols}, var(--tv-cell-size));">
+						${cellsHtml}
+					</div>
+				</div>
+			`;
+		}
+
+		function renderRedZone(redData) {
+			if (!redData) return '';
+			const subgrids = redData.subgrids || [];
+			if (subgrids.length === 0) return '';
+
+			let subgridsHtml = '';
+			for (const sg of subgrids) {
+				const g = sg.grid;
+				if (!g || !g.length) continue;
+				const cols = g[0]?.length || 0;
+				let cellsHtml = '';
+				for (let y = 0; y < g.length; y++) {
+					for (let x = 0; x < cols; x++) {
+						const cell = g[y][x];
+						const isActive = cell && (cell.active || cell.owner || cell.filled || cell.playerId);
+						let style = '';
+						if (isActive && cell.color?.code) {
+							style = cell.color.code === 'rainbow'
+								? 'background:#b56069;'
+								: `background:${cell.color.code};`;
+						} else if (isActive && cell.isStone) {
+							style = 'background:#8a8a8a;';
+						}
+						const cls = isActive ? 'tv-cell active' : 'tv-cell';
+						cellsHtml += `<div class="${cls}" style="${style}"></div>`;
+					}
+				}
+				subgridsHtml += `
+					<div class="tv-grid" style="grid-template-columns: repeat(${cols}, var(--tv-cell-size));">
+						${cellsHtml}
+					</div>
+				`;
+			}
+
+			return `
+				<div class="tv-zone tv-zone-red">
+					<span class="tv-zone-label">Rood</span>
+					<div class="tv-red-group">${subgridsHtml}</div>
+				</div>
+			`;
+		}
+
+		// ── Scoreboard ──
+		function renderScoreboard(state) {
+			const container = document.getElementById('tv-scoreboard');
+			if (!container) return;
+
+			const players = state.players || {};
+			const order = state.playerOrder || [];
+			const currentPid = order[state.currentTurnIndex] || null;
+
+			// Sort by score descending
+			const sorted = order.map((pid, i) => ({
+				pid, rank: i + 1,
+				name: players[pid]?.name || 'Speler',
+				score: players[pid]?.score || 0,
+				connected: players[pid]?.connected !== false,
+				handSize: Array.isArray(players[pid]?.hand) ? players[pid].hand.length : 0,
+				cardsLeft: Array.isArray(players[pid]?.drawPile) ? players[pid].drawPile.length : (players[pid]?.drawPile || 0),
+				isCurrent: pid === currentPid
+			})).sort((a, b) => b.score - a.score);
+
+			container.innerHTML = sorted.map((p, i) => `
+				<div class="tv-score-row ${p.isCurrent ? 'current-turn' : ''}">
+					<span class="tv-score-rank">${i + 1}</span>
+					<span class="tv-score-name">${esc(p.name)} ${!p.connected ? '🔌' : ''}</span>
+					<span class="tv-score-pts">${p.score}</span>
+				</div>
+			`).join('');
+		}
+
+		// ── Turn Info ──
+		function renderTurnInfo(state) {
+			const players = state.players || {};
+			const order = state.playerOrder || [];
+			const currentPid = order[state.currentTurnIndex] || null;
+			const player = currentPid ? players[currentPid] : null;
+
+			const turnEl = document.getElementById('tv-turn-player');
+			const roundEl = document.getElementById('tv-round-badge');
+
+			if (turnEl) {
+				turnEl.textContent = player ? player.name : '—';
+				turnEl.className = 'tv-turn-player';
+			}
+			if (roundEl) {
+				roundEl.textContent = `Ronde ${state.turnCount || 1} • Level ${state.level || 1}`;
+			}
+		}
+
+		// ── Current Player Hand ──
+		function renderCurrentHand(state) {
+			const labelEl = document.getElementById('tv-hand-label');
+			const cardsEl = document.getElementById('tv-hand-cards');
+			if (!labelEl || !cardsEl) return;
+
+			const players = state.players || {};
+			const order = state.playerOrder || [];
+			const currentPid = order[state.currentTurnIndex] || null;
+			const player = currentPid ? players[currentPid] : null;
+
+			if (!player) {
+				labelEl.textContent = '';
+				cardsEl.innerHTML = '';
+				return;
+			}
+
+			const hand = Array.isArray(player.hand) ? player.hand : [];
+			labelEl.textContent = `${player.name}'s kaarten:`;
+
+			if (hand.length === 0) {
+				cardsEl.innerHTML = '<span class="tv-hidden-hand">Geen kaarten</span>';
+				return;
+			}
+
+			// Check if hand has actual card data (not just count)
+			const hasCardData = hand[0] && typeof hand[0] === 'object' && hand[0].matrix;
+			if (!hasCardData) {
+				cardsEl.innerHTML = `<span class="tv-hidden-hand">${hand.length} kaart${hand.length !== 1 ? 'en' : ''}</span>`;
+				return;
+			}
+
+			cardsEl.innerHTML = hand.map(card => {
+				const matrix = card.matrix || [];
+				const colorCode = card.color?.code || '#666';
+				const isRainbow = colorCode === 'rainbow';
+				const cols = matrix[0]?.length || 0;
+				const fill = isRainbow
+					? 'background: linear-gradient(135deg, #b56069, #cfba51, #92c28c, #5689b0, #8f76b8)'
+					: `background: ${colorCode}`;
+
+				let cells = '';
+				for (const row of matrix) {
+					for (const c of row) {
+						cells += c
+							? `<div class="tv-card-cell filled" style="${fill}"></div>`
+							: '<div class="tv-card-cell"></div>';
+					}
+				}
+
+				return `
+					<div class="tv-card">
+						<div class="tv-card-grid" style="grid-template-columns: repeat(${cols}, 14px);">
+							${cells}
+						</div>
+						<span class="tv-card-name">${esc(card.shapeName || card.id || '')}</span>
+					</div>
+				`;
+			}).join('');
+		}
+
+		// ── Timer ──
+		function updateTimer(state) {
+			const timerEl = document.getElementById('tv-timer');
+			const fillEl = document.getElementById('tv-timer-fill');
+			const textEl = document.getElementById('tv-timer-text');
+			if (!timerEl || !fillEl || !textEl) return;
+
+			if (state.paused) {
+				timerEl.style.display = 'flex';
+				textEl.textContent = '⏸';
+				fillEl.style.width = '100%';
+				fillEl.className = 'tv-timer-fill';
+				clearInterval(timerInterval);
+				return;
+			}
+
+			const start = state._turnTimerStart;
+			const duration = state._turnTimerDurationMs;
+			if (!start || !duration) {
+				timerEl.style.display = 'none';
+				clearInterval(timerInterval);
+				return;
+			}
+
+			timerEl.style.display = 'flex';
+			clearInterval(timerInterval);
+
+			function tick() {
+				const elapsed = Date.now() - start;
+				const remaining = Math.max(0, duration - elapsed);
+				const pct = (remaining / duration) * 100;
+				const secs = Math.ceil(remaining / 1000);
+
+				fillEl.style.width = pct + '%';
+				textEl.textContent = secs + 's';
+
+				fillEl.className = 'tv-timer-fill';
+				if (pct < 25) fillEl.classList.add('danger');
+				else if (pct < 50) fillEl.classList.add('warning');
+			}
+
+			tick();
+			timerInterval = setInterval(tick, 500);
+		}
+
+		// ── Taunt ──
+		function showTaunt(data) {
+			const el = document.getElementById('tv-taunt');
+			const nameEl = document.getElementById('tv-taunt-name');
+			const textEl = document.getElementById('tv-taunt-text');
+			if (!el || !nameEl || !textEl) return;
+
+			nameEl.textContent = data.playerName || 'Speler';
+			textEl.textContent = data.text || '';
+			el.classList.add('show');
+
+			setTimeout(() => el.classList.remove('show'), 2500);
+		}
+
+		// ── Level Complete ──
+		function showLevelComplete(data) {
+			const overlay = document.getElementById('tv-level-overlay');
+			const titleEl = document.getElementById('tv-level-title');
+			const scoresEl = document.getElementById('tv-level-scores');
+			if (!overlay || !titleEl || !scoresEl) return;
+
+			titleEl.textContent = `Level ${data.level || '?'} Compleet!`;
+
+			const scores = data.levelScores || {};
+			const winner = data.levelWinner;
+
+			scoresEl.innerHTML = Object.entries(scores)
+				.sort((a, b) => (b[1]?.total || 0) - (a[1]?.total || 0))
+				.map(([pid, s]) => `
+					<div class="tv-level-score-row ${pid === winner ? 'winner' : ''}">
+						<span>${esc(s.name || pid)} ${pid === winner ? '👑' : ''}</span>
+						<span style="font-weight:700; color: var(--tv-gold);">${s.total || 0} pt</span>
+					</div>
+				`).join('');
+
+			overlay.classList.add('show');
+		}
+
+		// ── Util ──
+		function esc(s) {
+			const d = document.createElement('div');
+			d.textContent = s;
+			return d.innerHTML;
+		}
+	})();
+	</script>
+</body>
+</html>
