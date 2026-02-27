@@ -415,6 +415,15 @@ class LocusLobbyUI {
 		// Determine the absolute URL for tv.html
 		const tvUrl = new URL('tv.html', window.location.href).href;
 
+		// iOS / iPadOS detection — Presentation API is not available on any iOS browser.
+		// Guide the user to use AirPlay Screen Mirroring instead.
+		const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+			(navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+		if (isIOS && !('PresentationRequest' in window)) {
+			this._showAirPlayGuide();
+			return;
+		}
+
 		// Try Presentation API (discovers Chromecast, wireless displays)
 		if ('PresentationRequest' in window) {
 			try {
@@ -490,6 +499,64 @@ class LocusLobbyUI {
 		} else {
 			this._showToast('Pop-up geblokkeerd — sta pop-ups toe.', 'warning');
 		}
+	}
+
+	/**
+	 * Show an AirPlay guide overlay for iOS users.
+	 * iOS does not support the Presentation API; users must use the native
+	 * Screen Mirroring feature from Control Center instead.
+	 */
+	_showAirPlayGuide() {
+		// Remove any existing guide
+		document.getElementById('airplay-guide-overlay')?.remove();
+
+		const overlay = document.createElement('div');
+		overlay.id = 'airplay-guide-overlay';
+		Object.assign(overlay.style, {
+			position: 'fixed', inset: '0', zIndex: '99999',
+			background: 'rgba(0,0,0,0.75)', display: 'flex',
+			alignItems: 'center', justifyContent: 'center',
+			padding: '24px', boxSizing: 'border-box'
+		});
+
+		const card = document.createElement('div');
+		Object.assign(card.style, {
+			background: '#1e1e2e', color: '#e0e0e0', borderRadius: '16px',
+			padding: '28px 24px', maxWidth: '380px', width: '100%',
+			textAlign: 'center', fontFamily: 'sans-serif',
+			boxShadow: '0 8px 32px rgba(0,0,0,0.5)'
+		});
+
+		card.innerHTML = `
+			<div style="font-size:48px;margin-bottom:12px">📺</div>
+			<h2 style="margin:0 0 8px;font-size:20px;color:#fff">TV Casten vanaf iPhone</h2>
+			<p style="margin:0 0 16px;font-size:14px;line-height:1.5;color:#bbb">
+				iPhones ondersteunen geen directe TV-cast via de browser.<br>
+				Gebruik in plaats daarvan <strong style="color:#fff">AirPlay Scherm&shy;delen</strong>:
+			</p>
+			<ol style="text-align:left;margin:0 0 18px 8px;padding-left:18px;font-size:14px;line-height:1.8;color:#ccc">
+				<li>Open het <strong style="color:#fff">Bedieningspaneel</strong> (veeg van rechtsboven naar beneden)</li>
+				<li>Tik op <strong style="color:#fff">Synchrone weergave</strong> (twee overlappende schermen)</li>
+				<li>Kies je <strong style="color:#fff">Apple TV</strong> of <strong style="color:#fff">AirPlay-tv</strong></li>
+				<li>Je scherm wordt nu gespiegeld op de TV</li>
+			</ol>
+			<p style="margin:0 0 18px;font-size:13px;color:#999">
+				💡 Tip: draai je iPhone op z'n kant voor een breedbeeld&shy;weergave op de TV.
+			</p>
+			<button id="airplay-guide-close" style="
+				background:#6c5ce7;color:#fff;border:none;border-radius:10px;
+				padding:12px 32px;font-size:16px;font-weight:600;cursor:pointer;
+				width:100%
+			">Begrepen</button>
+		`;
+
+		overlay.appendChild(card);
+		document.body.appendChild(overlay);
+
+		// Close on button click or overlay tap
+		const close = () => { overlay.remove(); this._tvCastActive = false; };
+		document.getElementById('airplay-guide-close').addEventListener('click', close);
+		overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
 	}
 
 	/**
