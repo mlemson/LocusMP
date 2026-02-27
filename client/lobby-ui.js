@@ -2493,6 +2493,7 @@ class LocusLobbyUI {
 
 	async _attemptPlacement(zoneName, baseX, baseY, subgridId = null) {
 		if (!this._dragState) return;
+		this._suppressMobileSwipeUntil = Date.now() + 450;
 		const zoneIdx = this._getMobileZoneIndex(zoneName);
 		if (Number.isFinite(zoneIdx)) {
 			this._forcedMobileBoardIndex = zoneIdx;
