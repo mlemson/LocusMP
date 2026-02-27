@@ -1790,41 +1790,65 @@ html, body {
 	transform: translateX(-50%);
 	display: flex;
 	align-items: center;
-	gap: 10px;
-	background: var(--mp-panel);
-	border: 1px solid rgba(255,255,255,0.1);
-	border-radius: 12px;
-	padding: 8px 16px;
-	box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+	gap: 12px;
+	background: linear-gradient(160deg, rgba(30,32,48,0.92), rgba(22,24,38,0.96));
+	border: 1px solid rgba(255,255,255,0.10);
+	border-radius: 16px;
+	padding: 10px 18px;
+	box-shadow: 0 12px 40px rgba(0,0,0,0.55), 0 2px 8px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.06);
 	z-index: 1000;
+	-webkit-backdrop-filter: blur(16px) saturate(1.4);
+	backdrop-filter: blur(16px) saturate(1.4);
 }
 
 .mp-ctrl-label {
 	font-size: 0.82rem;
 	color: var(--mp-text-dim);
+	line-height: 1.3;
+}
+
+.mp-ctrl-label strong {
+	color: var(--mp-text);
+	font-weight: 600;
 }
 
 .mp-ctrl-btn {
-	width: 36px;
-	height: 36px;
+	width: 40px;
+	height: 40px;
 	border: none;
-	border-radius: 50%;
-	background: var(--mp-accent);
+	border-radius: 12px;
+	background: linear-gradient(145deg, var(--mp-accent), color-mix(in srgb, var(--mp-accent) 80%, #000));
 	color: white;
 	font-size: 16px;
 	cursor: pointer;
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	transition: all var(--mp-transition);
+	transition: all 0.2s ease;
+	box-shadow: 0 3px 10px rgba(0,0,0,0.25), inset 0 1px 0 rgba(255,255,255,0.15);
 }
 
 .mp-ctrl-btn:hover {
-	transform: scale(1.1);
+	transform: scale(1.08) translateY(-1px);
+	box-shadow: 0 5px 16px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.2);
+}
+
+.mp-ctrl-btn:active {
+	transform: scale(0.95);
+	box-shadow: 0 1px 4px rgba(0,0,0,0.3);
+}
+
+.mp-ctrl-btn svg {
+	display: block;
 }
 
 .mp-ctrl-cancel {
-	background: var(--mp-error);
+	background: linear-gradient(145deg, #ef4444, #dc2626);
+	box-shadow: 0 3px 10px rgba(239,68,68,0.3), inset 0 1px 0 rgba(255,255,255,0.15);
+}
+
+.mp-ctrl-cancel:hover {
+	box-shadow: 0 5px 16px rgba(239,68,68,0.45), inset 0 1px 0 rgba(255,255,255,0.2);
 }
 
 /* ── RESULTS ── */
@@ -2415,6 +2439,8 @@ body.mp-loading .mp-btn {
 		width: 100%;
 		height: 100%;
 		min-height: 0;
+		scroll-behavior: smooth;
+		will-change: scroll-position;
 	}
 
 	.mp-board::-webkit-scrollbar {
@@ -2427,13 +2453,13 @@ body.mp-loading .mp-btn {
 		width: 100%;
 		box-sizing: border-box;
 		scroll-snap-align: start;
-		scroll-snap-stop: always;
+		scroll-snap-stop: normal;
 		height: 100%;
 		min-height: 0;
 		overflow-y: auto;
-		overscroll-behavior: contain;
+		overscroll-behavior-y: contain;
 		-webkit-overflow-scrolling: touch;
-		touch-action: auto;
+		touch-action: pan-x pan-y;
 	}
 
 	.mp-zone {
@@ -2476,27 +2502,28 @@ body.mp-loading .mp-btn {
 
 	#mp-placement-controls {
 		bottom: calc(84px + env(safe-area-inset-bottom));
-		padding: 8px 10px;
+		padding: 8px 12px;
 		font-size: 0.78rem;
-		gap: 8px;
+		gap: 10px;
 		max-width: calc(100vw - 14px);
-		border-radius: 16px;
+		border-radius: 14px;
 		align-items: center;
 	}
 
 	#mp-placement-controls .mp-ctrl-label {
 		font-size: 0.72rem;
 		line-height: 1.2;
-		max-width: 52vw;
+		max-width: 48vw;
 	}
 
 	#mp-placement-controls .mp-ctrl-btn {
-		width: 34px;
-		height: 34px;
-		min-width: 34px;
-		min-height: 34px;
+		width: 38px;
+		height: 38px;
+		min-width: 38px;
+		min-height: 38px;
 		aspect-ratio: 1 / 1;
 		font-size: 15px;
+		border-radius: 11px;
 		padding: 0;
 		flex: 0 0 auto;
 	}
@@ -5611,29 +5638,29 @@ html.theme-aurora .mp-turn-indicator.my-turn {
 
 /* ── Placement controls — refined dark glass ── */
 html.theme-aurora #mp-placement-controls {
-	background: rgba(15,18,30,0.88);
-	border: 1px solid rgba(99,102,241,0.15);
-	border-radius: 14px;
-	box-shadow: 0 12px 40px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.04);
-	-webkit-backdrop-filter: blur(14px) saturate(1.3);
-	backdrop-filter: blur(14px) saturate(1.3);
+	background: rgba(15,18,30,0.92);
+	border: 1px solid rgba(99,102,241,0.18);
+	border-radius: 16px;
+	box-shadow: 0 12px 40px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.05);
+	-webkit-backdrop-filter: blur(16px) saturate(1.4);
+	backdrop-filter: blur(16px) saturate(1.4);
 }
 
 html.theme-aurora .mp-ctrl-btn {
-	background: linear-gradient(135deg, #6366f1, #818cf8);
-	border-radius: 50%;
-	box-shadow: 0 2px 8px rgba(99,102,241,0.3);
-	transition: all 0.25s ease;
+	background: linear-gradient(145deg, #6366f1, #4f46e5);
+	border-radius: 12px;
+	box-shadow: 0 3px 10px rgba(99,102,241,0.3), inset 0 1px 0 rgba(255,255,255,0.15);
+	transition: all 0.2s ease;
 }
 
 html.theme-aurora .mp-ctrl-btn:hover {
-	box-shadow: 0 0 16px rgba(99,102,241,0.5);
-	transform: scale(1.08);
+	box-shadow: 0 0 20px rgba(99,102,241,0.5), inset 0 1px 0 rgba(255,255,255,0.2);
+	transform: scale(1.08) translateY(-1px);
 }
 
 html.theme-aurora .mp-ctrl-cancel {
-	background: linear-gradient(135deg, #ef4444, #f87171);
-	box-shadow: 0 2px 8px rgba(239,68,68,0.3);
+	background: linear-gradient(145deg, #ef4444, #dc2626);
+	box-shadow: 0 3px 10px rgba(239,68,68,0.3), inset 0 1px 0 rgba(255,255,255,0.15);
 }
 
 /* ── Opponent panels — deeper glass ── */
@@ -7022,27 +7049,27 @@ html.theme-bloom .mp-cell.preview-denied {
 /* ── Placement controls ── */
 html.theme-bloom #mp-placement-controls {
 	background: linear-gradient(160deg, #ffffff, #fdfbf6);
-	border: 1px solid rgba(180,160,130,0.10);
-	border-radius: 22px;
+	border: 1px solid rgba(180,160,130,0.12);
+	border-radius: 16px;
 	box-shadow: 0 12px 40px rgba(180,160,130,0.14), inset 0 1px 0 rgba(255,255,255,0.8);
 }
 
 html.theme-bloom .mp-ctrl-btn {
 	background: linear-gradient(145deg, #e8927a, #e07a5f);
 	color: #ffffff;
-	border-radius: 50%;
-	transition: all 0.3s ease;
-	box-shadow: 0 3px 10px rgba(224,122,95,0.20);
+	border-radius: 12px;
+	transition: all 0.2s ease;
+	box-shadow: 0 3px 10px rgba(224,122,95,0.22), inset 0 1px 0 rgba(255,255,255,0.25);
 }
 
 html.theme-bloom .mp-ctrl-btn:hover {
-	box-shadow: 0 0 16px rgba(224,122,95,0.30);
-	transform: scale(1.12);
+	box-shadow: 0 5px 18px rgba(224,122,95,0.35), inset 0 1px 0 rgba(255,255,255,0.3);
+	transform: scale(1.08) translateY(-1px);
 }
 
 html.theme-bloom .mp-ctrl-cancel {
 	background: linear-gradient(145deg, #e06060, #d45555);
-	box-shadow: 0 3px 10px rgba(212,85,85,0.20);
+	box-shadow: 0 3px 10px rgba(212,85,85,0.22), inset 0 1px 0 rgba(255,255,255,0.2);
 }
 
 /* ── Gold counter — botanical coin purse ── */

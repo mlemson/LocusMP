@@ -1945,7 +1945,7 @@ class LocusLobbyUI {
 		const matrix = this._dragState.matrix;
 		if (!ghost || !matrix || !matrix.length) return;
 
-		const cellHits = this._collectHoveredShapeCellHits(ghost, matrix, 3);
+		const cellHits = this._collectHoveredShapeCellHits(ghost, matrix, 6);
 
 		if (cellHits.length === 0) return;
 
@@ -2039,7 +2039,7 @@ class LocusLobbyUI {
 		}
 	}
 
-	_collectHoveredShapeCellHits(ghost, matrix, tolerancePx = 3) {
+	_collectHoveredShapeCellHits(ghost, matrix, tolerancePx = 6) {
 		if (!ghost || !matrix || !matrix.length) return [];
 
 		const gridEl = ghost.querySelector('.mp-mini-grid');
@@ -2314,9 +2314,9 @@ class LocusLobbyUI {
 		controls.id = 'mp-placement-controls';
 		controls.innerHTML = `
 			<span class="mp-ctrl-label">Plaatst: <strong>${this._escapeHtml(card.shapeName)}</strong></span>
-			<button class="mp-ctrl-btn" id="mp-rotate-btn" title="Draai (R / scroll)">🔄</button>
-			<button class="mp-ctrl-btn" id="mp-mirror-btn" title="Spiegel (T)">↔️</button>
-			<button class="mp-ctrl-btn mp-ctrl-cancel" id="mp-cancel-btn" title="Annuleer (Esc)">✕</button>
+			<button class="mp-ctrl-btn" id="mp-rotate-btn" title="Draai (R / scroll)"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M1 4v6h6"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg></button>
+			<button class="mp-ctrl-btn" id="mp-mirror-btn" title="Spiegel (T)"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h3"/><path d="M16 3h3a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-3"/><line x1="12" y1="2" x2="12" y2="22" stroke-dasharray="3 3"/><polyline points="7 8 3 12 7 16"/><polyline points="17 8 21 12 17 16"/></svg></button>
+			<button class="mp-ctrl-btn mp-ctrl-cancel" id="mp-cancel-btn" title="Annuleer (Esc)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
 		`;
 
 		document.getElementById('game-screen')?.appendChild(controls);
@@ -2498,8 +2498,8 @@ class LocusLobbyUI {
 		controls.id = 'mp-placement-controls';
 		controls.innerHTML = `
 			<span class="mp-ctrl-label">Bonus: <strong>${bInfo.label}</strong> — klik op ${bonusColor === 'any' ? 'een zone naar keuze' : `de ${bInfo.label} zone`}</span>
-			<button class="mp-ctrl-btn" id="mp-rotate-btn" title="Draai (R)">🔄</button>
-			<button class="mp-ctrl-btn mp-ctrl-cancel" id="mp-cancel-btn" title="Annuleer (Esc)">✕</button>
+			<button class="mp-ctrl-btn" id="mp-rotate-btn" title="Draai (R)"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M1 4v6h6"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg></button>
+			<button class="mp-ctrl-btn mp-ctrl-cancel" id="mp-cancel-btn" title="Annuleer (Esc)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
 		`;
 
 		document.getElementById('game-screen')?.appendChild(controls);
@@ -2517,13 +2517,19 @@ class LocusLobbyUI {
 		// Ghost volgt muis + preview (centered, like card ghosts)
 		this._bonusMoveHandler = (e) => {
 			if (!this._bonusMode?.ghostEl) return;
+			// Re-acquire scroll lock on new touch if it was released after failed drop
+			if ((e.pointerType === 'touch' || e.pointerType === 'pen') && !this._touchDragScrollLocked) {
+				this._setTouchDragScrollLock(true);
+			}
 			if (this._touchDragScrollLocked && (e.pointerType === 'touch' || e.pointerType === 'pen')) {
 				e.preventDefault();
 			}
 			const ox = this._bonusGhostOffsetX || 0;
 			const oy = this._bonusGhostOffsetY || 0;
+			// Apply finger-lift offset so block floats above finger on touch (matches card drag)
+			const touchOffsetY = this._getFingerLiftOffset(e);
 			this._bonusMode.ghostEl.style.left = (e.clientX - ox) + 'px';
-			this._bonusMode.ghostEl.style.top = (e.clientY - oy) + 'px';
+			this._bonusMode.ghostEl.style.top = (e.clientY - oy - touchOffsetY) + 'px';
 
 			// Throttled preview
 			if (this._throttleTimer) return;
@@ -2651,7 +2657,7 @@ class LocusLobbyUI {
 		if (seeds.length === 0) return null;
 
 		const candidateOffsets = [{ dx: 0, dy: 0 }];
-		for (let radius = 1; radius <= 2; radius++) {
+		for (let radius = 1; radius <= 3; radius++) {
 			for (let dy = -radius; dy <= radius; dy++) {
 				for (let dx = -radius; dx <= radius; dx++) {
 					if (Math.max(Math.abs(dx), Math.abs(dy)) !== radius) continue;
@@ -2694,7 +2700,7 @@ class LocusLobbyUI {
 		const boardState = this.mp.gameState?.boardState;
 		if (!boardState) return;
 
-		const cellHits = this._collectHoveredShapeCellHits(ghost, matrix, 3);
+		const cellHits = this._collectHoveredShapeCellHits(ghost, matrix, 6);
 
 		if (cellHits.length === 0) return;
 
@@ -2893,6 +2899,8 @@ class LocusLobbyUI {
 				&& Number.isFinite(this._lastBonusBaseY)
 				&& !!zoneName
 				&& this._isBonusZoneAllowed(zoneName);
+
+			let placed = false;
 			if (hasPreview) {
 				const previewResult = this.mp.previewPlacement(
 					zoneName,
@@ -2902,6 +2910,7 @@ class LocusLobbyUI {
 					this._lastBonusSubgridId || null
 				);
 				if (previewResult.valid) {
+					placed = true;
 					void this._attemptBonusPlacement(
 						zoneName,
 						this._lastBonusBaseX,
@@ -2916,6 +2925,7 @@ class LocusLobbyUI {
 						[{ x: this._lastBonusBaseX, y: this._lastBonusBaseY }]
 					);
 					if (nearby) {
+						placed = true;
 						void this._attemptBonusPlacement(
 							zoneName,
 							nearby.x,
@@ -2924,6 +2934,40 @@ class LocusLobbyUI {
 						);
 					}
 				}
+			}
+
+			// If touch drop failed: try harder with wider search around pointer position
+			if (!placed && this._bonusMode) {
+				const cellUnderFinger = document.elementFromPoint(e.clientX, e.clientY)?.closest?.('.mp-cell:not(.void)');
+				if (cellUnderFinger) {
+					const rawX = Number(cellUnderFinger.dataset.x);
+					const rawY = Number(cellUnderFinger.dataset.y);
+					const cellZone = cellUnderFinger.dataset.zone;
+					if (cellZone && this._isBonusZoneAllowed(cellZone) && Number.isFinite(rawX) && Number.isFinite(rawY)) {
+						const adj = this._adjustBaseForMatrix(rawX, rawY, this._bonusMode.matrix);
+						const wideSearch = this._findNearbyValidBonusPlacement(
+							cellZone,
+							this._bonusMode.matrix,
+							cellUnderFinger.dataset.subgrid || null,
+							[{ x: adj.x, y: adj.y }, { x: rawX, y: rawY }]
+						);
+						if (wideSearch) {
+							placed = true;
+							void this._attemptBonusPlacement(
+								cellZone,
+								wideSearch.x,
+								wideSearch.y,
+								wideSearch.subgridId || null
+							);
+						}
+					}
+				}
+			}
+
+			// If still not placed, release scroll lock so user can retry
+			if (!placed && this._bonusMode) {
+				this._setTouchDragScrollLock(false);
+				this._showToast('Sleep de bonus naar een geldige plek', 'info');
 			}
 			return;
 		}
