@@ -2042,15 +2042,28 @@ class LocusLobbyUI {
 
 				ghost.style.display = 'none';
 
+				// Use same tolerance-based 9-point sampling as preview
+				const dropTolerance = 6;
+				const dropOffsets = [
+					[0, 0],
+					[dropTolerance, 0], [-dropTolerance, 0],
+					[0, dropTolerance], [0, -dropTolerance],
+					[dropTolerance, dropTolerance], [-dropTolerance, dropTolerance],
+					[dropTolerance, -dropTolerance], [-dropTolerance, -dropTolerance]
+				];
 				const cellHits = [];
 				for (let row = 0; row < matrix.length; row++) {
 					for (let col = 0; col < (matrix[row]?.length || 0); col++) {
 						if (!matrix[row][col]) continue;
-						const hitX = ghostRect.left + (col * step) + (cellSize / 2);
-						const hitY = ghostRect.top + (row * step) + (cellSize / 2);
-						const elem = document.elementFromPoint(hitX, hitY);
-						const gridCell = elem ? elem.closest('.mp-cell:not(.void)') : null;
-						if (!gridCell || gridCell.dataset.x === undefined || gridCell.dataset.y === undefined) continue;
+						const hitCX = ghostRect.left + (col * step) + (cellSize / 2);
+						const hitCY = ghostRect.top + (row * step) + (cellSize / 2);
+						let gridCell = null;
+						for (const [dx, dy] of dropOffsets) {
+							const elem = document.elementFromPoint(hitCX + dx, hitCY + dy);
+							const c = elem ? elem.closest('.mp-cell:not(.void)') : null;
+							if (c && c.dataset.x !== undefined && c.dataset.y !== undefined) { gridCell = c; break; }
+						}
+						if (!gridCell) continue;
 						cellHits.push({
 							shapeRow: row, shapeCol: col,
 							gridX: parseInt(gridCell.dataset.x, 10),
@@ -2322,10 +2335,28 @@ class LocusLobbyUI {
 			// Als preview geldig is, plaats exact die preview (niet opnieuw afleiden uit klikpunt)
 			if (this._attemptPlacementFromCurrentPreview()) return;
 
-			const cell = e.target.closest('.mp-cell:not(.void)');
+			// Direct target check + tolerance-based fallback (prevents gap-click misses)
+			let cell = e.target.closest('.mp-cell:not(.void)');
 			if (!cell) {
-				this._cancelDrag();
-				this._showToast('Plaatsing geannuleerd', 'info');
+				// Tolerance fallback: try nearby offsets (same as preview)
+				const tol = 8;
+				const offsets = [
+					[tol, 0], [-tol, 0], [0, tol], [0, -tol],
+					[tol, tol], [-tol, tol], [tol, -tol], [-tol, -tol]
+				];
+				for (const [dx, dy] of offsets) {
+					const elem = document.elementFromPoint(e.clientX + dx, e.clientY + dy);
+					const c = elem?.closest('.mp-cell:not(.void)');
+					if (c && c.dataset.x !== undefined) { cell = c; break; }
+				}
+			}
+			if (!cell) {
+				// Still nothing — check if click is inside the board area at all
+				const inBoard = e.target.closest('#mp-board-container .mp-grid, #mp-board-container .mp-zone');
+				if (!inBoard) {
+					this._cancelDrag();
+					this._showToast('Plaatsing geannuleerd', 'info');
+				}
 				return;
 			}
 			const x = Number(cell.dataset.x);
@@ -3744,9 +3775,30 @@ class LocusLobbyUI {
 			? `grid-template-columns: repeat(${matrix[0]?.length || 1}, var(--mp-cell-size, 20px));`
 			: `grid-template-columns: repeat(${matrix[0]?.length || 1}, ${cellSize || '10px'});`;
 		let html = `<div class="mp-mini-grid" style="${colTemplate}">`;
-		for (const row of matrix) {
-			for (const cell of row) {
-				html += `<div class="mp-mini-cell ${cell ? 'filled' : ''}" style="${cell ? fillStyle : ''}; ${sizeStyle}"></div>`;
+		const rows = matrix.length;
+		const cols = matrix[0]?.length || 0;
+		for (let r = 0; r < rows; r++) {
+			for (let c = 0; c < cols; c++) {
+				const cell = matrix[r][c];
+				if (!cell) {
+					html += `<div class="mp-mini-cell" style="${sizeStyle}"></div>`;
+					continue;
+				}
+				let radiusStyle = '';
+				if (forGhost) {
+					// Neighbor-aware rounding: only round corners on exposed edges
+					const nT = r > 0 && matrix[r - 1][c];
+					const nB = r < rows - 1 && matrix[r + 1][c];
+					const nL = c > 0 && matrix[r][c - 1];
+					const nR = c < cols - 1 && matrix[r][c + 1];
+					const rad = 'var(--mp-cell-radius, 5px)';
+					const tl = (nT || nL) ? '0' : rad;
+					const tr = (nT || nR) ? '0' : rad;
+					const bl = (nB || nL) ? '0' : rad;
+					const br = (nB || nR) ? '0' : rad;
+					radiusStyle = `border-radius: ${tl} ${tr} ${br} ${bl} !important;`;
+				}
+				html += `<div class="mp-mini-cell filled" style="${fillStyle}; ${sizeStyle} ${radiusStyle}"></div>`;
 			}
 		}
 		html += '</div>';

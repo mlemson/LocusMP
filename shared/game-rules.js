@@ -402,8 +402,11 @@ function generateHoleySubgrid(rows, cols, targetCount, rng) {
  * Zones gebaseerd op de originele index.html grids.
  * Level 1-3 = World 1 (klein), Level 4-7 = World 2 (medium), Level 8-10 = World 3 (groot)
  */
-function generateLevel1Board(rng, level) {
+function generateLevel1Board(rng, level, playerCount) {
 	const lvl = level || 1;
+	const pc = Math.max(2, Math.min(8, playerCount || 4));
+	// playerTier: 0 (2p), 1 (3-4p), 2 (5-6p), 3 (7-8p)
+	const playerTier = Math.floor((pc - 1) / 2);
 	// Bepaal wereld op basis van level
 	let world = 1;
 	if (lvl >= 4 && lvl <= 7) world = 2;
@@ -412,12 +415,12 @@ function generateLevel1Board(rng, level) {
 	const zones = {};
 
 	// ══════════════════════════════════════════
-	//  YELLOW ZONE — Wereldafhankelijk
+	//  YELLOW ZONE — Wereldafhankelijk + spelerafhankelijk
+	//  +1 rij per playerTier
 	// ══════════════════════════════════════════
 	if (world === 1) {
-		// World 1: 10 kolommen, 5 rijen (staircase-achtig)
 		const yellowCols = 10;
-		const yellowRows = 5;
+		const yellowRows = 5 + playerTier;
 		const yellowBold = [];
 		for (let y = 0; y < yellowRows; y++) {
 			yellowBold.push({ x: 0, y });
@@ -436,9 +439,8 @@ function generateLevel1Board(rng, level) {
 		placeGoldFlags(zones.yellow, rng, 2);
 		placeBonusSymbols(zones.yellow, rng, 4);
 	} else if (world === 2) {
-		// World 2: 11 kolommen, 7 rijen (groter, meer goud)
 		const yellowCols = 11;
-		const yellowRows = 7;
+		const yellowRows = 7 + playerTier;
 		const yellowBold = [];
 		for (let y = 0; y < yellowRows; y++) {
 			yellowBold.push({ x: 0, y });
@@ -457,15 +459,15 @@ function generateLevel1Board(rng, level) {
 		placeGoldFlags(zones.yellow, rng, 4);
 		placeBonusSymbols(zones.yellow, rng, 6);
 	} else {
-		// World 3: 12 kolommen, 8 rijen (diamond-achtig, meeste goud)
 		const yellowCols = 12;
-		const yellowRows = 8;
+		const yellowRows = 8 + playerTier;
 		const yellowBold = [];
 		for (let y = 0; y < yellowRows; y++) {
 			yellowBold.push({ x: 0, y });
 		}
 		// Bold cluster in midden
-		yellowBold.push({ x: 5, y: 3 }, { x: 5, y: 4 }, { x: 6, y: 3 }, { x: 6, y: 4 });
+		const midBY = Math.floor(yellowRows / 2);
+		yellowBold.push({ x: 5, y: midBY - 1 }, { x: 5, y: midBY }, { x: 6, y: midBY - 1 }, { x: 6, y: midBY });
 		const yellowGold = [];
 		for (let i = 0; i < 5; i++) {
 			yellowGold.push({
@@ -492,32 +494,31 @@ function generateLevel1Board(rng, level) {
 	}
 
 	// ══════════════════════════════════════════
-	//  GREEN ZONE — Wereldafhankelijk branch grid
+	//  GREEN ZONE — Wereldafhankelijk + spelerafhankelijk
+	//  Meer end cells per playerTier
 	// ══════════════════════════════════════════
+	const greenEndCells = 8 + playerTier * 2;
 	if (world === 1) {
-		// World 1: 15×15 branch grid
-		const greenSize = 15;
+		const greenSize = 15 + playerTier;
 		const greenCenter = Math.floor(greenSize / 2);
-		zones.green = generateBranchGrid(greenSize, greenSize, 70, 0.45, rng, {
-			startX: greenCenter, startY: greenCenter, minEndCells: 8, minActiveCells: 25
+		zones.green = generateBranchGrid(greenSize, greenSize, 70 + playerTier * 10, 0.45, rng, {
+			startX: greenCenter, startY: greenCenter, minEndCells: greenEndCells, minActiveCells: 25
 		});
 	} else if (world === 2) {
-		// World 2: 20×18 branch grid, meer groei
-		const greenRows = 20;
-		const greenCols = 18;
+		const greenRows = 20 + playerTier;
+		const greenCols = 18 + playerTier;
 		const greenCenterX = Math.floor(greenCols / 2);
 		const greenCenterY = Math.floor(greenRows / 2);
-		zones.green = generateBranchGrid(greenRows, greenCols, 140, 0.35, rng, {
-			startX: greenCenterX, startY: greenCenterY, minEndCells: 8, minActiveCells: 25
+		zones.green = generateBranchGrid(greenRows, greenCols, 140 + playerTier * 15, 0.35, rng, {
+			startX: greenCenterX, startY: greenCenterY, minEndCells: greenEndCells, minActiveCells: 25
 		});
 	} else {
-		// World 3: 24×22 branch grid, veel groei en splits
-		const greenRows = 24;
-		const greenCols = 22;
+		const greenRows = 24 + playerTier;
+		const greenCols = 22 + playerTier;
 		const greenCenterX = Math.floor(greenCols / 2);
 		const greenCenterY = Math.floor(greenRows / 2);
-		zones.green = generateBranchGrid(greenRows, greenCols, 200, 0.55, rng, {
-			startX: greenCenterX, startY: greenCenterY, minEndCells: 8, minActiveCells: 25
+		zones.green = generateBranchGrid(greenRows, greenCols, 200 + playerTier * 20, 0.55, rng, {
+			startX: greenCenterX, startY: greenCenterY, minEndCells: greenEndCells, minActiveCells: 25
 		});
 	}
 
@@ -527,14 +528,15 @@ function generateLevel1Board(rng, level) {
 	placeBonusSymbols(zones.green, rng, world === 1 ? 3 : (world === 2 ? 5 : 7));
 
 	// ══════════════════════════════════════════
-	//  BLUE ZONE — Wereldafhankelijk toren
+	//  BLUE ZONE — Wereldafhankelijk + spelerafhankelijk
+	//  Breedte begint smal, +1 per playerTier
 	// ══════════════════════════════════════════
 	if (world === 1) {
-		// World 1: 5 breed, iets hoger met extra bold-laag
-		const blueWidth = 5;
-		const blueHeight = 24;
+		const blueWidth = 4 + playerTier;
+		const blueHeight = 20 + playerTier * 2;
 		const blueBold = [];
-		const blueBoldRows = [0, 5, 10, 15, 20];
+		const blueBoldRows = [];
+		for (let r = 0; r < blueHeight; r += 5) { blueBoldRows.push(r); }
 		for (const by of blueBoldRows) {
 			for (let x = 0; x < blueWidth; x++) {
 				blueBold.push({ x, y: by });
@@ -549,11 +551,11 @@ function generateLevel1Board(rng, level) {
 		placeGoldFlags(zones.blue, rng, 2);
 		placeBonusSymbols(zones.blue, rng, 3);
 	} else if (world === 2) {
-		// World 2: 7 breed, iets hoger met extra bold-laag
-		const blueWidth = 7;
-		const blueHeight = 36;
+		const blueWidth = 5 + playerTier;
+		const blueHeight = 30 + playerTier * 3;
 		const blueBold = [];
-		const blueBoldRows = [0, 6, 12, 18, 24, 30];
+		const blueBoldRows = [];
+		for (let r = 0; r < blueHeight; r += 6) { blueBoldRows.push(r); }
 		for (const by of blueBoldRows) {
 			for (let x = 0; x < blueWidth; x++) {
 				blueBold.push({ x, y: by });
@@ -568,11 +570,11 @@ function generateLevel1Board(rng, level) {
 		placeGoldFlags(zones.blue, rng, 4);
 		placeBonusSymbols(zones.blue, rng, 5);
 	} else {
-		// World 3: 9 breed, iets hoger met extra bold-laag
-		const blueWidth = 9;
-		const blueHeight = 48;
+		const blueWidth = 6 + playerTier;
+		const blueHeight = 40 + playerTier * 4;
 		const blueBold = [];
-		const blueBoldRows = [0, 7, 14, 21, 28, 35, 42];
+		const blueBoldRows = [];
+		for (let r = 0; r < blueHeight; r += 7) { blueBoldRows.push(r); }
 		for (const by of blueBoldRows) {
 			for (let x = 0; x < blueWidth; x++) {
 				blueBold.push({ x, y: by });
@@ -589,37 +591,45 @@ function generateLevel1Board(rng, level) {
 	}
 
 	// ══════════════════════════════════════════
-	//  RED ZONE — Wereldafhankelijk subgrids
+	//  RED ZONE — Wereldafhankelijk + spelerafhankelijk
+	//  2 subgrids bij 2p, +1 per 2 extra spelers
 	// ══════════════════════════════════════════
-	if (world === 1) {
-		zones.red = {
-			subgrids: [
-				{ id: 'red-grid1', ...generateHoleySubgrid(4, 4, 8, rng),  targetPoints: 20 },
-				{ id: 'red-grid2', ...generateHoleySubgrid(4, 5, 12, rng), targetPoints: 35 },
-				{ id: 'red-grid3', ...generateHoleySubgrid(5, 5, 16, rng), targetPoints: 50 },
-				{ id: 'red-grid4', ...generateHoleySubgrid(5, 5, 20, rng), targetPoints: 65 }
+	const redSubgridCount = 2 + playerTier;
+	{
+		// Pool van beschikbare subgrids per wereld (van klein naar groot)
+		const redPool = world === 1
+			? [
+				{ r: 4, c: 4, t: 8,  pts: 20 },
+				{ r: 4, c: 5, t: 12, pts: 35 },
+				{ r: 5, c: 5, t: 16, pts: 50 },
+				{ r: 5, c: 5, t: 20, pts: 65 },
+				{ r: 5, c: 6, t: 22, pts: 75 }
 			]
-		};
-	} else if (world === 2) {
-		zones.red = {
-			subgrids: [
-				{ id: 'red-grid1', ...generateHoleySubgrid(4, 5, 12, rng), targetPoints: 25 },
-				{ id: 'red-grid2', ...generateHoleySubgrid(4, 6, 16, rng), targetPoints: 40 },
-				{ id: 'red-grid3', ...generateHoleySubgrid(5, 6, 20, rng), targetPoints: 55 },
-				{ id: 'red-grid4', ...generateHoleySubgrid(5, 6, 24, rng), targetPoints: 70 }
+			: world === 2
+			? [
+				{ r: 4, c: 5, t: 12, pts: 25 },
+				{ r: 4, c: 6, t: 16, pts: 40 },
+				{ r: 5, c: 6, t: 20, pts: 55 },
+				{ r: 5, c: 6, t: 24, pts: 70 },
+				{ r: 6, c: 6, t: 26, pts: 80 }
 			]
-		};
-	} else {
-		zones.red = {
-			subgrids: [
-				{ id: 'red-grid1', ...generateHoleySubgrid(5, 6, 18, rng), targetPoints: 30 },
-				{ id: 'red-grid2', ...generateHoleySubgrid(5, 7, 22, rng), targetPoints: 45 },
-				{ id: 'red-grid3', ...generateHoleySubgrid(6, 7, 26, rng), targetPoints: 60 },
-				{ id: 'red-grid4', ...generateHoleySubgrid(6, 7, 30, rng), targetPoints: 75 },
-				{ id: 'red-grid5', ...generateHoleySubgrid(8, 10, 34, rng), targetPoints: 90 },
-				{ id: 'red-grid6', ...generateHoleySubgrid(8, 10, 38, rng), targetPoints: 110 }
-			]
-		};
+			: [
+				{ r: 5, c: 6, t: 18, pts: 30 },
+				{ r: 5, c: 7, t: 22, pts: 45 },
+				{ r: 6, c: 7, t: 26, pts: 60 },
+				{ r: 6, c: 7, t: 30, pts: 75 },
+				{ r: 8, c: 10, t: 34, pts: 90 }
+			];
+		const subgrids = [];
+		for (let i = 0; i < redSubgridCount && i < redPool.length; i++) {
+			const p = redPool[i];
+			subgrids.push({
+				id: `red-grid${i + 1}`,
+				...generateHoleySubgrid(p.r, p.c, p.t, rng),
+				targetPoints: p.pts
+			});
+		}
+		zones.red = { subgrids };
 	}
 
 	// Gold en bonus in rode subgrids
@@ -630,12 +640,15 @@ function generateLevel1Board(rng, level) {
 	}
 
 	// ══════════════════════════════════════════
-	//  PURPLE ZONE — Wereldafhankelijk
+	//  PURPLE ZONE — Wereldafhankelijk + spelerafhankelijk
+	//  Groter grid en meer bolds per playerTier
 	// ══════════════════════════════════════════
-	const purpleSize = world === 1 ? 11 : (world === 2 ? 13 : 14);
+	const purpleBaseSize = world === 1 ? 11 : (world === 2 ? 13 : 14);
+	const purpleSize = purpleBaseSize + playerTier;
 	const purpleCenter = Math.floor(purpleSize / 2);
 	const purpleBold = [];
-	const purpleBoldCount = world === 1 ? 8 : (world === 2 ? 10 : 14);
+	const purpleBaseBoldCount = world === 1 ? 8 : (world === 2 ? 10 : 14);
+	const purpleBoldCount = purpleBaseBoldCount + playerTier * 2;
 
 	const allPurpleCoords = [];
 	for (let y = 0; y < purpleSize; y++) {
@@ -2672,7 +2685,8 @@ function initializeLevelOneAfterDeckChoice(gameState) {
 	const rng = createRNG(gameState.seed);
 
 	// 1. Genereer bord voor level 1
-	gameState.boardState = generateLevel1Board(rng, 1);
+	const playerCount = gameState.playerOrder.length || gameState.settings?.maxPlayers || 4;
+	gameState.boardState = generateLevel1Board(rng, 1, playerCount);
 
 	// 2. Genereer startdecks per speler op basis van keuze
 	for (const playerId of gameState.playerOrder) {
@@ -3758,7 +3772,8 @@ function startNextLevel(gameState) {
 	const rng = createRNG(gameState.seed + gameState.level * 1000);
 
 	// Nieuw bord genereren (level-afhankelijk)
-	gameState.boardState = generateLevel1Board(rng, gameState.level);
+	const playerCount = gameState.playerOrder.length || gameState.settings?.maxPlayers || 4;
+	gameState.boardState = generateLevel1Board(rng, gameState.level, playerCount);
 
 	// Nieuwe decks per speler (+ shop cards)
 	for (const pid of gameState.playerOrder) {

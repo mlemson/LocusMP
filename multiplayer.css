@@ -1233,7 +1233,7 @@ html, body {
 }
 
 .mp-drag-ghost .mp-mini-grid {
-	gap: 2px;
+	gap: 1px;
 }
 
 .mp-drag-ghost .mp-mini-cell {
@@ -5672,6 +5672,10 @@ html.theme-aurora .mp-zone-red    .mp-mini-cell.filled { background: rgba(251,11
 html.theme-aurora .mp-zone-purple .mp-mini-cell.filled { background: rgba(167,139,250,0.50); }
 
 /* ── Drag ghost — match board cell styling ── */
+html.theme-aurora .mp-drag-ghost .mp-mini-grid {
+	gap: 1px;
+}
+
 html.theme-aurora .mp-drag-ghost .mp-mini-cell {
 	border-radius: 6px !important;
 	box-shadow: inset 0 1px 2px rgba(0,0,0,0.2), 0 1px 0 rgba(255,255,255,0.06);
@@ -6815,6 +6819,10 @@ html.theme-bloom .mp-zone-red    .mp-mini-cell.filled { background: rgba(212,107
 html.theme-bloom .mp-zone-purple .mp-mini-cell.filled { background: rgba(150,120,196,0.50);}
 
 /* ── Drag ghost — match board cell styling ── */
+html.theme-bloom .mp-drag-ghost .mp-mini-grid {
+	gap: 1px;
+}
+
 html.theme-bloom .mp-drag-ghost .mp-mini-cell {
 	border-radius: 7px !important;
 	box-shadow: inset 0 1px 2px rgba(61,52,41,0.10), 0 1px 0 rgba(255,255,255,0.4);
