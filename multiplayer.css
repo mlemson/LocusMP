@@ -1139,6 +1139,8 @@ html, body {
 	border-color: var(--mp-success);
 	box-shadow: 0 0 0 2px var(--mp-success), 0 6px 20px rgba(76, 175, 80, 0.2);
 	transform: translateY(-4px);
+	position: relative;
+	z-index: 10;
 }
 
 .mp-card.disabled {
@@ -1221,7 +1223,7 @@ html, body {
 /* ── DRAG GHOST ── */
 .mp-drag-ghost {
 	position: fixed;
-	z-index: 10000;
+	z-index: 11000;
 	pointer-events: none;
 	opacity: 0.3;
 	filter: drop-shadow(0 4px 12px rgba(0,0,0,0.5));

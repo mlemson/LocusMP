@@ -2532,6 +2532,7 @@ class LocusLobbyUI {
 			if (this._dragState.mirrored) this._dragState.matrix = Rules.mirrorMatrix(this._dragState.matrix);
 			this._updateGhost();
 			this._clearPreview();
+			this._updateOriginCardVisual();
 		}
 		if (this._bonusMode) {
 			this._bonusMode.rotation = ((this._bonusMode.rotation || 0) + 1) % 4;
@@ -2550,10 +2551,20 @@ class LocusLobbyUI {
 			if (this._dragState.mirrored) this._dragState.matrix = Rules.mirrorMatrix(this._dragState.matrix);
 			this._updateGhost();
 			this._clearPreview();
+			this._updateOriginCardVisual();
 		}
 		if (this._bonusMode) {
 			this._bonusMode.matrix = Rules.mirrorMatrix(this._bonusMode.matrix);
 			this._updateBonusGhost();
+		}
+	}
+
+	/** Update the card in the hand to show the current rotation/mirror state */
+	_updateOriginCardVisual() {
+		if (!this._dragState?.originEl || !this._dragState.matrix) return;
+		const shapeEl = this._dragState.originEl.querySelector('.mp-card-shape');
+		if (shapeEl) {
+			shapeEl.innerHTML = this._renderMiniGrid(this._dragState.matrix, this._dragState.card.color);
 		}
 	}
 
@@ -3578,9 +3589,6 @@ class LocusLobbyUI {
 				: (Number.isFinite(this._lastMobileBoardIndex)
 					? this._lastMobileBoardIndex
 					: (Number.isFinite(prevMobileIdx) ? prevMobileIdx : 0));
-			// Instantly restore scroll position to prevent zone flicker
-			this._restoreMobileBoardIndex(targetIdx || 0);
-			// Second pass in rAF to ensure layout has settled (e.g. blue bottom scroll)
 			requestAnimationFrame(() => this._restoreMobileBoardIndex(targetIdx || 0));
 			this._forcedMobileBoardIndex = null;
 		}
