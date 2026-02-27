@@ -2788,11 +2788,12 @@ body.mp-loading .mp-btn {
 	}
 
 	.mp-ctrl-btn {
-		width: 32px;
-		height: 32px;
-		min-width: 32px;
-		min-height: 32px;
+		width: 34px;
+		height: 34px;
+		min-width: 34px;
+		min-height: 34px;
 		font-size: 14px;
+		border-radius: 10px;
 		padding: 0;
 	}
 
