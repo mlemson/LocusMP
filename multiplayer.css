@@ -1181,11 +1181,12 @@ html, body {
 .mp-drag-ghost .mp-mini-cell {
 	width: var(--mp-cell-size, 20px);
 	height: var(--mp-cell-size, 20px);
-	border-radius: var(--mp-cell-radius, 5px);
+	border-radius: var(--mp-cell-radius, 5px) !important;
 }
 
 .mp-drag-ghost .mp-mini-cell.filled {
 	border: 1px solid rgba(255,255,255,0.25);
+	box-shadow: inset 0 1px 2px rgba(0,0,0,0.15), 0 1px 0 rgba(255,255,255,0.08);
 }
 
 /* Empty cells in ghost: completely invisible */
@@ -5597,6 +5598,18 @@ html.theme-aurora .mp-zone-blue   .mp-mini-cell.filled { background: rgba(56,189
 html.theme-aurora .mp-zone-red    .mp-mini-cell.filled { background: rgba(251,113,133,0.50); }
 html.theme-aurora .mp-zone-purple .mp-mini-cell.filled { background: rgba(167,139,250,0.50); }
 
+/* ── Drag ghost — match board cell styling ── */
+html.theme-aurora .mp-drag-ghost .mp-mini-cell {
+	border-radius: 6px !important;
+	box-shadow: inset 0 1px 2px rgba(0,0,0,0.2), 0 1px 0 rgba(255,255,255,0.06);
+}
+
+html.theme-aurora .mp-drag-ghost .mp-mini-cell.filled {
+	border: 1px solid rgba(255,255,255,0.20);
+	box-shadow: inset 0 1px 2px rgba(0,0,0,0.25), 0 0 6px rgba(99,102,241,0.15);
+	border-radius: 6px !important;
+}
+
 /* ── Bonus buttons — neon glass ── */
 html.theme-aurora .mp-bonus-btn {
 	border-radius: 10px;
@@ -6696,6 +6709,18 @@ html.theme-bloom .mp-zone-green  .mp-mini-cell.filled { background: rgba(90,171,
 html.theme-bloom .mp-zone-blue   .mp-mini-cell.filled { background: rgba(90,158,201,0.50); }
 html.theme-bloom .mp-zone-red    .mp-mini-cell.filled { background: rgba(212,107,122,0.50);}
 html.theme-bloom .mp-zone-purple .mp-mini-cell.filled { background: rgba(150,120,196,0.50);}
+
+/* ── Drag ghost — match board cell styling ── */
+html.theme-bloom .mp-drag-ghost .mp-mini-cell {
+	border-radius: 7px !important;
+	box-shadow: inset 0 1px 2px rgba(61,52,41,0.10), 0 1px 0 rgba(255,255,255,0.4);
+}
+
+html.theme-bloom .mp-drag-ghost .mp-mini-cell.filled {
+	border: 1px solid rgba(180,160,130,0.30);
+	box-shadow: inset 0 1px 2px rgba(61,52,41,0.12), 0 1px 2px rgba(61,52,41,0.06);
+	border-radius: 7px !important;
+}
 
 /* ══════════════════════════════════════════════════════════════════
    ZONES — Botanical terrarium containers
