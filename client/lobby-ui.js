@@ -600,6 +600,12 @@ class LocusLobbyUI {
 		this._tvPostMessage({ type: 'taunt', data });
 	}
 
+	/** Forward opponent interaction (ghost preview) to the TV display. */
+	_broadcastTVInteraction(data) {
+		if (!this._tvCastActive) return;
+		this._tvPostMessage({ type: 'opponentInteraction', data });
+	}
+
 	/** Forward level complete data to TV. */
 	_broadcastTVLevelComplete(scores, winner, level) {
 		if (!this._tvCastActive) return;
@@ -3320,6 +3326,9 @@ class LocusLobbyUI {
 			this._interactionMoveThrottleTs = now;
 		}
 		this.mp.sendInteraction({ type, ...payload });
+
+		// Forward interaction to TV display for ghost preview
+		this._broadcastTVInteraction({ type, ...payload, playerId: this.mp.userId });
 	}
 
 	_clearOpponentPreview() {
@@ -3335,6 +3344,9 @@ class LocusLobbyUI {
 
 	_onOpponentInteraction(data) {
 		if (!data || data.playerId === this.mp.userId) return;
+
+		// Forward to TV display for ghost preview
+		this._broadcastTVInteraction(data);
 		if (data.type === 'start') {
 			this._activeSelections[data.playerId] = {
 				mode: data.mode || 'card',

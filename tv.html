@@ -563,6 +563,135 @@
 		html.theme-bloom .tv-taunt-name {
 			color: #c07050;
 		}
+
+		/* ═══ Cell detail styles ═══ */
+		.tv-cell.bold {
+			border-width: 2px;
+			border-color: rgba(255,255,255,0.30);
+		}
+		.tv-cell.end {
+			border-style: dashed;
+			border-color: rgba(255,255,255,0.25);
+		}
+		.tv-cell.gold {
+			box-shadow: inset 0 0 5px rgba(240,192,64,0.5);
+		}
+		.tv-cell.outer-ring-0 {
+			border-color: rgba(143,118,184,0.45);
+			border-width: 2px;
+		}
+		.tv-cell.outer-ring-1 {
+			border-color: rgba(143,118,184,0.30);
+			border-width: 2px;
+		}
+		.tv-cell.green-end.active {
+			position: relative;
+		}
+		.tv-cell.green-end.active::after {
+			content: '✓';
+			position: absolute;
+			inset: 0;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			font-size: 0.7em;
+			font-weight: 700;
+			color: rgba(255,255,255,0.85);
+		}
+		.tv-cell .tv-bonus-dot {
+			display: block;
+			width: 7px;
+			height: 7px;
+			border-radius: 50%;
+			margin: auto;
+			position: relative;
+			top: 50%;
+			transform: translateY(-50%);
+		}
+		.tv-cell .tv-gold-dot {
+			display: block;
+			width: 5px;
+			height: 5px;
+			border-radius: 50%;
+			background: #f0c040;
+			box-shadow: 0 0 4px rgba(240,192,64,0.6);
+			margin: auto;
+			position: absolute;
+			top: 2px;
+			right: 2px;
+		}
+		.tv-cell .tv-pearl-dot {
+			display: block;
+			width: 6px;
+			height: 6px;
+			border-radius: 50%;
+			background: radial-gradient(circle at 30% 30%, #fff, #d4d0e0);
+			box-shadow: 0 0 3px rgba(255,255,255,0.5);
+			margin: auto;
+			position: absolute;
+			bottom: 2px;
+			left: 2px;
+		}
+		.tv-cell { position: relative; }
+
+		/* ── Ghost/Preview overlay ── */
+		.tv-cell.preview-ghost {
+			background: rgba(255,255,255,0.18) !important;
+			border-color: rgba(255,255,255,0.35) !important;
+			animation: tvGhostPulse 1.2s ease-in-out infinite;
+		}
+		.tv-cell.preview-ghost.preview-denied {
+			background: rgba(239,68,68,0.20) !important;
+			border-color: rgba(239,68,68,0.40) !important;
+		}
+		@keyframes tvGhostPulse {
+			0%, 100% { opacity: 0.6; }
+			50% { opacity: 1; }
+		}
+
+		/* ── Player card mini-grids in sidebar ── */
+		.tv-player-cards {
+			display: flex;
+			gap: 4px;
+			flex-wrap: wrap;
+			margin-top: 4px;
+		}
+		.tv-player-mini-card {
+			display: inline-grid;
+			gap: 1px;
+			opacity: 0.7;
+		}
+		.tv-mini-cell {
+			width: 7px;
+			height: 7px;
+			border-radius: 2px;
+		}
+		.tv-mini-cell.filled {
+			box-shadow: inset 0 0 1px rgba(0,0,0,0.2);
+		}
+		.tv-mini-cell:not(.filled) {
+			background: rgba(255,255,255,0.04);
+		}
+		.tv-score-cards-count {
+			font-size: 0.65rem;
+			color: var(--tv-dim);
+			margin-top: 2px;
+		}
+
+		/* ── Red subgrid progress ── */
+		.tv-red-progress {
+			height: 3px;
+			background: rgba(255,255,255,0.08);
+			border-radius: 2px;
+			margin-top: 4px;
+			overflow: hidden;
+		}
+		.tv-red-progress-fill {
+			height: 100%;
+			background: #b56069;
+			border-radius: 2px;
+			transition: width 0.3s ease;
+		}
 	</style>
 </head>
 <body>
@@ -632,6 +761,60 @@
 		let currentState = null;
 		let timerInterval = null;
 		let presentationConn = null;
+		let ghostCells = []; // current preview ghost cells
+
+		// ═══ SOUND EFFECTS (Web Audio API) ═══
+		let audioCtx = null;
+		function getAudioCtx() {
+			if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+			return audioCtx;
+		}
+		function playTone(freq, duration = 0.15, type = 'sine', volume = 0.12) {
+			try {
+				const ctx = getAudioCtx();
+				const osc = ctx.createOscillator();
+				const gain = ctx.createGain();
+				osc.type = type;
+				osc.frequency.value = freq;
+				gain.gain.setValueAtTime(volume, ctx.currentTime);
+				gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + duration);
+				osc.connect(gain); gain.connect(ctx.destination);
+				osc.start(); osc.stop(ctx.currentTime + duration);
+			} catch (_) {}
+		}
+		function playPlaceSound() {
+			playTone(440, 0.1, 'sine', 0.10);
+			setTimeout(() => playTone(660, 0.08, 'sine', 0.07), 60);
+		}
+		function playScoreSound() {
+			playTone(523, 0.12, 'sine', 0.12);
+			setTimeout(() => playTone(659, 0.12, 'sine', 0.10), 80);
+			setTimeout(() => playTone(784, 0.15, 'sine', 0.10), 160);
+		}
+		function playTurnStartSound() {
+			playTone(587, 0.12, 'sine', 0.08);
+			setTimeout(() => playTone(784, 0.15, 'sine', 0.10), 100);
+		}
+		function playTimerWarningSound() { playTone(880, 0.2, 'sine', 0.08); }
+		function playTauntSound() {
+			playTone(520, 0.07, 'triangle', 0.09);
+			setTimeout(() => playTone(660, 0.08, 'triangle', 0.08), 70);
+		}
+		function playGoldSound() {
+			playTone(1047, 0.1, 'sine', 0.12);
+			setTimeout(() => playTone(1319, 0.12, 'sine', 0.10), 80);
+			setTimeout(() => playTone(1568, 0.15, 'sine', 0.08), 160);
+		}
+		function playLevelCompleteSound() {
+			playTone(392, 0.2, 'sine', 0.12);
+			setTimeout(() => playTone(494, 0.2, 'sine', 0.10), 150);
+			setTimeout(() => playTone(587, 0.2, 'sine', 0.10), 300);
+			setTimeout(() => playTone(784, 0.3, 'sine', 0.12), 450);
+		}
+
+		// Track previous state for detecting changes
+		let prevTurnIndex = null;
+		let prevScores = {};
 
 		// ── Unified message handler ──
 		function handleMessage(msg) {
@@ -642,15 +825,20 @@
 					break;
 				case 'taunt':
 					showTaunt(msg.data);
+					playTauntSound();
 					break;
 				case 'levelComplete':
 					showLevelComplete(msg.data);
+					playLevelCompleteSound();
 					break;
 				case 'theme':
 					applyTheme(msg.theme);
 					break;
 				case 'ping':
 					sendToHost({ type: 'pong' });
+					break;
+				case 'opponentInteraction':
+					onOpponentInteraction(msg.data);
 					break;
 			}
 		}
@@ -704,7 +892,6 @@
 			conn.onmessage = (e) => {
 				try {
 					const msg = typeof e.data === 'string' ? JSON.parse(e.data) : e.data;
-					console.log('[TV] Ontvangen via Presentation:', msg?.type);
 					handleMessage(msg);
 				} catch (err) {
 					console.warn('[TV] Parse error:', err);
@@ -714,25 +901,19 @@
 				console.log('[TV] Presentation connection gesloten');
 				presentationConn = null;
 			};
-			// Notify host we're ready (send multiple times to handle race conditions)
 			sendToHost({ type: 'tvReady' });
 			setTimeout(() => sendToHost({ type: 'tvReady' }), 500);
 			setTimeout(() => sendToHost({ type: 'tvReady' }), 1500);
 		}
 
 		function initBroadcastChannel() {
-			if (bcChannel) return; // Already initialized
+			if (bcChannel) return;
 			try {
 				bcChannel = new BroadcastChannel('locus-tv');
 				bcChannel.onmessage = (e) => handleMessage(e.data);
-				// Send tvReady multiple times to handle timing
 				bcChannel.postMessage({ type: 'tvReady' });
-				setTimeout(() => {
-					try { bcChannel.postMessage({ type: 'tvReady' }); } catch(_) {}
-				}, 500);
-				setTimeout(() => {
-					try { bcChannel.postMessage({ type: 'tvReady' }); } catch(_) {}
-				}, 1500);
+				setTimeout(() => { try { bcChannel.postMessage({ type: 'tvReady' }); } catch(_) {} }, 500);
+				setTimeout(() => { try { bcChannel.postMessage({ type: 'tvReady' }); } catch(_) {} }, 1500);
 			} catch (err) {
 				console.warn('[TV] BroadcastChannel niet beschikbaar:', err);
 			}
@@ -748,6 +929,7 @@
 		// ── State Update ──
 		function onGameState(state) {
 			if (!state) return;
+			const prevState = currentState;
 			currentState = state;
 
 			const waitingEl = document.getElementById('tv-waiting');
@@ -762,8 +944,32 @@
 				gameEl.classList.add('active');
 				renderGame(state);
 				document.getElementById('tv-level-overlay').classList.remove('show');
+
+				// Sound effects based on state changes
+				if (prevState) {
+					// Turn changed
+					if (state.currentTurnIndex !== prevTurnIndex && prevTurnIndex !== null) {
+						playTurnStartSound();
+					}
+					// Score changed (someone scored)
+					const order = state.playerOrder || [];
+					for (const pid of order) {
+						const newScore = state.players?.[pid]?.score || 0;
+						const oldScore = prevScores[pid] || 0;
+						if (newScore > oldScore) {
+							playPlaceSound();
+							break;
+						}
+					}
+				}
+				prevTurnIndex = state.currentTurnIndex;
+				// Capture scores
+				const players = state.players || {};
+				prevScores = {};
+				for (const pid of Object.keys(players)) {
+					prevScores[pid] = players[pid]?.score || 0;
+				}
 			} else if (state.phase === 'levelComplete') {
-				// Keep board visible, show overlay
 				if (!gameEl.classList.contains('active')) {
 					gameEl.classList.add('active');
 					waitingEl.style.display = 'none';
@@ -772,6 +978,43 @@
 			} else if (state.phase === 'ended') {
 				renderGame(state);
 			}
+		}
+
+		// ── Opponent Interaction (ghost preview on board) ──
+		function onOpponentInteraction(data) {
+			if (!data) return;
+			clearGhostPreview();
+			if (data.type === 'end' || data.type === 'start') return;
+			if (data.type !== 'move') return;
+			if (!data.zoneName || !Array.isArray(data.matrix)) return;
+			if (!Number.isFinite(data.baseX) || !Number.isFinite(data.baseY)) return;
+
+			const isValid = data.isValid !== false;
+			for (let r = 0; r < data.matrix.length; r++) {
+				for (let c = 0; c < (data.matrix[r]?.length || 0); c++) {
+					if (!data.matrix[r][c]) continue;
+					const x = data.baseX + c;
+					const y = data.baseY + r;
+					const sel = data.subgridId
+						? `.tv-cell[data-zone="${data.zoneName}"][data-subgrid="${data.subgridId}"][data-x="${x}"][data-y="${y}"]`
+						: `.tv-cell[data-zone="${data.zoneName}"][data-x="${x}"][data-y="${y}"]`;
+					const el = document.querySelector(sel);
+					if (el) {
+						el.classList.add('preview-ghost');
+						if (!isValid) el.classList.add('preview-denied');
+						ghostCells.push(el);
+					}
+				}
+			}
+		}
+
+		function clearGhostPreview() {
+			for (const el of ghostCells) {
+				if (el && el.classList) {
+					el.classList.remove('preview-ghost', 'preview-denied');
+				}
+			}
+			ghostCells = [];
 		}
 
 		// ── Waiting Screen ──
@@ -849,6 +1092,60 @@
 			});
 		}
 
+		// ── Bonus dot colors ──
+		const bonusColors = {
+			yellow: '#cfba51', green: '#92c28c', blue: '#5689b0',
+			red: '#b56069', purple: '#8f76b8',
+			any: 'linear-gradient(135deg, #cfba51 0%, #92c28c 24%, #5689b0 48%, #b56069 72%, #8f76b8 100%)'
+		};
+		const zoneActiveColors = {
+			yellow: '#cfba51', green: '#92c28c', blue: '#5689b0',
+			red: '#b56069', purple: '#8f76b8'
+		};
+
+		function renderCell(cell, zoneName, subgridId) {
+			if (!cell) return '<div class="tv-cell void"></div>';
+
+			const flags = cell.flags || [];
+			const classes = ['tv-cell'];
+			const isActive = cell.active || !!cell.playerId;
+			if (isActive) classes.push('active');
+			if (flags.includes('bold')) classes.push('bold');
+			if (flags.includes('end')) classes.push('end');
+			if (flags.includes('gold')) classes.push('gold');
+			if (flags.includes('outer-ring-0')) classes.push('outer-ring-0');
+			if (flags.includes('outer-ring-1')) classes.push('outer-ring-1');
+			if (zoneName === 'green' && flags.includes('end')) classes.push('green-end');
+
+			// Background color
+			let style = '';
+			if (isActive && cell.color) {
+				const code = typeof cell.color === 'string' ? cell.color : (cell.color?.code || '');
+				if (code === 'rainbow') {
+					style = `background:${zoneActiveColors[zoneName] || '#888'};`;
+				} else if (code) {
+					style = `background:${code};`;
+				}
+			}
+
+			// Inner content
+			let inner = '';
+			if (cell.bonusSymbol && !isActive) {
+				const bg = bonusColors[cell.bonusSymbol] || '#888';
+				inner += `<span class="tv-bonus-dot" style="background:${bg}"></span>`;
+			}
+			if (flags.includes('gold') && !isActive) {
+				inner += '<span class="tv-gold-dot"></span>';
+			}
+			if (cell.treasureCoins && !isActive) {
+				inner += `<span class="tv-pearl-dot" title="+${cell.treasureCoins}"></span>`;
+			}
+
+			const dataAttrs = `data-x="${cell.x}" data-y="${cell.y}" data-zone="${zoneName}"${subgridId ? ` data-subgrid="${subgridId}"` : ''}`;
+
+			return `<div class="${classes.join(' ')}" ${dataAttrs} style="${style}">${inner}</div>`;
+		}
+
 		function renderZone(name, zoneData, label) {
 			if (!zoneData) return '';
 			const zoneRows = zoneData.rows || 0;
@@ -861,27 +1158,7 @@
 				for (let x = 0; x < zoneCols; x++) {
 					const key = `${x},${y}`;
 					const cell = cells[key];
-					if (!cell) {
-						cellsHtml += '<div class="tv-cell void"></div>';
-					} else {
-						const isActive = cell.active || cell.playerId;
-						let style = '';
-						if (isActive && cell.color) {
-							const code = typeof cell.color === 'string' ? cell.color : (cell.color?.code || '');
-							if (code === 'rainbow') {
-								const zoneColors = { yellow: '#cfba51', green: '#92c28c', blue: '#5689b0', red: '#b56069', purple: '#8f76b8' };
-								style = `background:${zoneColors[name] || '#888'};`;
-							} else if (code) {
-								style = `background:${code};`;
-							}
-						}
-						const cls = isActive ? 'tv-cell active' : 'tv-cell';
-						const bonusDot = (!isActive && cell.bonusSymbol) ? '<span class="tv-bonus-dot"></span>' : '';
-						const boldStyle = cell.flags?.includes('bold') ? 'border-width:2px;border-color:rgba(255,255,255,0.25);' : '';
-						const endStyle = cell.flags?.includes('end') ? 'border-style:dashed;' : '';
-						const goldStyle = cell.flags?.includes('gold') ? 'box-shadow:inset 0 0 4px rgba(240,192,64,0.5);' : '';
-						cellsHtml += `<div class="${cls}" style="${style}${boldStyle}${endStyle}${goldStyle}">${bonusDot}</div>`;
-					}
+					cellsHtml += renderCell(cell, name, null);
 				}
 			}
 
@@ -911,31 +1188,26 @@
 				for (let y = 0; y < sgRows; y++) {
 					for (let x = 0; x < sgCols; x++) {
 						const key = `${x},${y}`;
-						const cell = sgCells[key];
-						if (!cell) {
-							cellsHtml += '<div class="tv-cell void"></div>';
-						} else {
-							const isActive = cell.active || cell.playerId;
-							let style = '';
-							if (isActive && cell.color) {
-								const code = typeof cell.color === 'string' ? cell.color : (cell.color?.code || '');
-								style = code === 'rainbow'
-									? 'background:#b56069;'
-									: (code ? `background:${code};` : '');
-							}
-							const cls = isActive ? 'tv-cell active' : 'tv-cell';
-							const bonusDot = (!isActive && cell.bonusSymbol) ? '<span class="tv-bonus-dot"></span>' : '';
-							cellsHtml += `<div class="${cls}" style="${style}">${bonusDot}</div>`;
-						}
+						cellsHtml += renderCell(sgCells[key], 'red', sg.id);
 					}
 				}
-				const ptsLabel = sg.targetPoints ? `<span class="tv-zone-label" style="font-size:0.55rem;top:-6px;right:8px;left:auto;">${sg.targetPoints}pt</span>` : '';
+
+				// Progress bar
+				const allCells = Object.values(sgCells);
+				const filledCount = allCells.filter(c => c.active || c.playerId).length;
+				const totalCount = allCells.length;
+				const fillPct = totalCount > 0 ? Math.round((filledCount / totalCount) * 100) : 0;
+				const ptsLabel = sg.targetPoints
+					? `<span class="tv-zone-label" style="font-size:0.55rem;top:-6px;right:8px;left:auto;">${sg.targetPoints}pt</span>`
+					: '';
+
 				subgridsHtml += `
 					<div style="position:relative;">
 						${ptsLabel}
 						<div class="tv-grid" style="grid-template-columns: repeat(${sgCols}, var(--tv-cell-size));">
 							${cellsHtml}
 						</div>
+						<div class="tv-red-progress"><div class="tv-red-progress-fill" style="width:${fillPct}%"></div></div>
 					</div>
 				`;
 			}
@@ -948,7 +1220,7 @@
 			`;
 		}
 
-		// ── Scoreboard ──
+		// ── Scoreboard (with player cards) ──
 		function renderScoreboard(state) {
 			const container = document.getElementById('tv-scoreboard');
 			if (!container) return;
@@ -963,18 +1235,57 @@
 				name: players[pid]?.name || 'Speler',
 				score: players[pid]?.score || 0,
 				connected: players[pid]?.connected !== false,
-				handSize: Array.isArray(players[pid]?.hand) ? players[pid].hand.length : 0,
-				cardsLeft: Array.isArray(players[pid]?.drawPile) ? players[pid].drawPile.length : (players[pid]?.drawPile || 0),
+				hand: players[pid]?.hand,
 				isCurrent: pid === currentPid
 			})).sort((a, b) => b.score - a.score);
 
-			container.innerHTML = sorted.map((p, i) => `
-				<div class="tv-score-row ${p.isCurrent ? 'current-turn' : ''}">
-					<span class="tv-score-rank">${i + 1}</span>
-					<span class="tv-score-name">${esc(p.name)} ${!p.connected ? '🔌' : ''}</span>
-					<span class="tv-score-pts">${p.score}</span>
-				</div>
-			`).join('');
+			container.innerHTML = sorted.map((p, i) => {
+				// Render mini cards for this player
+				let cardsHtml = '';
+				const hand = p.hand;
+				if (Array.isArray(hand) && hand.length > 0) {
+					if (typeof hand[0] === 'object' && hand[0]?.matrix) {
+						// Full card data available — render mini grids
+						cardsHtml = '<div class="tv-player-cards">' + hand.map(card => {
+							const matrix = card.matrix || [];
+							const colorCode = card.color?.code || '#666';
+							const isRainbow = colorCode === 'rainbow';
+							const cols = matrix[0]?.length || 0;
+							const fill = isRainbow
+								? 'background: linear-gradient(135deg, #b56069, #cfba51, #92c28c, #5689b0, #8f76b8)'
+								: `background: ${colorCode}`;
+							let miniCells = '';
+							for (const row of matrix) {
+								for (const c of row) {
+									miniCells += c
+										? `<div class="tv-mini-cell filled" style="${fill}"></div>`
+										: '<div class="tv-mini-cell"></div>';
+								}
+							}
+							return `<div class="tv-player-mini-card" style="grid-template-columns: repeat(${cols}, 7px);">${miniCells}</div>`;
+						}).join('') + '</div>';
+					} else {
+						// Only count
+						const count = typeof hand === 'number' ? hand : hand.length;
+						cardsHtml = `<div class="tv-score-cards-count">${count} kaart${count !== 1 ? 'en' : ''}</div>`;
+					}
+				} else if (typeof hand === 'number' && hand > 0) {
+					cardsHtml = `<div class="tv-score-cards-count">${hand} kaart${hand !== 1 ? 'en' : ''}</div>`;
+				}
+
+				return `
+					<div class="tv-score-row ${p.isCurrent ? 'current-turn' : ''}">
+						<div style="display:flex;align-items:center;gap:10px;flex:1;min-width:0;">
+							<span class="tv-score-rank">${i + 1}</span>
+							<div style="flex:1;min-width:0;">
+								<div class="tv-score-name">${esc(p.name)} ${!p.connected ? '🔌' : ''}</div>
+								${cardsHtml}
+							</div>
+						</div>
+						<span class="tv-score-pts">${p.score}</span>
+					</div>
+				`;
+			}).join('');
 		}
 
 		// ── Turn Info ──
@@ -1057,7 +1368,8 @@
 			}).join('');
 		}
 
-		// ── Timer ──
+		// ── Timer (with sound) ──
+		let lastTimerBeep = null;
 		function updateTimer(state) {
 			const timerEl = document.getElementById('tv-timer');
 			const fillEl = document.getElementById('tv-timer-fill');
@@ -1096,8 +1408,15 @@
 				fillEl.className = 'tv-timer-fill';
 				if (pct < 25) fillEl.classList.add('danger');
 				else if (pct < 50) fillEl.classList.add('warning');
+
+				// Beep in last 5 seconds
+				if (secs <= 5 && secs > 0 && lastTimerBeep !== secs) {
+					lastTimerBeep = secs;
+					playTimerWarningSound();
+				}
 			}
 
+			lastTimerBeep = null;
 			tick();
 			timerInterval = setInterval(tick, 500);
 		}
