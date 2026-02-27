@@ -667,44 +667,72 @@
 
 		// ── 1. Try Presentation Receiver API (Chromecast / wireless display) ──
 		let bcChannel = null;
+		let receiverReady = false;
+
 		if (navigator.presentation && navigator.presentation.receiver) {
+			console.log('[TV] Presentation Receiver API detected, wachten op verbinding...');
 			navigator.presentation.receiver.connectionList.then(list => {
-				console.log('[TV] Presentation Receiver: verbonden');
+				console.log('[TV] Presentation Receiver: connectionList ontvangen, connections:', list.connections.length);
 				for (const conn of list.connections) {
 					setupPresentationConnection(conn);
 				}
 				list.onconnectionavailable = (e) => {
+					console.log('[TV] Nieuwe Presentation connection beschikbaar');
 					setupPresentationConnection(e.connection);
 				};
 			}).catch(err => {
 				console.warn('[TV] Presentation Receiver niet beschikbaar:', err);
 				initBroadcastChannel();
 			});
+
+			// Safety: also try BroadcastChannel after 2s if no Presentation connection arrived
+			setTimeout(() => {
+				if (!receiverReady && !presentationConn) {
+					console.log('[TV] Geen Presentation connection na 2s, probeer BroadcastChannel als backup');
+					initBroadcastChannel();
+				}
+			}, 2000);
 		} else {
 			// ── 2. Fallback: BroadcastChannel (same-device popup) ──
 			initBroadcastChannel();
 		}
 
 		function setupPresentationConnection(conn) {
+			receiverReady = true;
 			presentationConn = conn;
+			console.log('[TV] Presentation connection opgezet, state:', conn.state);
 			conn.onmessage = (e) => {
 				try {
 					const msg = typeof e.data === 'string' ? JSON.parse(e.data) : e.data;
+					console.log('[TV] Ontvangen via Presentation:', msg?.type);
 					handleMessage(msg);
-				} catch (_) {}
+				} catch (err) {
+					console.warn('[TV] Parse error:', err);
+				}
 			};
 			conn.onclose = () => {
 				console.log('[TV] Presentation connection gesloten');
 				presentationConn = null;
 			};
+			// Notify host we're ready (send multiple times to handle race conditions)
 			sendToHost({ type: 'tvReady' });
+			setTimeout(() => sendToHost({ type: 'tvReady' }), 500);
+			setTimeout(() => sendToHost({ type: 'tvReady' }), 1500);
 		}
 
 		function initBroadcastChannel() {
+			if (bcChannel) return; // Already initialized
 			try {
 				bcChannel = new BroadcastChannel('locus-tv');
 				bcChannel.onmessage = (e) => handleMessage(e.data);
+				// Send tvReady multiple times to handle timing
 				bcChannel.postMessage({ type: 'tvReady' });
+				setTimeout(() => {
+					try { bcChannel.postMessage({ type: 'tvReady' }); } catch(_) {}
+				}, 500);
+				setTimeout(() => {
+					try { bcChannel.postMessage({ type: 'tvReady' }); } catch(_) {}
+				}, 1500);
 			} catch (err) {
 				console.warn('[TV] BroadcastChannel niet beschikbaar:', err);
 			}

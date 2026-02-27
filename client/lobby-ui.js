@@ -387,7 +387,11 @@ class LocusLobbyUI {
 			this._tvChannel.onmessage = (e) => {
 				if (e.data?.type === 'tvReady' || e.data?.type === 'pong') {
 					this._tvConnected = true;
-					console.log('[Locus TV] TV display verbonden');
+					console.log('[Locus TV] TV display verbonden via BroadcastChannel');
+					// TV just became ready — resend theme + full state
+					const theme = localStorage.getItem('locus-theme') || 'classic';
+					this._tvPostMessage({ type: 'theme', theme });
+					this._broadcastTVState();
 				}
 			};
 		} catch (err) {
@@ -433,12 +437,14 @@ class LocusLobbyUI {
 						console.log('[Locus TV] Presentation display verbroken');
 						this._tvPresentationConn = null;
 						this._tvConnected = false;
+						this._stopTVHeartbeat();
 					};
 
 					conn.onterminate = () => {
 						console.log('[Locus TV] Presentation display terminated');
 						this._tvPresentationConn = null;
 						this._tvConnected = false;
+						this._stopTVHeartbeat();
 					};
 
 					conn.onmessage = (e) => {
@@ -447,13 +453,16 @@ class LocusLobbyUI {
 							if (msg?.type === 'tvReady' || msg?.type === 'pong') {
 								this._tvConnected = true;
 								console.log('[Locus TV] TV display klaar via Presentation');
+								// TV just became ready — send current theme + full state
+								this._tvPostMessage({ type: 'theme', theme: localStorage.getItem('locus-theme') || 'classic' });
+								this._broadcastTVState();
 							}
 						} catch (_) {}
 					};
 
-					// Send theme + current state to newly connected TV
-					this._tvPostMessage({ type: 'theme', theme });
-					setTimeout(() => this._broadcastTVState(), 500);
+					// Don't send state immediately — wait for tvReady from receiver.
+					// Start heartbeat to keep connection alive and catch late-ready TVs.
+					this._startTVHeartbeat();
 				}).catch(err => {
 					console.log('[Locus TV] Presentation API geweigerd of geen displays:', err?.message);
 					// Fallback: open same-device popup window
@@ -499,6 +508,24 @@ class LocusLobbyUI {
 		// Fallback: BroadcastChannel (same-device popup only)
 		if (this._tvChannel) {
 			try { this._tvChannel.postMessage(msg); } catch (_) {}
+		}
+	}
+
+	/** Heartbeat: periodically ping TV and resend state to handle reconnections */
+	_startTVHeartbeat() {
+		this._stopTVHeartbeat();
+		this._tvHeartbeatId = setInterval(() => {
+			if (!this._tvCastActive) { this._stopTVHeartbeat(); return; }
+			this._tvPostMessage({ type: 'ping' });
+			// Resend state periodically to ensure TV stays in sync
+			this._broadcastTVState();
+		}, 5000);
+	}
+
+	_stopTVHeartbeat() {
+		if (this._tvHeartbeatId) {
+			clearInterval(this._tvHeartbeatId);
+			this._tvHeartbeatId = null;
 		}
 	}
 
@@ -583,6 +610,7 @@ class LocusLobbyUI {
 	stopTVCast() {
 		this._tvCastActive = false;
 		this._tvConnected = false;
+		this._stopTVHeartbeat();
 		if (this._tvPresentationConn) {
 			try { this._tvPresentationConn.terminate(); } catch (_) {}
 			this._tvPresentationConn = null;
@@ -684,11 +712,12 @@ class LocusLobbyUI {
 
 		const maxPlayers = Number(this.elements['max-players-select']?.value) || 4;
 		const cardsPerPlayer = Number(this.elements['cards-per-player-select']?.value) || 8;
+		const mapSize = Number(this.elements['map-size-select']?.value) || 4;
 
 		this._setLoading(true);
 		try {
 			await this.mp.init();
-			const result = await this.mp.createGame(name, { maxPlayers, cardsPerPlayer });
+			const result = await this.mp.createGame(name, { maxPlayers, cardsPerPlayer, mapSize });
 			this._showWaitingRoom(result.inviteCode, true);
 		} catch (err) {
 			this._showToast('Kan spel niet aanmaken: ' + (err.message || err), 'error');
