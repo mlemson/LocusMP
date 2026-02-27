@@ -832,36 +832,55 @@
 					${renderZone('purple', zones.purple, 'Paars')}
 				</div>
 			`;
+
+			// Auto-scale board to fit the available area
+			requestAnimationFrame(() => {
+				const area = container.parentElement;
+				if (!area) return;
+				const areaW = area.clientWidth - 32;
+				const areaH = area.clientHeight - 32;
+				const boardW = container.scrollWidth;
+				const boardH = container.scrollHeight;
+				if (boardW > 0 && boardH > 0) {
+					const scale = Math.min(1, areaW / boardW, areaH / boardH);
+					container.style.transform = `scale(${scale})`;
+					container.style.transformOrigin = 'center center';
+				}
+			});
 		}
 
 		function renderZone(name, zoneData, label) {
 			if (!zoneData) return '';
-			const grid = zoneData.grid;
-			if (!grid || !grid.length) return '';
-			const cols = grid[0]?.length || 0;
+			const zoneRows = zoneData.rows || 0;
+			const zoneCols = zoneData.cols || 0;
+			const cells = zoneData.cells;
+			if (!cells || !zoneRows || !zoneCols) return '';
 
 			let cellsHtml = '';
-			for (let y = 0; y < grid.length; y++) {
-				for (let x = 0; x < cols; x++) {
-					const cell = grid[y][x];
-					if (cell === null || cell === undefined) {
+			for (let y = 0; y < zoneRows; y++) {
+				for (let x = 0; x < zoneCols; x++) {
+					const key = `${x},${y}`;
+					const cell = cells[key];
+					if (!cell) {
 						cellsHtml += '<div class="tv-cell void"></div>';
 					} else {
-						const isActive = cell.active || cell.owner || cell.filled || cell.playerId;
+						const isActive = cell.active || cell.playerId;
 						let style = '';
-						if (isActive && cell.color?.code) {
-							if (cell.color.code === 'rainbow') {
+						if (isActive && cell.color) {
+							const code = typeof cell.color === 'string' ? cell.color : (cell.color?.code || '');
+							if (code === 'rainbow') {
 								const zoneColors = { yellow: '#cfba51', green: '#92c28c', blue: '#5689b0', red: '#b56069', purple: '#8f76b8' };
 								style = `background:${zoneColors[name] || '#888'};`;
-							} else {
-								style = `background:${cell.color.code};`;
+							} else if (code) {
+								style = `background:${code};`;
 							}
-						} else if (isActive && cell.isStone) {
-							style = 'background:#8a8a8a;';
 						}
 						const cls = isActive ? 'tv-cell active' : 'tv-cell';
 						const bonusDot = (!isActive && cell.bonusSymbol) ? '<span class="tv-bonus-dot"></span>' : '';
-						cellsHtml += `<div class="${cls}" style="${style}">${bonusDot}</div>`;
+						const boldStyle = cell.flags?.includes('bold') ? 'border-width:2px;border-color:rgba(255,255,255,0.25);' : '';
+						const endStyle = cell.flags?.includes('end') ? 'border-style:dashed;' : '';
+						const goldStyle = cell.flags?.includes('gold') ? 'box-shadow:inset 0 0 4px rgba(240,192,64,0.5);' : '';
+						cellsHtml += `<div class="${cls}" style="${style}${boldStyle}${endStyle}${goldStyle}">${bonusDot}</div>`;
 					}
 				}
 			}
@@ -869,7 +888,7 @@
 			return `
 				<div class="tv-zone tv-zone-${name}">
 					<span class="tv-zone-label">${label}</span>
-					<div class="tv-grid" style="grid-template-columns: repeat(${cols}, var(--tv-cell-size));">
+					<div class="tv-grid" style="grid-template-columns: repeat(${zoneCols}, var(--tv-cell-size));">
 						${cellsHtml}
 					</div>
 				</div>
@@ -883,29 +902,40 @@
 
 			let subgridsHtml = '';
 			for (const sg of subgrids) {
-				const g = sg.grid;
-				if (!g || !g.length) continue;
-				const cols = g[0]?.length || 0;
+				const sgRows = sg.rows || 0;
+				const sgCols = sg.cols || 0;
+				const sgCells = sg.cells;
+				if (!sgCells || !sgRows || !sgCols) continue;
+
 				let cellsHtml = '';
-				for (let y = 0; y < g.length; y++) {
-					for (let x = 0; x < cols; x++) {
-						const cell = g[y][x];
-						const isActive = cell && (cell.active || cell.owner || cell.filled || cell.playerId);
-						let style = '';
-						if (isActive && cell.color?.code) {
-							style = cell.color.code === 'rainbow'
-								? 'background:#b56069;'
-								: `background:${cell.color.code};`;
-						} else if (isActive && cell.isStone) {
-							style = 'background:#8a8a8a;';
+				for (let y = 0; y < sgRows; y++) {
+					for (let x = 0; x < sgCols; x++) {
+						const key = `${x},${y}`;
+						const cell = sgCells[key];
+						if (!cell) {
+							cellsHtml += '<div class="tv-cell void"></div>';
+						} else {
+							const isActive = cell.active || cell.playerId;
+							let style = '';
+							if (isActive && cell.color) {
+								const code = typeof cell.color === 'string' ? cell.color : (cell.color?.code || '');
+								style = code === 'rainbow'
+									? 'background:#b56069;'
+									: (code ? `background:${code};` : '');
+							}
+							const cls = isActive ? 'tv-cell active' : 'tv-cell';
+							const bonusDot = (!isActive && cell.bonusSymbol) ? '<span class="tv-bonus-dot"></span>' : '';
+							cellsHtml += `<div class="${cls}" style="${style}">${bonusDot}</div>`;
 						}
-						const cls = isActive ? 'tv-cell active' : 'tv-cell';
-						cellsHtml += `<div class="${cls}" style="${style}"></div>`;
 					}
 				}
+				const ptsLabel = sg.targetPoints ? `<span class="tv-zone-label" style="font-size:0.55rem;top:-6px;right:8px;left:auto;">${sg.targetPoints}pt</span>` : '';
 				subgridsHtml += `
-					<div class="tv-grid" style="grid-template-columns: repeat(${cols}, var(--tv-cell-size));">
-						${cellsHtml}
+					<div style="position:relative;">
+						${ptsLabel}
+						<div class="tv-grid" style="grid-template-columns: repeat(${sgCols}, var(--tv-cell-size));">
+							${cellsHtml}
+						</div>
 					</div>
 				`;
 			}

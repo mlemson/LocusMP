@@ -631,6 +631,7 @@
 
 				const maxPlayers = Number(document.getElementById('max-players-select')?.value || 4);
 				const cardsPerPlayer = Number(document.getElementById('cards-per-player-select')?.value || 8);
+				const mapSize = Number(document.getElementById('map-size-select')?.value || 4);
 
 				// Toon loading state
 				const hostBtn = document.getElementById('p2p-host-btn');
@@ -640,7 +641,7 @@
 
 				try {
 					const host = new LocusP2PHost();
-					const result = await host.startHost(name, { maxPlayers, cardsPerPlayer });
+					const result = await host.startHost(name, { maxPlayers, cardsPerPlayer, mapSize });
 
 					// Maak een P2P-wrapper die dezelfde interface heeft als LocusMultiplayer
 					const p2pMp = _createP2PHostAdapter(host);

@@ -236,18 +236,27 @@ function generateBranchGrid(rows, cols, steps, splitChance, rng, options = {}) {
 
 	const dirs = [[0, -1], [0, 1], [-1, 0], [1, 0]]; // up, down, left, right
 
-	// Each tip has position + current direction
+	// Each tip has position + current direction + branchId
 	// Start with branches going in all 4 directions from center
-	let tips = dirs.map(d => ({ x: cx, y: cy, dx: d[0], dy: d[1] }));
+	let nextBranchId = 0;
+	let tips = dirs.map(d => ({ x: cx, y: cy, dx: d[0], dy: d[1], branchId: nextBranchId++, age: 0 }));
 
-	// Grow directional branches
-	for (let step = 0; step < steps && tips.length > 0; step++) {
-		const tipIdx = Math.floor(rng() * tips.length);
+	// Track which branch owns each cell (for de-clustering)
+	const cellBranch = new Map();
+	cellBranch.set(`${cx},${cy}`, -1); // center = no branch
+
+	// Grow directional branches — round-robin instead of pure random
+	// to ensure all branches get equal growth opportunity
+	let stepCount = 0;
+	while (stepCount < steps && tips.length > 0) {
+		// Round-robin: cycle through tips fairly
+		const tipIdx = stepCount % tips.length;
 		const tip = tips[tipIdx];
+		stepCount++;
 
-		// Grow in the current direction (80% chance) or turn (20%)
+		// Grow in the current direction (75% chance) or turn (25%)
 		let dx = tip.dx, dy = tip.dy;
-		if (rng() < 0.2) {
+		if (rng() < 0.25) {
 			// Turn perpendicular
 			if (dx !== 0) { dx = 0; dy = rng() < 0.5 ? -1 : 1; }
 			else { dy = 0; dx = rng() < 0.5 ? -1 : 1; }
@@ -258,23 +267,28 @@ function generateBranchGrid(rows, cols, steps, splitChance, rng, options = {}) {
 
 		if (nx >= 0 && nx < cols && ny >= 0 && ny < rows && !active.has(`${nx},${ny}`)) {
 			active.add(`${nx},${ny}`);
+			cellBranch.set(`${nx},${ny}`, tip.branchId);
 
 			// Move tip forward
 			tip.x = nx;
 			tip.y = ny;
 			tip.dx = dx;
 			tip.dy = dy;
+			tip.age++;
 
 			// Chance to split: create a new branch in perpendicular direction
-			if (rng() < splitChance) {
+			// Only split if branch has grown at least 3 cells (avoid tiny stubs)
+			if (tip.age >= 3 && rng() < splitChance) {
 				let sdx, sdy;
 				if (dx !== 0) { sdx = 0; sdy = rng() < 0.5 ? -1 : 1; }
 				else { sdy = 0; sdx = rng() < 0.5 ? -1 : 1; }
-				tips.push({ x: nx, y: ny, dx: sdx, dy: sdy });
+				tips.push({ x: nx, y: ny, dx: sdx, dy: sdy, branchId: nextBranchId++, age: 0 });
 			}
 		} else {
 			// Blocked – remove this tip
 			tips.splice(tipIdx, 1);
+			// Adjust stepCount so round-robin stays fair after splice
+			if (tips.length > 0) stepCount = stepCount - 1;
 		}
 	}
 
@@ -297,7 +311,6 @@ function generateBranchGrid(rows, cols, steps, splitChance, rng, options = {}) {
 
 	// Build the cells dict – non-active cells are void
 	const cells = {};
-	const endCells = [];
 	for (const key of active) {
 		const [x, y] = key.split(',').map(Number);
 		const flags = [];
@@ -316,6 +329,7 @@ function generateBranchGrid(rows, cols, steps, splitChance, rng, options = {}) {
 	}
 
 	// Determine end cells: active cells with ≤1 active neighbour (but not center)
+	const rawEndKeys = [];
 	for (const key of active) {
 		const [x, y] = key.split(',').map(Number);
 		if (x === cx && y === cy) continue;
@@ -324,9 +338,47 @@ function generateBranchGrid(rows, cols, steps, splitChance, rng, options = {}) {
 			if (active.has(`${x + dx},${y + dy}`)) neighborCount++;
 		}
 		if (neighborCount <= 1) {
-			cells[key].flags.push('end');
-			endCells.push({ x, y });
+			rawEndKeys.push(key);
 		}
+	}
+
+	// De-cluster: group adjacent end cells and keep only one per cluster
+	// (the one farthest from center). This prevents end cells from clumping.
+	const endKeySet = new Set(rawEndKeys);
+	const visited = new Set();
+	const endCells = [];
+
+	for (const startKey of rawEndKeys) {
+		if (visited.has(startKey)) continue;
+		// BFS to find the connected cluster of end cells
+		const cluster = [];
+		const queue = [startKey];
+		visited.add(startKey);
+		while (queue.length > 0) {
+			const k = queue.shift();
+			cluster.push(k);
+			const [kx, ky] = k.split(',').map(Number);
+			for (const [dx, dy] of dirs) {
+				const nk = `${kx + dx},${ky + dy}`;
+				if (endKeySet.has(nk) && !visited.has(nk)) {
+					visited.add(nk);
+					queue.push(nk);
+				}
+			}
+		}
+
+		// Pick the cell farthest from center as the single end cell for this cluster
+		let bestKey = cluster[0];
+		let bestDist = 0;
+		for (const k of cluster) {
+			const [kx, ky] = k.split(',').map(Number);
+			const d = Math.abs(kx - cx) + Math.abs(ky - cy);
+			if (d > bestDist) { bestDist = d; bestKey = k; }
+		}
+
+		cells[bestKey].flags.push('end');
+		const [bx, by] = bestKey.split(',').map(Number);
+		endCells.push({ x: bx, y: by });
 	}
 
 	const minEndCells = Math.max(0, Number(options.minEndCells || 0));
@@ -594,7 +646,7 @@ function generateLevel1Board(rng, level, playerCount) {
 	//  RED ZONE — Wereldafhankelijk + spelerafhankelijk
 	//  2 subgrids bij 2p, +1 per 2 extra spelers
 	// ══════════════════════════════════════════
-	const redSubgridCount = 2 + playerTier;
+	const redSubgridCount = Math.min(2 + playerTier, 4);
 	{
 		// Pool van beschikbare subgrids per wereld (van klein naar groot)
 		const redPool = world === 1
