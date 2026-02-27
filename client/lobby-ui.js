@@ -55,6 +55,7 @@ class LocusLobbyUI {
 		this._forceBlueBottomOnce = false;
 		this._mobileSwipeStartX = null;
 		this._mobileSwipeStartY = null;
+		this._suppressMobileSwipeUntil = 0;
 		this._lastBonusBaseX = null;
 		this._lastBonusBaseY = null;
 		this._lastBonusZone = null;
@@ -2101,6 +2102,15 @@ class LocusLobbyUI {
 
 		const isTouchLikeRelease = e.pointerType === 'touch' || e.pointerType === 'pen';
 		if (isTouchLikeRelease) {
+			this._suppressMobileSwipeUntil = Date.now() + 450;
+			if (this._lastPreviewZone) {
+				const idx = this._getMobileZoneIndex(this._lastPreviewZone);
+				if (Number.isFinite(idx)) {
+					this._forcedMobileBoardIndex = idx;
+					this._lastMobileBoardIndex = idx;
+					this._lastMobileZoneName = this._lastPreviewZone;
+				}
+			}
 			// Mobiel: plaats direct op release als preview geldig is; annuleer niet agressief op loslaten.
 			if (this._attemptPlacementFromCurrentPreview()) return;
 			return;
@@ -3479,6 +3489,15 @@ class LocusLobbyUI {
 		if (!board) return;
 		const zoneEl = board.querySelector(`.mp-zone[data-zone="${zoneName}"]`);
 		if (!zoneEl) return;
+		const zones = Array.from(board.querySelectorAll('.mp-zone'));
+		const idx = zones.indexOf(zoneEl);
+		const currentIdx = this._getCurrentMobileBoardIndex();
+		if (Number.isFinite(idx) && Number.isFinite(currentIdx) && idx === currentIdx) {
+			this._lastMobileBoardIndex = idx;
+			this._lastMobileZoneName = zoneName || null;
+			if (zoneName === 'blue') this._scrollBlueZoneToBottom(zoneEl, false);
+			return;
+		}
 		board.scrollTo({
 			left: zoneEl.offsetLeft,
 			top: 0,
@@ -3491,8 +3510,6 @@ class LocusLobbyUI {
 			}
 			this._scrollBlueZoneToBottom(zoneEl, true);
 		}
-		const zones = Array.from(board.querySelectorAll('.mp-zone'));
-		const idx = zones.indexOf(zoneEl);
 		if (idx >= 0) this._lastMobileBoardIndex = idx;
 		this._lastMobileZoneName = zoneName || null;
 	}
@@ -3543,6 +3560,11 @@ class LocusLobbyUI {
 				}, { passive: true });
 
 				boardEl.addEventListener('touchend', (e) => {
+					if (this._isDragging || Date.now() < (this._suppressMobileSwipeUntil || 0)) {
+						this._mobileSwipeStartX = null;
+						this._mobileSwipeStartY = null;
+						return;
+					}
 					if (!Number.isFinite(this._mobileSwipeStartX) || !Number.isFinite(this._mobileSwipeStartY)) return;
 					const t = e.changedTouches?.[0];
 					if (!t) return;
