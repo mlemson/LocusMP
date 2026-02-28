@@ -2737,13 +2737,6 @@ class LocusLobbyUI {
 
 	async _attemptPlacement(zoneName, baseX, baseY, subgridId = null) {
 		if (!this._dragState) return;
-		this._suppressMobileSwipeUntil = Date.now() + 1400;
-		const zoneIdx = this._getMobileZoneIndex(zoneName);
-		if (Number.isFinite(zoneIdx)) {
-			this._forcedMobileBoardIndex = zoneIdx;
-			this._lastMobileBoardIndex = zoneIdx;
-			this._lastMobileZoneName = zoneName;
-		}
 		const stillInHand = (this.mp.getMyHand() || []).some(c => c.id === this._dragState.card.id);
 		if (!stillInHand) {
 			this._cancelDrag();
@@ -3452,11 +3445,6 @@ class LocusLobbyUI {
 
 	async _attemptBonusPlacement(zoneName, baseX, baseY, subgridId = null) {
 		if (!this._bonusMode || !this.mp.isMyTurn()) return;
-		const zoneIdx = this._getMobileZoneIndex(zoneName);
-		if (Number.isFinite(zoneIdx)) {
-			this._forcedMobileBoardIndex = zoneIdx;
-			this._lastMobileBoardIndex = zoneIdx;
-		}
 		try {
 			const result = await this.mp.playBonus(this._bonusMode.color, zoneName, baseX, baseY, subgridId, this._bonusMode.rotation || 0);
 			if (result?.error) throw new Error(result.error);
