@@ -2209,6 +2209,16 @@ function countPlayerCompletedRedSubgrids(boardState, playerId) {
 	return count;
 }
 
+function countPlayerZonesAtLeast(playerScore, minScore) {
+	const threshold = Math.max(0, Number(minScore) || 0);
+	const score = playerScore || {};
+	let count = 0;
+	for (const zoneKey of ['yellow', 'green', 'blue', 'red', 'purple']) {
+		if ((Number(score[zoneKey]) || 0) >= threshold) count++;
+	}
+	return count;
+}
+
 function getPlayerPurpleMaxBoldCluster(boardState, playerId) {
 	const zone = boardState?.zones?.purple;
 	if (!zone || !playerId) return 0;
@@ -2320,8 +2330,8 @@ const LEVEL_OBJECTIVES = {
 		  }},
 		{ id: 'collect_5_gold', name: 'Goudmijn', description: 'Verzamel minstens 5 gouden munten.', target: 5, points: 20,
 		  useContext: true, check: (ctx) => countPlayerGoldCells(ctx.boardState, ctx.playerId)},
-		{ id: 'balance_10', name: 'Meester Evenwicht', description: 'Behaal overal tenminste 10 punten.', target: 10, coins: 5,
-		  useContext: true, check: (ctx) => ctx?.playerScore?.bonus || 0 },
+		{ id: 'balance_10', name: 'Meester Evenwicht', description: 'Behaal overal tenminste 10 punten.', target: 5, coins: 5,
+		  useContext: true, check: (ctx) => countPlayerZonesAtLeast(ctx?.playerScore, 10) },
 		{ id: 'deny_named_l2', name: 'Gerichte Sabotage', description: 'Zorg dat een gekozen speler zijn/haar doel niet haalt.', target: 1, points: 16, coins: 3, useContext: true, endOnly: true, dynamicType: 'deny_named_objective',
 		  check: (ctx, objective) => {
 			const targetPid = objective?.targetPlayerId;
@@ -2380,8 +2390,8 @@ const LEVEL_OBJECTIVES = {
 			if (maxTier <= 0) return false;
 			return reachedTier >= maxTier;
 		  }},
-		{ id: 'balance_15', name: 'Perfecte Balans', description: 'Behaal overal tenminste 15 punten.', target: 15, coins: 8,
-		  useContext: true, check: (ctx) => ctx?.playerScore?.bonus || 0 },
+		{ id: 'balance_15', name: 'Perfecte Balans', description: 'Behaal overal tenminste 15 punten.', target: 5, coins: 8,
+		  useContext: true, check: (ctx) => countPlayerZonesAtLeast(ctx?.playerScore, 15) },
 		{ id: 'combo_yellow4_green3', name: 'Strakke Route', description: 'Haal 4 gele kolommen én 3 groene eindpunten.', target: 2, points: 25, coins: 6, useContext: true,
 		  check: (ctx) => {
 			let done = 0;
@@ -2457,6 +2467,9 @@ function checkObjective(gameStateOrBoardState, playerIdOrObjective, maybeObjecti
 	if (!objective) return { achieved: false, failed: false, current: 0, target: 0, points: 0 };
 	const objectiveCtx = gameState ? buildObjectiveContext(gameState, playerId) : null;
 	const activeBoardState = objectiveCtx?.boardState || boardState;
+	const normalizedTarget = (objective.id === 'balance_10' || objective.id === 'balance_15')
+		? 5
+		: objective.target;
 
 	// Zoek in alle levels
 	for (const lvl of [1, 2, 3]) {
@@ -2470,7 +2483,7 @@ function checkObjective(gameStateOrBoardState, playerIdOrObjective, maybeObjecti
 					achieved: false,
 					failed: false,
 					current: 0,
-					target: objective.target,
+					target: normalizedTarget,
 					points: getObjectiveRewardPoints(objective, 15),
 					coins: getObjectiveRewardCoins(objective),
 					randomBonuses: getObjectiveRandomBonuses(objective)
@@ -2481,10 +2494,10 @@ function checkObjective(gameStateOrBoardState, playerIdOrObjective, maybeObjecti
 				? !!(tmpl.useContext ? tmpl.failCheck(objectiveCtx, objective) : tmpl.failCheck(activeBoardState, objective))
 				: false;
 			return {
-				achieved: !failed && current >= objective.target,
+				achieved: !failed && current >= normalizedTarget,
 				failed,
 				current,
-				target: objective.target,
+				target: normalizedTarget,
 				points: getObjectiveRewardPoints(objective, 15),
 				coins: getObjectiveRewardCoins(objective),
 				randomBonuses: getObjectiveRandomBonuses(objective)
@@ -2498,7 +2511,7 @@ function checkObjective(gameStateOrBoardState, playerIdOrObjective, maybeObjecti
 			achieved: false,
 			failed: false,
 			current: 0,
-			target: objective.target,
+			target: normalizedTarget,
 			points: getObjectiveRewardPoints(objective, 15),
 			coins: getObjectiveRewardCoins(objective),
 			randomBonuses: getObjectiveRandomBonuses(objective)
@@ -2506,10 +2519,10 @@ function checkObjective(gameStateOrBoardState, playerIdOrObjective, maybeObjecti
 	}
 	const current = template.check(activeBoardState);
 	return {
-		achieved: current >= objective.target,
+		achieved: current >= normalizedTarget,
 		failed: false,
 		current,
-		target: objective.target,
+		target: normalizedTarget,
 		points: getObjectiveRewardPoints(objective, 15),
 		coins: getObjectiveRewardCoins(objective),
 		randomBonuses: getObjectiveRandomBonuses(objective)
