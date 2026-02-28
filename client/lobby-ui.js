@@ -1026,6 +1026,12 @@ class LocusLobbyUI {
 				: Math.max(0, this._turnTimerEnd - Date.now());
 			const pct = (remaining / 40000) * 100;
 			const secs = Math.ceil(remaining / 1000);
+			const turnIndicator = this.elements['mp-turn-indicator'];
+			if (turnIndicator && this.mp.isMyTurn() && !paused) {
+				turnIndicator.classList.toggle('timer-urgent', secs <= 10 && secs > 0);
+			} else if (turnIndicator) {
+				turnIndicator.classList.remove('timer-urgent');
+			}
 
 			document.querySelectorAll('.mp-timer-fill').forEach(fill => {
 				fill.style.width = `${pct}%`;
@@ -1054,6 +1060,8 @@ class LocusLobbyUI {
 			clearInterval(this._turnTimerInterval);
 			this._turnTimerInterval = null;
 		}
+		const turnIndicator = this.elements['mp-turn-indicator'];
+		if (turnIndicator) turnIndicator.classList.remove('timer-urgent');
 		const timerEl = this.elements['mp-turn-timer'];
 		if (timerEl) timerEl.style.display = 'none';
 	}
@@ -2709,11 +2717,12 @@ class LocusLobbyUI {
 
 	async _attemptPlacement(zoneName, baseX, baseY, subgridId = null) {
 		if (!this._dragState) return;
-		this._suppressMobileSwipeUntil = Date.now() + 450;
+		this._suppressMobileSwipeUntil = Date.now() + 1400;
 		const zoneIdx = this._getMobileZoneIndex(zoneName);
 		if (Number.isFinite(zoneIdx)) {
 			this._forcedMobileBoardIndex = zoneIdx;
 			this._lastMobileBoardIndex = zoneIdx;
+			this._lastMobileZoneName = zoneName;
 		}
 		const stillInHand = (this.mp.getMyHand() || []).some(c => c.id === this._dragState.card.id);
 		if (!stillInHand) {
@@ -3822,6 +3831,15 @@ class LocusLobbyUI {
 					if (rafId) return;
 					rafId = requestAnimationFrame(() => {
 						rafId = null;
+						if (Date.now() < (this._suppressMobileSwipeUntil || 0)) {
+							const lockedIdx = Number.isFinite(this._forcedMobileBoardIndex)
+								? this._forcedMobileBoardIndex
+								: this._lastMobileBoardIndex;
+							if (Number.isFinite(lockedIdx)) {
+								this._restoreMobileBoardIndex(lockedIdx);
+							}
+							return;
+						}
 						const width = Math.max(1, boardEl.clientWidth || 1);
 						const idx = Math.max(0, Math.round(boardEl.scrollLeft / width));
 						const prevIdx = this._lastMobileBoardIndex;
@@ -3898,7 +3916,17 @@ class LocusLobbyUI {
 			// Extra zekerheid: forceer positie na korte delay (voorkomt drift na touch-release)
 			const frozenIdx = targetIdx || 0;
 			setTimeout(() => this._restoreMobileBoardIndex(frozenIdx), 150);
-			this._forcedMobileBoardIndex = null;
+			if (Date.now() < (this._suppressMobileSwipeUntil || 0)) {
+				this._forcedMobileBoardIndex = frozenIdx;
+				const clearDelay = Math.max(0, (this._suppressMobileSwipeUntil || 0) - Date.now()) + 60;
+				setTimeout(() => {
+					if (Date.now() >= (this._suppressMobileSwipeUntil || 0)) {
+						this._forcedMobileBoardIndex = null;
+					}
+				}, clearDelay);
+			} else {
+				this._forcedMobileBoardIndex = null;
+			}
 		}
 	}
 
@@ -4561,11 +4589,6 @@ class LocusLobbyUI {
 									<div class="mp-shop-offering mystery ${canAfford && !isReady ? '' : 'cant-afford'}">
 										<div class="mp-shop-offering-color" style="background: linear-gradient(135deg, #2f3448, #4a4f6d, #2f3448)"></div>
 										<div class="mp-card-shape" style="display:flex;align-items:center;justify-content:center;min-height:54px;font-size:1.25rem;">🎲</div>
-										<div class="mp-shop-offering-name">Gesloten random kaart</div>
-										<div class="mp-shop-offering-meta">
-											<span class="mp-shop-offering-cells">Onbekende vorm</span>
-											<span class="mp-shop-offering-zone">Gesloten</span>
-										</div>
 										<button class="mp-shop-buy-btn ${canAfford && !isReady ? '' : 'disabled'}"
 												data-item-id="shop-card-${i}"
 												${(!canAfford || isReady) ? 'disabled' : ''}>
@@ -4586,11 +4609,6 @@ class LocusLobbyUI {
 								<div class="mp-shop-offering ${canAfford && !isReady ? '' : 'cant-afford'}">
 									<div class="mp-shop-offering-color" style="${colorStyle}"></div>
 									<div class="mp-card-shape">${this._renderMiniGrid(card.matrix, card.color)}</div>
-									<div class="mp-shop-offering-name">${this._escapeHtml(card.shapeName)}</div>
-									<div class="mp-shop-offering-meta">
-										<span class="mp-shop-offering-cells">${cells} cellen</span>
-										<span class="mp-shop-offering-zone">${card.color?.name || ''}</span>
-									</div>
 									<button class="mp-shop-buy-btn ${canAfford && !isReady ? '' : 'disabled'}"
 											data-item-id="shop-card-${i}"
 											${(!canAfford || isReady) ? 'disabled' : ''}>
@@ -4808,17 +4826,12 @@ class LocusLobbyUI {
 				colorStyle = `background: ${colorCode}`;
 			}
 
-			let cells = 0;
-			if (card.matrix) for (const row of card.matrix) for (const c of row) { if (c) cells++; }
-
 			return `
 				<div class="mp-free-card-option" data-card-id="${card.id}">
 					<div class="mp-shop-offering-color" style="${colorStyle}"></div>
 					<div class="mp-card-shape">
 						${this._renderMiniGrid(card.matrix, card.color, true)}
 					</div>
-					<div class="mp-card-name">${this._escapeHtml(card.shapeName)}</div>
-					<div style="font-size: 0.7rem; color: var(--mp-text-dim);">${cells} cellen</div>
 					<div class="mp-free-label">GRATIS</div>
 				</div>
 			`;

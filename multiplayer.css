@@ -3200,7 +3200,8 @@ body.mp-loading .mp-btn {
 	display: flex;
 	flex-direction: column;
 	align-items: center;
-	gap: 6px;
+	justify-content: center;
+	gap: 8px;
 	transition: all 0.2s;
 }
 
@@ -3229,6 +3230,14 @@ body.mp-loading .mp-btn {
 	width: 100%;
 	height: 5px;
 	border-radius: 3px;
+}
+
+.mp-shop-offering .mp-card-shape {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	min-height: 66px;
+	margin: 4px 0 2px;
 }
 
 .mp-shop-offering-name {
@@ -5894,7 +5903,7 @@ html.theme-aurora .mp-gold-counter {
 }
 
 /* ── Turn indicator — neon pulse ── */
-html.theme-aurora .mp-turn-indicator.my-turn {
+html.theme-aurora .mp-turn-indicator.my-turn.timer-urgent {
 	animation: aurora-pulse-glow 2s ease infinite;
 	border-radius: 14px;
 	padding: 6px 14px;
@@ -7969,7 +7978,7 @@ html.theme-bloom .mp-offline-badge {
 }
 
 /* ── Turn indicator — blooming sun pulse ── */
-html.theme-bloom .mp-turn-indicator.my-turn {
+html.theme-bloom .mp-turn-indicator.my-turn.timer-urgent {
 	animation: bloom-your-turn-pulse 2s ease infinite;
 	border-radius: 16px;
 	padding: 6px 16px;
@@ -7980,7 +7989,7 @@ html.theme-bloom .mp-turn-indicator.my-turn {
 }
 
 /* Sun-bloom icon before "your turn" */
-html.theme-bloom .mp-turn-indicator.my-turn::before {
+html.theme-bloom .mp-turn-indicator.my-turn.timer-urgent::before {
 	content: '';
 	display: inline-block;
 	width: 18px; height: 18px;
