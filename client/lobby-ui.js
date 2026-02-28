@@ -415,16 +415,11 @@ class LocusLobbyUI {
 		// Determine the absolute URL for tv.html
 		const tvUrl = new URL('tv.html', window.location.href).href;
 
-		// iOS / iPadOS detection — Presentation API is not available on any iOS browser.
-		// Guide the user to use AirPlay Screen Mirroring instead.
-		const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
-			(navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-		if (isIOS && !('PresentationRequest' in window)) {
-			this._showAirPlayGuide();
-			return;
-		}
+		// Initialize BroadcastChannel always (needed for same-origin tabs/popups)
+		this._initTVChannel();
 
 		// Try Presentation API (discovers Chromecast, wireless displays)
+		// Note: Presentation API is NOT supported on iOS Safari, but IS on Android Chrome.
 		if ('PresentationRequest' in window) {
 			try {
 				const req = new PresentationRequest([tvUrl]);
@@ -476,7 +471,6 @@ class LocusLobbyUI {
 				}).catch(err => {
 					console.log('[Locus TV] Presentation API geweigerd of geen displays:', err?.message);
 					// Fallback: open same-device popup window
-					this._initTVChannel();
 					this._tvPostMessage({ type: 'theme', theme });
 					this._openTVWindow();
 				});
@@ -486,18 +480,32 @@ class LocusLobbyUI {
 			}
 		}
 
-		// Final fallback: open same-device popup window with BroadcastChannel
-		this._initTVChannel();
+		// Fallback: open tv.html in nieuw venster/tab met BroadcastChannel
+		// Werkt op alle platforms: iOS, Android, desktop
 		this._tvPostMessage({ type: 'theme', theme });
 		this._openTVWindow();
 	}
 
 	_openTVWindow() {
-		const w = window.open('tv.html', 'locus-tv', 'width=1280,height=720,menubar=no,toolbar=no');
-		if (w) {
-			this._showToast('📺 TV-scherm geopend in nieuw venster', 'success');
+		// Op mobiel: open in nieuw tab (popup werkt niet goed op touch)
+		const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) ||
+			(navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
+		let w;
+		if (isMobile) {
+			w = window.open('tv.html', '_blank');
 		} else {
-			this._showToast('Pop-up geblokkeerd — sta pop-ups toe.', 'warning');
+			w = window.open('tv.html', 'locus-tv', 'width=1280,height=720,menubar=no,toolbar=no');
+		}
+
+		if (w) {
+			this._showToast(isMobile
+				? '📺 TV-scherm geopend in nieuw tabblad. Gebruik scherm-delen om naar je TV te casten.'
+				: '📺 TV-scherm geopend in nieuw venster', 'success');
+			// Start heartbeat to keep in sync
+			this._startTVHeartbeat();
+		} else {
+			this._showToast('Pop-up geblokkeerd — sta pop-ups toe voor deze site.', 'warning');
 		}
 	}
 
@@ -610,7 +618,6 @@ class LocusLobbyUI {
 	_sanitizeStateForTV(state) {
 		if (!state) return null;
 		const tv = JSON.parse(JSON.stringify(state));
-		const currentPid = tv.playerOrder?.[tv.currentTurnIndex] || null;
 
 		for (const pid of Object.keys(tv.players || {})) {
 			const p = tv.players[pid];
@@ -623,10 +630,8 @@ class LocusLobbyUI {
 			p.shopOfferings = [];
 			delete p._pendingFreeChoices;
 
-			// Only current player's hand is shown with full data
-			if (pid !== currentPid) {
-				p.hand = Array.isArray(p.hand) ? p.hand.length : 0;
-			}
+			// Show ALL players' hands on TV (full card data)
+			// Hand is kept as-is for every player
 		}
 
 		// Remove objective choices entirely
@@ -966,7 +971,8 @@ class LocusLobbyUI {
 		try {
 			const result = await this.mp.undoMove();
 			if (result?.success) {
-				this._showToast('Zet ongedaan gemaakt! ↩', 'info');
+				const label = result.undoneType === 'bonus' ? 'Bonus ongedaan gemaakt! ↩' : 'Kaart ongedaan gemaakt! ↩';
+				this._showToast(label, 'info');
 			}
 		} catch (err) {
 			this._showToast('Undo mislukt: ' + (err.message || err), 'error');
@@ -1167,44 +1173,134 @@ class LocusLobbyUI {
 				this._startDeckOverlay.remove();
 				this._startDeckOverlay = null;
 			}
-			this._showScreen('goal-screen');
-			const container = this.elements['goal-choices-container'];
-			if (!container) {
-				console.error('[Locus UI] goal-choices-container element niet gevonden!');
-				return;
+
+			// ── Toon eerst de kaarten die de speler heeft gekregen ──
+			const player = this.mp.getMyPlayer();
+			const drawPile = player?.drawPile || player?.deck || [];
+			const hand = Array.isArray(player?.hand) ? player.hand : [];
+			const allCards = [...hand, ...(Array.isArray(drawPile) ? drawPile : [])];
+
+			if (allCards.length > 0) {
+				this._showCardPreviewBeforeGoals(allCards, choices);
+			} else {
+				// Geen kaarten beschikbaar (zeldzaam) → meteen doelstellingen tonen
+				this._showGoalChoices(choices);
 			}
+		} catch (err) {
+			console.error('[Locus UI] _onGoalPhase ERROR:', err);
+		}
+	}
 
-			const level = this.mp.gameState?.level || 1;
-			container.innerHTML = `
-				<h2 class="mp-section-title">Kies je Doelstelling — Level ${level}</h2>
-				<p class="mp-section-subtitle">Andere spelers zien niet welk doel jij kiest!</p>
-				<div class="mp-goal-grid">
-					${choices.map((goal, i) => `
-						<button class="mp-goal-card" data-index="${i}">
-							<div class="mp-goal-name">${this._escapeHtml(goal?.name || 'Onbekend doel')}</div>
-							<div class="mp-goal-desc">${this._escapeHtml(this._stripObjectiveRewardText(goal?.description || ''))}</div>
-							${this._renderObjectiveRewardBadges(goal, { includeFallbackPoints: true, fallbackPoints: 15 })}
-						</button>
-					`).join('')}
-				</div>
-			`;
+	/**
+	 * Toon een preview van alle kaarten voordat de speler een doelstelling kiest.
+	 * Dit helpt bij het kiezen van een realistische doelstelling.
+	 */
+	_showCardPreviewBeforeGoals(cards, goalChoices) {
+		this._showScreen('goal-screen');
+		const container = this.elements['goal-choices-container'];
+		if (!container) return;
 
-			container.querySelectorAll('.mp-goal-card').forEach(btn => {
-				btn.addEventListener('click', async () => {
-					const index = Number(btn.dataset.index);
-					container.querySelectorAll('.mp-goal-card').forEach(b => b.disabled = true);
-					btn.classList.add('selected');
+		const level = this.mp.gameState?.level || 1;
 
-					try {
-						await this.mp.chooseGoal(index);
-						this._showToast('Doelstelling gekozen! Wachten op andere spelers...', 'success');
-					} catch (err) {
-						this._showToast('Fout bij kiezen: ' + err.message, 'error');
-						container.querySelectorAll('.mp-goal-card').forEach(b => b.disabled = false);
-						btn.classList.remove('selected');
-					}
-				});
+		// Groepeer per kleur
+		const colorGroups = {};
+		for (const card of cards) {
+			const colorName = card.color?.name || 'onbekend';
+			if (!colorGroups[colorName]) colorGroups[colorName] = [];
+			colorGroups[colorName].push(card);
+		}
+
+		const colorSortOrder = ['rood', 'geel', 'groen', 'blauw', 'paars', 'multikleur'];
+		const sortedColors = Object.keys(colorGroups).sort((a, b) => {
+			const ia = colorSortOrder.indexOf(a.toLowerCase());
+			const ib = colorSortOrder.indexOf(b.toLowerCase());
+			return (ia === -1 ? 99 : ia) - (ib === -1 ? 99 : ib);
+		});
+
+		const zoneColorMap = {
+			rood: '#b56069', geel: '#cfba51', groen: '#92c28c',
+			blauw: '#5689b0', paars: '#8f76b8', multikleur: '#c47bd7'
+		};
+
+		container.innerHTML = `
+			<h2 class="mp-section-title">📋 Jouw kaarten — Level ${level}</h2>
+			<p class="mp-section-subtitle">Bekijk je kaarten goed voordat je een doelstelling kiest!</p>
+			<div class="mp-card-preview-groups" style="display:flex;flex-wrap:wrap;gap:12px;justify-content:center;margin:16px 0;">
+				${sortedColors.map(colorName => {
+					const groupCards = colorGroups[colorName];
+					const zoneColor = zoneColorMap[colorName.toLowerCase()] || '#666';
+					return `
+						<div class="mp-card-preview-group" style="background:rgba(255,255,255,0.04);border-radius:10px;padding:8px 12px;border:1px solid ${zoneColor}33;">
+							<div style="font-size:12px;font-weight:600;color:${zoneColor};margin-bottom:6px;text-align:center;">${this._escapeHtml(colorName)} (${groupCards.length})</div>
+							<div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:center;">
+								${groupCards.map(card => {
+									const colorCode = card.color?.code === 'rainbow'
+										? 'linear-gradient(135deg, #b56069, #cfba51, #92c28c, #5689b0, #8f76b8)'
+										: (card.color?.code || '#666');
+									return `
+										<div class="mp-card-preview-item" style="text-align:center;" title="${this._escapeHtml(card.shapeName || '')}">
+											<div style="background:rgba(0,0,0,0.3);border-radius:6px;padding:4px;border:1px solid ${typeof colorCode === 'string' && colorCode.startsWith('#') ? colorCode + '44' : 'rgba(255,255,255,0.1)'};">
+												${this._renderMiniGrid(card.matrix, card.color)}
+											</div>
+											<div style="font-size:9px;color:rgba(255,255,255,0.5);margin-top:2px;max-width:60px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${this._escapeHtml(card.shapeName || '')}</div>
+										</div>
+									`;
+								}).join('')}
+							</div>
+						</div>
+					`;
+				}).join('')}
+			</div>
+			<button class="mp-btn mp-btn-primary mp-card-preview-continue" style="margin:12px auto;display:block;padding:12px 40px;font-size:16px;">
+				Doelstelling kiezen →
+			</button>
+		`;
+
+		container.querySelector('.mp-card-preview-continue')?.addEventListener('click', () => {
+			this._showGoalChoices(goalChoices);
+		});
+	}
+
+	/** Toon de doelstelling-keuze UI */
+	_showGoalChoices(choices) {
+		this._showScreen('goal-screen');
+		const container = this.elements['goal-choices-container'];
+		if (!container) {
+			console.error('[Locus UI] goal-choices-container element niet gevonden!');
+			return;
+		}
+
+		const level = this.mp.gameState?.level || 1;
+		container.innerHTML = `
+			<h2 class="mp-section-title">Kies je Doelstelling — Level ${level}</h2>
+			<p class="mp-section-subtitle">Andere spelers zien niet welk doel jij kiest!</p>
+			<div class="mp-goal-grid">
+				${choices.map((goal, i) => `
+					<button class="mp-goal-card" data-index="${i}">
+						<div class="mp-goal-name">${this._escapeHtml(goal?.name || 'Onbekend doel')}</div>
+						<div class="mp-goal-desc">${this._escapeHtml(this._stripObjectiveRewardText(goal?.description || ''))}</div>
+						${this._renderObjectiveRewardBadges(goal, { includeFallbackPoints: true, fallbackPoints: 15 })}
+					</button>
+				`).join('')}
+			</div>
+		`;
+
+		container.querySelectorAll('.mp-goal-card').forEach(btn => {
+			btn.addEventListener('click', async () => {
+				const index = Number(btn.dataset.index);
+				container.querySelectorAll('.mp-goal-card').forEach(b => b.disabled = true);
+				btn.classList.add('selected');
+
+				try {
+					await this.mp.chooseGoal(index);
+					this._showToast('Doelstelling gekozen! Wachten op andere spelers...', 'success');
+				} catch (err) {
+					this._showToast('Fout bij kiezen: ' + err.message, 'error');
+					container.querySelectorAll('.mp-goal-card').forEach(b => b.disabled = false);
+					btn.classList.remove('selected');
+				}
 			});
+		});
 		} catch (err) {
 			console.error('[Locus UI] _onGoalPhase ERROR:', err);
 		}
@@ -2169,7 +2265,8 @@ class LocusLobbyUI {
 
 		const isTouchLikeRelease = e.pointerType === 'touch' || e.pointerType === 'pen';
 		if (isTouchLikeRelease) {
-			this._suppressMobileSwipeUntil = Date.now() + 450;
+			// Sterk verhoogde suppressie: voorkom zone-shift na plaatsing
+			this._suppressMobileSwipeUntil = Date.now() + 1200;
 			if (this._lastPreviewZone) {
 				const idx = this._getMobileZoneIndex(this._lastPreviewZone);
 				if (Number.isFinite(idx)) {
@@ -2179,7 +2276,15 @@ class LocusLobbyUI {
 				}
 			}
 			// Mobiel: plaats direct op release als preview geldig is; annuleer niet agressief op loslaten.
-			if (this._attemptPlacementFromCurrentPreview()) return;
+			if (this._attemptPlacementFromCurrentPreview()) {
+				// Na succesvolle plaatsing: forceer zone positie
+				const savedZone = this._lastPreviewZone || this._lastMobileZoneName;
+				if (savedZone) {
+					setTimeout(() => this._scrollMobileBoardToZone(savedZone, false), 50);
+					setTimeout(() => this._scrollMobileBoardToZone(savedZone, false), 200);
+				}
+				return;
+			}
 			return;
 		}
 
@@ -3690,6 +3795,9 @@ class LocusLobbyUI {
 					? this._lastMobileBoardIndex
 					: (Number.isFinite(prevMobileIdx) ? prevMobileIdx : 0));
 			requestAnimationFrame(() => this._restoreMobileBoardIndex(targetIdx || 0));
+			// Extra zekerheid: forceer positie na korte delay (voorkomt drift na touch-release)
+			const frozenIdx = targetIdx || 0;
+			setTimeout(() => this._restoreMobileBoardIndex(frozenIdx), 150);
 			this._forcedMobileBoardIndex = null;
 		}
 	}

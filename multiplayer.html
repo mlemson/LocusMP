@@ -611,6 +611,9 @@
 				<small style="display:block; text-align:center; margin-top:6px; opacity:0.6;">
 					Direct verbinden — geen server nodig
 				</small>
+				<button id="p2p-debug-btn" style="display:none;margin-top:8px;padding:4px 10px;font-size:11px;opacity:0.5;background:none;border:1px solid #666;color:#999;border-radius:6px;cursor:pointer;">
+					🐛 Debug Log
+				</button>
 			`;
 			lobbyCard.appendChild(p2pSection);
 
@@ -641,7 +644,9 @@
 
 				try {
 					const host = new LocusP2PHost();
+					LocusP2PHost._logMobile('Host starten... roomCode zal zijn: ' + (host.roomCode || 'wordt gegenereerd'));
 					const result = await host.startHost(name, { maxPlayers, cardsPerPlayer, mapSize });
+					LocusP2PHost._logMobile('Host gestart! Room: ' + result.roomCode);
 
 					// Maak een P2P-wrapper die dezelfde interface heeft als LocusMultiplayer
 					const p2pMp = _createP2PHostAdapter(host);
@@ -719,6 +724,15 @@
 
 			// P2P Join
 			document.getElementById('p2p-join-btn').addEventListener('click', async () => {
+
+			// Debug button: show on mobile/touch devices
+			const debugBtn = document.getElementById('p2p-debug-btn');
+			if (debugBtn && ('ontouchstart' in window || navigator.maxTouchPoints > 0)) {
+				debugBtn.style.display = 'block';
+				debugBtn.addEventListener('click', () => {
+					if (typeof LocusP2PHost !== 'undefined') LocusP2PHost.showMobileDebug();
+				});
+			}
 				const nameInput = document.getElementById('player-name-input');
 				const name = nameInput?.value?.trim();
 				if (!name) {

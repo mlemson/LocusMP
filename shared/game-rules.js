@@ -3257,9 +3257,11 @@ function undoMove(gameState, playerId) {
 	const player = gameState.players[playerId];
 	if (!player) return { error: 'Speler niet gevonden' };
 
-	// 1. Undo alle bonus moves (in omgekeerde volgorde)
-	for (let i = undo.bonusMoves.length - 1; i >= 0; i--) {
-		const bm = undo.bonusMoves[i];
+	// ── STAP-VOOR-STAP UNDO: alleen de LAATSTE actie ongedaan maken ──
+
+	// Als er bonus moves zijn, undo alleen de laatste bonus move
+	if (Array.isArray(undo.bonusMoves) && undo.bonusMoves.length > 0) {
+		const bm = undo.bonusMoves[undo.bonusMoves.length - 1];
 		const zoneData = bm.zoneName === 'red' && bm.subgridId
 			? gameState.boardState.zones.red.subgrids.find(sg => sg.id === bm.subgridId)
 			: gameState.boardState.zones[bm.zoneName];
@@ -3285,73 +3287,88 @@ function undoMove(gameState, playerId) {
 		if (bm.goldCollected > 0) {
 			player.goldCoins = Math.max(0, (player.goldCoins || 0) - bm.goldCollected);
 		}
-	}
-
-	// 2. Undo kaart plaatsing
-	const cardZoneData = undo.zoneName === 'red' && undo.subgridId
-		? gameState.boardState.zones.red.subgrids.find(sg => sg.id === undo.subgridId)
-		: gameState.boardState.zones[undo.zoneName];
-	if (cardZoneData) {
-		for (const coord of undo.placedCells) {
-			const cell = getDataCell(cardZoneData, coord.x, coord.y);
-			if (cell) {
-				cell.active = false;
-				cell.color = null;
-				cell.playerId = null;
-				cell.placementOrder = null;
-				cell.isStone = false;
+		// Verwijder deze bonus move uit de lijst
+		undo.bonusMoves.pop();
+		// Trim move history (verwijder de laatste entry als die een bonusMove was)
+		if (gameState.moveHistory.length > 0) {
+			const lastHist = gameState.moveHistory[gameState.moveHistory.length - 1];
+			if (lastHist && lastHist.bonusMove && lastHist.playerId === playerId) {
+				gameState.moveHistory.pop();
 			}
 		}
+		// Herbereken scores
+		const playerScores = recalcScoresForActivePlayer(gameState);
+		gameState.updatedAt = Date.now();
+		return { success: true, scores: playerScores, undoneType: 'bonus' };
 	}
 
-	// 3. Kaart terug in hand
-	if (undo.card && undo.cardIndex >= 0) {
-		player.hand.splice(undo.cardIndex, 0, undo.card);
-	}
-
-	// 4. Verwijder verzamelde bonussen van de kaartplaatsing
-	for (const bc of undo.collectedBonuses) {
-		player.bonusInventory[bc] = Math.max(0, (player.bonusInventory[bc] || 0) - 1);
-	}
-
-	// 5. Verwijder verzameld goud
-	if (undo.goldCollected > 0) {
-		player.goldCoins = Math.max(0, (player.goldCoins || 0) - undo.goldCollected);
-	}
-
-	// 6. Trim move history
-	if (typeof undo.moveHistoryLengthBefore === 'number') {
-		gameState.moveHistory.length = undo.moveHistoryLengthBefore;
-	}
-
-	// 6b. Herstel objective state (belangrijk voor Ctrl+Z score-consistentie)
-	if (undo.objectiveSnapshot) {
-		player.objectiveAchieved = !!undo.objectiveSnapshot.objectiveAchieved;
-		player.objectiveAchievedPoints = undo.objectiveSnapshot.objectiveAchievedPoints || 0;
-		player.objectiveProgress = undo.objectiveSnapshot.objectiveProgress
-			? { ...undo.objectiveSnapshot.objectiveProgress }
-			: null;
-		if (typeof undo.objectiveSnapshot.goldCoins === 'number') {
-			player.goldCoins = Math.max(0, undo.objectiveSnapshot.goldCoins);
+	// Geen bonus moves meer → undo de kaartplaatsing
+	if (Array.isArray(undo.placedCells) && undo.placedCells.length > 0) {
+		const cardZoneData = undo.zoneName === 'red' && undo.subgridId
+			? gameState.boardState.zones.red.subgrids.find(sg => sg.id === undo.subgridId)
+			: gameState.boardState.zones[undo.zoneName];
+		if (cardZoneData) {
+			for (const coord of undo.placedCells) {
+				const cell = getDataCell(cardZoneData, coord.x, coord.y);
+				if (cell) {
+					cell.active = false;
+					cell.color = null;
+					cell.playerId = null;
+					cell.placementOrder = null;
+					cell.isStone = false;
+				}
+			}
 		}
-		if (undo.objectiveSnapshot.bonusInventory) {
-			player.bonusInventory = { ...undo.objectiveSnapshot.bonusInventory };
+
+		// Kaart terug in hand
+		if (undo.card && undo.cardIndex >= 0) {
+			player.hand.splice(undo.cardIndex, 0, undo.card);
 		}
+
+		// Verwijder verzamelde bonussen van de kaartplaatsing
+		for (const bc of undo.collectedBonuses) {
+			player.bonusInventory[bc] = Math.max(0, (player.bonusInventory[bc] || 0) - 1);
+		}
+
+		// Verwijder verzameld goud
+		if (undo.goldCollected > 0) {
+			player.goldCoins = Math.max(0, (player.goldCoins || 0) - undo.goldCollected);
+		}
+
+		// Trim move history
+		if (typeof undo.moveHistoryLengthBefore === 'number') {
+			gameState.moveHistory.length = undo.moveHistoryLengthBefore;
+		}
+
+		// Herstel objective state
+		if (undo.objectiveSnapshot) {
+			player.objectiveAchieved = !!undo.objectiveSnapshot.objectiveAchieved;
+			player.objectiveAchievedPoints = undo.objectiveSnapshot.objectiveAchievedPoints || 0;
+			player.objectiveProgress = undo.objectiveSnapshot.objectiveProgress
+				? { ...undo.objectiveSnapshot.objectiveProgress }
+				: null;
+			if (typeof undo.objectiveSnapshot.goldCoins === 'number') {
+				player.goldCoins = Math.max(0, undo.objectiveSnapshot.goldCoins);
+			}
+			if (undo.objectiveSnapshot.bonusInventory) {
+				player.bonusInventory = { ...undo.objectiveSnapshot.bonusInventory };
+			}
+		}
+
+		// Herbereken scores
+		const playerScores = recalcScoresForActivePlayer(gameState);
+
+		// Clear turn state (kaart is teruggedraaid)
+		delete gameState._turnUndoData;
+		gameState._cardPlayedThisTurn = false;
+		gameState.bonusPlayedThisTurn = false;
+
+		gameState.updatedAt = Date.now();
+		return { success: true, scores: playerScores, undoneType: 'card' };
 	}
 
-	// 7. Herbereken scores (alleen actieve speler)
-	const playerScores = recalcScoresForActivePlayer(gameState);
-
-	// 8. Clear turn state
-	delete gameState._turnUndoData;
-	gameState._cardPlayedThisTurn = false;
-	gameState.bonusPlayedThisTurn = false;
-	delete gameState._turnTimerStart;
-
-	gameState.updatedAt = Date.now();
-
-	return { success: true, scores: playerScores };
-}
+	// Niets om ongedaan te maken
+	return { error: 'Niets om ongedaan te maken' };
 
 /** Ga naar de volgende beurt — sla spelers zonder kaarten EN zonder bonussen over */
 function advanceTurn(gameState) {

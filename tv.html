@@ -233,12 +233,15 @@
 		}
 		/* Bonus dots on unclaimed cells */
 		.tv-bonus-dot {
-			display: block;
-			width: 6px;
-			height: 6px;
-			border-radius: 50%;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			width: 16px;
+			height: 16px;
+			border-radius: 4px;
 			background: rgba(255,255,255,0.35);
 			margin: auto;
+			box-shadow: 0 0 3px rgba(0,0,0,0.2);
 		}
 		/* Zone colors */
 		.tv-zone-yellow { background: rgba(207,186,81,0.08); border: 1px solid rgba(207,186,81,0.18); }
@@ -599,38 +602,63 @@
 			color: rgba(255,255,255,0.85);
 		}
 		.tv-cell .tv-bonus-dot {
-			display: block;
-			width: 7px;
-			height: 7px;
-			border-radius: 50%;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			width: 18px;
+			height: 18px;
+			border-radius: 4px;
 			margin: auto;
-			position: relative;
+			position: absolute;
 			top: 50%;
-			transform: translateY(-50%);
+			left: 50%;
+			transform: translate(-50%, -50%);
+			box-shadow: 0 0 4px rgba(0,0,0,0.3), inset 0 1px 2px rgba(255,255,255,0.3);
 		}
 		.tv-cell .tv-gold-dot {
 			display: block;
-			width: 5px;
-			height: 5px;
+			width: 14px;
+			height: 14px;
 			border-radius: 50%;
-			background: #f0c040;
-			box-shadow: 0 0 4px rgba(240,192,64,0.6);
+			background: radial-gradient(circle at 35% 35%, #ffe87c, #f0c040, #c8960a);
+			box-shadow: 0 0 8px rgba(240,192,64,0.8), 0 0 3px rgba(240,192,64,0.5);
 			margin: auto;
 			position: absolute;
-			top: 2px;
-			right: 2px;
+			top: 50%;
+			left: 50%;
+			transform: translate(-50%, -50%);
+		}
+		.tv-cell .tv-gold-dot::after {
+			content: '✦';
+			position: absolute;
+			inset: 0;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			font-size: 8px;
+			color: rgba(100,70,0,0.6);
 		}
 		.tv-cell .tv-pearl-dot {
 			display: block;
-			width: 6px;
-			height: 6px;
+			width: 14px;
+			height: 14px;
 			border-radius: 50%;
-			background: radial-gradient(circle at 30% 30%, #fff, #d4d0e0);
-			box-shadow: 0 0 3px rgba(255,255,255,0.5);
+			background: radial-gradient(circle at 30% 30%, #fff, #e8e4f0, #c4c0d8);
+			box-shadow: 0 0 6px rgba(255,255,255,0.6), 0 0 3px rgba(200,195,220,0.5);
 			margin: auto;
 			position: absolute;
-			bottom: 2px;
-			left: 2px;
+			top: 50%;
+			left: 50%;
+			transform: translate(-50%, -50%);
+		}
+		.tv-cell .tv-pearl-dot::after {
+			content: '💎';
+			position: absolute;
+			inset: 0;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			font-size: 8px;
 		}
 		.tv-cell { position: relative; }
 
@@ -1132,7 +1160,8 @@
 			let inner = '';
 			if (cell.bonusSymbol && !isActive) {
 				const bg = bonusColors[cell.bonusSymbol] || '#888';
-				inner += `<span class="tv-bonus-dot" style="background:${bg}"></span>`;
+				const bonusLabel = cell.bonusSymbol === 'any' ? '★' : cell.bonusSymbol.charAt(0).toUpperCase();
+				inner += `<span class="tv-bonus-dot" style="background:${bg}"><span style="font-size:9px;font-weight:700;color:rgba(0,0,0,0.5);line-height:1">${bonusLabel}</span></span>`;
 			}
 			if (flags.includes('gold') && !isActive) {
 				inner += '<span class="tv-gold-dot"></span>';

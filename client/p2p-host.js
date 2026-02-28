@@ -56,13 +56,31 @@ class LocusP2PHost {
 		const peerId = `locus-${this.roomCode}`;
 
 		return new Promise((resolve, reject) => {
-			// PeerJS met gratis cloud signaling
+			// PeerJS met gratis cloud signaling + meerdere STUN/TURN servers voor mobiel
 			this.peer = new Peer(peerId, {
-				debug: 1,
+				debug: 2,
 				config: {
 					iceServers: [
 						{ urls: 'stun:stun.l.google.com:19302' },
-						{ urls: 'stun:stun1.l.google.com:19302' }
+						{ urls: 'stun:stun1.l.google.com:19302' },
+						{ urls: 'stun:stun2.l.google.com:19302' },
+						{ urls: 'stun:stun3.l.google.com:19302' },
+						{ urls: 'stun:stun4.l.google.com:19302' },
+						{
+							urls: 'turn:openrelay.metered.ca:80',
+							username: 'openrelayproject',
+							credential: 'openrelayproject'
+						},
+						{
+							urls: 'turn:openrelay.metered.ca:443',
+							username: 'openrelayproject',
+							credential: 'openrelayproject'
+						},
+						{
+							urls: 'turn:openrelay.metered.ca:443?transport=tcp',
+							username: 'openrelayproject',
+							credential: 'openrelayproject'
+						}
 					]
 				}
 			});
@@ -127,8 +145,14 @@ class LocusP2PHost {
 
 			this.peer.on('error', (err) => {
 				console.error('[P2P Host] Peer error:', err);
+				LocusP2PHost._logMobile('[P2P Host] Error: ' + (err.type || '') + ' — ' + (err.message || err));
 				if (this.onError) this.onError(err.message || 'P2P verbinding mislukt');
 				reject(err);
+			});
+
+			this.peer.on('disconnected', () => {
+				LocusP2PHost._logMobile('[P2P Host] Peer disconnected — probeer opnieuw te verbinden...');
+				try { this.peer.reconnect(); } catch (e) { LocusP2PHost._logMobile('[P2P Host] Reconnect mislukt: ' + e.message); }
 			});
 		});
 	}
@@ -1089,6 +1113,57 @@ class LocusP2PGuest {
 		this.userId = null;
 		this.connected = false;
 	}
+}
+
+/**
+ * Mobile debug log — toont een overlay met foutmeldingen op telefoons
+ * waar de browser console niet beschikbaar is.
+ */
+LocusP2PHost._mobileLogEntries = [];
+LocusP2PHost._logMobile = function(msg) {
+	console.log(msg);
+	LocusP2PHost._mobileLogEntries.push({ ts: Date.now(), msg: String(msg) });
+	// Update overlay als deze bestaat
+	const el = document.getElementById('locus-mobile-debug');
+	if (el) {
+		const lines = LocusP2PHost._mobileLogEntries.slice(-20).map(e => {
+			const d = new Date(e.ts);
+			return `[${d.getHours()}:${String(d.getMinutes()).padStart(2,'0')}:${String(d.getSeconds()).padStart(2,'0')}] ${e.msg}`;
+		}).join('\n');
+		el.querySelector('.lmdb-content').textContent = lines;
+		el.querySelector('.lmdb-content').scrollTop = 9999;
+	}
+};
+
+LocusP2PHost.showMobileDebug = function() {
+	if (document.getElementById('locus-mobile-debug')) return;
+	const wrap = document.createElement('div');
+	wrap.id = 'locus-mobile-debug';
+	Object.assign(wrap.style, {
+		position: 'fixed', bottom: '0', left: '0', right: '0', zIndex: '999999',
+		background: 'rgba(0,0,0,0.92)', color: '#0f0', fontSize: '11px',
+		fontFamily: 'monospace', maxHeight: '35vh', display: 'flex', flexDirection: 'column'
+	});
+	wrap.innerHTML = `
+		<div style="display:flex;justify-content:space-between;padding:4px 8px;background:#111;color:#aaa;">
+			<span>📱 Debug Log</span>
+			<button onclick="this.closest('#locus-mobile-debug').remove()" style="background:none;border:none;color:#f66;font-size:14px;cursor:pointer;">✕</button>
+		</div>
+		<pre class="lmdb-content" style="margin:0;padding:8px;overflow:auto;flex:1;white-space:pre-wrap;word-break:break-all;"></pre>
+	`;
+	document.body.appendChild(wrap);
+	// Populate with existing entries
+	LocusP2PHost._logMobile('Debug overlay geopend');
+};
+
+// Catch global errors for mobile debugging
+if (typeof window !== 'undefined') {
+	window.addEventListener('error', (e) => {
+		LocusP2PHost._logMobile('❌ JS Error: ' + (e.message || '') + ' @ ' + (e.filename || '') + ':' + (e.lineno || ''));
+	});
+	window.addEventListener('unhandledrejection', (e) => {
+		LocusP2PHost._logMobile('❌ Promise rejected: ' + (e.reason?.message || e.reason || ''));
+	});
 }
 
 // Browser globals
