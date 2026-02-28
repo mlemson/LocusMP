@@ -53,6 +53,7 @@ class LocusLobbyUI {
 		this._forcedMobileBoardIndex = null;
 		this._lastMobileZoneName = null;
 		this._forceBlueBottomOnce = false;
+		this._mobileZoneScrollTops = { blue: null };
 		this._mobileSwipeStartX = null;
 		this._mobileSwipeStartY = null;
 		this._suppressMobileSwipeUntil = 0;
@@ -3092,7 +3093,24 @@ class LocusLobbyUI {
 
 		// Mobiel/touch: ga direct naar de juiste kleurzone
 		if (this._isTouchLikeDevice() || startPointerEvent?.pointerType === 'touch' || startPointerEvent?.pointerType === 'pen') {
-			this._scrollMobileBoardToZone(bonusColor, true);
+			const bonusColorToZone = {
+				yellow: 'yellow',
+				green: 'green',
+				blue: 'blue',
+				red: 'red',
+				purple: 'purple'
+			};
+			const targetZone = bonusColorToZone[bonusColor] || null;
+			if (targetZone) {
+				const targetIdx = this._getMobileZoneIndex(targetZone);
+				if (Number.isFinite(targetIdx)) {
+					this._forcedMobileBoardIndex = targetIdx;
+					this._lastMobileBoardIndex = targetIdx;
+					this._lastMobileZoneName = targetZone;
+					this._suppressMobileSwipeUntil = Date.now() + 650;
+				}
+				this._scrollMobileBoardToZone(targetZone, false);
+			}
 		}
 
 		// Ghost volgt muis + preview (centered, like card ghosts)
@@ -3722,9 +3740,7 @@ class LocusLobbyUI {
 		board.scrollTo({ left: target.offsetLeft, top: 0, behavior: 'auto' });
 		this._lastMobileBoardIndex = clamped;
 		const zoneName = target.dataset.zone || null;
-		if (zoneName === 'blue' && (this._forceBlueBottomOnce || this._lastMobileZoneName !== 'blue')) {
-			this._scrollBlueZoneToBottom(target, true);
-		}
+		this._restoreMobileZoneVerticalScroll(zoneName, target, true);
 		this._lastMobileZoneName = zoneName;
 		this._forceBlueBottomOnce = false;
 	}
@@ -3740,6 +3756,26 @@ class LocusLobbyUI {
 		if (settle) {
 			requestAnimationFrame(applyBottom);
 			setTimeout(applyBottom, 80);
+		}
+		this._mobileZoneScrollTops.blue = Math.max(0, target.scrollHeight - target.clientHeight);
+	}
+
+	_restoreMobileZoneVerticalScroll(zoneName, zoneEl, settle = false) {
+		if (!zoneName || !zoneEl) return;
+		const savedTop = this._mobileZoneScrollTops?.[zoneName];
+		if (Number.isFinite(savedTop)) {
+			const applySaved = () => {
+				zoneEl.scrollTop = Math.max(0, Math.min(savedTop, Math.max(0, zoneEl.scrollHeight - zoneEl.clientHeight)));
+			};
+			applySaved();
+			if (settle) {
+				requestAnimationFrame(applySaved);
+				setTimeout(applySaved, 80);
+			}
+			return;
+		}
+		if (zoneName === 'blue') {
+			this._scrollBlueZoneToBottom(zoneEl, settle);
 		}
 	}
 
@@ -3766,7 +3802,7 @@ class LocusLobbyUI {
 		if (Number.isFinite(idx) && Number.isFinite(currentIdx) && idx === currentIdx) {
 			this._lastMobileBoardIndex = idx;
 			this._lastMobileZoneName = zoneName || null;
-			if (zoneName === 'blue') this._scrollBlueZoneToBottom(zoneEl, false);
+			this._restoreMobileZoneVerticalScroll(zoneName, zoneEl, false);
 			return;
 		}
 		board.scrollTo({
@@ -3774,12 +3810,10 @@ class LocusLobbyUI {
 			top: 0,
 			behavior: smooth ? 'smooth' : 'auto'
 		});
-		if (zoneName === 'blue') {
-			this._forceBlueBottomOnce = true;
-			if (smooth) {
-				setTimeout(() => this._scrollBlueZoneToBottom(zoneEl, true), 220);
-			}
-			this._scrollBlueZoneToBottom(zoneEl, true);
+		if (smooth) {
+			setTimeout(() => this._restoreMobileZoneVerticalScroll(zoneName, zoneEl, true), 220);
+		} else {
+			this._restoreMobileZoneVerticalScroll(zoneName, zoneEl, true);
 		}
 		if (idx >= 0) this._lastMobileBoardIndex = idx;
 		this._lastMobileZoneName = zoneName || null;
@@ -3805,6 +3839,13 @@ class LocusLobbyUI {
 			const boardEl = container.querySelector('.mp-board');
 			if (boardEl) {
 				const zoneOrder = ['yellow', 'green', 'blue', 'red', 'purple'];
+				boardEl.querySelectorAll('.mp-zone').forEach(zoneEl => {
+					const zoneName = zoneEl.dataset.zone || null;
+					if (!zoneName) return;
+					zoneEl.addEventListener('scroll', () => {
+						this._mobileZoneScrollTops[zoneName] = zoneEl.scrollTop;
+					}, { passive: true });
+				});
 				let rafId = null;
 				boardEl.addEventListener('scroll', () => {
 					if (rafId) return;
@@ -3824,9 +3865,9 @@ class LocusLobbyUI {
 						const prevIdx = this._lastMobileBoardIndex;
 						this._lastMobileBoardIndex = idx;
 						const zoneName = zoneOrder[idx] || null;
-						if (zoneName === 'blue' && prevIdx !== 2) {
-							const blueZone = boardEl.querySelector('.mp-zone[data-zone="blue"]');
-							if (blueZone) this._scrollBlueZoneToBottom(blueZone, true);
+						if (zoneName && prevIdx !== idx) {
+							const zoneEl = boardEl.querySelector(`.mp-zone[data-zone="${zoneName}"]`);
+							if (zoneEl) this._restoreMobileZoneVerticalScroll(zoneName, zoneEl, true);
 						}
 						this._lastMobileZoneName = zoneName;
 					});
@@ -4007,7 +4048,7 @@ class LocusLobbyUI {
 		if (zoneName === 'purple') {
 			purplePointsGuideHtml = `
 				<div class="mp-purple-points-guide" title="Punten per verbonden bold-cellen">
-					2 bold=6 • 3 bold=12 • 4 bold=18 • 5 bold=24 • 6 bold=32
+					2 bold=6 • 3 bold=12 • 4 bold=18 • 5 bold=24 • 6 bold=30
 				</div>
 			`;
 		}
