@@ -12,9 +12,9 @@
 	     ═══════════════════════════════════ -->
 	<div id="mp-theme-switcher" class="mp-theme-switcher">
 		<div class="mp-theme-pill" title="Kies een thema">
-			<button class="mp-theme-btn" data-theme="classic">Classic</button>
 			<button class="mp-theme-btn" data-theme="aurora">Aurora</button>
 			<button class="mp-theme-btn" data-theme="bloom">Bloom</button>
+			<button class="mp-theme-btn" data-theme="classic">Classic</button>
 			<span class="mp-theme-indicator"></span>
 		</div>
 	</div>
@@ -357,7 +357,7 @@
 			if (!pill) return;
 			const btns = pill.querySelectorAll('.mp-theme-btn');
 			const indicator = pill.querySelector('.mp-theme-indicator');
-			const saved = localStorage.getItem('locus-theme') || 'classic';
+			const saved = localStorage.getItem('locus-theme') || 'aurora';
 
 			function setActive(theme) {
 				btns.forEach((btn, i) => {
@@ -384,7 +384,7 @@
 
 		// Apply theme immediately to avoid flash
 		(function() {
-			const saved = localStorage.getItem('locus-theme') || 'classic';
+			const saved = localStorage.getItem('locus-theme') || 'aurora';
 			if (saved === 'aurora') document.documentElement.classList.add('theme-aurora');
 			else if (saved === 'bloom') document.documentElement.classList.add('theme-bloom');
 		})();

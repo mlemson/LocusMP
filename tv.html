@@ -4,6 +4,7 @@
 	<meta charset="utf-8" />
 	<meta name="viewport" content="width=device-width, initial-scale=1">
 	<title>LOCUS — TV Display</title>
+	<link rel="stylesheet" href="multiplayer.css">
 	<style>
 		/* ══════════════════════════════════════════════
 		   LOCUS TV DISPLAY — Big Screen Spectator View
@@ -19,6 +20,9 @@
 			--tv-cell-size: 32px;
 			--tv-cell-gap: 3px;
 			--tv-cell-radius: 6px;
+			--mp-cell-size: 32px;
+			--mp-cell-radius: 6px;
+			--mp-radius: 12px;
 		}
 		* { margin: 0; padding: 0; box-sizing: border-box; }
 		body {
@@ -218,18 +222,24 @@
 		.tv-board {
 			display: flex;
 			gap: 12px;
+			padding: 8px;
 			max-width: 100%;
 			max-height: 100%;
+			align-items: flex-start;
 		}
 		.tv-board-col {
 			display: flex;
 			flex-direction: column;
 			gap: 12px;
+			align-items: flex-start;
 		}
 		.tv-zone {
-			border-radius: var(--tv-radius);
+			border-radius: var(--mp-radius);
 			padding: 10px;
+			padding-top: 28px;
 			position: relative;
+			border: 2px solid;
+			box-shadow: 0 4px 10px rgba(0,0,0,0.3);
 		}
 		.tv-zone-label {
 			position: absolute;
@@ -246,18 +256,23 @@
 		.tv-zone-label { display: none; }
 		.tv-grid {
 			display: grid;
-			gap: var(--tv-cell-gap);
+			gap: 2px;
+			justify-content: center;
 		}
 		.tv-cell {
-			width: var(--tv-cell-size);
-			height: var(--tv-cell-size);
-			border-radius: var(--tv-cell-radius);
-			border: 1px solid rgba(255,255,255,0.08);
-			background: rgba(255,255,255,0.04);
-			transition: background 0.3s ease;
+			width: var(--mp-cell-size);
+			height: var(--mp-cell-size);
+			border-radius: var(--mp-cell-radius);
+			background: rgba(255,255,255,0.06);
+			border: 1px solid rgba(255,255,255,0.1);
+			transition: background 0.25s ease, transform 0.15s ease, box-shadow 0.25s ease;
+			display: flex;
+			align-items: center;
+			justify-content: center;
 		}
 		.tv-cell.void { visibility: hidden; }
 		.tv-cell.active {
+			box-shadow: inset 0 1px 3px rgba(0,0,0,0.3), 0 0 6px rgba(58,111,247,0.2);
 			transform: scale(1.02);
 		}
 		/* Bonus dots on unclaimed cells */
@@ -273,30 +288,30 @@
 			box-shadow: 0 0 3px rgba(0,0,0,0.2);
 		}
 		/* Zone colors */
-		.tv-zone-yellow { background: rgba(207,186,81,0.08); border: 1px solid rgba(207,186,81,0.18); }
+		.tv-zone-yellow { background: var(--zone-yellow-bg); }
 		.tv-zone-yellow .tv-zone-label { background: rgba(207,186,81,0.85); color: #1a1700; }
-		.tv-zone-yellow .tv-cell { background: rgba(207,186,81,0.10); border-color: rgba(207,186,81,0.20); }
-		.tv-zone-yellow .tv-cell.active { background: rgba(207,186,81,0.65); border-color: rgba(207,186,81,0.80); box-shadow: 0 0 6px rgba(207,186,81,0.3); }
+		.tv-zone-yellow .tv-cell { background: var(--cell-yellow-bg); border-color: var(--cell-yellow-border); }
+		.tv-zone-yellow .tv-cell.active { background: var(--cell-yellow-active) !important; border-color: var(--cell-yellow-active-border) !important; }
 
-		.tv-zone-green { background: rgba(90,171,110,0.08); border: 1px solid rgba(90,171,110,0.18); }
+		.tv-zone-green { background: var(--zone-green-bg); }
 		.tv-zone-green .tv-zone-label { background: rgba(90,171,110,0.85); color: #0a1f0e; }
-		.tv-zone-green .tv-cell { background: rgba(90,171,110,0.10); border-color: rgba(90,171,110,0.20); }
-		.tv-zone-green .tv-cell.active { background: rgba(90,171,110,0.65); border-color: rgba(90,171,110,0.80); box-shadow: 0 0 6px rgba(90,171,110,0.3); }
+		.tv-zone-green .tv-cell { background: var(--cell-green-bg); border-color: var(--cell-green-border); }
+		.tv-zone-green .tv-cell.active { background: var(--cell-green-active) !important; border-color: var(--cell-green-active-border) !important; }
 
-		.tv-zone-blue { background: rgba(86,137,176,0.08); border: 1px solid rgba(86,137,176,0.18); }
+		.tv-zone-blue { background: var(--zone-blue-bg); }
 		.tv-zone-blue .tv-zone-label { background: rgba(86,137,176,0.85); color: #0a1520; }
-		.tv-zone-blue .tv-cell { background: rgba(86,137,176,0.10); border-color: rgba(86,137,176,0.20); }
-		.tv-zone-blue .tv-cell.active { background: rgba(86,137,176,0.65); border-color: rgba(86,137,176,0.80); box-shadow: 0 0 6px rgba(86,137,176,0.3); }
+		.tv-zone-blue .tv-cell { background: var(--cell-blue-bg); border-color: var(--cell-blue-border); }
+		.tv-zone-blue .tv-cell.active { background: var(--cell-blue-active) !important; border-color: var(--cell-blue-active-border) !important; }
 
-		.tv-zone-red { background: rgba(181,96,105,0.08); border: 1px solid rgba(181,96,105,0.18); }
+		.tv-zone-red { background: var(--zone-red-bg); }
 		.tv-zone-red .tv-zone-label { background: rgba(181,96,105,0.85); color: #200a0c; }
-		.tv-zone-red .tv-cell { background: rgba(181,96,105,0.10); border-color: rgba(181,96,105,0.20); }
-		.tv-zone-red .tv-cell.active { background: rgba(181,96,105,0.65); border-color: rgba(181,96,105,0.80); box-shadow: 0 0 6px rgba(181,96,105,0.3); }
+		.tv-zone-red .tv-cell { background: var(--cell-red-bg); border-color: var(--cell-red-border); }
+		.tv-zone-red .tv-cell.active { background: var(--cell-red-active) !important; border-color: var(--cell-red-active-border) !important; }
 
-		.tv-zone-purple { background: rgba(143,118,184,0.08); border: 1px solid rgba(143,118,184,0.18); }
+		.tv-zone-purple { background: var(--zone-purple-bg); }
 		.tv-zone-purple .tv-zone-label { background: rgba(143,118,184,0.85); color: #120a20; }
-		.tv-zone-purple .tv-cell { background: rgba(143,118,184,0.10); border-color: rgba(143,118,184,0.20); }
-		.tv-zone-purple .tv-cell.active { background: rgba(143,118,184,0.65); border-color: rgba(143,118,184,0.80); box-shadow: 0 0 6px rgba(143,118,184,0.3); }
+		.tv-zone-purple .tv-cell { background: var(--cell-purple-bg); border-color: var(--cell-purple-border); }
+		.tv-zone-purple .tv-cell.active { background: var(--cell-purple-active) !important; border-color: var(--cell-purple-active-border) !important; }
 
 		/* Red subgrids */
 		.tv-red-group {
@@ -827,7 +842,7 @@
 		</div>
 
 		<div class="tv-board-area">
-			<div id="tv-board" class="tv-board"></div>
+			<div id="tv-board" class="tv-board mp-board"></div>
 		</div>
 
 		<div class="tv-sidebar">
@@ -1186,14 +1201,14 @@
 
 			const zones = boardState.zones;
 			container.innerHTML = `
-				<div class="tv-board-col">
+				<div class="tv-board-col mp-board-col mp-board-col-left">
 					${renderZone('yellow', zones.yellow, justPlaced)}
 					${renderZone('green', zones.green, justPlaced)}
 				</div>
-				<div class="tv-board-col">
+				<div class="tv-board-col mp-board-col mp-board-col-middle">
 					${renderZone('blue', zones.blue, justPlaced)}
 				</div>
-				<div class="tv-board-col">
+				<div class="tv-board-col mp-board-col mp-board-col-right">
 					${renderRedZone(zones.red, justPlaced)}
 					${renderZone('purple', zones.purple, justPlaced)}
 				</div>
@@ -1271,10 +1286,10 @@
 		}
 
 		function renderCell(cell, zoneName, subgridId, justPlacedSet) {
-			if (!cell) return '<div class="tv-cell void"></div>';
+			if (!cell) return '<div class="tv-cell mp-cell void"></div>';
 
 			const flags = cell.flags || [];
-			const classes = ['tv-cell'];
+			const classes = ['tv-cell', 'mp-cell'];
 			const isActive = cell.active || !!cell.playerId;
 			if (isActive) classes.push('active');
 			if (flags.includes('bold')) classes.push('bold');
@@ -1331,8 +1346,8 @@
 			}
 
 			return `
-				<div class="tv-zone tv-zone-${name}">
-					<div class="tv-grid" style="grid-template-columns: repeat(${zoneCols}, var(--tv-cell-size));">
+				<div class="tv-zone mp-zone tv-zone-${name} mp-zone-${name}">
+					<div class="tv-grid mp-grid" style="grid-template-columns: repeat(${zoneCols}, var(--mp-cell-size));">
 						${cellsHtml}
 					</div>
 				</div>
@@ -1371,7 +1386,7 @@
 				subgridsHtml += `
 					<div style="position:relative;">
 						${ptsLabel}
-						<div class="tv-grid" style="grid-template-columns: repeat(${sgCols}, var(--tv-cell-size));">
+						<div class="tv-grid mp-grid mp-red-subgrid" style="grid-template-columns: repeat(${sgCols}, var(--mp-cell-size));">
 							${cellsHtml}
 						</div>
 						<div class="tv-red-progress"><div class="tv-red-progress-fill" style="width:${fillPct}%"></div></div>
@@ -1380,8 +1395,8 @@
 			}
 
 			return `
-				<div class="tv-zone tv-zone-red">
-					<div class="tv-red-group">${subgridsHtml}</div>
+				<div class="tv-zone mp-zone tv-zone-red mp-zone-red">
+					<div class="tv-red-group mp-red-group">${subgridsHtml}</div>
 				</div>
 			`;
 		}
