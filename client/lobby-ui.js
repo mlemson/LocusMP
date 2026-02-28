@@ -251,10 +251,33 @@ class LocusLobbyUI {
 		// Live naam-validatie: highlight name field en schakel buttons in/uit
 		const nameInput = this.elements['player-name-input'];
 		if (nameInput) {
+			const savedName = this._getSavedLobbyName();
+			if (!nameInput.value && savedName) {
+				nameInput.value = savedName;
+			}
 			nameInput.addEventListener('input', () => this._validateLobbyName());
+			nameInput.addEventListener('input', () => this._saveLobbyName(nameInput.value || ''));
 			// Initial check
 			this._validateLobbyName();
 		}
+	}
+
+	_getSavedLobbyName() {
+		try {
+			const key = 'locus_last_user_name';
+			const raw = (localStorage.getItem(key)
+				|| sessionStorage.getItem('locus_p2p_userName')
+				|| '').trim();
+			return raw ? raw.slice(0, 20) : '';
+		} catch (_) {
+			return '';
+		}
+	}
+
+	_saveLobbyName(name) {
+		const cleaned = String(name || '').trim().slice(0, 20);
+		if (!cleaned) return;
+		try { localStorage.setItem('locus_last_user_name', cleaned); } catch (_) {}
 	}
 
 	_validateLobbyName() {
@@ -814,6 +837,7 @@ class LocusLobbyUI {
 			this._shakeNameInput();
 			return;
 		}
+		this._saveLobbyName(name);
 
 		const maxPlayers = 8;
 		const cardsPerPlayer = Number(this.elements['cards-per-player-select']?.value) || 8;
@@ -840,6 +864,7 @@ class LocusLobbyUI {
 			return;
 		}
 		if (!code || code.length !== 6) { this._showToast('Vul een geldige 6-letter code in!', 'warning'); return; }
+		this._saveLobbyName(name);
 
 		this._setLoading(true);
 		try {

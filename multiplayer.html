@@ -31,7 +31,6 @@
 
 		<div class="mp-lobby-card">
 			<div class="mp-input-group mp-name-required">
-				<div class="mp-name-callout">⚠️ Vul eerst je naam in om te starten</div>
 				<label for="player-name-input">👤 Jouw naam</label>
 				<input type="text" id="player-name-input" placeholder="Vul hier je naam in..." maxlength="20" autocomplete="off" required />
 			</div>
@@ -390,6 +389,40 @@
 			else if (saved === 'bloom') document.documentElement.classList.add('theme-bloom');
 		})();
 
+		const LOBBY_NAME_STORAGE_KEY = 'locus_last_user_name';
+
+		function _getSavedLobbyName() {
+			try {
+				const raw = (localStorage.getItem(LOBBY_NAME_STORAGE_KEY)
+					|| sessionStorage.getItem('locus_p2p_userName')
+					|| '').trim();
+				if (!raw) return '';
+				return raw.slice(0, 20);
+			} catch (_) {
+				return '';
+			}
+		}
+
+		function _saveLobbyName(name) {
+			const cleaned = String(name || '').trim().slice(0, 20);
+			if (!cleaned) return;
+			try { localStorage.setItem(LOBBY_NAME_STORAGE_KEY, cleaned); } catch (_) {}
+		}
+
+		function _initLobbyNamePersistence() {
+			const nameInput = document.getElementById('player-name-input');
+			if (!nameInput) return;
+
+			if (!nameInput.value) {
+				const savedName = _getSavedLobbyName();
+				if (savedName) nameInput.value = savedName;
+			}
+
+			nameInput.addEventListener('input', () => {
+				_saveLobbyName(nameInput.value || '');
+			});
+		}
+
 		// Wacht iets langer zodat dynamisch geladen scripts (socket.io, peerjs fallback) tijd hebben
 		window.addEventListener('load', () => {
 			setTimeout(_bootstrapApp, 150);
@@ -416,6 +449,7 @@
 
 		async function _bootstrapApp() {
 			_initThemeSwitcher();
+			_initLobbyNamePersistence();
 			_applyJoinCodeFromUrl();
 			await _setLobbyVersionBadge();
 
@@ -625,18 +659,22 @@
 				<button id="p2p-join-btn" class="mp-btn mp-btn-secondary" style="margin-top: 4px;">
 					🔗 Deelnemen
 				</button>
-				<div class="mp-divider" style="margin-top: 12px;"><span>of host zelf</span></div>
-				<button id="p2p-host-btn" class="mp-btn mp-btn-primary mp-btn-p2p-host">
-					🌐 Host Spel
-				</button>
-				<button id="p2p-debug-btn" style="display:none;margin-top:8px;padding:4px 10px;font-size:11px;opacity:0.5;background:none;border:1px solid #666;color:#999;border-radius:6px;cursor:pointer;">
-					🐛 Debug Log
-				</button>
+				<div id="p2p-host-actions">
+					<div class="mp-divider" style="margin-top: 12px;"><span>of host zelf</span></div>
+					<button id="p2p-host-btn" class="mp-btn mp-btn-primary mp-btn-p2p-host">
+						🌐 Host Spel
+					</button>
+					<button id="p2p-debug-btn" style="display:none;margin-top:8px;padding:4px 10px;font-size:11px;opacity:0.5;background:none;border:1px solid #666;color:#999;border-radius:6px;cursor:pointer;">
+						🐛 Debug Log
+					</button>
+				</div>
 			`;
 			lobbyCard.appendChild(p2pSection);
 			if (!hasServer) {
 				const hostSettings = document.getElementById('host-settings-block');
 				if (hostSettings) p2pSection.appendChild(hostSettings);
+				const hostActions = document.getElementById('p2p-host-actions');
+				if (hostActions) p2pSection.appendChild(hostActions);
 			}
 
 			// P2P Host
@@ -648,6 +686,7 @@
 					setTimeout(() => nameInput?.classList.remove('mp-shake'), 500);
 					return;
 				}
+				_saveLobbyName(name);
 
 				if (typeof Peer === 'undefined') {
 					alert('PeerJS is niet geladen. Controleer je internetverbinding en herlaad de pagina.');
@@ -762,6 +801,7 @@
 					setTimeout(() => nameInput?.classList.remove('mp-shake'), 500);
 					return;
 				}
+				_saveLobbyName(name);
 
 				if (typeof Peer === 'undefined') {
 					alert('PeerJS is niet geladen. Controleer je internetverbinding en herlaad de pagina.');
