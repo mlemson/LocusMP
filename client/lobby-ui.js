@@ -2000,8 +2000,6 @@ class LocusLobbyUI {
 					? 'background: linear-gradient(135deg, #b56069, #cfba51, #92c28c, #5689b0, #8f76b8)'
 					: `background: ${card.color?.code || '#666'}`;
 
-			const allowedZones = this._getAllowedZoneLabels(card);
-
 			// Na het plaatsen van 1 kaart: overige kaarten worden 'spent' (transparant, niet speelbaar)
 			// Gouden kaarten blijven speelbaar (extra play)
 			let cardClass = 'mp-card';
@@ -2022,11 +2020,6 @@ class LocusLobbyUI {
 					<div class="mp-card-color" style="${colorStyle}"></div>
 					<div class="mp-card-shape">
 						${this._renderMiniGrid(renderMatrix, card.color)}
-					</div>
-					<div class="mp-card-name">${this._escapeHtml(card.shapeName)}</div>
-					<div class="mp-card-info">
-						<span class="mp-card-category">${card.category}</span>
-						<span class="mp-card-zones">${allowedZones}</span>
 					</div>
 					${card.isGolden ? '<div class="mp-card-extra-badge">⭐ EXTRA</div>' : ''}
 				</div>
@@ -2960,14 +2953,6 @@ class LocusLobbyUI {
 			if (count > prevCount) {
 				newBonuses.push(color);
 			}
-		}
-		if (newBonuses.length > 0) {
-			// Toon melding voor nieuwe bonussen
-			const bonusLabelsMap = {
-				yellow: 'Geel', green: 'Groen', blue: 'Blauw', red: 'Rood', purple: 'Paars', any: 'Multikleur'
-			};
-			const names = newBonuses.map(c => bonusLabelsMap[c] || c).join(', ');
-			this._showToast(`🎁 Nieuwe bonus: ${names}! Speel deze in je beurt.`, 'success');
 		}
 
 		const bonusLabels = {
@@ -4435,7 +4420,7 @@ class LocusLobbyUI {
 			matchWins: this.mp.gameState.players[pid]?.matchWins || 0,
 			objectiveName: this.mp.gameState.players[pid]?.chosenObjective?.name || '',
 			objectiveAchieved: !!this.mp.gameState.players[pid]?.objectiveAchieved,
-			objectiveFailed: !!this.mp.gameState.players[pid]?.objectiveFailed,
+			objectiveFailed: !!this.mp.gameState.players[pid]?.objectiveFailed || (!!this.mp.gameState.players[pid]?.chosenObjective && !this.mp.gameState.players[pid]?.objectiveAchieved),
 			...scores[pid]
 		}));
 		const sorted = [...players].sort((a, b) => b.finalTotal - a.finalTotal);
