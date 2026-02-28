@@ -2958,6 +2958,15 @@ body.mp-loading .mp-btn {
 	margin-bottom: 20px;
 }
 
+.mp-level-main-winner {
+	font-size: 1.45rem;
+	font-weight: 800;
+	line-height: 1.25;
+	color: var(--mp-gold, #f5d76e);
+	margin-bottom: 18px;
+	text-align: center;
+}
+
 .mp-level-scores {
 	display: flex;
 	flex-direction: column;

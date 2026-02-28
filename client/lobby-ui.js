@@ -4447,9 +4447,8 @@ class LocusLobbyUI {
 
 		overlay.innerHTML = `
 			<div class="mp-level-popup">
-				<h2 class="mp-level-title">🎉 Level ${currentLevel}/${maxLevels} Compleet!</h2>
-				<div class="mp-level-winner">
-					${sorted[0].name} wint dit level met ${sorted[0].finalTotal} punten!
+				<div class="mp-level-main-winner">
+					🏆 ${sorted[0].name} wint dit level met ${sorted[0].finalTotal} punten!
 				</div>
 				<div class="mp-level-scores">
 					${sorted.map((p, rank) => {
