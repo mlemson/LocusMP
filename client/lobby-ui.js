@@ -2324,12 +2324,6 @@ class LocusLobbyUI {
 			}
 			// Mobiel: plaats direct op release als preview geldig is; annuleer niet agressief op loslaten.
 			if (this._attemptPlacementFromCurrentPreview()) {
-				// Na succesvolle plaatsing: forceer zone positie
-				const savedZone = this._lastPreviewZone || this._lastMobileZoneName;
-				if (savedZone) {
-					setTimeout(() => this._scrollMobileBoardToZone(savedZone, false), 50);
-					setTimeout(() => this._scrollMobileBoardToZone(savedZone, false), 200);
-				}
 				return;
 			}
 			return;
@@ -3897,10 +3891,8 @@ class LocusLobbyUI {
 				: (Number.isFinite(this._lastMobileBoardIndex)
 					? this._lastMobileBoardIndex
 					: (Number.isFinite(prevMobileIdx) ? prevMobileIdx : 0));
-			requestAnimationFrame(() => this._restoreMobileBoardIndex(targetIdx || 0));
-			// Extra zekerheid: forceer positie na korte delay (voorkomt drift na touch-release)
 			const frozenIdx = targetIdx || 0;
-			setTimeout(() => this._restoreMobileBoardIndex(frozenIdx), 150);
+			this._restoreMobileBoardIndex(frozenIdx);
 			if (Date.now() < (this._suppressMobileSwipeUntil || 0)) {
 				this._forcedMobileBoardIndex = frozenIdx;
 				const clearDelay = Math.max(0, (this._suppressMobileSwipeUntil || 0) - Date.now()) + 60;
@@ -4488,13 +4480,9 @@ class LocusLobbyUI {
 						${maxLevels - currentLevel} levels te gaan
 					</div>
 				`}
-				${isHost ? `
-					<button class="mp-btn mp-btn-primary mp-to-shop-btn" id="mp-go-shop-btn">
-						${isMatchFinished ? '🏁 Naar eindresultaat' : '🛒 Naar de Shop'}
-					</button>
-				` : `
-					<div class="mp-waiting-for-host">${isMatchFinished ? 'Wachten tot de host het eindresultaat opent...' : 'Wachten tot de host de shop opent...'}</div>
-				`}
+				<button class="mp-btn mp-btn-primary mp-to-shop-btn" id="mp-go-shop-btn">
+					${isMatchFinished ? '🏁 Naar eindresultaat' : '🛒 Naar de Shop'}
+				</button>
 			</div>
 		`;
 
@@ -4505,15 +4493,15 @@ class LocusLobbyUI {
 			shopBtn.addEventListener('click', async () => {
 				shopBtn.disabled = true;
 				try {
-					const result = await this.mp.startShopPhase();
-					console.log('[Locus UI] startShopPhase result:', result);
-					// Ga direct naar shop na succesvolle aanroep
-					// (broadcastGameState zal ook _onShopPhase triggeren, maar dit is zekerder)
+					// Host start de fase centraal; andere spelers mogen direct navigeren.
+					if (isHost && !isMatchFinished) {
+						const result = await this.mp.startShopPhase();
+						console.log('[Locus UI] startShopPhase result:', result);
+					}
 					this._onShopPhase();
 				} catch (err) {
-					console.error('[Locus UI] startShopPhase error:', err);
-					this._showToast('Fout: ' + (err.message || err), 'error');
-					shopBtn.disabled = false;
+					console.warn('[Locus UI] startShopPhase waarschuwing, open shop lokaal:', err);
+					this._onShopPhase();
 				}
 			});
 		}
@@ -4735,9 +4723,8 @@ class LocusLobbyUI {
 	_showShopRandomCardReveal(card, sourceEl) {
 		if (!card) return;
 		const Rules = window.LocusGameRules;
-		const rect = sourceEl?.getBoundingClientRect?.();
-		const startLeft = rect ? (rect.left + rect.width / 2) : (window.innerWidth / 2);
-		const startTop = rect ? (rect.top + 6) : Math.max(120, window.innerHeight * 0.35);
+		const startLeft = window.innerWidth / 2;
+		const startTop = Math.max(120, window.innerHeight * 0.45);
 		const zones = Rules?.getAllowedZones ? Rules.getAllowedZones(card) : [];
 		const zoneNames = {
 			yellow: 'Geel', green: 'Groen', blue: 'Blauw', red: 'Rood', purple: 'Paars'

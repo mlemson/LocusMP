@@ -1401,10 +1401,11 @@ function scoreRedData(redZone) {
  * Zo geldt altijd: meer verbonden bold-cellen = meer punten.
  */
 function getPurpleConnectionPoints(boldCount) {
-	// Cumulatieve increments: +6 voor 2e, +12 voor 3e, +18 voor 4e, ...
-	// Totaal = 6 + 12 + ... + 6*(n-1) = 3 * n * (n-1)
+	// Lineair per extra verbonden bold-cell:
+	// 2 bold = 6pt, 3 bold = 12pt, 4 bold = 18pt, ...
+	// Formule: 6 * (n - 1)
 	if (!Number.isFinite(boldCount) || boldCount < 2) return 0;
-	return 3 * boldCount * (boldCount - 1);
+	return 6 * (boldCount - 1);
 }
 
 function scorePurpleData(zoneData) {
@@ -1445,7 +1446,7 @@ function scorePurpleData(zoneData) {
 			}
 		}
 
-		// Score: cumulatief per verbinding (+6, +12, +18, ... → formule: 3·n·(n-1))
+		// Score: lineair per verbinding (+6, +12, +18, ...)
 		if (boldCount >= 2) {
 			score += getPurpleConnectionPoints(boldCount);
 		}

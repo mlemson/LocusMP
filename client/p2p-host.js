@@ -676,6 +676,33 @@ class LocusP2PHost {
 					}
 				}
 			}
+
+			// Voeg cardsPlayed count toe voor elke speler
+			sanitized.players[pid].cardsPlayed = this._countCardsPlayed(pid);
+
+			// Objective status + voortgang (zelfde gedrag als server-mode)
+			if (this.gameState.players[pid].chosenObjective && this.gameState.boardState) {
+				const objectiveDef = this.gameState.players[pid].chosenObjective || {};
+				const isEndOnlyObjective = !!objectiveDef.endOnly;
+				const objResult = this.Rules.checkObjective(this.gameState, pid, this.gameState.players[pid].chosenObjective);
+				const shouldDelayOutcome = isEndOnlyObjective && this.gameState.phase === 'playing';
+				if (shouldDelayOutcome) {
+					sanitized.players[pid].objectiveAchieved = !!this.gameState.players[pid].objectiveAchieved;
+					sanitized.players[pid].objectiveFailed = false;
+					sanitized.players[pid].objectiveAchievedPoints = this.gameState.players[pid].objectiveAchievedPoints || 0;
+				} else {
+					sanitized.players[pid].objectiveAchieved = this.gameState.players[pid].objectiveAchieved || objResult.achieved;
+					sanitized.players[pid].objectiveFailed = !sanitized.players[pid].objectiveAchieved && !!objResult.failed;
+					sanitized.players[pid].objectiveAchievedPoints = this.gameState.players[pid].objectiveAchievedPoints || 0;
+				}
+				sanitized.players[pid].objectiveProgress = {
+					current: objResult.current,
+					target: objResult.target,
+					points: objResult.points,
+					coins: objResult.coins || 0,
+					randomBonuses: objResult.randomBonuses || 0
+				};
+			}
 		}
 		// Verberg objectiveChoices van andere spelers
 		if (sanitized.objectiveChoices) {
