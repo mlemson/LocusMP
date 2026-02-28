@@ -1563,7 +1563,7 @@ class LocusLobbyUI {
 	_repositionScoreboardForMobile() {
 		const scoreboard = this.elements['mp-scoreboard'];
 		if (!scoreboard) return;
-		const isTouch = this._isTouchLikeDevice();
+		const isTouch = this._useMobileBoardLayout();
 		const topRight = document.querySelector('.mp-top-right');
 		const sidebar = document.querySelector('.mp-sidebar');
 
@@ -3074,10 +3074,33 @@ class LocusLobbyUI {
 			const matrix = this._bonusMode.matrix;
 			if (!matrix || !matrix.length) return;
 
+			// Plaats eerst op de actieve previewpositie (werkt ook bij klik in cell-gap).
+			const hasLivePreview = this._lastBonusZone
+				&& Number.isFinite(this._lastBonusBaseX)
+				&& Number.isFinite(this._lastBonusBaseY)
+				&& this._isBonusZoneAllowed(this._lastBonusZone);
+			if (hasLivePreview) {
+				const previewResult = this.mp.previewPlacement(
+					this._lastBonusZone,
+					this._lastBonusBaseX,
+					this._lastBonusBaseY,
+					matrix,
+					this._lastBonusSubgridId || null
+				);
+				if (previewResult.valid) {
+					await this._attemptBonusPlacement(
+						this._lastBonusZone,
+						this._lastBonusBaseX,
+						this._lastBonusBaseY,
+						previewResult.subgridId || this._lastBonusSubgridId || null
+					);
+					return;
+				}
+			}
+
 			const cell = e.target.closest('.mp-cell:not(.void)');
 			if (!cell) {
-				this._cancelBonusMode();
-				this._showToast('Bonusplaatsing geannuleerd', 'info');
+				this._showToast('Klik op een cel of behoud de groene preview om te plaatsen', 'info');
 				return;
 			}
 
@@ -3606,12 +3629,17 @@ class LocusLobbyUI {
 	// ──────────────────────────────────────────
 
 	_isTouchLikeDevice() {
-		if (window.matchMedia?.('(pointer: coarse)')?.matches) return true;
-		return ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
+		const hasCoarsePointer = !!window.matchMedia?.('(pointer: coarse)')?.matches;
+		const hasTouchPoints = Number(navigator.maxTouchPoints || 0) > 0;
+		return hasCoarsePointer || hasTouchPoints;
+	}
+
+	_useMobileBoardLayout() {
+		return this._isTouchLikeDevice() && !!window.matchMedia?.('(max-width: 900px)')?.matches;
 	}
 
 	_getCurrentMobileBoardIndex() {
-		if (!this._isTouchLikeDevice()) return null;
+		if (!this._useMobileBoardLayout()) return null;
 		const board = this.elements['mp-board-container']?.querySelector('.mp-board');
 		if (!board) return null;
 		const width = Math.max(1, board.clientWidth || 1);
@@ -3619,7 +3647,7 @@ class LocusLobbyUI {
 	}
 
 	_restoreMobileBoardIndex(index) {
-		if (!this._isTouchLikeDevice()) return;
+		if (!this._useMobileBoardLayout()) return;
 		if (!Number.isFinite(index)) return;
 		const board = this.elements['mp-board-container']?.querySelector('.mp-board');
 		if (!board) return;
@@ -3653,7 +3681,7 @@ class LocusLobbyUI {
 	}
 
 	_getMobileZoneIndex(zoneName) {
-		if (!this._isTouchLikeDevice()) return null;
+		if (!this._useMobileBoardLayout()) return null;
 		if (!zoneName) return null;
 		const board = this.elements['mp-board-container']?.querySelector('.mp-board');
 		if (!board) return null;
@@ -3664,7 +3692,7 @@ class LocusLobbyUI {
 	}
 
 	_scrollMobileBoardToZone(zoneName, smooth = true) {
-		if (!this._isTouchLikeDevice()) return;
+		if (!this._useMobileBoardLayout()) return;
 		const board = this.elements['mp-board-container']?.querySelector('.mp-board');
 		if (!board) return;
 		const zoneEl = board.querySelector(`.mp-zone[data-zone="${zoneName}"]`);
@@ -3700,7 +3728,7 @@ class LocusLobbyUI {
 		const prevMobileIdx = this._getCurrentMobileBoardIndex();
 
 		const zones = boardState.zones;
-		const isTouch = this._isTouchLikeDevice();
+		const isTouch = this._useMobileBoardLayout();
 		if (isTouch) {
 			container.innerHTML = `
 				<div class="mp-board">
@@ -4284,7 +4312,7 @@ class LocusLobbyUI {
 			return;
 		}
 		// Ensure game screen is still visible underneath
-		this.elements['game-screen'].style.display = 'flex';
+		this.elements['game-screen'].style.display = 'grid';
 
 		// Remove any existing overlay first
 		const existingOverlay = document.getElementById('level-complete-overlay');
@@ -4302,6 +4330,9 @@ class LocusLobbyUI {
 			name: this.mp.gameState.players[pid]?.name || '???',
 			goldCoins: this.mp.gameState.players[pid]?.goldCoins || 0,
 			matchWins: this.mp.gameState.players[pid]?.matchWins || 0,
+			objectiveName: this.mp.gameState.players[pid]?.chosenObjective?.name || '',
+			objectiveAchieved: !!this.mp.gameState.players[pid]?.objectiveAchieved,
+			objectiveFailed: !!this.mp.gameState.players[pid]?.objectiveFailed,
 			...scores[pid]
 		}));
 		const sorted = [...players].sort((a, b) => b.finalTotal - a.finalTotal);
@@ -4322,6 +4353,14 @@ class LocusLobbyUI {
 						<div class="mp-level-score-row ${p.id === this.mp.userId ? 'is-me' : ''} ${rank === 0 ? 'winner' : ''}">
 							<span class="mp-result-rank">${rank === 0 ? '🥇' : rank === 1 ? '🥈' : rank === 2 ? '🥉' : rank + 1}</span>
 							<span class="mp-result-name">${this._escapeHtml(p.name)}</span>
+							<div class="mp-result-breakdown">
+								<span title="Doelstelling status">${p.objectiveAchieved ? '✅' : (p.objectiveFailed ? '❌' : '🎯')} ${this._escapeHtml(p.objectiveName || 'Doelstelling')}</span>
+								${p.objectiveAchieved && p.objectiveBonus ? `<span style="color:#f5d76e" title="Doelstelling punten">🎯:+${p.objectiveBonus}pt</span>` : ''}
+								${p.objectiveAchieved && p.objectiveCoins ? `<span style="color:#f5d76e" title="Doelstelling munten">🪙:+${p.objectiveCoins}</span>` : ''}
+								${p.objectiveAchieved && p.objectiveRandomBonuses ? `<span style="color:#92c28c" title="Doelstelling bonus">🎁:+${p.objectiveRandomBonuses}</span>` : ''}
+								${p.roundWinnerCoinsBonus ? `<span style="color:#f5d76e" title="Rondewinnaar munten">🥇+${p.roundWinnerCoinsBonus}🪙</span>` : ''}
+								${p.secondPlaceCoinsBonus ? `<span style="color:#e8e1c0" title="Tweede plek munten">🥈+${p.secondPlaceCoinsBonus}🪙</span>` : ''}
+							</div>
 							<div class="mp-result-breakdown">
 								<span style="color:#cfba51">G:${p.yellow || 0}</span>
 								<span style="color:#92c28c">Gr:${p.green || 0}</span>
