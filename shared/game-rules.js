@@ -1395,64 +1395,128 @@ function scoreRedData(redZone) {
 
 /**
  * PURPLE SCORING: BFS cluster-score
- * Verbind actieve cellen aan bold-cellen.
- * Per cluster: lineair per extra verbonden bold-cell.
- * 2 bold = 6pt, 3 bold = 12pt, 4 bold = 18pt, ...
- * Zo geldt altijd: meer verbonden bold-cellen = meer punten.
+ * Verbindingen tellen GLOBAAL door over alle spelers heen.
+ * Verbinding #1 = 6pt, #2 = 12pt, #3 = 18pt, ...
+ * De punten van een verbinding gaan naar de speler die die verbinding maakte.
  */
-function getPurpleConnectionPoints(boldCount) {
-	// Lineair per extra verbonden bold-cell:
-	// 2 bold = 6pt, 3 bold = 12pt, 4 bold = 18pt, ...
-	// Formule: 6 * (n - 1)
-	if (!Number.isFinite(boldCount) || boldCount < 2) return 0;
-	return 6 * (boldCount - 1);
+function getPurpleConnectionPoints(connectionNumber) {
+	if (!Number.isFinite(connectionNumber) || connectionNumber < 1) return 0;
+	return 6 * connectionNumber;
+}
+
+function getPurpleTotalPointsForConnectionCount(connectionCount) {
+	if (!Number.isFinite(connectionCount) || connectionCount < 1) return 0;
+	return 3 * connectionCount * (connectionCount + 1);
+}
+
+function buildPurpleConnectionEvents(zoneData) {
+	if (!zoneData?.cells) return [];
+
+	const cells = Object.values(zoneData.cells)
+		.filter(c => c && c.active && !c.isStone)
+		.sort((a, b) => {
+			const ao = Number.isFinite(a.placementOrder) ? a.placementOrder : Number.MAX_SAFE_INTEGER;
+			const bo = Number.isFinite(b.placementOrder) ? b.placementOrder : Number.MAX_SAFE_INTEGER;
+			if (ao !== bo) return ao - bo;
+			if (a.y !== b.y) return a.y - b.y;
+			return a.x - b.x;
+		});
+
+	if (cells.length === 0) return [];
+
+	const parent = new Map();
+	const rank = new Map();
+	const boldCountByRoot = new Map();
+	const activeKeys = new Set();
+	const cellByKey = new Map();
+	const events = [];
+	let globalConnections = 0;
+
+	const keyOf = (x, y) => `${x},${y}`;
+	const connFromBoldCount = (count) => Math.max(0, (Number(count) || 0) - 1);
+
+	const find = (key) => {
+		let p = parent.get(key);
+		if (p === key) return key;
+		p = find(p);
+		parent.set(key, p);
+		return p;
+	};
+
+	const union = (a, b) => {
+		let ra = find(a);
+		let rb = find(b);
+		if (ra === rb) return ra;
+
+		const rankA = rank.get(ra) || 0;
+		const rankB = rank.get(rb) || 0;
+		if (rankA < rankB) {
+			const tmp = ra;
+			ra = rb;
+			rb = tmp;
+		}
+
+		parent.set(rb, ra);
+		if (rankA === rankB) rank.set(ra, rankA + 1);
+
+		const mergedBold = (boldCountByRoot.get(ra) || 0) + (boldCountByRoot.get(rb) || 0);
+		boldCountByRoot.set(ra, mergedBold);
+		boldCountByRoot.delete(rb);
+		return ra;
+	};
+
+	for (const cell of cells) {
+		const beforeConnections = globalConnections;
+		const key = keyOf(cell.x, cell.y);
+		cellByKey.set(key, cell);
+		activeKeys.add(key);
+		parent.set(key, key);
+		rank.set(key, 0);
+		boldCountByRoot.set(key, cell.flags?.includes('bold') ? 1 : 0);
+
+		const neighbors = [
+			keyOf(cell.x - 1, cell.y),
+			keyOf(cell.x + 1, cell.y),
+			keyOf(cell.x, cell.y - 1),
+			keyOf(cell.x, cell.y + 1)
+		];
+
+		for (const nKey of neighbors) {
+			if (!activeKeys.has(nKey)) continue;
+			const nCell = cellByKey.get(nKey);
+			if (!nCell || nCell.isStone) continue;
+
+			const rootA = find(key);
+			const rootB = find(nKey);
+			if (rootA === rootB) continue;
+
+			globalConnections -= connFromBoldCount(boldCountByRoot.get(rootA));
+			globalConnections -= connFromBoldCount(boldCountByRoot.get(rootB));
+			const mergedRoot = union(rootA, rootB);
+			globalConnections += connFromBoldCount(boldCountByRoot.get(mergedRoot));
+		}
+
+		const gainedConnections = Math.max(0, globalConnections - beforeConnections);
+		if (gainedConnections > 0 && cell.playerId) {
+			const order = Number.isFinite(cell.placementOrder) ? cell.placementOrder : Number.MAX_SAFE_INTEGER;
+			for (let i = 0; i < gainedConnections; i++) {
+				events.push({
+					playerId: cell.playerId,
+					order,
+					x: cell.x,
+					y: cell.y
+				});
+			}
+		}
+	}
+
+	return events;
 }
 
 function scorePurpleData(zoneData) {
 	if (!zoneData) return 0;
-	const visited = new Set();
-	let score = 0;
-
-	// Vind alle actieve cellen
-	const activeCells = Object.values(zoneData.cells).filter(c => c.active && !c.isStone);
-	if (activeCells.length === 0) return 0;
-
-	// BFS voor elk onbezocht cluster
-	for (const startCell of activeCells) {
-		const key = `${startCell.x},${startCell.y}`;
-		if (visited.has(key)) continue;
-
-		const cluster = [];
-		let boldCount = 0;
-		const queue = [startCell];
-		visited.add(key);
-
-		while (queue.length > 0) {
-			const current = queue.shift();
-			cluster.push(current);
-			if (current.flags.includes('bold')) boldCount++;
-
-			const neighbors = [
-				getDataCell(zoneData, current.x - 1, current.y),
-				getDataCell(zoneData, current.x + 1, current.y),
-				getDataCell(zoneData, current.x, current.y - 1),
-				getDataCell(zoneData, current.x, current.y + 1)
-			];
-			for (const n of neighbors) {
-				if (n && n.active && !n.isStone && !visited.has(`${n.x},${n.y}`)) {
-					visited.add(`${n.x},${n.y}`);
-					queue.push(n);
-				}
-			}
-		}
-
-		// Score: lineair per verbinding (+6, +12, +18, ...)
-		if (boldCount >= 2) {
-			score += getPurpleConnectionPoints(boldCount);
-		}
-	}
-
-	return score;
+	const events = buildPurpleConnectionEvents(zoneData);
+	return getPurpleTotalPointsForConnectionCount(events.length);
 }
 
 function getBlueHighestReachedTier(zoneData) {
@@ -1618,44 +1682,11 @@ function calculatePlayerScores(boardState, playerIds) {
 	// ── PURPLE: cluster scoring ──
 	const purpleZone = boardState.zones.purple;
 	if (purpleZone) {
-		const visited = new Set();
-		const activeCells = Object.values(purpleZone.cells).filter(c => c.active && !c.isStone);
-
-		for (const startCell of activeCells) {
-			const key = `${startCell.x},${startCell.y}`;
-			if (visited.has(key)) continue;
-
-			const cluster = [];
-			let boldCount = 0;
-			const queue = [startCell];
-			visited.add(key);
-
-			while (queue.length > 0) {
-				const current = queue.shift();
-				cluster.push(current);
-				if (current.flags.includes('bold')) boldCount++;
-
-				const neighbors = [
-					getDataCell(purpleZone, current.x - 1, current.y),
-					getDataCell(purpleZone, current.x + 1, current.y),
-					getDataCell(purpleZone, current.x, current.y - 1),
-					getDataCell(purpleZone, current.x, current.y + 1)
-				];
-				for (const n of neighbors) {
-					if (n && n.active && !n.isStone && !visited.has(`${n.x},${n.y}`)) {
-						visited.add(`${n.x},${n.y}`);
-						queue.push(n);
-					}
-				}
-			}
-
-			if (boldCount >= 2) {
-				const points = getPurpleConnectionPoints(boldCount);
-				const winner = getPurpleClusterOwner(cluster);
-				if (winner && playerScores[winner]) {
-					playerScores[winner].purple += points;
-				}
-			}
+		const events = buildPurpleConnectionEvents(purpleZone);
+		for (let i = 0; i < events.length; i++) {
+			const ev = events[i];
+			if (!ev?.playerId || !playerScores[ev.playerId]) continue;
+			playerScores[ev.playerId].purple += getPurpleConnectionPoints(i + 1);
 		}
 	}
 
@@ -2186,9 +2217,8 @@ function getPlayerPurpleMaxBoldCluster(boardState, playerId) {
 				}
 			}
 		}
-		if (getLatestPlacerOwner(cluster) !== playerId) continue;
-		const boldCount = cluster.filter(c => c.flags.includes('bold')).length;
-		maxBold = Math.max(maxBold, boldCount);
+		const ownBoldCount = cluster.filter(c => c.flags.includes('bold') && c.playerId === playerId).length;
+		maxBold = Math.max(maxBold, ownBoldCount);
 	}
 	return maxBold;
 }
