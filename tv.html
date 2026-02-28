@@ -75,6 +75,34 @@
 			justify-content: center;
 			margin-top: 16px;
 		}
+		.tv-waiting-share {
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			gap: 20px;
+			flex-wrap: wrap;
+		}
+		.tv-waiting-qr-wrap {
+			display: none;
+			flex-direction: column;
+			align-items: center;
+			gap: 8px;
+		}
+		.tv-waiting-qr {
+			width: 150px;
+			height: 150px;
+			padding: 8px;
+			background: #fff;
+			border-radius: 12px;
+			border: 1px solid rgba(255,255,255,0.18);
+			object-fit: contain;
+		}
+		.tv-waiting-qr-link {
+			font-size: 0.9rem;
+			color: var(--tv-dim);
+			text-decoration: none;
+		}
+		.tv-waiting-qr-link:hover { color: #fff; }
 		.tv-player-chip {
 			background: var(--tv-panel);
 			border: 1px solid rgba(255,255,255,0.1);
@@ -215,6 +243,7 @@
 			border-radius: 4px;
 			z-index: 2;
 		}
+		.tv-zone-label { display: none; }
 		.tv-grid {
 			display: grid;
 			gap: var(--tv-cell-gap);
@@ -590,6 +619,21 @@
 		.tv-cell.green-end.active {
 			position: relative;
 		}
+		.tv-cell.green-end {
+			border-color: rgba(110, 231, 183, 0.55);
+			box-shadow: inset 0 0 0 1px rgba(110, 231, 183, 0.35);
+		}
+		.tv-cell.green-end::before {
+			content: '';
+			position: absolute;
+			left: 50%;
+			top: 50%;
+			width: 6px;
+			height: 6px;
+			border-radius: 999px;
+			transform: translate(-50%, -50%);
+			background: rgba(110, 231, 183, 0.75);
+		}
 		.tv-cell.green-end.active::after {
 			content: '✓';
 			position: absolute;
@@ -676,22 +720,33 @@
 			0%, 100% { opacity: 0.6; }
 			50% { opacity: 1; }
 		}
+		.tv-cell.just-placed {
+			animation: tvCellPlacePop 420ms cubic-bezier(0.2, 0.8, 0.2, 1);
+		}
+		@keyframes tvCellPlacePop {
+			0% { transform: scale(0.55); filter: brightness(1.4); }
+			55% { transform: scale(1.12); filter: brightness(1.15); }
+			100% { transform: scale(1.02); filter: brightness(1); }
+		}
 
 		/* ── Player card mini-grids in sidebar ── */
 		.tv-player-cards {
 			display: flex;
-			gap: 4px;
+			gap: 6px;
 			flex-wrap: wrap;
 			margin-top: 4px;
 		}
 		.tv-player-mini-card {
 			display: inline-grid;
 			gap: 1px;
-			opacity: 0.7;
+			opacity: 0.95;
+			padding: 2px;
+			border-radius: 5px;
+			background: rgba(255,255,255,0.05);
 		}
 		.tv-mini-cell {
-			width: 7px;
-			height: 7px;
+			width: 10px;
+			height: 10px;
 			border-radius: 2px;
 		}
 		.tv-mini-cell.filled {
@@ -704,6 +759,25 @@
 			font-size: 0.65rem;
 			color: var(--tv-dim);
 			margin-top: 2px;
+		}
+		.tv-score-row.score-up {
+			animation: tvScorePop 420ms ease-out;
+		}
+		@keyframes tvScorePop {
+			0% { transform: scale(1); }
+			45% { transform: scale(1.035); box-shadow: 0 0 14px rgba(240,192,64,0.25); }
+			100% { transform: scale(1); }
+		}
+		.tv-red-target {
+			position: absolute;
+			top: -6px;
+			right: 8px;
+			font-size: 0.55rem;
+			font-weight: 700;
+			padding: 1px 5px;
+			border-radius: 6px;
+			background: rgba(181,96,105,0.8);
+			color: #fff;
 		}
 
 		/* ── Red subgrid progress ── */
@@ -727,7 +801,13 @@
 	<div id="tv-waiting" class="tv-waiting">
 		<h1>LOCUS</h1>
 		<p id="tv-status" class="tv-pulse">Wachten op verbinding met host...</p>
-		<div id="tv-room-code" class="tv-room-code" style="display:none;">------</div>
+		<div class="tv-waiting-share">
+			<div id="tv-room-code" class="tv-room-code" style="display:none;">------</div>
+			<div id="tv-waiting-qr-wrap" class="tv-waiting-qr-wrap">
+				<img id="tv-waiting-qr" class="tv-waiting-qr" alt="QR code om direct te joinen" />
+				<a id="tv-waiting-qr-link" class="tv-waiting-qr-link" href="#" target="_blank" rel="noopener">Open op mobiel</a>
+			</div>
+		</div>
 		<div id="tv-player-list" class="tv-player-list"></div>
 	</div>
 
@@ -970,7 +1050,7 @@
 			} else if (state.phase === 'playing' || state.phase === 'shopping') {
 				waitingEl.style.display = 'none';
 				gameEl.classList.add('active');
-				renderGame(state);
+				renderGame(state, prevState);
 				document.getElementById('tv-level-overlay').classList.remove('show');
 
 				// Sound effects based on state changes
@@ -1002,9 +1082,9 @@
 					gameEl.classList.add('active');
 					waitingEl.style.display = 'none';
 				}
-				renderGame(state);
+				renderGame(state, prevState);
 			} else if (state.phase === 'ended') {
-				renderGame(state);
+				renderGame(state, prevState);
 			}
 		}
 
@@ -1050,11 +1130,25 @@
 			const statusEl = document.getElementById('tv-status');
 			const codeEl = document.getElementById('tv-room-code');
 			const listEl = document.getElementById('tv-player-list');
+			const qrWrap = document.getElementById('tv-waiting-qr-wrap');
+			const qrImg = document.getElementById('tv-waiting-qr');
+			const qrLink = document.getElementById('tv-waiting-qr-link');
 
 			if (state.inviteCode) {
-				codeEl.textContent = state.inviteCode;
+				const code = String(state.inviteCode).toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6);
+				codeEl.textContent = code;
 				codeEl.style.display = 'block';
 				statusEl.textContent = 'Wachten op spelers...';
+				if (qrWrap && qrImg && qrLink) {
+					const joinUrl = new URL('multiplayer.html', window.location.href);
+					joinUrl.searchParams.set('join', code);
+					const href = joinUrl.href;
+					qrImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=260x260&margin=0&data=${encodeURIComponent(href)}`;
+					qrLink.href = href;
+					qrWrap.style.display = 'flex';
+				}
+			} else if (qrWrap) {
+				qrWrap.style.display = 'none';
 			}
 
 			if (state.phase === 'choosingGoals' || state.phase === 'choosingStartDeck') {
@@ -1076,31 +1170,32 @@
 		}
 
 		// ── Game Rendering ──
-		function renderGame(state) {
-			renderBoard(state.boardState);
-			renderScoreboard(state);
+		function renderGame(state, prevState) {
+			renderBoard(state.boardState, prevState?.boardState || null);
+			renderScoreboard(state, prevState || null);
 			renderTurnInfo(state);
 			renderCurrentHand(state);
 			updateTimer(state);
 		}
 
 		// ── Board ──
-		function renderBoard(boardState) {
+		function renderBoard(boardState, prevBoardState) {
 			const container = document.getElementById('tv-board');
 			if (!container || !boardState) return;
+			const justPlaced = collectNewlyActivatedCells(prevBoardState, boardState);
 
 			const zones = boardState.zones;
 			container.innerHTML = `
 				<div class="tv-board-col">
-					${renderZone('yellow', zones.yellow, 'Geel')}
-					${renderZone('green', zones.green, 'Groen')}
+					${renderZone('yellow', zones.yellow, justPlaced)}
+					${renderZone('green', zones.green, justPlaced)}
 				</div>
 				<div class="tv-board-col">
-					${renderZone('blue', zones.blue, 'Blauw')}
+					${renderZone('blue', zones.blue, justPlaced)}
 				</div>
 				<div class="tv-board-col">
-					${renderRedZone(zones.red)}
-					${renderZone('purple', zones.purple, 'Paars')}
+					${renderRedZone(zones.red, justPlaced)}
+					${renderZone('purple', zones.purple, justPlaced)}
 				</div>
 			`;
 
@@ -1131,7 +1226,51 @@
 			red: '#b56069', purple: '#8f76b8'
 		};
 
-		function renderCell(cell, zoneName, subgridId) {
+		function buildCellKey(zoneName, subgridId, x, y) {
+			return `${zoneName}|${subgridId || ''}|${x},${y}`;
+		}
+
+		function getCellFromBoard(boardState, zoneName, subgridId, x, y) {
+			if (!boardState?.zones) return null;
+			if (zoneName === 'red') {
+				const sgs = boardState.zones.red?.subgrids || [];
+				const sg = sgs.find(s => s.id === subgridId);
+				return sg?.cells?.[`${x},${y}`] || null;
+			}
+			return boardState.zones?.[zoneName]?.cells?.[`${x},${y}`] || null;
+		}
+
+		function collectNewlyActivatedCells(prevBoardState, boardState) {
+			const out = new Set();
+			if (!boardState?.zones) return out;
+
+			for (const zoneName of ['yellow', 'green', 'blue', 'purple']) {
+				const zone = boardState.zones[zoneName];
+				for (const cell of Object.values(zone?.cells || {})) {
+					if (!cell) continue;
+					const now = !!(cell.active || cell.playerId);
+					if (!now) continue;
+					const prev = getCellFromBoard(prevBoardState, zoneName, null, cell.x, cell.y);
+					const before = !!(prev?.active || prev?.playerId);
+					if (!before) out.add(buildCellKey(zoneName, null, cell.x, cell.y));
+				}
+			}
+
+			for (const sg of (boardState.zones.red?.subgrids || [])) {
+				for (const cell of Object.values(sg?.cells || {})) {
+					if (!cell) continue;
+					const now = !!(cell.active || cell.playerId);
+					if (!now) continue;
+					const prev = getCellFromBoard(prevBoardState, 'red', sg.id, cell.x, cell.y);
+					const before = !!(prev?.active || prev?.playerId);
+					if (!before) out.add(buildCellKey('red', sg.id, cell.x, cell.y));
+				}
+			}
+
+			return out;
+		}
+
+		function renderCell(cell, zoneName, subgridId, justPlacedSet) {
 			if (!cell) return '<div class="tv-cell void"></div>';
 
 			const flags = cell.flags || [];
@@ -1144,6 +1283,7 @@
 			if (flags.includes('outer-ring-0')) classes.push('outer-ring-0');
 			if (flags.includes('outer-ring-1')) classes.push('outer-ring-1');
 			if (zoneName === 'green' && flags.includes('end')) classes.push('green-end');
+			if (justPlacedSet?.has(buildCellKey(zoneName, subgridId, cell.x, cell.y))) classes.push('just-placed');
 
 			// Background color
 			let style = '';
@@ -1160,8 +1300,7 @@
 			let inner = '';
 			if (cell.bonusSymbol && !isActive) {
 				const bg = bonusColors[cell.bonusSymbol] || '#888';
-				const bonusLabel = cell.bonusSymbol === 'any' ? '★' : cell.bonusSymbol.charAt(0).toUpperCase();
-				inner += `<span class="tv-bonus-dot" style="background:${bg}"><span style="font-size:9px;font-weight:700;color:rgba(0,0,0,0.5);line-height:1">${bonusLabel}</span></span>`;
+				inner += `<span class="tv-bonus-dot" style="background:${bg}"></span>`;
 			}
 			if (flags.includes('gold') && !isActive) {
 				inner += '<span class="tv-gold-dot"></span>';
@@ -1175,7 +1314,7 @@
 			return `<div class="${classes.join(' ')}" ${dataAttrs} style="${style}">${inner}</div>`;
 		}
 
-		function renderZone(name, zoneData, label) {
+		function renderZone(name, zoneData, justPlacedSet) {
 			if (!zoneData) return '';
 			const zoneRows = zoneData.rows || 0;
 			const zoneCols = zoneData.cols || 0;
@@ -1187,13 +1326,12 @@
 				for (let x = 0; x < zoneCols; x++) {
 					const key = `${x},${y}`;
 					const cell = cells[key];
-					cellsHtml += renderCell(cell, name, null);
+					cellsHtml += renderCell(cell, name, null, justPlacedSet);
 				}
 			}
 
 			return `
 				<div class="tv-zone tv-zone-${name}">
-					<span class="tv-zone-label">${label}</span>
 					<div class="tv-grid" style="grid-template-columns: repeat(${zoneCols}, var(--tv-cell-size));">
 						${cellsHtml}
 					</div>
@@ -1201,7 +1339,7 @@
 			`;
 		}
 
-		function renderRedZone(redData) {
+		function renderRedZone(redData, justPlacedSet) {
 			if (!redData) return '';
 			const subgrids = redData.subgrids || [];
 			if (subgrids.length === 0) return '';
@@ -1217,7 +1355,7 @@
 				for (let y = 0; y < sgRows; y++) {
 					for (let x = 0; x < sgCols; x++) {
 						const key = `${x},${y}`;
-						cellsHtml += renderCell(sgCells[key], 'red', sg.id);
+						cellsHtml += renderCell(sgCells[key], 'red', sg.id, justPlacedSet);
 					}
 				}
 
@@ -1227,7 +1365,7 @@
 				const totalCount = allCells.length;
 				const fillPct = totalCount > 0 ? Math.round((filledCount / totalCount) * 100) : 0;
 				const ptsLabel = sg.targetPoints
-					? `<span class="tv-zone-label" style="font-size:0.55rem;top:-6px;right:8px;left:auto;">${sg.targetPoints}pt</span>`
+					? `<span class="tv-red-target">${sg.targetPoints}pt</span>`
 					: '';
 
 				subgridsHtml += `
@@ -1243,14 +1381,13 @@
 
 			return `
 				<div class="tv-zone tv-zone-red">
-					<span class="tv-zone-label">Rood</span>
 					<div class="tv-red-group">${subgridsHtml}</div>
 				</div>
 			`;
 		}
 
 		// ── Scoreboard (with player cards) ──
-		function renderScoreboard(state) {
+		function renderScoreboard(state, prevState) {
 			const container = document.getElementById('tv-scoreboard');
 			if (!container) return;
 
@@ -1269,6 +1406,8 @@
 			})).sort((a, b) => b.score - a.score);
 
 			container.innerHTML = sorted.map((p, i) => {
+				const prevScore = prevState?.players?.[p.pid]?.score || 0;
+				const scoreUpClass = p.score > prevScore ? 'score-up' : '';
 				// Render mini cards for this player
 				let cardsHtml = '';
 				const hand = p.hand;
@@ -1291,7 +1430,7 @@
 										: '<div class="tv-mini-cell"></div>';
 								}
 							}
-							return `<div class="tv-player-mini-card" style="grid-template-columns: repeat(${cols}, 7px);">${miniCells}</div>`;
+							return `<div class="tv-player-mini-card" style="grid-template-columns: repeat(${cols}, 10px);">${miniCells}</div>`;
 						}).join('') + '</div>';
 					} else {
 						// Only count
@@ -1303,7 +1442,7 @@
 				}
 
 				return `
-					<div class="tv-score-row ${p.isCurrent ? 'current-turn' : ''}">
+					<div class="tv-score-row ${p.isCurrent ? 'current-turn' : ''} ${scoreUpClass}">
 						<div style="display:flex;align-items:center;gap:10px;flex:1;min-width:0;">
 							<span class="tv-score-rank">${i + 1}</span>
 							<div style="flex:1;min-width:0;">

@@ -460,6 +460,41 @@ html, body {
 	margin-bottom: 8px;
 }
 
+.mp-invite-share-row {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 18px;
+	flex-wrap: wrap;
+}
+
+.mp-invite-qr-wrap {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 6px;
+}
+
+.mp-invite-qr {
+	width: 104px;
+	height: 104px;
+	padding: 6px;
+	background: #fff;
+	border-radius: 10px;
+	border: 1px solid rgba(255,255,255,0.18);
+	object-fit: contain;
+}
+
+.mp-invite-qr-link {
+	font-size: 0.72rem;
+	color: var(--mp-text-dim);
+	text-decoration: none;
+}
+
+.mp-invite-qr-link:hover {
+	color: var(--mp-accent);
+}
+
 .mp-invite-code {
 	display: inline-block;
 	font-size: 2.5rem;

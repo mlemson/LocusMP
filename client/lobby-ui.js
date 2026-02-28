@@ -415,6 +415,10 @@ class LocusLobbyUI {
 
 		// Determine the absolute URL for tv.html
 		const tvUrl = new URL('tv.html', window.location.href).href;
+		const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent) ||
+			(navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+		const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) ||
+			(navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 
 		// Initialize BroadcastChannel always (needed for same-origin tabs/popups)
 		this._initTVChannel();
@@ -424,6 +428,9 @@ class LocusLobbyUI {
 		if ('PresentationRequest' in window) {
 			try {
 				const req = new PresentationRequest([tvUrl]);
+				if (navigator.presentation) {
+					try { navigator.presentation.defaultRequest = req; } catch (_) {}
+				}
 
 				// Monitor availability of external displays
 				req.getAvailability?.()?.then(avail => {
@@ -471,7 +478,15 @@ class LocusLobbyUI {
 					this._startTVHeartbeat();
 				}).catch(err => {
 					console.log('[Locus TV] Presentation API geweigerd of geen displays:', err?.message);
-					// Fallback: open same-device popup window
+					if (isMobile) {
+						if (isIOS) {
+							this._showAirPlayGuide();
+						} else {
+							this._showToast('Geen TV-cast apparaat gevonden. Gebruik Cast/Scherm delen op je telefoon.', 'warning');
+							this._tvCastActive = false;
+						}
+						return;
+					}
 					this._tvPostMessage({ type: 'theme', theme });
 					this._openTVWindow();
 				});
@@ -481,8 +496,17 @@ class LocusLobbyUI {
 			}
 		}
 
-		// Fallback: open tv.html in nieuw venster/tab met BroadcastChannel
-		// Werkt op alle platforms: iOS, Android, desktop
+		if (isMobile) {
+			if (isIOS) {
+				this._showAirPlayGuide();
+			} else {
+				this._showToast('Deze browser ondersteunt geen directe TV-cast. Gebruik Cast/Scherm delen op je telefoon.', 'warning');
+				this._tvCastActive = false;
+			}
+			return;
+		}
+
+		// Fallback desktop: open tv.html in nieuw venster met BroadcastChannel
 		this._tvPostMessage({ type: 'theme', theme });
 		this._openTVWindow();
 	}
@@ -1057,14 +1081,32 @@ class LocusLobbyUI {
 
 	_showWaitingRoom(inviteCode, isHost) {
 		this._showScreen('waiting-screen');
+		const normalizedCode = String(inviteCode || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6);
 		const codeDisplay = this.elements['invite-code-display'];
 		if (codeDisplay) {
-			codeDisplay.textContent = inviteCode;
+			codeDisplay.textContent = normalizedCode || inviteCode;
 			codeDisplay.onclick = () => {
-				navigator.clipboard?.writeText(inviteCode).then(() => {
+				navigator.clipboard?.writeText(normalizedCode || inviteCode).then(() => {
 					this._showToast('Code gekopieerd!', 'success');
 				});
 			};
+		}
+
+		const inviteQrImg = document.getElementById('invite-qr-img');
+		const inviteQrLink = document.getElementById('invite-qr-link');
+		if (inviteQrImg || inviteQrLink) {
+			const joinUrl = new URL('multiplayer.html', window.location.href);
+			if (normalizedCode) joinUrl.searchParams.set('join', normalizedCode);
+			const joinHref = joinUrl.href;
+			const qrSrc = `https://api.qrserver.com/v1/create-qr-code/?size=220x220&margin=0&data=${encodeURIComponent(joinHref)}`;
+			if (inviteQrImg) {
+				inviteQrImg.src = qrSrc;
+				inviteQrImg.style.display = normalizedCode ? 'block' : 'none';
+			}
+			if (inviteQrLink) {
+				inviteQrLink.href = joinHref;
+				inviteQrLink.style.display = normalizedCode ? 'inline-block' : 'none';
+			}
 		}
 
 		const startBtn = this.elements['start-game-btn'];

@@ -38,28 +38,6 @@
 
 			<div class="mp-lobby-spacer"></div>
 
-			<div class="mp-settings-row">
-				<div class="mp-input-group" style="flex:1;">
-					<label for="map-size-select">Kaart</label>
-					<select id="map-size-select">
-						<option value="2">Klein</option>
-						<option value="4" selected>Middel</option>
-						<option value="6">Groot</option>
-						<option value="8">Mega</option>
-					</select>
-				</div>
-				<div class="mp-input-group" style="flex:1;">
-					<label for="cards-per-player-select">Kaarten</label>
-					<select id="cards-per-player-select">
-						<option value="4">4</option>
-						<option value="6">6</option>
-						<option value="8" selected>8</option>
-						<option value="10">10</option>
-						<option value="12">12</option>
-					</select>
-				</div>
-			</div>
-
 			<button id="create-game-btn" class="mp-btn mp-btn-primary">
 				🎮 Nieuw Spel
 			</button>
@@ -75,6 +53,31 @@
 			<button id="join-game-btn" class="mp-btn mp-btn-secondary">
 				🔗 Deelnemen
 			</button>
+
+			<div id="host-settings-block">
+				<div class="mp-divider"><span>Host instellingen</span></div>
+				<div class="mp-settings-row">
+					<div class="mp-input-group" style="flex:1;">
+						<label for="map-size-select">Kaart</label>
+						<select id="map-size-select">
+							<option value="2">Klein</option>
+							<option value="4" selected>Middel</option>
+							<option value="6">Groot</option>
+							<option value="8">Mega</option>
+						</select>
+					</div>
+					<div class="mp-input-group" style="flex:1;">
+						<label for="cards-per-player-select">Kaarten</label>
+						<select id="cards-per-player-select">
+							<option value="4">4</option>
+							<option value="6">6</option>
+							<option value="8" selected>8</option>
+							<option value="10">10</option>
+							<option value="12">12</option>
+						</select>
+					</div>
+				</div>
+			</div>
 		</div>
 	</div>
 
@@ -87,8 +90,16 @@
 
 			<div class="mp-invite-section">
 				<p>Deel deze code met je medespelers:</p>
-				<div id="invite-code-display" class="mp-invite-code" title="Klik om te kopiëren">------</div>
-				<small>Klik om te kopiëren</small>
+				<div class="mp-invite-share-row">
+					<div>
+						<div id="invite-code-display" class="mp-invite-code" title="Klik om te kopiëren">------</div>
+						<small>Klik om te kopiëren</small>
+					</div>
+					<div class="mp-invite-qr-wrap">
+						<img id="invite-qr-img" class="mp-invite-qr" alt="QR code om direct te joinen" />
+						<a id="invite-qr-link" class="mp-invite-qr-link" href="#" target="_blank" rel="noopener">Open join-link</a>
+					</div>
+				</div>
 			</div>
 
 			<div id="waiting-status" class="mp-player-count">0/4 spelers</div>
@@ -384,8 +395,28 @@
 			setTimeout(_bootstrapApp, 150);
 		});
 
+		function _applyJoinCodeFromUrl() {
+			try {
+				const url = new URL(window.location.href);
+				const raw = (url.searchParams.get('join') || url.searchParams.get('code') || url.searchParams.get('invite') || '').toUpperCase();
+				const code = raw.replace(/[^A-Z0-9]/g, '').slice(0, 6);
+				if (!code || code.length !== 6) return;
+
+				const inviteInput = document.getElementById('invite-code-input');
+				if (inviteInput) inviteInput.value = code;
+				const p2pInput = document.getElementById('p2p-room-code-input');
+				if (p2pInput) p2pInput.value = code;
+
+				const nameInput = document.getElementById('player-name-input');
+				if (nameInput && !nameInput.value) {
+					nameInput.focus();
+				}
+			} catch (_) {}
+		}
+
 		async function _bootstrapApp() {
 			_initThemeSwitcher();
+			_applyJoinCodeFromUrl();
 			await _setLobbyVersionBadge();
 
 			// Detecteer of Socket.IO server beschikbaar is
@@ -438,6 +469,7 @@
 			// P2P knoppen beschikbaar als PeerJS geladen is
 			if (hasPeerJS) {
 				_setupP2PButtons(mp);
+				_applyJoinCodeFromUrl();
 				await _tryAutoReconnectP2P(hasSocketIO);
 			} else {
 				// Geen PeerJS en geen Socket.IO → toon foutmelding
@@ -602,6 +634,10 @@
 				</button>
 			`;
 			lobbyCard.appendChild(p2pSection);
+			if (!hasServer) {
+				const hostSettings = document.getElementById('host-settings-block');
+				if (hostSettings) p2pSection.appendChild(hostSettings);
+			}
 
 			// P2P Host
 			document.getElementById('p2p-host-btn').addEventListener('click', async () => {
