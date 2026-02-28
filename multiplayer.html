@@ -39,19 +39,7 @@
 			<div class="mp-lobby-spacer"></div>
 
 			<div class="mp-settings-row">
-				<div class="mp-input-group mp-third">
-					<label for="max-players-select">Spelers</label>
-					<select id="max-players-select">
-						<option value="2">2</option>
-						<option value="3">3</option>
-						<option value="4" selected>4</option>
-						<option value="5">5</option>
-						<option value="6">6</option>
-						<option value="7">7</option>
-						<option value="8">8</option>
-					</select>
-				</div>
-				<div class="mp-input-group mp-third">
+				<div class="mp-input-group" style="flex:1;">
 					<label for="map-size-select">Kaart</label>
 					<select id="map-size-select">
 						<option value="2">Klein</option>
@@ -60,7 +48,7 @@
 						<option value="8">Mega</option>
 					</select>
 				</div>
-				<div class="mp-input-group mp-third">
+				<div class="mp-input-group" style="flex:1;">
 					<label for="cards-per-player-select">Kaarten</label>
 					<select id="cards-per-player-select">
 						<option value="4">4</option>
@@ -341,7 +329,7 @@
 			const buildTag = `${now.getFullYear()}.${pad(now.getMonth() + 1)}.${pad(now.getDate())}-${pad(now.getHours())}${pad(now.getMinutes())}`;
 			const dateText = now.toLocaleDateString('nl-BE', { day: '2-digit', month: '2-digit', year: 'numeric' });
 			const timeText = now.toLocaleTimeString('nl-BE', { hour: '2-digit', minute: '2-digit' });
-			const badgeText = `Build ${buildTag} • ${dateText} ${timeText}`;
+			const badgeText = `Build ${buildTag}`;
 			window.__locusBuildMeta = { buildDate: now, badgeText };
 			badgeEl.textContent = badgeText;
 			badgeEl.title = badgeText;
@@ -597,10 +585,7 @@
 			p2pSection.className = 'mp-p2p-section';
 			p2pSection.innerHTML = `
 				<div class="mp-divider"><span>${hasServer ? 'of direct spelen' : 'Direct Spelen'}</span></div>
-				<button id="p2p-host-btn" class="mp-btn mp-btn-primary mp-btn-p2p-host">
-					🌐 Host Spel
-				</button>
-				<div class="mp-input-group" style="margin-top: 10px;">
+				<div class="mp-input-group">
 					<label for="p2p-room-code-input">Spelcode</label>
 					<input type="text" id="p2p-room-code-input" placeholder="bv. A3BK7X"
 						   maxlength="6" autocomplete="off" style="text-transform: uppercase; letter-spacing: 4px; text-align: center;" />
@@ -608,9 +593,10 @@
 				<button id="p2p-join-btn" class="mp-btn mp-btn-secondary" style="margin-top: 4px;">
 					🔗 Deelnemen
 				</button>
-				<small style="display:block; text-align:center; margin-top:6px; opacity:0.6;">
-					Direct verbinden — geen server nodig
-				</small>
+				<div class="mp-divider" style="margin-top: 12px;"><span>of host zelf</span></div>
+				<button id="p2p-host-btn" class="mp-btn mp-btn-primary mp-btn-p2p-host">
+					🌐 Host Spel
+				</button>
 				<button id="p2p-debug-btn" style="display:none;margin-top:8px;padding:4px 10px;font-size:11px;opacity:0.5;background:none;border:1px solid #666;color:#999;border-radius:6px;cursor:pointer;">
 					🐛 Debug Log
 				</button>
@@ -632,7 +618,7 @@
 					return;
 				}
 
-				const maxPlayers = Number(document.getElementById('max-players-select')?.value || 4);
+				const maxPlayers = 8;
 				const cardsPerPlayer = Number(document.getElementById('cards-per-player-select')?.value || 8);
 				const mapSize = Number(document.getElementById('map-size-select')?.value || 4);
 

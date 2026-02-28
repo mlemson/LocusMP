@@ -3369,6 +3369,7 @@ function undoMove(gameState, playerId) {
 
 	// Niets om ongedaan te maken
 	return { error: 'Niets om ongedaan te maken' };
+}
 
 /** Ga naar de volgende beurt — sla spelers zonder kaarten EN zonder bonussen over */
 function advanceTurn(gameState) {

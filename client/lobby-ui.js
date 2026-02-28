@@ -789,7 +789,7 @@ class LocusLobbyUI {
 			return;
 		}
 
-		const maxPlayers = Number(this.elements['max-players-select']?.value) || 4;
+		const maxPlayers = 8;
 		const cardsPerPlayer = Number(this.elements['cards-per-player-select']?.value) || 8;
 		const mapSize = Number(this.elements['map-size-select']?.value) || 4;
 
@@ -1301,9 +1301,6 @@ class LocusLobbyUI {
 				}
 			});
 		});
-		} catch (err) {
-			console.error('[Locus UI] _onGoalPhase ERROR:', err);
-		}
 	}
 
 	_onStartDeckPhase() {
