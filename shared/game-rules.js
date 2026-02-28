@@ -491,8 +491,8 @@ function generateLevel1Board(rng, level, playerCount) {
 		placeGoldFlags(zones.yellow, rng, 2);
 		placeBonusSymbols(zones.yellow, rng, 4);
 	} else if (world === 2) {
-		const yellowCols = 11;
-		const yellowRows = 7 + playerTier;
+		const yellowCols = 13;
+		const yellowRows = 6 + playerTier;
 		const yellowBold = [];
 		for (let y = 0; y < yellowRows; y++) {
 			yellowBold.push({ x: 0, y });
@@ -511,8 +511,8 @@ function generateLevel1Board(rng, level, playerCount) {
 		placeGoldFlags(zones.yellow, rng, 4);
 		placeBonusSymbols(zones.yellow, rng, 6);
 	} else {
-		const yellowCols = 12;
-		const yellowRows = 8 + playerTier;
+		const yellowCols = 14;
+		const yellowRows = 7 + playerTier;
 		const yellowBold = [];
 		for (let y = 0; y < yellowRows; y++) {
 			yellowBold.push({ x: 0, y });
@@ -585,7 +585,7 @@ function generateLevel1Board(rng, level, playerCount) {
 	// ══════════════════════════════════════════
 	if (world === 1) {
 		const blueWidth = 4 + playerTier;
-		const blueHeight = 20;
+		const blueHeight = 21;
 		const blueBold = [];
 		const blueBoldRows = [];
 		for (let r = 0; r < blueHeight; r += 5) { blueBoldRows.push(r); }

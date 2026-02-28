@@ -69,6 +69,7 @@ class LocusLobbyUI {
 		this._activeSelections = {};
 		this._touchDragScrollLocked = false;
 		this._ignoreNextBonusClickUntil = 0;
+		this._cardTransforms = {};
 
 		// TV Cast / BroadcastChannel + Presentation API
 		this._tvChannel = null;
@@ -1936,8 +1937,13 @@ class LocusLobbyUI {
 		}
 
 		const cardPlayed = this.mp.gameState?._cardPlayedThisTurn || false;
+		const handIds = new Set(hand.map(c => c.id));
+		for (const cardId of Object.keys(this._cardTransforms || {})) {
+			if (!handIds.has(cardId)) delete this._cardTransforms[cardId];
+		}
 
 		container.innerHTML = hand.map(card => {
+			const renderMatrix = this._getTransformedCardMatrix(card);
 			const colorStyle = card.isGolden
 				? `background: linear-gradient(135deg, ${card.color?.code || '#f5d76e'}, #f5d76e, ${card.color?.code || '#f5d76e'})`
 				: card.color?.code === 'rainbow'
@@ -1965,7 +1971,7 @@ class LocusLobbyUI {
 					 touch-action="none">
 					<div class="mp-card-color" style="${colorStyle}"></div>
 					<div class="mp-card-shape">
-						${this._renderMiniGrid(card.matrix, card.color)}
+						${this._renderMiniGrid(renderMatrix, card.color)}
 					</div>
 					<div class="mp-card-name">${this._escapeHtml(card.shapeName)}</div>
 					<div class="mp-card-info">
@@ -2106,13 +2112,14 @@ class LocusLobbyUI {
 
 		const Rules = window.LocusGameRules;
 		if (!Rules) return;
+		const transform = this._getCardTransform(card.id);
 
 		// State setup
 		this._dragState = {
 			card,
-			matrix: Rules.cloneMatrix(card.matrix),
-			rotation: 0,
-			mirrored: false,
+			matrix: this._buildCardMatrix(card, transform.rotation, transform.mirrored),
+			rotation: transform.rotation,
+			mirrored: transform.mirrored,
 			originEl: cardEl
 		};
 		this._isDragging = true;
@@ -2291,7 +2298,6 @@ class LocusLobbyUI {
 		const inHand = target?.closest?.('.mp-card');
 		if (!insideBoard && !inControls && !inHand) {
 			this._cancelDrag();
-			this._showToast('Plaatsing geannuleerd', 'info');
 		}
 	};
 
@@ -2635,7 +2641,6 @@ class LocusLobbyUI {
 				const inBoard = e.target.closest('#mp-board-container .mp-grid, #mp-board-container .mp-zone');
 				if (!inBoard) {
 					this._cancelDrag();
-					this._showToast('Plaatsing geannuleerd', 'info');
 				}
 				return;
 			}
@@ -2710,6 +2715,7 @@ class LocusLobbyUI {
 			this._dragState.rotation = (this._dragState.rotation + 1) % 4;
 			this._dragState.matrix = Rules.rotateMatrixN(this._dragState.card.matrix, this._dragState.rotation);
 			if (this._dragState.mirrored) this._dragState.matrix = Rules.mirrorMatrix(this._dragState.matrix);
+			this._saveCardTransform(this._dragState.card.id, this._dragState.rotation, this._dragState.mirrored);
 			this._updateGhost();
 			this._clearPreview();
 			this._updateOriginCardVisual();
@@ -2729,6 +2735,7 @@ class LocusLobbyUI {
 			this._dragState.mirrored = !this._dragState.mirrored;
 			this._dragState.matrix = Rules.rotateMatrixN(this._dragState.card.matrix, this._dragState.rotation);
 			if (this._dragState.mirrored) this._dragState.matrix = Rules.mirrorMatrix(this._dragState.matrix);
+			this._saveCardTransform(this._dragState.card.id, this._dragState.rotation, this._dragState.mirrored);
 			this._updateGhost();
 			this._clearPreview();
 			this._updateOriginCardVisual();
@@ -2746,6 +2753,36 @@ class LocusLobbyUI {
 		if (shapeEl) {
 			shapeEl.innerHTML = this._renderMiniGrid(this._dragState.matrix, this._dragState.card.color);
 		}
+	}
+
+	_getCardTransform(cardId) {
+		const saved = this._cardTransforms?.[cardId];
+		return {
+			rotation: Number(saved?.rotation) % 4 || 0,
+			mirrored: !!saved?.mirrored
+		};
+	}
+
+	_saveCardTransform(cardId, rotation, mirrored) {
+		if (!cardId) return;
+		this._cardTransforms[cardId] = {
+			rotation: ((Number(rotation) || 0) + 4) % 4,
+			mirrored: !!mirrored
+		};
+	}
+
+	_buildCardMatrix(card, rotation = 0, mirrored = false) {
+		const Rules = window.LocusGameRules;
+		if (!Rules || !card?.matrix) return card?.matrix || [];
+		let matrix = Rules.rotateMatrixN(card.matrix, ((Number(rotation) || 0) + 4) % 4);
+		if (mirrored) matrix = Rules.mirrorMatrix(matrix);
+		return matrix;
+	}
+
+	_getTransformedCardMatrix(card) {
+		if (!card) return [];
+		const transform = this._getCardTransform(card.id);
+		return this._buildCardMatrix(card, transform.rotation, transform.mirrored);
 	}
 
 	_cancelDrag() {
@@ -3100,7 +3137,6 @@ class LocusLobbyUI {
 
 			const cell = e.target.closest('.mp-cell:not(.void)');
 			if (!cell) {
-				this._showToast('Klik op een cel of behoud de groene preview om te plaatsen', 'info');
 				return;
 			}
 
@@ -3437,7 +3473,6 @@ class LocusLobbyUI {
 			const pointBoardHit = pointEl?.closest?.('#mp-board-container .mp-cell:not(.void), #mp-board-container .mp-grid, #mp-board-container .mp-zone');
 			if (!directBoardHit && !pointBoardHit) {
 				this._setTouchDragScrollLock(false);
-				this._showToast('Bonus niet geplaatst — zet hem op het grid om te plaatsen', 'info');
 				return;
 			}
 
@@ -3514,7 +3549,6 @@ class LocusLobbyUI {
 			// If still not placed, release scroll lock so user can retry
 			if (!placed && this._bonusMode) {
 				this._setTouchDragScrollLock(false);
-				this._showToast('Sleep de bonus naar een geldige plek', 'info');
 			}
 			return;
 		}
@@ -3525,7 +3559,6 @@ class LocusLobbyUI {
 		const inBonusBar = target?.closest?.('#mp-bonus-bar, .mp-bonus-btn');
 		if (!insideBoard && !inControls && !inBonusBar) {
 			this._cancelBonusMode();
-			this._showToast('Bonusplaatsing geannuleerd', 'info');
 		}
 	}
 
