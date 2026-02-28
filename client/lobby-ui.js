@@ -734,6 +734,12 @@ class LocusLobbyUI {
 		this._tvPostMessage({ type: 'levelComplete', data: { levelScores: scores, levelWinner: winner, level } });
 	}
 
+	/** Forward time bomb action to TV. */
+	_broadcastTVTimeBomb(data) {
+		if (!this._tvCastActive) return;
+		this._tvPostMessage({ type: 'timeBomb', data });
+	}
+
 	/** Stop TV cast and close all connections. */
 	stopTVCast() {
 		this._tvCastActive = false;
@@ -1889,6 +1895,7 @@ class LocusLobbyUI {
 	_onTimeBombed(data) {
 		const { bomberPlayerName, bombedPlayerId, bombedPlayerName } = data;
 		const isMe = bombedPlayerId === this.mp.userId;
+		try { this._broadcastTVTimeBomb(data); } catch (_) {}
 
 		// Geluid
 		this._playBombSound();

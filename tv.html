@@ -526,6 +526,110 @@
 			border: 1px solid rgba(240,192,64,0.3);
 		}
 
+		/* ── Phase overlays (shop + final) ── */
+		.tv-phase-overlay {
+			position: fixed;
+			left: 50%;
+			top: 56%;
+			transform: translate(-50%, -50%);
+			width: min(760px, calc(100vw - 48px));
+			background: rgba(20,22,34,0.95);
+			border: 1px solid rgba(255,255,255,0.14);
+			border-radius: 16px;
+			box-shadow: 0 14px 38px rgba(0,0,0,0.45);
+			padding: 18px;
+			z-index: 45;
+			display: none;
+		}
+		.tv-phase-overlay.show {
+			display: block;
+		}
+		.tv-phase-title {
+			font-size: 1.3rem;
+			font-weight: 800;
+			letter-spacing: 0.5px;
+			margin-bottom: 8px;
+		}
+		.tv-phase-sub {
+			font-size: 0.88rem;
+			color: var(--tv-dim);
+			margin-bottom: 12px;
+		}
+		.tv-phase-list {
+			display: flex;
+			flex-direction: column;
+			gap: 7px;
+		}
+		.tv-phase-row {
+			display: flex;
+			align-items: center;
+			justify-content: space-between;
+			gap: 12px;
+			padding: 8px 10px;
+			border-radius: 9px;
+			background: rgba(255,255,255,0.04);
+			border: 1px solid rgba(255,255,255,0.08);
+		}
+		.tv-phase-row .name {
+			font-weight: 700;
+		}
+		.tv-phase-row .meta {
+			font-size: 0.83rem;
+			color: var(--tv-dim);
+		}
+		.tv-phase-row .ready {
+			font-size: 0.82rem;
+			font-weight: 700;
+		}
+		.tv-phase-row .ready.ok {
+			color: #7adf8d;
+		}
+		.tv-phase-row.winner {
+			border-color: rgba(240,192,64,0.45);
+			background: rgba(240,192,64,0.13);
+		}
+
+		/* ── Floating action feed ── */
+		.tv-action-feed {
+			position: fixed;
+			right: 14px;
+			top: 82px;
+			display: flex;
+			flex-direction: column;
+			gap: 8px;
+			z-index: 65;
+			pointer-events: none;
+		}
+		.tv-action-item {
+			min-width: 250px;
+			max-width: 360px;
+			padding: 9px 12px;
+			border-radius: 10px;
+			border: 1px solid rgba(255,255,255,0.15);
+			background: rgba(12,14,28,0.94);
+			box-shadow: 0 10px 24px rgba(0,0,0,0.35);
+			font-size: 0.9rem;
+			animation: tvActionIn 360ms cubic-bezier(0.2, 0.8, 0.2, 1), tvActionOut 320ms ease-in forwards;
+			animation-delay: 0ms, 2500ms;
+		}
+		.tv-action-item.score {
+			border-color: rgba(245,215,110,0.45);
+		}
+		.tv-action-item.bomb {
+			border-color: rgba(239,68,68,0.5);
+			background: rgba(45,18,18,0.92);
+		}
+		.tv-action-item.info {
+			border-color: rgba(99,102,241,0.45);
+		}
+		@keyframes tvActionIn {
+			0% { opacity: 0; transform: translateX(30px) scale(0.96); }
+			100% { opacity: 1; transform: translateX(0) scale(1); }
+		}
+		@keyframes tvActionOut {
+			to { opacity: 0; transform: translateX(26px) scale(0.98); }
+		}
+
 		/* ── Responsive: smaller TVs ── */
 		@media (max-width: 1200px) {
 			:root {
@@ -883,12 +987,26 @@
 		<div id="tv-taunt-text" class="tv-taunt-text"></div>
 	</div>
 
+	<div id="tv-action-feed" class="tv-action-feed"></div>
+
 	<!-- Level Complete overlay -->
 	<div id="tv-level-overlay" class="tv-level-overlay">
 		<div class="tv-level-card">
 			<h2 id="tv-level-title">Level Compleet!</h2>
 			<div id="tv-level-scores" class="tv-level-scores"></div>
 		</div>
+	</div>
+
+	<div id="tv-shop-overlay" class="tv-phase-overlay">
+		<div class="tv-phase-title">🛒 Shop Fase</div>
+		<div class="tv-phase-sub">Alle spelers kopen upgrades en markeren zich klaar.</div>
+		<div id="tv-shop-list" class="tv-phase-list"></div>
+	</div>
+
+	<div id="tv-final-overlay" class="tv-phase-overlay">
+		<div class="tv-phase-title">🏆 Eindscore</div>
+		<div id="tv-final-sub" class="tv-phase-sub"></div>
+		<div id="tv-final-list" class="tv-phase-list"></div>
 	</div>
 
 	<script>
@@ -907,6 +1025,7 @@
 		let timerInterval = null;
 		let presentationConn = null;
 		let ghostCells = []; // current preview ghost cells
+		let lastMoveHistoryLength = 0;
 
 		// ═══ SOUND EFFECTS (Web Audio API) ═══
 		let audioCtx = null;
@@ -972,6 +1091,10 @@
 					showTaunt(msg.data);
 					playTauntSound();
 					break;
+					case 'timeBomb':
+						showActionFeed(`💣 ${msg?.data?.bomberPlayerName || 'Speler'} bombardeert ${msg?.data?.bombedPlayerName || 'speler'}`, 'bomb');
+						playTauntSound();
+						break;
 				case 'levelComplete':
 					showLevelComplete(msg.data);
 					playLevelCompleteSound();
@@ -1088,6 +1211,8 @@
 				waitingEl.style.display = 'none';
 				gameEl.classList.add('active');
 				renderGame(state, prevState);
+				renderPhaseOverlays(state);
+				processActionEvents(state, prevState);
 				document.getElementById('tv-level-overlay').classList.remove('show');
 
 				// Sound effects based on state changes
@@ -1120,9 +1245,160 @@
 					waitingEl.style.display = 'none';
 				}
 				renderGame(state, prevState);
+				renderPhaseOverlays(state);
+				processActionEvents(state, prevState);
 			} else if (state.phase === 'ended') {
 				renderGame(state, prevState);
+				renderPhaseOverlays(state);
+				processActionEvents(state, prevState);
 			}
+		}
+
+		function showActionFeed(text, type = 'info') {
+			const feed = document.getElementById('tv-action-feed');
+			if (!feed || !text) return;
+			const item = document.createElement('div');
+			item.className = `tv-action-item ${type}`;
+			item.textContent = text;
+			feed.prepend(item);
+			while (feed.children.length > 5) {
+				feed.removeChild(feed.lastElementChild);
+			}
+			setTimeout(() => item.remove(), 2900);
+		}
+
+		function processActionEvents(state, prevState) {
+			if (!state || !prevState || !prevState.players) {
+				lastMoveHistoryLength = Array.isArray(state?.moveHistory) ? state.moveHistory.length : 0;
+				return;
+			}
+
+			const zoneLabels = {
+				yellow: 'geel',
+				green: 'groen',
+				blue: 'blauw',
+				red: 'rood',
+				purple: 'paars',
+				bonus: 'balance'
+			};
+
+			for (const pid of state.playerOrder || []) {
+				const player = state.players?.[pid];
+				const prevPlayer = prevState.players?.[pid];
+				if (!player || !prevPlayer) continue;
+
+				const bd = player.scoreBreakdown || {};
+				const prevBd = prevPlayer.scoreBreakdown || {};
+				let emittedBreakdown = false;
+
+				for (const zoneKey of ['yellow', 'green', 'blue', 'red', 'purple', 'bonus']) {
+					const now = Number(bd[zoneKey] || 0);
+					const before = Number(prevBd[zoneKey] || 0);
+					const delta = now - before;
+					if (delta > 0) {
+						emittedBreakdown = true;
+						showActionFeed(`+${delta} ${zoneLabels[zoneKey]} • ${player.name || 'Speler'}`, 'score');
+					}
+				}
+
+				if (!emittedBreakdown) {
+					const scoreDelta = Number(player.score || 0) - Number(prevPlayer.score || 0);
+					if (scoreDelta > 0) {
+						showActionFeed(`+${scoreDelta} totaal • ${player.name || 'Speler'}`, 'score');
+					}
+				}
+			}
+
+			const currentHistory = Array.isArray(state.moveHistory) ? state.moveHistory : [];
+			const previousLen = Array.isArray(prevState.moveHistory)
+				? prevState.moveHistory.length
+				: Math.max(0, lastMoveHistoryLength);
+			if (currentHistory.length > previousLen) {
+				const newEntries = currentHistory.slice(previousLen);
+				for (const entry of newEntries) {
+					if (entry?.timeBombed) {
+						const bombedName = state.players?.[entry.playerId]?.name || 'speler';
+						const bomberName = state.players?.[entry.bombedBy]?.name || 'speler';
+						showActionFeed(`💣 ${bomberName} bombardeert ${bombedName}`, 'bomb');
+					}
+					if (entry?.type === 'bonus-spawn' && Number(entry.spawned || 0) > 0) {
+						showActionFeed(`✨ +${entry.spawned} bonus spawns`, 'info');
+					}
+				}
+			}
+			lastMoveHistoryLength = currentHistory.length;
+		}
+
+		function renderPhaseOverlays(state) {
+			const shopOverlay = document.getElementById('tv-shop-overlay');
+			const finalOverlay = document.getElementById('tv-final-overlay');
+			if (!shopOverlay || !finalOverlay) return;
+
+			shopOverlay.classList.remove('show');
+			finalOverlay.classList.remove('show');
+
+			if (state.phase === 'shopping') {
+				renderShopOverlay(state);
+				shopOverlay.classList.add('show');
+			} else if (state.phase === 'ended') {
+				renderFinalOverlay(state);
+				finalOverlay.classList.add('show');
+			}
+		}
+
+		function renderShopOverlay(state) {
+			const listEl = document.getElementById('tv-shop-list');
+			if (!listEl) return;
+			const players = state.players || {};
+			const order = state.playerOrder || Object.keys(players);
+			listEl.innerHTML = order.map(pid => {
+				const p = players[pid] || {};
+				const ready = !!p.shopReady;
+				return `
+					<div class="tv-phase-row">
+						<div>
+							<div class="name">${esc(p.name || 'Speler')}</div>
+							<div class="meta">💰 ${Number(p.goldCoins || 0)} • Wins: ${Number(p.matchWins || 0)}</div>
+						</div>
+						<div class="ready ${ready ? 'ok' : ''}">${ready ? '✅ Klaar' : '⏳ Winkelt'}</div>
+					</div>
+				`;
+			}).join('');
+		}
+
+		function renderFinalOverlay(state) {
+			const subEl = document.getElementById('tv-final-sub');
+			const listEl = document.getElementById('tv-final-list');
+			if (!subEl || !listEl) return;
+
+			const finalScores = state.finalScores || {};
+			const players = state.players || {};
+			const rows = (state.playerOrder || Object.keys(players))
+				.map(pid => {
+					const fs = finalScores[pid] || {};
+					return {
+						pid,
+						name: players[pid]?.name || pid,
+						total: Number(fs.finalTotal ?? players[pid]?.score ?? 0),
+						wins: Number(fs.matchWins ?? players[pid]?.matchWins ?? 0),
+						coins: Number(fs.goldCoins ?? players[pid]?.goldCoins ?? 0)
+					};
+				})
+				.sort((a, b) => (b.wins - a.wins) || (b.total - a.total));
+
+			const winnerPid = state.winner || rows[0]?.pid || null;
+			const winnerName = winnerPid ? (players[winnerPid]?.name || winnerPid) : '—';
+			subEl.textContent = `Winnaar: ${winnerName}`;
+
+			listEl.innerHTML = rows.map((r, i) => `
+				<div class="tv-phase-row ${r.pid === winnerPid ? 'winner' : ''}">
+					<div>
+						<div class="name">${i === 0 ? '👑 ' : ''}${esc(r.name)}</div>
+						<div class="meta">Wins ${r.wins} • Goud ${r.coins}</div>
+					</div>
+					<div class="ready ok">${r.total} pt</div>
+				</div>
+			`).join('');
 		}
 
 		// ── Opponent Interaction (ghost preview on board) ──
