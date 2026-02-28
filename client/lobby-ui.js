@@ -55,7 +55,6 @@ class LocusLobbyUI {
 		this._mobileZoneScrollTops = { blue: null };
 		this._mobileSwipeStartX = null;
 		this._mobileSwipeStartY = null;
-		this._suppressMobileSwipeUntil = 0;
 		this._lastBonusBaseX = null;
 		this._lastBonusBaseY = null;
 		this._lastBonusZone = null;
@@ -2344,8 +2343,6 @@ class LocusLobbyUI {
 
 		const isTouchLikeRelease = e.pointerType === 'touch' || e.pointerType === 'pen';
 		if (isTouchLikeRelease) {
-			// Sterk verhoogde suppressie: voorkom zone-shift na plaatsing
-			this._suppressMobileSwipeUntil = Date.now() + 1200;
 			if (this._lastPreviewZone) {
 				const idx = this._getMobileZoneIndex(this._lastPreviewZone);
 				if (Number.isFinite(idx)) {
@@ -3129,7 +3126,6 @@ class LocusLobbyUI {
 				if (Number.isFinite(targetIdx)) {
 					this._lastMobileBoardIndex = targetIdx;
 					this._lastMobileZoneName = targetZone;
-					this._suppressMobileSwipeUntil = Date.now() + 650;
 				}
 				this._scrollMobileBoardToZone(targetZone, false);
 			}
@@ -3850,7 +3846,6 @@ class LocusLobbyUI {
 					if (rafId) return;
 					rafId = requestAnimationFrame(() => {
 						rafId = null;
-						if (Date.now() < (this._suppressMobileSwipeUntil || 0)) return;
 						const width = Math.max(1, boardEl.clientWidth || 1);
 						const idx = Math.max(0, Math.round(boardEl.scrollLeft / width));
 						const prevIdx = this._lastMobileBoardIndex;
@@ -3872,7 +3867,7 @@ class LocusLobbyUI {
 				}, { passive: true });
 
 				boardEl.addEventListener('touchend', (e) => {
-					if (this._isDragging || Date.now() < (this._suppressMobileSwipeUntil || 0)) {
+					if (this._isDragging) {
 						this._mobileSwipeStartX = null;
 						this._mobileSwipeStartY = null;
 						return;
