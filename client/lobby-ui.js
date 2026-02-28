@@ -4349,30 +4349,36 @@ class LocusLobbyUI {
 					${sorted[0].name} wint dit level met ${sorted[0].finalTotal} punten!
 				</div>
 				<div class="mp-level-scores">
-					${sorted.map((p, rank) => `
-						<div class="mp-level-score-row ${p.id === this.mp.userId ? 'is-me' : ''} ${rank === 0 ? 'winner' : ''}">
-							<span class="mp-result-rank">${rank === 0 ? '🥇' : rank === 1 ? '🥈' : rank === 2 ? '🥉' : rank + 1}</span>
-							<span class="mp-result-name">${this._escapeHtml(p.name)}</span>
-							<div class="mp-result-breakdown">
-								<span title="Doelstelling status">${p.objectiveAchieved ? '✅' : (p.objectiveFailed ? '❌' : '🎯')} ${this._escapeHtml(p.objectiveName || 'Doelstelling')}</span>
-								${p.objectiveAchieved && p.objectiveBonus ? `<span style="color:#f5d76e" title="Doelstelling punten">🎯:+${p.objectiveBonus}pt</span>` : ''}
-								${p.objectiveAchieved && p.objectiveCoins ? `<span style="color:#f5d76e" title="Doelstelling munten">🪙:+${p.objectiveCoins}</span>` : ''}
-								${p.objectiveAchieved && p.objectiveRandomBonuses ? `<span style="color:#92c28c" title="Doelstelling bonus">🎁:+${p.objectiveRandomBonuses}</span>` : ''}
-								${p.roundWinnerCoinsBonus ? `<span style="color:#f5d76e" title="Rondewinnaar munten">🥇+${p.roundWinnerCoinsBonus}🪙</span>` : ''}
-								${p.secondPlaceCoinsBonus ? `<span style="color:#e8e1c0" title="Tweede plek munten">🥈+${p.secondPlaceCoinsBonus}🪙</span>` : ''}
+					${sorted.map((p, rank) => {
+						const rewards = [];
+						if (p.objectiveAchieved && p.objectiveBonus) rewards.push(`<span class="mp-reward-tag objective">🎯 +${p.objectiveBonus} pt</span>`);
+						if (p.objectiveAchieved && p.objectiveCoins) rewards.push(`<span class="mp-reward-tag coins">🪙 +${p.objectiveCoins}</span>`);
+						if (p.objectiveAchieved && p.objectiveRandomBonuses) rewards.push(`<span class="mp-reward-tag bonus">🎁 +${p.objectiveRandomBonuses}</span>`);
+						if (p.roundWinnerCoinsBonus) rewards.push(`<span class="mp-reward-tag gold">🥇 +${p.roundWinnerCoinsBonus} 🪙</span>`);
+						if (p.secondPlaceCoinsBonus) rewards.push(`<span class="mp-reward-tag silver">🥈 +${p.secondPlaceCoinsBonus} 🪙</span>`);
+						return `
+						<div class="mp-level-card ${p.id === this.mp.userId ? 'is-me' : ''} ${rank === 0 ? 'winner' : ''}">
+							<div class="mp-card-header">
+								<span class="mp-card-rank">${rank === 0 ? '🥇' : rank === 1 ? '🥈' : rank === 2 ? '🥉' : rank + 1}</span>
+								<span class="mp-card-name">${this._escapeHtml(p.name)}</span>
+								<span class="mp-card-total">${p.finalTotal} pt</span>
+								<span class="mp-card-coins">💰 ${p.goldCoins}</span>
 							</div>
-							<div class="mp-result-breakdown">
-								<span style="color:#cfba51">G:${p.yellow || 0}</span>
-								<span style="color:#92c28c">Gr:${p.green || 0}</span>
-								<span style="color:#5689b0">B:${p.blue || 0}</span>
-								<span style="color:#b56069">R:${p.red || 0}</span>
-								<span style="color:#8f76b8">P:${p.purple || 0}</span>
-								${p.gold ? `<span style="color:#f5d76e">⬤:${p.gold}</span>` : ''}
+							<div class="mp-card-objective ${p.objectiveAchieved ? 'achieved' : (p.objectiveFailed ? 'failed' : '')}">
+								<span class="mp-obj-icon">${p.objectiveAchieved ? '✅' : (p.objectiveFailed ? '❌' : '🎯')}</span>
+								<span class="mp-obj-name">${this._escapeHtml(p.objectiveName || 'Doelstelling')}</span>
 							</div>
-							<span class="mp-result-total">${p.finalTotal} pt</span>
-							<span class="mp-gold-coins">💰 ${p.goldCoins}</span>
-						</div>
-					`).join('')}
+							${rewards.length ? `<div class="mp-card-rewards">${rewards.join('')}</div>` : ''}
+							<div class="mp-card-zones">
+								<span class="mp-zone-pill yellow">G ${p.yellow || 0}</span>
+								<span class="mp-zone-pill green">Gr ${p.green || 0}</span>
+								<span class="mp-zone-pill blue">B ${p.blue || 0}</span>
+								<span class="mp-zone-pill red">R ${p.red || 0}</span>
+								<span class="mp-zone-pill purple">P ${p.purple || 0}</span>
+								${p.gold ? `<span class="mp-zone-pill gold">⬤ ${p.gold}</span>` : ''}
+							</div>
+						</div>`;
+					}).join('')}
 				</div>
 				<div class="mp-level-winner" style="margin-top:8px; margin-bottom:10px;">
 					Ranglijst wins — eerste tot ${winsTarget} wins wint! (Level ${currentLevel}/${maxLevels})

@@ -2956,6 +2956,122 @@ body.mp-loading .mp-btn {
 	font-size: 0.9rem;
 }
 
+/* ── LEVEL-COMPLETE CARD LAYOUT ── */
+.mp-level-card {
+	padding: 14px 16px;
+	background: rgba(255,255,255,0.04);
+	border-radius: 12px;
+	border: 1px solid rgba(255,255,255,0.06);
+	text-align: left;
+}
+.mp-level-card.winner {
+	background: rgba(245, 215, 110, 0.08);
+	border-color: rgba(245, 215, 110, 0.35);
+}
+.mp-level-card.is-me {
+	border-color: rgba(100, 140, 255, 0.4);
+	background: rgba(100, 140, 255, 0.06);
+}
+
+/* Header row: rank + name + total + coins */
+.mp-card-header {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	margin-bottom: 8px;
+}
+.mp-card-rank {
+	font-size: 1.5rem;
+	line-height: 1;
+}
+.mp-card-name {
+	flex: 1;
+	font-weight: 700;
+	font-size: 1.05rem;
+}
+.mp-card-total {
+	font-weight: 800;
+	font-size: 1.35rem;
+	color: var(--mp-gold, #f5d76e);
+}
+.mp-card-coins {
+	font-size: 0.9rem;
+	color: #f5d76e;
+	font-weight: 600;
+	margin-left: 2px;
+}
+
+/* Objective line */
+.mp-card-objective {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	padding: 6px 10px;
+	margin-bottom: 8px;
+	border-radius: 8px;
+	background: rgba(255,255,255,0.04);
+	font-size: 0.88rem;
+}
+.mp-card-objective.achieved {
+	background: rgba(76, 175, 80, 0.12);
+}
+.mp-card-objective.failed {
+	background: rgba(239, 68, 68, 0.1);
+}
+.mp-obj-icon {
+	font-size: 1.1rem;
+}
+.mp-obj-name {
+	font-weight: 600;
+	opacity: 0.9;
+}
+
+/* Reward tags */
+.mp-card-rewards {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 6px;
+	margin-bottom: 8px;
+}
+.mp-reward-tag {
+	display: inline-flex;
+	align-items: center;
+	gap: 3px;
+	padding: 3px 10px;
+	border-radius: 20px;
+	font-size: 0.82rem;
+	font-weight: 600;
+	background: rgba(255,255,255,0.06);
+}
+.mp-reward-tag.objective { color: #f5d76e; }
+.mp-reward-tag.coins     { color: #f5d76e; }
+.mp-reward-tag.bonus     { color: #92c28c; }
+.mp-reward-tag.gold      { color: #ffd700; }
+.mp-reward-tag.silver    { color: #c0c0c0; }
+
+/* Zone score pills */
+.mp-card-zones {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 5px;
+}
+.mp-zone-pill {
+	display: inline-flex;
+	align-items: center;
+	gap: 2px;
+	padding: 3px 10px;
+	border-radius: 20px;
+	font-size: 0.8rem;
+	font-weight: 700;
+	background: rgba(255,255,255,0.06);
+}
+.mp-zone-pill.yellow { color: #cfba51; }
+.mp-zone-pill.green  { color: #92c28c; }
+.mp-zone-pill.blue   { color: #5689b0; }
+.mp-zone-pill.red    { color: #b56069; }
+.mp-zone-pill.purple { color: #8f76b8; }
+.mp-zone-pill.gold   { color: #f5d76e; }
+
 .mp-to-shop-btn {
 	width: 100%;
 	margin-top: 8px;
@@ -5399,6 +5515,35 @@ html.theme-aurora .mp-level-score-row.winner {
 	border: 1px solid rgba(252, 211, 77, 0.2);
 }
 
+html.theme-aurora .mp-level-card {
+	background: rgba(255,255,255,0.03);
+	border-color: rgba(99,102,241,0.12);
+	border-radius: 14px;
+}
+html.theme-aurora .mp-level-card.winner {
+	background: rgba(252, 211, 77, 0.06);
+	border-color: rgba(252, 211, 77, 0.22);
+}
+html.theme-aurora .mp-level-card.is-me {
+	border-color: rgba(99,102,241,0.3);
+	background: rgba(99,102,241,0.04);
+}
+html.theme-aurora .mp-card-objective {
+	background: rgba(255,255,255,0.03);
+}
+html.theme-aurora .mp-card-objective.achieved {
+	background: rgba(52,211,153,0.1);
+}
+html.theme-aurora .mp-card-objective.failed {
+	background: rgba(248,113,113,0.08);
+}
+html.theme-aurora .mp-reward-tag {
+	background: rgba(255,255,255,0.05);
+}
+html.theme-aurora .mp-zone-pill {
+	background: rgba(255,255,255,0.05);
+}
+
 /* Shop, card choice, taunt, timer, deck, startdeck, discard, bold, dots, etc. 
    — see enhanced versions in "Aurora Extended polish" section below */
 
@@ -7382,6 +7527,40 @@ html.theme-bloom .mp-level-score-row.winner {
 	background: linear-gradient(160deg, rgba(200,146,10,0.04), rgba(200,146,10,0.08));
 	border: 1px solid rgba(200,146,10,0.16);
 }
+
+html.theme-bloom .mp-level-card {
+	background: linear-gradient(180deg, #fdfbf6, #f5f0e8);
+	border: 1px solid rgba(180,160,130,0.10);
+	border-radius: 16px;
+}
+html.theme-bloom .mp-level-card.winner {
+	background: linear-gradient(160deg, rgba(200,146,10,0.04), rgba(200,146,10,0.08));
+	border-color: rgba(200,146,10,0.22);
+}
+html.theme-bloom .mp-level-card.is-me {
+	border-color: rgba(224,122,95,0.28);
+}
+html.theme-bloom .mp-card-objective {
+	background: rgba(61,52,41,0.03);
+}
+html.theme-bloom .mp-card-objective.achieved {
+	background: rgba(76,175,104,0.08);
+}
+html.theme-bloom .mp-card-objective.failed {
+	background: rgba(212,85,85,0.06);
+}
+html.theme-bloom .mp-reward-tag {
+	background: rgba(61,52,41,0.04);
+}
+html.theme-bloom .mp-zone-pill {
+	background: rgba(61,52,41,0.04);
+}
+html.theme-bloom .mp-zone-pill.yellow { color: #a08930; }
+html.theme-bloom .mp-zone-pill.green  { color: #4a8a5a; }
+html.theme-bloom .mp-zone-pill.blue   { color: #3a6a8a; }
+html.theme-bloom .mp-zone-pill.red    { color: #8a4a50; }
+html.theme-bloom .mp-zone-pill.purple { color: #6a5a8a; }
+html.theme-bloom .mp-zone-pill.gold   { color: #a08930; }
 
 /* ── Level overlay ── */
 html.theme-bloom .mp-level-overlay {
