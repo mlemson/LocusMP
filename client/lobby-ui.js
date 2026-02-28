@@ -50,7 +50,6 @@ class LocusLobbyUI {
 		this._oppPreviewCells = [];
 		this._interactionMoveThrottleTs = 0;
 		this._lastMobileBoardIndex = 0;
-		this._forcedMobileBoardIndex = null;
 		this._lastMobileZoneName = null;
 		this._forceBlueBottomOnce = false;
 		this._mobileZoneScrollTops = { blue: null };
@@ -2350,7 +2349,6 @@ class LocusLobbyUI {
 			if (this._lastPreviewZone) {
 				const idx = this._getMobileZoneIndex(this._lastPreviewZone);
 				if (Number.isFinite(idx)) {
-					this._forcedMobileBoardIndex = idx;
 					this._lastMobileBoardIndex = idx;
 					this._lastMobileZoneName = this._lastPreviewZone;
 				}
@@ -3129,7 +3127,6 @@ class LocusLobbyUI {
 			if (targetZone) {
 				const targetIdx = this._getMobileZoneIndex(targetZone);
 				if (Number.isFinite(targetIdx)) {
-					this._forcedMobileBoardIndex = targetIdx;
 					this._lastMobileBoardIndex = targetIdx;
 					this._lastMobileZoneName = targetZone;
 					this._suppressMobileSwipeUntil = Date.now() + 650;
@@ -3747,24 +3744,6 @@ class LocusLobbyUI {
 		return Math.max(0, Math.round(board.scrollLeft / width));
 	}
 
-	_restoreMobileBoardIndex(index) {
-		if (!this._useMobileBoardLayout()) return;
-		if (!Number.isFinite(index)) return;
-		const board = this.elements['mp-board-container']?.querySelector('.mp-board');
-		if (!board) return;
-		const zones = board.querySelectorAll('.mp-zone');
-		if (!zones.length) return;
-		const clamped = Math.max(0, Math.min(zones.length - 1, index));
-		const target = zones[clamped];
-		if (!target) return;
-		board.scrollTo({ left: target.offsetLeft, top: 0, behavior: 'auto' });
-		this._lastMobileBoardIndex = clamped;
-		const zoneName = target.dataset.zone || null;
-		this._restoreMobileZoneVerticalScroll(zoneName, target, true);
-		this._lastMobileZoneName = zoneName;
-		this._forceBlueBottomOnce = false;
-	}
-
 	_scrollBlueZoneToBottom(zoneEl = null, settle = false) {
 		const board = this.elements['mp-board-container']?.querySelector('.mp-board');
 		const target = zoneEl || board?.querySelector('.mp-zone[data-zone="blue"]');
@@ -3871,15 +3850,7 @@ class LocusLobbyUI {
 					if (rafId) return;
 					rafId = requestAnimationFrame(() => {
 						rafId = null;
-						if (Date.now() < (this._suppressMobileSwipeUntil || 0)) {
-							const lockedIdx = Number.isFinite(this._forcedMobileBoardIndex)
-								? this._forcedMobileBoardIndex
-								: this._lastMobileBoardIndex;
-							if (Number.isFinite(lockedIdx)) {
-								this._restoreMobileBoardIndex(lockedIdx);
-							}
-							return;
-						}
+						if (Date.now() < (this._suppressMobileSwipeUntil || 0)) return;
 						const width = Math.max(1, boardEl.clientWidth || 1);
 						const idx = Math.max(0, Math.round(boardEl.scrollLeft / width));
 						const prevIdx = this._lastMobileBoardIndex;
@@ -3920,10 +3891,8 @@ class LocusLobbyUI {
 
 					const lastIdx = zoneOrder.length - 1;
 					if (idx === lastIdx && dx < 0) {
-						this._forcedMobileBoardIndex = 0;
 						this._scrollMobileBoardToZone(zoneOrder[0], false);
 					} else if (idx === 0 && dx > 0) {
-						this._forcedMobileBoardIndex = lastIdx;
 						this._scrollMobileBoardToZone(zoneOrder[lastIdx], false);
 					}
 				}, { passive: true });
@@ -3947,23 +3916,21 @@ class LocusLobbyUI {
 		}
 
 		if (isTouch) {
-			const targetIdx = Number.isFinite(this._forcedMobileBoardIndex)
-				? this._forcedMobileBoardIndex
-				: (Number.isFinite(this._lastMobileBoardIndex)
-					? this._lastMobileBoardIndex
-					: (Number.isFinite(prevMobileIdx) ? prevMobileIdx : 0));
-			const frozenIdx = targetIdx || 0;
-			this._restoreMobileBoardIndex(frozenIdx);
-			if (Date.now() < (this._suppressMobileSwipeUntil || 0)) {
-				this._forcedMobileBoardIndex = frozenIdx;
-				const clearDelay = Math.max(0, (this._suppressMobileSwipeUntil || 0) - Date.now()) + 60;
-				setTimeout(() => {
-					if (Date.now() >= (this._suppressMobileSwipeUntil || 0)) {
-						this._forcedMobileBoardIndex = null;
-					}
-				}, clearDelay);
-			} else {
-				this._forcedMobileBoardIndex = null;
+			const boardEl = container.querySelector('.mp-board');
+			const zones = boardEl ? Array.from(boardEl.querySelectorAll('.mp-zone')) : [];
+			if (boardEl && zones.length > 0) {
+				const preferredIdx = Number.isFinite(prevMobileIdx)
+					? prevMobileIdx
+					: (Number.isFinite(this._lastMobileBoardIndex) ? this._lastMobileBoardIndex : 0);
+				const clamped = Math.max(0, Math.min(zones.length - 1, preferredIdx || 0));
+				const target = zones[clamped];
+				if (target) {
+					boardEl.scrollTo({ left: target.offsetLeft, top: 0, behavior: 'auto' });
+					this._lastMobileBoardIndex = clamped;
+					const zoneName = target.dataset.zone || null;
+					this._restoreMobileZoneVerticalScroll(zoneName, target, true);
+					this._lastMobileZoneName = zoneName;
+				}
 			}
 		}
 	}
