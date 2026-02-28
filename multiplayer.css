@@ -5389,6 +5389,16 @@ html.theme-aurora .mp-cell.stone {
 	box-shadow: inset 0 2px 4px rgba(0,0,0,0.4), inset 0 -1px 2px rgba(255,255,255,0.05) !important;
 }
 
+html.theme-aurora .mp-zone-yellow .mp-cell.stone.active,
+html.theme-aurora .mp-zone-green .mp-cell.stone.active,
+html.theme-aurora .mp-zone-blue .mp-cell.stone.active,
+html.theme-aurora .mp-zone-red .mp-cell.stone.active,
+html.theme-aurora .mp-zone-purple .mp-cell.stone.active {
+	background: linear-gradient(135deg, #6b7280, #4b5563, #374151) !important;
+	border-color: #374151 !important;
+	box-shadow: inset 0 2px 4px rgba(0,0,0,0.4), inset 0 -1px 2px rgba(255,255,255,0.05), 0 0 4px rgba(17,24,39,0.25) !important;
+}
+
 /* ── Yellow column points ── */
 html.theme-aurora .mp-yellow-col-point {
 	color: rgba(252, 211, 77, 0.85);
@@ -7201,6 +7211,19 @@ html.theme-bloom .mp-zone-purple .mp-cell.outer-ring-1:not(.active) {
 
 /* ── Stone cells — garden rock with moss texture ── */
 html.theme-bloom .mp-cell.stone {
+	background: linear-gradient(150deg, #cdc5b8, #b8b0a4, #a8a090) !important;
+	border-color: #a09888 !important;
+	box-shadow:
+		inset 0 2px 4px rgba(61,52,41,0.14),
+		inset 0 -1px 2px rgba(255,255,255,0.30),
+		0 1px 3px rgba(61,52,41,0.08) !important;
+}
+
+html.theme-bloom .mp-zone-yellow .mp-cell.stone.active,
+html.theme-bloom .mp-zone-green .mp-cell.stone.active,
+html.theme-bloom .mp-zone-blue .mp-cell.stone.active,
+html.theme-bloom .mp-zone-red .mp-cell.stone.active,
+html.theme-bloom .mp-zone-purple .mp-cell.stone.active {
 	background: linear-gradient(150deg, #cdc5b8, #b8b0a4, #a8a090) !important;
 	border-color: #a09888 !important;
 	box-shadow:
