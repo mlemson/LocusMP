@@ -231,33 +231,27 @@ function createZoneGrid(rows, cols, options = {}) {
 function generateBranchGrid(rows, cols, steps, splitChance, rng, options = {}) {
 	const cx = options.startX ?? Math.floor(cols / 2);
 	const cy = options.startY ?? Math.floor(rows / 2);
+	const endMinDistance = Math.max(0, Math.floor(Number(options.endMinDistance) || 0));
 	const active = new Set();
 	active.add(`${cx},${cy}`);
 
-	const dirs = [[0, -1], [0, 1], [-1, 0], [1, 0]]; // up, down, left, right
+	const dirs = [[0, -1], [0, 1], [-1, 0], [1, 0]];
 
-	// Each tip has position + current direction + branchId
-	// Start with branches going in all 4 directions from center
 	let nextBranchId = 0;
 	let tips = dirs.map(d => ({ x: cx, y: cy, dx: d[0], dy: d[1], branchId: nextBranchId++, age: 0 }));
 
-	// Track which branch owns each cell (for de-clustering)
 	const cellBranch = new Map();
-	cellBranch.set(`${cx},${cy}`, -1); // center = no branch
+	cellBranch.set(`${cx},${cy}`, -1);
 
-	// Grow directional branches — round-robin instead of pure random
-	// to ensure all branches get equal growth opportunity
 	let stepCount = 0;
 	while (stepCount < steps && tips.length > 0) {
-		// Round-robin: cycle through tips fairly
 		const tipIdx = stepCount % tips.length;
 		const tip = tips[tipIdx];
 		stepCount++;
 
-		// Grow in the current direction (75% chance) or turn (25%)
-		let dx = tip.dx, dy = tip.dy;
+		let dx = tip.dx;
+		let dy = tip.dy;
 		if (rng() < 0.25) {
-			// Turn perpendicular
 			if (dx !== 0) { dx = 0; dy = rng() < 0.5 ? -1 : 1; }
 			else { dy = 0; dx = rng() < 0.5 ? -1 : 1; }
 		}
@@ -269,26 +263,22 @@ function generateBranchGrid(rows, cols, steps, splitChance, rng, options = {}) {
 			active.add(`${nx},${ny}`);
 			cellBranch.set(`${nx},${ny}`, tip.branchId);
 
-			// Move tip forward
 			tip.x = nx;
 			tip.y = ny;
 			tip.dx = dx;
 			tip.dy = dy;
 			tip.age++;
 
-			// Chance to split: create a new branch in perpendicular direction
-			// Only split if branch has grown at least 3 cells (avoid tiny stubs)
 			if (tip.age >= 3 && rng() < splitChance) {
-				let sdx, sdy;
+				let sdx;
+				let sdy;
 				if (dx !== 0) { sdx = 0; sdy = rng() < 0.5 ? -1 : 1; }
 				else { sdy = 0; sdx = rng() < 0.5 ? -1 : 1; }
 				tips.push({ x: nx, y: ny, dx: sdx, dy: sdy, branchId: nextBranchId++, age: 0 });
 			}
 		} else {
-			// Blocked – remove this tip
 			tips.splice(tipIdx, 1);
-			// Adjust stepCount so round-robin stays fair after splice
-			if (tips.length > 0) stepCount = stepCount - 1;
+			if (tips.length > 0) stepCount--;
 		}
 	}
 
@@ -309,15 +299,11 @@ function generateBranchGrid(rows, cols, steps, splitChance, rng, options = {}) {
 		active.add(frontier[Math.floor(rng() * frontier.length)]);
 	}
 
-	// Build the cells dict – non-active cells are void
 	const cells = {};
 	for (const key of active) {
 		const [x, y] = key.split(',').map(Number);
 		const flags = [];
-
-		// Bold for center cell
 		if (x === cx && y === cy) flags.push('bold');
-
 		cells[key] = {
 			x, y,
 			active: false,
@@ -328,7 +314,6 @@ function generateBranchGrid(rows, cols, steps, splitChance, rng, options = {}) {
 		};
 	}
 
-	// Determine end cells: active cells with ≤1 active neighbour (but not center)
 	const rawEndKeys = [];
 	for (const key of active) {
 		const [x, y] = key.split(',').map(Number);
@@ -337,20 +322,24 @@ function generateBranchGrid(rows, cols, steps, splitChance, rng, options = {}) {
 		for (const [dx, dy] of dirs) {
 			if (active.has(`${x + dx},${y + dy}`)) neighborCount++;
 		}
-		if (neighborCount <= 1) {
-			rawEndKeys.push(key);
-		}
+		if (neighborCount <= 1) rawEndKeys.push(key);
 	}
 
-	// De-cluster: group adjacent end cells and keep only one per cluster
-	// (the one farthest from center). This prevents end cells from clumping.
 	const endKeySet = new Set(rawEndKeys);
 	const visited = new Set();
 	const endCells = [];
+	const usedEndBranches = new Set();
+	const manhattan = (a, b) => Math.abs(a.x - b.x) + Math.abs(a.y - b.y);
+	const canUseEndPos = (candidate) => {
+		if (endMinDistance <= 0) return true;
+		for (const ex of endCells) {
+			if (manhattan(candidate, ex) < endMinDistance) return false;
+		}
+		return true;
+	};
 
 	for (const startKey of rawEndKeys) {
 		if (visited.has(startKey)) continue;
-		// BFS to find the connected cluster of end cells
 		const cluster = [];
 		const queue = [startKey];
 		visited.add(startKey);
@@ -367,18 +356,29 @@ function generateBranchGrid(rows, cols, steps, splitChance, rng, options = {}) {
 			}
 		}
 
-		// Pick the cell farthest from center as the single end cell for this cluster
-		let bestKey = cluster[0];
-		let bestDist = 0;
-		for (const k of cluster) {
-			const [kx, ky] = k.split(',').map(Number);
-			const d = Math.abs(kx - cx) + Math.abs(ky - cy);
-			if (d > bestDist) { bestDist = d; bestKey = k; }
-		}
+		const ranked = cluster
+			.map(k => {
+				const [kx, ky] = k.split(',').map(Number);
+				return {
+					key: k,
+					x: kx,
+					y: ky,
+					dist: Math.abs(kx - cx) + Math.abs(ky - cy),
+					branchId: cellBranch.get(k)
+				};
+			})
+			.sort((a, b) => b.dist - a.dist);
 
-		cells[bestKey].flags.push('end');
-		const [bx, by] = bestKey.split(',').map(Number);
-		endCells.push({ x: bx, y: by });
+		const picked = ranked.find(c => !usedEndBranches.has(c.branchId) && canUseEndPos(c))
+			|| ranked.find(c => canUseEndPos(c))
+			|| ranked.find(c => !usedEndBranches.has(c.branchId))
+			|| ranked[0];
+
+		if (picked) {
+			if (!cells[picked.key].flags.includes('end')) cells[picked.key].flags.push('end');
+			endCells.push({ x: picked.x, y: picked.y });
+			usedEndBranches.add(picked.branchId);
+		}
 	}
 
 	const minEndCells = Math.max(0, Number(options.minEndCells || 0));
@@ -391,11 +391,26 @@ function generateBranchGrid(rows, cols, steps, splitChance, rng, options = {}) {
 				const db = Math.abs(b.x - cx) + Math.abs(b.y - cy);
 				return db - da;
 			});
-		for (const c of candidates) {
-			if (endCells.length >= minEndCells) break;
-			if (!c.flags.includes('end')) c.flags.push('end');
-			endCells.push({ x: c.x, y: c.y });
-		}
+
+		const pickFill = (requireUnusedBranch, requireDistance) => {
+			for (const c of candidates) {
+				if (endCells.length >= minEndCells) break;
+				const key = `${c.x},${c.y}`;
+				if (existingEnd.has(key)) continue;
+				const branchId = cellBranch.get(key);
+				if (requireUnusedBranch && usedEndBranches.has(branchId)) continue;
+				if (requireDistance && !canUseEndPos(c)) continue;
+				if (!c.flags.includes('end')) c.flags.push('end');
+				endCells.push({ x: c.x, y: c.y });
+				existingEnd.add(key);
+				usedEndBranches.add(branchId);
+			}
+		};
+
+		pickFill(true, true);
+		pickFill(false, true);
+		pickFill(true, false);
+		pickFill(false, false);
 	}
 
 	return { rows, cols, cells, startX: cx, startY: cy, endCells };
@@ -554,6 +569,7 @@ function generateLevel1Board(rng, level, playerCount) {
 		const greenSize = 15 + playerTier;
 		const greenCenter = Math.floor(greenSize / 2);
 		zones.green = generateBranchGrid(greenSize, greenSize, 70 + playerTier * 10, 0.45, rng, {
+			endMinDistance: 3,
 			startX: greenCenter, startY: greenCenter, minEndCells: greenEndCells, minActiveCells: 25
 		});
 	} else if (world === 2) {
@@ -562,6 +578,7 @@ function generateLevel1Board(rng, level, playerCount) {
 		const greenCenterX = Math.floor(greenCols / 2);
 		const greenCenterY = Math.floor(greenRows / 2);
 		zones.green = generateBranchGrid(greenRows, greenCols, 140 + playerTier * 15, 0.35, rng, {
+			endMinDistance: 3,
 			startX: greenCenterX, startY: greenCenterY, minEndCells: greenEndCells, minActiveCells: 25
 		});
 	} else {
@@ -570,6 +587,7 @@ function generateLevel1Board(rng, level, playerCount) {
 		const greenCenterX = Math.floor(greenCols / 2);
 		const greenCenterY = Math.floor(greenRows / 2);
 		zones.green = generateBranchGrid(greenRows, greenCols, 200 + playerTier * 20, 0.55, rng, {
+			endMinDistance: 3,
 			startX: greenCenterX, startY: greenCenterY, minEndCells: greenEndCells, minActiveCells: 25
 		});
 	}
@@ -1368,7 +1386,7 @@ function getRedSubgridScoreInfo(subgrid) {
 	const basePoints = Math.max(4, Math.round(rawBasePoints * RED_POINT_SCALE));
 	const isPartialReached = fillRatio >= RED_PARTIAL_THRESHOLD;
 	const isFull = filledCount === totalCount;
-	const fullBonusPoints = isFull ? Math.max(4, Math.round(basePoints * 0.35)) : 0;
+	const fullBonusPoints = isFull ? Math.max(4, Math.round(basePoints * 0.50)) : 0;
 	const totalPoints = isPartialReached ? (basePoints + fullBonusPoints) : 0;
 
 	return {
