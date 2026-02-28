@@ -133,11 +133,11 @@
 			display: none;
 			width: 100vw;
 			height: 100vh;
-			grid-template-columns: 1fr auto;
+			grid-template-columns: 260px 1fr;
 			grid-template-rows: auto 1fr auto;
 			grid-template-areas:
-				"top    top"
-				"board  sidebar"
+				"top     top"
+				"sidebar board"
 				"bottom bottom";
 		}
 		.tv-game.active { display: grid; }
@@ -148,6 +148,8 @@
 			display: flex;
 			align-items: center;
 			justify-content: space-between;
+			flex-wrap: wrap;
+			gap: 8px;
 			padding: 12px 24px;
 			background: var(--tv-panel);
 			border-bottom: 1px solid rgba(255,255,255,0.06);
@@ -156,6 +158,7 @@
 		.tv-turn-info {
 			display: flex;
 			align-items: center;
+			flex-direction: row;
 			gap: 16px;
 		}
 		.tv-turn-label {
@@ -165,7 +168,7 @@
 			letter-spacing: 1px;
 		}
 		.tv-turn-player {
-			font-size: 1.5rem;
+			font-size: 1.2rem;
 			font-weight: 700;
 		}
 		.tv-turn-player.my-turn {
@@ -330,7 +333,7 @@
 			gap: 8px;
 			padding: 12px;
 			background: var(--tv-panel);
-			border-left: 1px solid rgba(255,255,255,0.06);
+			border-right: 1px solid rgba(255,255,255,0.06);
 			overflow-y: auto;
 		}
 		.tv-score-row {
@@ -339,13 +342,9 @@
 			gap: 10px;
 			padding: 10px 12px;
 			border-radius: 10px;
-			background: rgba(255,255,255,0.03);
-			border: 1px solid rgba(255,255,255,0.06);
 			transition: all 0.3s ease;
 		}
 		.tv-score-row.current-turn {
-			background: rgba(99,102,241,0.12);
-			border-color: rgba(99,102,241,0.3);
 			box-shadow: 0 0 12px rgba(99,102,241,0.15);
 		}
 		.tv-score-rank {
@@ -396,6 +395,9 @@
 			display: flex;
 			gap: 12px;
 			align-items: center;
+			overflow-x: auto;
+			overflow-y: hidden;
+			justify-content: center;
 		}
 		.tv-card {
 			background: var(--tv-panel);
@@ -407,6 +409,7 @@
 			align-items: center;
 			gap: 4px;
 			min-width: 80px;
+			cursor: default;
 		}
 		.tv-card-name {
 			font-size: 0.7rem;
@@ -459,6 +462,23 @@
 			font-size: 0.9rem;
 			color: var(--tv-accent);
 			margin-bottom: 4px;
+		.tv-top-right {
+			display: flex;
+			align-items: center;
+			gap: 14px;
+			margin-left: auto;
+		}
+		.tv-score-main {
+			display: flex;
+			align-items: center;
+			gap: 10px;
+			flex: 1;
+			min-width: 0;
+		}
+		.tv-score-meta {
+			flex: 1;
+			min-width: 0;
+		}
 		}
 		.tv-taunt-text {
 			font-size: 2rem;
@@ -827,31 +847,33 @@
 	</div>
 
 	<!-- Game Screen -->
-	<div id="tv-game" class="tv-game">
-		<div class="tv-top-bar">
-			<div class="tv-turn-info">
+	<div id="tv-game" class="tv-game mp-game-layout">
+		<div class="tv-top-bar mp-top-bar">
+			<div class="tv-turn-info mp-turn-indicator">
 				<span class="tv-turn-label">Beurt:</span>
 				<span id="tv-turn-player" class="tv-turn-player">—</span>
 				<span id="tv-round-badge" class="tv-round-badge">Ronde 1</span>
 			</div>
-			<div id="tv-timer" class="tv-timer" style="display:none;">
-				<div class="tv-timer-bar"><div id="tv-timer-fill" class="tv-timer-fill"></div></div>
-				<span id="tv-timer-text">40s</span>
+			<div class="tv-top-right mp-top-right">
+				<div id="tv-timer" class="tv-timer" style="display:none;">
+					<div class="tv-timer-bar"><div id="tv-timer-fill" class="tv-timer-fill"></div></div>
+					<span id="tv-timer-text">40s</span>
+				</div>
+				<span class="tv-logo-small">LOCUS</span>
 			</div>
-			<span class="tv-logo-small">LOCUS</span>
 		</div>
 
 		<div class="tv-board-area">
 			<div id="tv-board" class="tv-board mp-board"></div>
 		</div>
 
-		<div class="tv-sidebar">
-			<div id="tv-scoreboard" style="display: flex; flex-direction: column; gap: 6px;"></div>
+		<div class="tv-sidebar mp-sidebar">
+			<div id="tv-scoreboard" class="mp-scoreboard"></div>
 		</div>
 
-		<div class="tv-bottom-bar">
-			<span id="tv-hand-label" class="tv-hand-label"></span>
-			<div id="tv-hand-cards" class="tv-hand-cards"></div>
+		<div class="tv-bottom-bar mp-bottom-bar">
+			<span id="tv-hand-label" class="tv-hand-label mp-turn-label"></span>
+			<div id="tv-hand-cards" class="tv-hand-cards mp-hand-container"></div>
 		</div>
 	</div>
 
@@ -1441,11 +1463,11 @@
 							for (const row of matrix) {
 								for (const c of row) {
 									miniCells += c
-										? `<div class="tv-mini-cell filled" style="${fill}"></div>`
-										: '<div class="tv-mini-cell"></div>';
+										? `<div class="tv-mini-cell mp-mini-cell filled" style="${fill}"></div>`
+										: '<div class="tv-mini-cell mp-mini-cell"></div>';
 								}
 							}
-							return `<div class="tv-player-mini-card" style="grid-template-columns: repeat(${cols}, 10px);">${miniCells}</div>`;
+							return `<div class="tv-player-mini-card mp-mini-grid" style="grid-template-columns: repeat(${cols}, 10px);">${miniCells}</div>`;
 						}).join('') + '</div>';
 					} else {
 						// Only count
@@ -1457,15 +1479,15 @@
 				}
 
 				return `
-					<div class="tv-score-row ${p.isCurrent ? 'current-turn' : ''} ${scoreUpClass}">
-						<div style="display:flex;align-items:center;gap:10px;flex:1;min-width:0;">
-							<span class="tv-score-rank">${i + 1}</span>
-							<div style="flex:1;min-width:0;">
-								<div class="tv-score-name">${esc(p.name)} ${!p.connected ? '🔌' : ''}</div>
+					<div class="tv-score-row mp-score-row ${p.isCurrent ? 'current-turn is-active' : ''} ${!p.connected ? 'disconnected' : ''} ${scoreUpClass}">
+						<div class="tv-score-main">
+							<span class="tv-score-rank mp-score-rank">${i + 1}</span>
+							<div class="tv-score-meta">
+								<div class="tv-score-name mp-score-name">${esc(p.name)} ${!p.connected ? '🔌' : ''}</div>
 								${cardsHtml}
 							</div>
 						</div>
-						<span class="tv-score-pts">${p.score}</span>
+						<span class="tv-score-pts mp-score-value-big">${p.score}</span>
 					</div>
 				`;
 			}).join('');
@@ -1535,17 +1557,17 @@
 				for (const row of matrix) {
 					for (const c of row) {
 						cells += c
-							? `<div class="tv-card-cell filled" style="${fill}"></div>`
-							: '<div class="tv-card-cell"></div>';
+							? `<div class="tv-card-cell mp-mini-cell filled" style="${fill}"></div>`
+							: '<div class="tv-card-cell mp-mini-cell"></div>';
 					}
 				}
 
 				return `
-					<div class="tv-card">
-						<div class="tv-card-grid" style="grid-template-columns: repeat(${cols}, 14px);">
+					<div class="tv-card mp-card">
+						<div class="tv-card-grid mp-mini-grid" style="grid-template-columns: repeat(${cols}, 14px);">
 							${cells}
 						</div>
-						<span class="tv-card-name">${esc(card.shapeName || card.id || '')}</span>
+						<span class="tv-card-name mp-card-name">${esc(card.shapeName || card.id || '')}</span>
 					</div>
 				`;
 			}).join('');
