@@ -9205,42 +9205,6 @@ html.theme-reef .mp-discard-card:hover {
 	transform: translateY(-2px);
 }
 
-/* ── Startdeck modal ── */
-html.theme-reef .mp-startdeck-modal {
-	background: linear-gradient(160deg, rgba(45,18,60,0.96) 0%, rgba(55,22,70,0.96) 100%);
-	border: 1px solid rgba(255,126,179,0.18);
-	border-radius: 20px;
-	-webkit-backdrop-filter: blur(24px) saturate(1.5);
-	backdrop-filter: blur(24px) saturate(1.5);
-	box-shadow: 0 24px 60px rgba(20,0,30,0.50);
-}
-
-html.theme-reef .mp-startdeck-card {
-	border: 1px solid rgba(255,126,179,0.12);
-	background: linear-gradient(160deg, rgba(255,126,179,0.07) 0%, rgba(255,126,179,0.02) 100%);
-	border-radius: 14px;
-	transition: all 0.25s ease;
-}
-
-html.theme-reef .mp-startdeck-card.selected {
-	border-color: rgba(255,126,179,0.55);
-	background: linear-gradient(160deg, rgba(255,126,179,0.16) 0%, rgba(255,126,179,0.06) 100%);
-	box-shadow: 0 8px 28px rgba(255,126,179,0.20);
-}
-
-/* ── Deck close ── */
-html.theme-reef .mp-deck-close-x {
-	border-color: rgba(255,126,179,0.18);
-	background: rgba(255,126,179,0.08);
-	border-radius: 50%;
-	transition: all 0.3s ease;
-}
-
-html.theme-reef .mp-deck-close-x:hover {
-	background: rgba(255,126,179,0.20);
-	transform: scale(1.1) rotate(90deg);
-}
-
 /* ── Hand empty / bonus turn ── */
 html.theme-reef .mp-hand-empty.mp-hand-bonus-turn {
 	color: var(--mp-gold);
@@ -9493,26 +9457,6 @@ html.theme-reef .mp-objective-reveal-title {
 	color: var(--mp-gold);
 }
 
-/* ── Goal cards ── */
-html.theme-reef .mp-goal-card {
-	background: rgba(45, 18, 60, 0.85);
-	border: 2px solid rgba(255,126,179,0.15);
-	border-radius: 16px;
-	transition: all 0.25s ease;
-}
-
-html.theme-reef .mp-goal-card:hover {
-	border-color: rgba(255,126,179,0.45);
-	transform: translateY(-4px);
-	box-shadow: 0 8px 28px rgba(255,126,179,0.18);
-}
-
-html.theme-reef .mp-goal-card.selected {
-	border-color: rgba(255,126,179,0.65);
-	background: rgba(255,126,179,0.12);
-	box-shadow: 0 0 24px rgba(255,126,179,0.18);
-}
-
 /* ── Bomb overlay ── */
 html.theme-reef .mp-bomb-overlay {
 	background: rgba(30, 13, 46, 0.92);
@@ -9580,42 +9524,89 @@ html.theme-reef .mp-bottom-bar {
 /* ── BEACH BOTTOM BAR ── */
 html.theme-reef .mp-bottom-bar {
 	background:
-		/* Subtle wave pattern on top */
-		repeating-linear-gradient(
-			90deg,
-			transparent 0px,
-			rgba(255,220,160,0.03) 40px,
-			transparent 80px
-		),
-		/* Sandy gradient base */
+		/* Sandy gradient base — warm beach feeling */
 		linear-gradient(180deg,
-			rgba(80,35,30,0.92) 0%,
-			rgba(140,85,50,0.88) 30%,
-			rgba(195,145,85,0.90) 60%,
-			rgba(220,180,120,0.92) 100%);
-	border-top: 2px solid rgba(255,200,120,0.35);
-	border-color: rgba(255,200,120,0.35);
-	box-shadow: 0 -4px 20px rgba(0,0,0,0.3), inset 0 2px 12px rgba(255,220,160,0.08);
+			rgba(194,155,97,0.96) 0%,
+			rgba(210,175,115,0.97) 35%,
+			rgba(225,195,140,0.98) 65%,
+			rgba(235,210,160,0.99) 100%);
+	border-top: none;
+	border-color: transparent;
+	box-shadow: 0 -6px 24px rgba(0,0,0,0.25);
 	position: relative;
+	overflow: visible;
 }
 
-/* Foam edge at top of beach bar */
+/* Subtle sand texture specks */
 html.theme-reef .mp-bottom-bar::before {
 	content: '';
 	position: absolute;
-	top: -3px;
-	left: 0;
-	right: 0;
-	height: 3px;
-	background: repeating-linear-gradient(
-		90deg,
-		rgba(255,255,255,0.5) 0px,
-		rgba(255,255,255,0.15) 20px,
-		rgba(255,255,255,0.5) 40px
-	);
-	background-size: 200% 100%;
-	animation: reef-sand-wave 8s linear infinite;
-	border-radius: 0;
+	inset: 0;
+	background:
+		radial-gradient(circle 1px, rgba(180,140,80,0.35) 0%, transparent 100%) 10px 5px / 18px 14px,
+		radial-gradient(circle 1px, rgba(160,120,60,0.25) 0%, transparent 100%) 3px 9px / 22px 16px,
+		radial-gradient(circle 0.8px, rgba(200,170,100,0.20) 0%, transparent 100%) 14px 2px / 15px 12px;
+	pointer-events: none;
+	animation: none;
+}
+
+/* Water / foam edge at top of beach — gentle wave */
+html.theme-reef .mp-bottom-bar::after {
+	content: '';
+	position: absolute;
+	top: -8px;
+	left: -10%;
+	width: 120%;
+	height: 12px;
+	background: linear-gradient(180deg,
+		rgba(91,200,220,0.0) 0%,
+		rgba(91,200,220,0.25) 30%,
+		rgba(200,235,245,0.55) 60%,
+		rgba(255,255,255,0.70) 85%,
+		rgba(255,255,255,0.0) 100%);
+	border-radius: 50% / 100%;
+	animation: reef-gentle-wave 6s ease-in-out infinite;
+	pointer-events: none;
+}
+
+@keyframes reef-gentle-wave {
+	0%, 100% { transform: translateX(-2%) scaleY(1); opacity: 0.7; }
+	50%      { transform: translateX(2%) scaleY(1.3); opacity: 1; }
+}
+
+/* Beach bottom bar card text dark for readability on sand */
+html.theme-reef .mp-bottom-bar .mp-card .mp-card-name {
+	color: #3a2818;
+	text-shadow: 0 1px 2px rgba(255,255,255,0.3);
+}
+
+/* ── PALM TREE BACKGROUND DECORATION ── */
+html.theme-reef .mp-game-layout::before {
+	content: '';
+	position: fixed;
+	bottom: 60px;
+	left: -20px;
+	width: 260px;
+	height: 340px;
+	background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 260 340'%3E%3C!-- trunk --%3E%3Cpath d='M130 340 C128 280 122 220 118 170 C116 145 120 125 125 110' stroke='%23654321' stroke-width='14' fill='none' stroke-linecap='round'/%3E%3Cpath d='M130 340 C132 280 126 220 120 170' stroke='%23785432' stroke-width='8' fill='none' opacity='0.4' stroke-linecap='round'/%3E%3C!-- leaves --%3E%3Cpath d='M125 110 C100 70 40 55 5 75' stroke='%23228844' stroke-width='4' fill='%23227744' opacity='0.7'/%3E%3Cpath d='M125 110 C95 60 30 30 10 20' stroke='%23228844' stroke-width='4' fill='%23227744' opacity='0.6'/%3E%3Cpath d='M125 110 C140 55 180 25 230 15' stroke='%23228844' stroke-width='4' fill='%23227744' opacity='0.65'/%3E%3Cpath d='M125 110 C150 65 200 55 250 70' stroke='%23228844' stroke-width='4' fill='%23227744' opacity='0.55'/%3E%3Cpath d='M125 110 C110 65 90 20 60 5' stroke='%23339955' stroke-width='3' fill='%23339955' opacity='0.5'/%3E%3Cpath d='M125 110 C155 50 210 40 245 35' stroke='%23339955' stroke-width='3' fill='%23339955' opacity='0.45'/%3E%3C!-- coconuts --%3E%3Ccircle cx='120' cy='115' r='6' fill='%23654321' opacity='0.6'/%3E%3Ccircle cx='132' cy='112' r='5' fill='%23654321' opacity='0.5'/%3E%3C/svg%3E") no-repeat center / contain;
+	opacity: 0.18;
+	pointer-events: none;
+	z-index: 0;
+}
+
+/* Second smaller palm on right side */
+html.theme-reef .mp-game-layout::after {
+	content: '';
+	position: fixed;
+	bottom: 55px;
+	right: -30px;
+	width: 180px;
+	height: 240px;
+	background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 260 340'%3E%3Cpath d='M130 340 C128 280 122 220 118 170 C116 145 120 125 125 110' stroke='%23654321' stroke-width='14' fill='none' stroke-linecap='round'/%3E%3Cpath d='M125 110 C100 70 40 55 5 75' stroke='%23228844' stroke-width='4' fill='%23227744' opacity='0.7'/%3E%3Cpath d='M125 110 C95 60 30 30 10 20' stroke='%23228844' stroke-width='4' fill='%23227744' opacity='0.6'/%3E%3Cpath d='M125 110 C140 55 180 25 230 15' stroke='%23228844' stroke-width='4' fill='%23227744' opacity='0.65'/%3E%3Cpath d='M125 110 C150 65 200 55 250 70' stroke='%23228844' stroke-width='4' fill='%23227744' opacity='0.55'/%3E%3Ccircle cx='120' cy='115' r='6' fill='%23654321' opacity='0.6'/%3E%3Ccircle cx='132' cy='112' r='5' fill='%23654321' opacity='0.5'/%3E%3C/svg%3E") no-repeat center / contain;
+	opacity: 0.12;
+	pointer-events: none;
+	z-index: 0;
+	transform: scaleX(-1);
 }
 
 /* ── FANCY CARDS ── */
@@ -10039,4 +10030,448 @@ html.theme-reef .mp-input-group select {
 	padding: 12px 16px;
 	font-size: 1rem;
 	border-radius: 12px;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   REEF — OBJECTIVE BADGE MAKEOVER (in-game top-right banner)
+   ═══════════════════════════════════════════════════════════════ */
+html.theme-reef .mp-objective-badge {
+	background: linear-gradient(135deg,
+		rgba(45,18,60,0.88) 0%,
+		rgba(65,28,85,0.82) 50%,
+		rgba(45,18,60,0.88) 100%);
+	border: 2px solid rgba(255,126,179,0.28);
+	border-radius: 16px;
+	padding: 10px 18px;
+	box-shadow:
+		0 4px 20px rgba(20,0,30,0.40),
+		inset 0 1px 0 rgba(255,200,150,0.08);
+	-webkit-backdrop-filter: blur(16px) saturate(1.4);
+	backdrop-filter: blur(16px) saturate(1.4);
+	position: relative;
+	overflow: hidden;
+}
+
+/* Decorative top gradient line */
+html.theme-reef .mp-objective-badge::before {
+	content: '';
+	position: absolute;
+	top: 0; left: 0; right: 0;
+	height: 3px;
+	background: linear-gradient(90deg, #ff7eb3, #ffd55a, #5be8b4, #d4a0ff);
+	border-radius: 16px 16px 0 0;
+}
+
+html.theme-reef .mp-objective-badge.objective-achieved {
+	border-color: rgba(91,232,180,0.45);
+	background: linear-gradient(135deg,
+		rgba(30,60,45,0.85) 0%,
+		rgba(35,70,50,0.80) 50%,
+		rgba(30,60,45,0.85) 100%);
+	box-shadow:
+		0 4px 20px rgba(91,232,180,0.18),
+		0 0 30px rgba(91,232,180,0.08),
+		inset 0 1px 0 rgba(91,232,180,0.15);
+}
+
+html.theme-reef .mp-objective-badge.objective-achieved::before {
+	background: linear-gradient(90deg, #5be8b4, #57d5e5, #5be8b4);
+}
+
+html.theme-reef .mp-objective-badge.objective-failed {
+	border-color: rgba(255,110,120,0.40);
+	background: linear-gradient(135deg,
+		rgba(60,20,25,0.85) 0%,
+		rgba(70,25,30,0.80) 100%);
+}
+
+html.theme-reef .mp-objective-badge.objective-failed::before {
+	background: linear-gradient(90deg, #ff6b7a, #ff8c69, #ff6b7a);
+}
+
+html.theme-reef .mp-objective-title {
+	font-weight: 800;
+	font-size: 0.88rem;
+	background: linear-gradient(135deg, #ffd55a, #ff8c69);
+	-webkit-background-clip: text;
+	background-clip: text;
+	-webkit-text-fill-color: transparent;
+	filter: drop-shadow(0 1px 2px rgba(255,213,90,0.25));
+}
+
+html.theme-reef .mp-objective-badge.objective-achieved .mp-objective-title {
+	background: linear-gradient(135deg, #5be8b4, #57d5e5);
+	-webkit-background-clip: text;
+	background-clip: text;
+}
+
+html.theme-reef .mp-objective-desc {
+	color: rgba(230,220,240,0.75);
+	font-size: 0.78rem;
+}
+
+html.theme-reef .mp-objective-progress {
+	color: #ff7eb3;
+	font-weight: 700;
+}
+
+html.theme-reef .mp-objective-badge .mp-objective-rewards {
+	gap: 6px;
+}
+
+html.theme-reef .mp-objective-badge .mp-goal-reward-badge {
+	background: rgba(255,126,179,0.12);
+	border-radius: 10px;
+	font-size: 0.78rem;
+	padding: 3px 8px;
+}
+
+html.theme-reef .mp-objective-badge .mp-goal-reward-badge.is-points {
+	color: #ffd55a;
+	background: rgba(255,213,90,0.14);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   REEF — GOAL SCREEN MAKEOVER (level start chooser)
+   ═══════════════════════════════════════════════════════════════ */
+html.theme-reef .mp-goal-container .mp-section-title {
+	font-size: 1.4rem;
+	font-weight: 800;
+	text-transform: uppercase;
+	letter-spacing: 1px;
+	background: linear-gradient(135deg, #ff7eb3, #ffd55a);
+	-webkit-background-clip: text;
+	background-clip: text;
+	-webkit-text-fill-color: transparent;
+	filter: drop-shadow(0 2px 6px rgba(255,126,179,0.25));
+	text-align: center;
+}
+
+html.theme-reef .mp-goal-container .mp-section-subtitle {
+	text-align: center;
+	color: rgba(230,220,240,0.65);
+	font-size: 0.9rem;
+}
+
+html.theme-reef .mp-goal-grid {
+	gap: 14px;
+}
+
+html.theme-reef .mp-goal-card {
+	background: linear-gradient(160deg,
+		rgba(65,28,85,0.80) 0%,
+		rgba(55,22,70,0.75) 50%,
+		rgba(45,18,60,0.80) 100%);
+	border: 2px solid rgba(255,126,179,0.18);
+	border-radius: 18px;
+	padding: 20px 22px;
+	position: relative;
+	overflow: hidden;
+	transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Decorative shimmer strip on goal cards */
+html.theme-reef .mp-goal-card::before {
+	content: '';
+	position: absolute;
+	top: 0; left: 0; right: 0;
+	height: 3px;
+	background: linear-gradient(90deg, #ff7eb3, #ff8c69, #ffd55a, #5be8b4, #d4a0ff);
+	opacity: 0.6;
+	border-radius: 18px 18px 0 0;
+	transition: opacity 0.3s ease;
+}
+
+html.theme-reef .mp-goal-card:hover:not(:disabled) {
+	border-color: rgba(255,126,179,0.55);
+	transform: translateY(-5px) scale(1.01);
+	box-shadow:
+		0 12px 36px rgba(255,126,179,0.22),
+		0 0 30px rgba(255,140,105,0.08);
+}
+
+html.theme-reef .mp-goal-card:hover:not(:disabled)::before {
+	opacity: 1;
+}
+
+html.theme-reef .mp-goal-card.selected {
+	border-color: rgba(91,232,180,0.60);
+	background: linear-gradient(160deg,
+		rgba(30,60,50,0.75) 0%,
+		rgba(40,70,55,0.70) 100%);
+	box-shadow:
+		0 0 0 3px rgba(91,232,180,0.15),
+		0 8px 28px rgba(91,232,180,0.18);
+}
+
+html.theme-reef .mp-goal-card.selected::before {
+	background: linear-gradient(90deg, #5be8b4, #57d5e5, #5be8b4);
+	opacity: 1;
+}
+
+html.theme-reef .mp-goal-name {
+	font-weight: 800;
+	font-size: 1.1rem;
+	color: var(--mp-text);
+	margin-bottom: 6px;
+}
+
+html.theme-reef .mp-goal-desc {
+	color: rgba(230,220,240,0.72);
+	font-size: 0.88rem;
+	line-height: 1.5;
+}
+
+html.theme-reef .mp-goal-reward-badge {
+	border-radius: 12px;
+	font-size: 0.82rem;
+	padding: 4px 12px;
+	font-weight: 700;
+}
+
+html.theme-reef .mp-goal-reward-badge.is-points {
+	color: #ffd55a;
+	background: linear-gradient(135deg, rgba(255,213,90,0.18), rgba(255,213,90,0.08));
+	border: 1px solid rgba(255,213,90,0.25);
+}
+
+html.theme-reef .mp-goal-reward-badge.is-coins {
+	color: #ffd55a;
+	background: linear-gradient(135deg, rgba(255,213,90,0.12), rgba(255,213,90,0.05));
+	border: 1px solid rgba(255,213,90,0.18);
+}
+
+html.theme-reef .mp-goal-reward-badge.is-bonuses {
+	color: #ff7eb3;
+	background: linear-gradient(135deg, rgba(255,126,179,0.14), rgba(255,126,179,0.06));
+	border: 1px solid rgba(255,126,179,0.22);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   REEF — STARTDECK PICKER MAKEOVER
+   ═══════════════════════════════════════════════════════════════ */
+html.theme-reef .mp-startdeck-modal {
+	background: linear-gradient(160deg,
+		rgba(45,18,60,0.97) 0%,
+		rgba(55,22,70,0.97) 50%,
+		rgba(35,15,50,0.97) 100%);
+	border: 2px solid rgba(255,126,179,0.22);
+	border-radius: 24px;
+	box-shadow:
+		0 24px 60px rgba(20,0,30,0.55),
+		0 0 80px rgba(255,126,179,0.06);
+	-webkit-backdrop-filter: blur(24px) saturate(1.5);
+	backdrop-filter: blur(24px) saturate(1.5);
+}
+
+html.theme-reef .mp-startdeck-title {
+	font-size: 1.25rem;
+	font-weight: 800;
+	text-transform: uppercase;
+	letter-spacing: 0.8px;
+	background: linear-gradient(135deg, #ff7eb3, #ffd55a);
+	-webkit-background-clip: text;
+	background-clip: text;
+	-webkit-text-fill-color: transparent;
+}
+
+html.theme-reef .mp-startdeck-subtitle {
+	color: rgba(230,220,240,0.65);
+}
+
+html.theme-reef .mp-startdeck-card {
+	border: 2px solid rgba(255,126,179,0.15);
+	background: linear-gradient(160deg,
+		rgba(75,30,95,0.50) 0%,
+		rgba(55,22,70,0.40) 100%);
+	border-radius: 18px;
+	padding: 16px;
+	position: relative;
+	overflow: hidden;
+	transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Decorative top strip */
+html.theme-reef .mp-startdeck-card::before {
+	content: '';
+	position: absolute;
+	top: 0; left: 0; right: 0;
+	height: 3px;
+	background: linear-gradient(90deg, #ff7eb3, #ff8c69, #ffd55a);
+	opacity: 0.5;
+	border-radius: 18px 18px 0 0;
+	transition: opacity 0.3s ease;
+}
+
+html.theme-reef .mp-startdeck-card:hover:not(:disabled) {
+	border-color: rgba(255,126,179,0.50);
+	transform: translateY(-4px) scale(1.02);
+	box-shadow:
+		0 10px 32px rgba(255,126,179,0.20),
+		0 0 20px rgba(255,140,105,0.08);
+}
+
+html.theme-reef .mp-startdeck-card:hover:not(:disabled)::before {
+	opacity: 1;
+}
+
+html.theme-reef .mp-startdeck-card.selected {
+	border-color: rgba(91,232,180,0.55);
+	background: linear-gradient(160deg,
+		rgba(30,60,50,0.60) 0%,
+		rgba(40,70,55,0.45) 100%);
+	box-shadow:
+		0 0 0 3px rgba(91,232,180,0.12),
+		0 10px 28px rgba(91,232,180,0.22);
+}
+
+html.theme-reef .mp-startdeck-card.selected::before {
+	background: linear-gradient(90deg, #5be8b4, #57d5e5, #5be8b4);
+	opacity: 1;
+}
+
+html.theme-reef .mp-startdeck-icon {
+	width: 38px;
+	height: 38px;
+	border-radius: 12px;
+	font-size: 1.3rem;
+	background: linear-gradient(135deg, rgba(255,126,179,0.14), rgba(255,140,105,0.08));
+	border: 1px solid rgba(255,126,179,0.22);
+	box-shadow: 0 2px 8px rgba(255,126,179,0.12);
+}
+
+html.theme-reef .mp-startdeck-name {
+	font-size: 1.05rem;
+	font-weight: 800;
+}
+
+html.theme-reef .mp-startdeck-desc {
+	color: rgba(230,220,240,0.72);
+	font-size: 0.88rem;
+}
+
+html.theme-reef .mp-startdeck-meta {
+	background: linear-gradient(135deg, rgba(255,126,179,0.16), rgba(255,140,105,0.10));
+	border: 1px solid rgba(255,126,179,0.28);
+	color: #ff7eb3;
+	font-weight: 700;
+	border-radius: 10px;
+	padding: 5px 12px;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   REEF — DECK OVERLAY MAKEOVER (card browser)
+   ═══════════════════════════════════════════════════════════════ */
+html.theme-reef .mp-deck-overlay {
+	background: linear-gradient(180deg,
+		rgba(30,13,46,0.97) 0%,
+		rgba(45,18,60,0.98) 50%,
+		rgba(30,13,46,0.97) 100%);
+	-webkit-backdrop-filter: blur(20px);
+	backdrop-filter: blur(20px);
+}
+
+html.theme-reef .mp-deck-overlay-header h3 {
+	font-weight: 800;
+	font-size: 1.5rem;
+	text-transform: uppercase;
+	letter-spacing: 0.8px;
+	background: linear-gradient(135deg, #ff7eb3, #ffd55a);
+	-webkit-background-clip: text;
+	background-clip: text;
+	-webkit-text-fill-color: transparent;
+}
+
+html.theme-reef .mp-deck-section-title,
+html.theme-reef .mp-deck-group-title {
+	font-weight: 800;
+	text-transform: uppercase;
+	letter-spacing: 0.5px;
+	color: #ff7eb3;
+}
+
+html.theme-reef .mp-deck-card {
+	background: linear-gradient(160deg,
+		rgba(65,28,85,0.75) 0%,
+		rgba(55,22,70,0.70) 100%);
+	border: 2px solid rgba(255,126,179,0.15);
+	border-radius: 14px;
+	transition: all 0.25s ease;
+	position: relative;
+	overflow: hidden;
+}
+
+html.theme-reef .mp-deck-card::before {
+	content: '';
+	position: absolute;
+	top: 0; left: 0; right: 0;
+	height: 2px;
+	background: linear-gradient(90deg, #ff7eb3, #ffd55a, #5be8b4);
+	opacity: 0.5;
+	border-radius: 14px 14px 0 0;
+}
+
+html.theme-reef .mp-deck-card:hover {
+	border-color: rgba(255,126,179,0.45);
+	transform: translateY(-3px);
+	box-shadow: 0 8px 24px rgba(255,126,179,0.18);
+}
+
+html.theme-reef .mp-deck-card-used {
+	opacity: 0.35;
+	filter: grayscale(0.4);
+}
+
+html.theme-reef .mp-deck-card-used::after {
+	content: '✓';
+	position: absolute;
+	top: 4px; right: 6px;
+	font-size: 0.7rem;
+	color: #5be8b4;
+	font-weight: 800;
+}
+
+html.theme-reef .mp-deck-close-x {
+	width: 38px;
+	height: 38px;
+	border-radius: 12px;
+	border: 2px solid rgba(255,126,179,0.25);
+	background: rgba(255,126,179,0.10);
+	font-size: 1.1rem;
+	font-weight: 700;
+	transition: all 0.3s ease;
+}
+
+html.theme-reef .mp-deck-close-x:hover {
+	background: rgba(255,126,179,0.25);
+	transform: scale(1.1) rotate(90deg);
+	border-color: rgba(255,126,179,0.45);
+	box-shadow: 0 4px 16px rgba(255,126,179,0.20);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   REEF — OBJECTIVE REVEAL OVERLAY MAKEOVER
+   ═══════════════════════════════════════════════════════════════ */
+html.theme-reef .mp-objective-reveal-overlay.active {
+	background: radial-gradient(circle at center,
+		rgba(255,126,179,0.25) 0%,
+		rgba(30,13,46,0.35) 60%,
+		rgba(20,0,30,0.20) 100%);
+}
+
+html.theme-reef .mp-objective-reveal-icon {
+	filter: drop-shadow(0 0 20px rgba(255,126,179,0.5)) drop-shadow(0 0 40px rgba(255,213,90,0.3));
+}
+
+html.theme-reef .mp-objective-reveal-title {
+	background: linear-gradient(135deg, #ffd55a, #ff8c69);
+	-webkit-background-clip: text;
+	background-clip: text;
+	-webkit-text-fill-color: transparent;
+	font-size: 1.35rem;
+	filter: drop-shadow(0 2px 6px rgba(255,213,90,0.35));
+}
+
+html.theme-reef .mp-objective-reveal-sub {
+	color: rgba(230,220,240,0.85);
 }
