@@ -735,6 +735,66 @@
 			color: #c07050;
 		}
 
+		/* ═══ REEF THEME ═══ */
+		html.theme-reef body {
+			background: linear-gradient(160deg, #0a1628 0%, #0d2137 50%, #0a1628 100%);
+			color: #e8f4f0;
+		}
+		html.theme-reef .tv-panel,
+		html.theme-reef .tv-top-bar,
+		html.theme-reef .tv-sidebar,
+		html.theme-reef .tv-bottom-bar {
+			background: rgba(10,28,50,0.90);
+			border-color: rgba(0,210,190,0.10);
+		}
+		html.theme-reef .tv-waiting h1 {
+			background: linear-gradient(135deg, #00d2be, #38c9e8, #ff7f50, #ffd700);
+			-webkit-background-clip: text;
+			-webkit-text-fill-color: transparent;
+		}
+		html.theme-reef .tv-cell.active {
+			box-shadow: 0 0 6px rgba(0,210,190,0.25);
+		}
+		html.theme-reef .tv-score-row {
+			background: rgba(0,210,190,0.04);
+			border-color: rgba(0,210,190,0.08);
+		}
+		html.theme-reef .tv-score-row.current-turn {
+			background: rgba(0,210,190,0.08);
+			border-color: rgba(0,210,190,0.25);
+			box-shadow: 0 0 10px rgba(0,210,190,0.08);
+		}
+		html.theme-reef .tv-score-pts {
+			color: #00d2be;
+		}
+		html.theme-reef .tv-room-code {
+			color: #00d2be;
+			background: rgba(0,210,190,0.06);
+			border-color: rgba(0,210,190,0.18);
+		}
+		html.theme-reef .tv-zone {
+			border-color: rgba(0,210,190,0.12);
+		}
+		html.theme-reef .tv-cell {
+			border-color: rgba(0,210,190,0.15);
+			background: rgba(0,210,190,0.04);
+		}
+		html.theme-reef .tv-card {
+			background: rgba(10,28,50,0.85);
+			border-color: rgba(0,210,190,0.12);
+		}
+		html.theme-reef .tv-logo-small {
+			color: rgba(0,210,190,0.35);
+		}
+		html.theme-reef .tv-taunt {
+			background: rgba(10,28,50,0.96);
+			border-color: rgba(0,210,190,0.25);
+			color: #e8f4f0;
+		}
+		html.theme-reef .tv-taunt-name {
+			color: #00d2be;
+		}
+
 		/* ═══ Cell detail styles ═══ */
 		.tv-cell.bold {
 			border-width: 2px;
@@ -1189,9 +1249,10 @@
 
 		// ── Apply theme from host ──
 		function applyTheme(theme) {
-			document.documentElement.classList.remove('theme-aurora', 'theme-bloom');
+			document.documentElement.classList.remove('theme-aurora', 'theme-bloom', 'theme-reef');
 			if (theme === 'aurora') document.documentElement.classList.add('theme-aurora');
 			else if (theme === 'bloom') document.documentElement.classList.add('theme-bloom');
+			else if (theme === 'reef') document.documentElement.classList.add('theme-reef');
 		}
 
 		// ── State Update ──

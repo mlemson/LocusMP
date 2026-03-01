@@ -207,6 +207,11 @@ class LocusLobbyUI {
 		// Hide level complete overlay when switching screens
 		const overlay = this.elements['level-complete-overlay'];
 		if (overlay && screenId !== 'game-screen') overlay.style.display = 'none';
+
+		// Init lobby particles for lobby screen
+		if (screenId === 'lobby-screen') {
+			try { this._initLobbyParticles(); } catch (_) {}
+		}
 	}
 
 	// ──────────────────────────────────────────
@@ -2748,6 +2753,13 @@ class LocusLobbyUI {
 		// Use the subgridId from preview if we didn't have one (fallback)
 		const resolvedSubgridId = subgridId || preview.subgridId || null;
 
+		// Cinematic card fly animation (before cancelling drag)
+		const originEl = this._dragState?.originEl;
+		const targetZoneEl = document.querySelector(`.mp-zone-${zoneName}`);
+		if (originEl && targetZoneEl) {
+			try { this._triggerCardFly(originEl, targetZoneEl); } catch (_) {}
+		}
+
 		try {
 			const result = await this.mp.playCard(
 				this._dragState.card.id,
@@ -4099,8 +4111,9 @@ class LocusLobbyUI {
 		// if (cell.flags.includes('portal') && !cell.active) { ... }
 
 		const dataAttrs = `data-x="${cell.x}" data-y="${cell.y}" data-zone="${zoneName}"${subgridId ? ` data-subgrid="${subgridId}"` : ''}`;
+		const cellIdx = (cell.y || 0) * 20 + (cell.x || 0);
 
-		return `<div class="${classes.join(' ')}" ${dataAttrs} style="${bgStyle}">${inner}</div>`;
+		return `<div class="${classes.join(' ')}" ${dataAttrs} style="${bgStyle}--cell-index:${cellIdx};">${inner}</div>`;
 	}
 
 	_renderRedZone(redData) {
@@ -5174,6 +5187,7 @@ class LocusLobbyUI {
 
 	_showScoreAnimations() {
 		const scoreboard = this.mp.getScoreboard();
+		const isReef = document.documentElement.classList.contains('theme-reef');
 		const zoneColors = {
 			yellow: '#cfba51', green: '#92c28c', blue: '#5689b0',
 			red: '#b56069', purple: '#8f76b8'
@@ -5181,12 +5195,15 @@ class LocusLobbyUI {
 
 		let myScoreChanged = false;
 		let opponentScoreChanged = false;
+		let biggestDelta = 0;
 
 		for (const p of scoreboard) {
 			const prev = this._prevScores[p.id];
 			if (!prev) continue;
 			const totalDelta = p.score - prev.score;
 			if (totalDelta <= 0) continue;
+
+			if (totalDelta > biggestDelta) biggestDelta = totalDelta;
 
 			if (p.isMe) myScoreChanged = true;
 			else opponentScoreChanged = true;
@@ -5231,9 +5248,27 @@ class LocusLobbyUI {
 							const rr = row.getBoundingClientRect();
 							this._showConfetti(rr.left + rr.width / 2, rr.top + rr.height / 2, 8);
 						}
+						// Reef: confetti burst on any score change
+						if (isReef) {
+							const rr = row.getBoundingClientRect();
+							this._showConfetti(rr.left + rr.width / 2, rr.top + rr.height / 2, 10,
+								['#00d2be', '#38c9e8', '#ff7f50', '#ffd700', '#c084fc', '#ffa07a', '#2dd4a8']);
+						}
 						break;
 					}
 				}
+			}
+		}
+
+		// Dramatic scoring: screen shake + extra particles when big delta (>= 15)
+		if (biggestDelta >= 15 && (isReef || document.documentElement.classList.contains('theme-aurora'))) {
+			this._triggerScreenShake();
+			// Extra particle burst in center of screen
+			const cx = window.innerWidth / 2;
+			const cy = window.innerHeight / 2;
+			this._showSparkle(cx, cy, 12);
+			if (isReef) {
+				this._showConfetti(cx, cy, 20, ['#00d2be', '#38c9e8', '#ff7f50', '#ffd700', '#c084fc']);
 			}
 		}
 
@@ -5332,10 +5367,11 @@ class LocusLobbyUI {
 
 		// Bloom effects policy: geen confetti op gewone plaatsing
 		const isBloom = document.documentElement.classList.contains('theme-bloom');
+		const isReef = document.documentElement.classList.contains('theme-reef');
 
 		// Goud sparkle + tekst
 		if (goldCollected > 0) {
-			const sparkleCount = isBloom ? 14 : 8;
+			const sparkleCount = isBloom ? 14 : (isReef ? 16 : 8);
 			this._showSparkle(cx, cy, sparkleCount);
 			this._showFloatingScore(zoneEl, `💰 +${goldCollected} goud`, '#f5d76e');
 			this._playGoldSound();
@@ -5343,6 +5379,10 @@ class LocusLobbyUI {
 			if (isBloom) {
 				this._showCoinBounce(cx, cy);
 				this._showConfetti(cx, cy, 10, ['#fff3a1', '#f5d76e', '#e8c547', '#d4a820']);
+			}
+			// Reef: underwater sparkle burst + coral confetti
+			if (isReef) {
+				this._showConfetti(cx, cy, 12, ['#00d2be', '#38c9e8', '#ffd700', '#ff7f50', '#ffa07a']);
 			}
 		}
 
@@ -5420,6 +5460,176 @@ class LocusLobbyUI {
 	// ──────────────────────────────────────────
 	//  UTILITY
 	// ──────────────────────────────────────────
+
+	/** Screen shake for dramatic big-score moments */
+	_triggerScreenShake() {
+		const el = document.documentElement;
+		el.classList.add('reef-screen-shake');
+		setTimeout(() => el.classList.remove('reef-screen-shake'), 450);
+	}
+
+	/**
+	 * Cinematic Card Fly — When placing a card, clone it and animate it
+	 * from the hand position to the board target zone.
+	 */
+	_triggerCardFly(originEl, targetZoneEl) {
+		if (!originEl || !targetZoneEl) return;
+		const originRect = originEl.getBoundingClientRect();
+		const targetRect = targetZoneEl.getBoundingClientRect();
+		const clone = originEl.cloneNode(true);
+		clone.className = 'mp-card-fly-clone';
+		clone.style.left = `${originRect.left}px`;
+		clone.style.top = `${originRect.top}px`;
+		clone.style.width = `${originRect.width}px`;
+		clone.style.height = `${originRect.height}px`;
+		const dx = (targetRect.left + targetRect.width / 2) - (originRect.left + originRect.width / 2);
+		const dy = (targetRect.top + targetRect.height / 2) - (originRect.top + originRect.height / 2);
+		clone.style.setProperty('--fly-dx', `${dx}px`);
+		clone.style.setProperty('--fly-dy', `${dy}px`);
+		document.body.appendChild(clone);
+		setTimeout(() => clone.remove(), 600);
+	}
+
+	/** Create animated particle background for lobby screen */
+	_initLobbyParticles() {
+		const existing = document.querySelector('.mp-lobby-particles');
+		if (existing) return;
+		const container = document.createElement('div');
+		container.className = 'mp-lobby-particles';
+		for (let i = 0; i < 20; i++) {
+			const p = document.createElement('div');
+			p.className = 'mp-lobby-particle';
+			p.style.left = `${Math.random() * 100}%`;
+			p.style.top = `${60 + Math.random() * 40}%`;
+			p.style.width = `${4 + Math.random() * 8}px`;
+			p.style.height = p.style.width;
+			p.style.animationDelay = `${Math.random() * 6}s`;
+			p.style.animationDuration = `${4 + Math.random() * 5}s`;
+			container.appendChild(p);
+		}
+		document.body.prepend(container);
+	}
+
+	// ──────────────────────────────────────────
+	//  OBJECTIVE EVENTS (mid-game events)
+	// ──────────────────────────────────────────
+
+	/** Event definitions for mid-game objective events */
+	static get GAME_EVENTS() {
+		return [
+			{
+				icon: '🔥',
+				title: 'Dubbele Punten!',
+				desc: 'De volgende kaart die je speelt levert dubbele zone-punten op!',
+				duration: 0  // instant — applies to next play
+			},
+			{
+				icon: '🌊',
+				title: 'Tsunami Bonus',
+				desc: 'Blauwe zone geeft +10 extra punten deze ronde!',
+				duration: 0,
+				zone: 'blue',
+				bonus: 10
+			},
+			{
+				icon: '🏝️',
+				title: 'Tropisch Eiland',
+				desc: 'Gele zone geeft +10 extra punten deze ronde!',
+				duration: 0,
+				zone: 'yellow',
+				bonus: 10
+			},
+			{
+				icon: '🐙',
+				title: 'Krakengreep',
+				desc: 'Paarse zone geeft +10 extra punten deze ronde!',
+				duration: 0,
+				zone: 'purple',
+				bonus: 10
+			},
+			{
+				icon: '🪸',
+				title: 'Koraalrif Bonanza',
+				desc: 'Rode zone geeft +10 extra punten deze ronde!',
+				duration: 0,
+				zone: 'red',
+				bonus: 10
+			},
+			{
+				icon: '💎',
+				title: 'Schatkist Gevonden!',
+				desc: 'Alle spelers krijgen +5 goud!',
+				duration: 0,
+				goldReward: 5
+			},
+			{
+				icon: '⚡',
+				title: 'Stroomversnelling',
+				desc: 'Timer verdubbelt deze ronde! Meer tijd om na te denken.',
+				duration: 0
+			}
+		];
+	}
+
+	/** Show a mid-game event overlay */
+	_showGameEvent(event) {
+		let overlay = document.querySelector('.mp-event-overlay');
+		if (overlay) overlay.remove();
+
+		overlay = document.createElement('div');
+		overlay.className = 'mp-event-overlay';
+		overlay.innerHTML = `
+			<div class="mp-event-card">
+				<div class="mp-event-icon">${event.icon}</div>
+				<div class="mp-event-title">${event.title}</div>
+				<div class="mp-event-desc">${event.desc}</div>
+			</div>
+		`;
+		document.body.appendChild(overlay);
+		requestAnimationFrame(() => overlay.classList.add('active'));
+
+		// Also trigger screen shake for drama
+		this._triggerScreenShake();
+
+		// Play a special sound
+		this._playEventSound();
+
+		// Auto-dismiss after 3 seconds
+		setTimeout(() => {
+			overlay.classList.remove('active');
+			setTimeout(() => overlay.remove(), 500);
+		}, 3000);
+	}
+
+	/** Trigger a random event (can be called by the host at round boundaries) */
+	_triggerRandomEvent() {
+		const events = LocusLobbyUI.GAME_EVENTS;
+		const event = events[Math.floor(Math.random() * events.length)];
+		this._showGameEvent(event);
+		return event;
+	}
+
+	/** Play a dramatic sound for events */
+	_playEventSound() {
+		try {
+			if (!this._audioCtx) this._audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+			const ctx = this._audioCtx;
+			const now = ctx.currentTime;
+			// Dramatic rising chord
+			[440, 554, 659, 880].forEach((freq, i) => {
+				const osc = ctx.createOscillator();
+				const gain = ctx.createGain();
+				osc.type = 'sine';
+				osc.frequency.value = freq;
+				gain.gain.setValueAtTime(0, now + i * 0.08);
+				gain.gain.linearRampToValueAtTime(0.12, now + i * 0.08 + 0.05);
+				gain.gain.exponentialRampToValueAtTime(0.001, now + i * 0.08 + 0.6);
+				osc.connect(gain).connect(ctx.destination);
+				osc.start(now + i * 0.08);
+				osc.stop(now + i * 0.08 + 0.6);
+			});
+		} catch (_) {}
+	}
 
 	_escapeHtml(str) {
 		const div = document.createElement('div');

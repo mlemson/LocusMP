@@ -14,6 +14,7 @@
 		<div class="mp-theme-pill" title="Kies een thema">
 			<button class="mp-theme-btn" data-theme="aurora">Aurora</button>
 			<button class="mp-theme-btn" data-theme="bloom">Bloom</button>
+			<button class="mp-theme-btn" data-theme="reef">Reef</button>
 			<button class="mp-theme-btn" data-theme="classic">Classic</button>
 			<span class="mp-theme-indicator"></span>
 		</div>
@@ -347,9 +348,10 @@
 
 		// ── Theme switcher logic ──
 		function _applyTheme(theme) {
-			document.documentElement.classList.remove('theme-aurora', 'theme-bloom');
+			document.documentElement.classList.remove('theme-aurora', 'theme-bloom', 'theme-reef');
 			if (theme === 'aurora') document.documentElement.classList.add('theme-aurora');
 			else if (theme === 'bloom') document.documentElement.classList.add('theme-bloom');
+			else if (theme === 'reef') document.documentElement.classList.add('theme-reef');
 		}
 
 		function _initThemeSwitcher() {
@@ -387,6 +389,7 @@
 			const saved = localStorage.getItem('locus-theme') || 'aurora';
 			if (saved === 'aurora') document.documentElement.classList.add('theme-aurora');
 			else if (saved === 'bloom') document.documentElement.classList.add('theme-bloom');
+			else if (saved === 'reef') document.documentElement.classList.add('theme-reef');
 		})();
 
 		const LOBBY_NAME_STORAGE_KEY = 'locus_last_user_name';
