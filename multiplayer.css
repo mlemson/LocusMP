@@ -10540,3 +10540,262 @@ html.theme-reef .mp-objective-reveal-title {
 html.theme-reef .mp-objective-reveal-sub {
 	color: rgba(230,220,240,0.85);
 }
+
+/* ═══════════════════════════════════════════════════════════════
+   DECK OVERLAY — SPLIT LAYOUT (cards + objectives side by side)
+   ═══════════════════════════════════════════════════════════════ */
+
+/* Split layout container — side by side on wide screens */
+.mp-deck-split-layout {
+	display: flex;
+	gap: 24px;
+	flex: 1;
+	overflow: hidden;
+	min-height: 0;
+}
+
+.mp-deck-cards-panel {
+	flex: 1;
+	overflow-y: auto;
+	display: flex;
+	flex-direction: column;
+	gap: 20px;
+	min-width: 0;
+}
+
+.mp-deck-objective-panel {
+	width: 300px;
+	flex-shrink: 0;
+	overflow-y: auto;
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
+	border-left: 1px solid rgba(255,255,255,0.08);
+	padding-left: 24px;
+}
+
+/* On narrow screens, stack vertically */
+@media (max-width: 860px) {
+	.mp-deck-split-layout {
+		flex-direction: column;
+	}
+	.mp-deck-objective-panel {
+		width: 100%;
+		border-left: none;
+		border-top: 1px solid rgba(255,255,255,0.08);
+		padding-left: 0;
+		padding-top: 16px;
+	}
+}
+
+/* Objective card in deck overlay */
+.mp-deck-objective-card {
+	background: rgba(255,255,255,0.04);
+	border: 2px solid rgba(245,215,110,0.20);
+	border-radius: 14px;
+	padding: 16px;
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+}
+
+.mp-deck-objective-card.achieved {
+	border-color: rgba(76,175,80,0.45);
+	background: rgba(76,175,80,0.08);
+}
+
+.mp-deck-objective-card.failed {
+	border-color: rgba(181,96,105,0.40);
+	background: rgba(181,96,105,0.06);
+}
+
+.mp-deck-obj-name {
+	font-weight: 800;
+	font-size: 1.05rem;
+	color: var(--mp-gold);
+}
+
+.mp-deck-obj-desc {
+	font-size: 0.88rem;
+	color: var(--mp-text-dim);
+	line-height: 1.45;
+}
+
+.mp-deck-obj-progress {
+	font-size: 0.85rem;
+	font-weight: 700;
+	color: var(--mp-accent);
+	margin-top: 4px;
+}
+
+.mp-deck-obj-progress.achieved {
+	color: var(--mp-success);
+}
+
+.mp-deck-obj-progress.failed {
+	color: var(--mp-error);
+}
+
+/* Zone score summary */
+.mp-deck-zone-scores {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+}
+
+.mp-deck-zone-score-row {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	padding: 6px 10px;
+	background: rgba(255,255,255,0.03);
+	border-radius: 8px;
+	font-size: 0.88rem;
+}
+
+.mp-deck-zone-dot {
+	width: 10px;
+	height: 10px;
+	border-radius: 50%;
+	flex-shrink: 0;
+}
+
+.mp-deck-zone-label {
+	flex: 1;
+	font-weight: 600;
+	color: var(--mp-text);
+}
+
+.mp-deck-zone-pts {
+	font-weight: 800;
+	color: var(--mp-gold);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   RED SUBGRID — FULL GRID CELEBRATION EFFECT
+   ═══════════════════════════════════════════════════════════════ */
+
+/* Full grid gets a glow pulse animation */
+.mp-red-subgrid-wrap.is-full .mp-red-subgrid {
+	animation: redGridFullPulse 3s ease-in-out infinite;
+}
+
+@keyframes redGridFullPulse {
+	0%, 100% { filter: brightness(1) saturate(1); }
+	50%      { filter: brightness(0.85) saturate(1.3); }
+}
+
+.mp-red-subgrid-wrap.is-full {
+	position: relative;
+}
+
+.mp-red-subgrid-wrap.is-full::before {
+	content: '⭐';
+	position: absolute;
+	top: -8px;
+	right: -8px;
+	font-size: 1.1rem;
+	z-index: 2;
+	filter: drop-shadow(0 0 4px rgba(255,215,0,0.6));
+	animation: redFullStar 2s ease-in-out infinite;
+}
+
+@keyframes redFullStar {
+	0%, 100% { transform: scale(1) rotate(0deg); }
+	50%      { transform: scale(1.15) rotate(8deg); }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   YELLOW — COMPLETED COLUMN DARKENED CELLS
+   ═══════════════════════════════════════════════════════════════ */
+
+/* Cells in a completed column get a darker tint + checkmark */
+.mp-zone-yellow .mp-cell.active.yellow-col-complete {
+	filter: brightness(0.72) saturate(1.2);
+	box-shadow: inset 0 0 0 1px rgba(255,213,90,0.40);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   REEF THEME — DECK OVERLAY SPLIT STYLING
+   ═══════════════════════════════════════════════════════════════ */
+
+html.theme-reef .mp-deck-objective-panel {
+	border-left-color: rgba(255,126,179,0.15);
+}
+
+html.theme-reef .mp-deck-objective-card {
+	background: linear-gradient(160deg,
+		rgba(65,28,85,0.65) 0%,
+		rgba(55,22,70,0.55) 100%);
+	border: 2px solid rgba(255,126,179,0.22);
+	border-radius: 16px;
+	position: relative;
+	overflow: hidden;
+}
+
+html.theme-reef .mp-deck-objective-card::before {
+	content: '';
+	position: absolute;
+	top: 0; left: 0; right: 0;
+	height: 3px;
+	background: linear-gradient(90deg, #ffd55a, #ff8c69, #ff7eb3);
+	border-radius: 16px 16px 0 0;
+}
+
+html.theme-reef .mp-deck-objective-card.achieved {
+	border-color: rgba(91,232,180,0.40);
+	background: linear-gradient(160deg, rgba(30,60,50,0.60) 0%, rgba(40,70,55,0.45) 100%);
+}
+
+html.theme-reef .mp-deck-objective-card.achieved::before {
+	background: linear-gradient(90deg, #5be8b4, #57d5e5, #5be8b4);
+}
+
+html.theme-reef .mp-deck-obj-name {
+	background: linear-gradient(135deg, #ffd55a, #ff8c69);
+	-webkit-background-clip: text;
+	background-clip: text;
+	-webkit-text-fill-color: transparent;
+	font-weight: 800;
+}
+
+html.theme-reef .mp-deck-obj-progress {
+	color: #ff7eb3;
+}
+
+html.theme-reef .mp-deck-obj-progress.achieved {
+	color: #5be8b4;
+}
+
+html.theme-reef .mp-deck-zone-score-row {
+	background: rgba(255,126,179,0.06);
+	border-radius: 10px;
+}
+
+html.theme-reef .mp-deck-zone-pts {
+	color: #ffd55a;
+}
+
+/* Reef red full grid */
+html.theme-reef .mp-red-subgrid-wrap.is-full {
+	background: rgba(91,232,180,0.08);
+	box-shadow: inset 0 0 0 1px rgba(91,232,180,0.25), 0 0 16px rgba(91,232,180,0.12);
+}
+
+html.theme-reef .mp-red-subgrid-wrap.is-full .mp-red-subgrid-label {
+	color: #5be8b4;
+	background: rgba(91,232,180,0.12);
+}
+
+/* Reef yellow completed column */
+html.theme-reef .mp-zone-yellow .mp-cell.active.yellow-col-complete {
+	filter: brightness(0.68) saturate(1.3);
+	box-shadow: inset 0 0 0 1px rgba(255,213,90,0.35);
+}
+
+@media (max-width: 860px) {
+	html.theme-reef .mp-deck-objective-panel {
+		border-left-color: transparent;
+		border-top-color: rgba(255,126,179,0.15);
+	}
+}

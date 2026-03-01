@@ -4037,6 +4037,19 @@ class LocusLobbyUI {
 			}
 		}
 
+		// Pre-compute completed yellow columns
+		const yellowCompleteCols = new Set();
+		if (zoneName === 'yellow') {
+			for (let x = 0; x < zoneData.cols; x++) {
+				let colComplete = true;
+				for (let y = 0; y < zoneData.rows; y++) {
+					const c = zoneData.cells[`${x},${y}`];
+					if (!c?.active) { colComplete = false; break; }
+				}
+				if (colComplete) yellowCompleteCols.add(x);
+			}
+		}
+
 		let gridHtml = '<div class="mp-grid" style="grid-template-columns: repeat(' + zoneData.cols + ', var(--mp-cell-size));">';
 		for (let y = 0; y < zoneData.rows; y++) {
 			for (let x = 0; x < zoneData.cols; x++) {
@@ -4046,7 +4059,8 @@ class LocusLobbyUI {
 					continue;
 				}
 				gridHtml += this._renderCell(cell, zoneName, null, {
-					isBlueClaimedRow: zoneName === 'blue' && claimedBlueRows.has(cell.y)
+					isBlueClaimedRow: zoneName === 'blue' && claimedBlueRows.has(cell.y),
+					isYellowColComplete: zoneName === 'yellow' && yellowCompleteCols.has(x)
 				});
 			}
 		}
@@ -4130,6 +4144,7 @@ class LocusLobbyUI {
 		if (cell.active) classes.push('active');
 		if (cell.isStone) classes.push('stone');
 		if (meta.isBlueClaimedRow) classes.push('blue-row-claimed');
+		if (meta.isYellowColComplete) classes.push('yellow-col-complete');
 		if (cell.flags.includes('bold')) classes.push('bold');
 		if (meta.isBlueClaimedRow && cell.flags.includes('bold')) classes.push('blue-bold-claimed');
 		if (cell.flags.includes('end')) classes.push('end');
