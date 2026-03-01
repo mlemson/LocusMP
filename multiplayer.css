@@ -9008,85 +9008,85 @@ html.theme-reef .mp-opp-card-detail:hover {
 	transform: translateY(-1px);
 }
 
-/* ── Toasts — vibrant ocean ── */
+/* ── Toasts — vibrant tropical ── */
 html.theme-reef .mp-toast-info {
-	background: linear-gradient(135deg, #00d2be, #38c9e8);
-	color: #0a1628;
+	background: linear-gradient(135deg, #ff7eb3, #ff8c69);
+	color: #1e0d2e;
 	border-radius: 14px;
-	box-shadow: 0 4px 20px rgba(0,210,190,0.35);
+	box-shadow: 0 4px 20px rgba(255,126,179,0.40);
 	font-weight: 600;
 }
 
 html.theme-reef .mp-toast-success {
-	background: linear-gradient(135deg, #0d9668, #2dd4a8);
+	background: linear-gradient(135deg, #20b888, #5be8b4);
 	color: #fff;
 	border-radius: 14px;
-	box-shadow: 0 4px 20px rgba(45,212,168,0.3);
+	box-shadow: 0 4px 20px rgba(91,232,180,0.35);
 }
 
 html.theme-reef .mp-toast-warning {
-	background: linear-gradient(135deg, #ff7f50, #ffb347);
-	color: #1a1a1a;
+	background: linear-gradient(135deg, #ff8c69, #ffd55a);
+	color: #1e0d2e;
 	border-radius: 14px;
-	box-shadow: 0 4px 20px rgba(255,127,80,0.3);
+	box-shadow: 0 4px 20px rgba(255,140,105,0.35);
 }
 
 html.theme-reef .mp-toast-error {
-	background: linear-gradient(135deg, #e05555, #ff6b6b);
+	background: linear-gradient(135deg, #e0556a, #ff6b8a);
 	border-radius: 14px;
-	box-shadow: 0 4px 20px rgba(255,107,107,0.3);
+	box-shadow: 0 4px 20px rgba(255,107,138,0.35);
 }
 
 /* ── Results ── */
 html.theme-reef .mp-result-row {
-	background: linear-gradient(160deg, rgba(10,25,48,0.65) 0%, rgba(15,35,60,0.45) 100%);
-	border: 1px solid rgba(0,210,190,0.08);
+	background: linear-gradient(160deg, rgba(45,18,60,0.60) 0%, rgba(65,25,75,0.40) 100%);
+	border: 1px solid rgba(255,126,179,0.10);
 	border-radius: 14px;
 }
 
 html.theme-reef .mp-result-row.winner {
-	border-color: rgba(255,215,0,0.35);
-	background: linear-gradient(160deg, rgba(255,215,0,0.10) 0%, rgba(255,127,80,0.05) 100%);
-	box-shadow: 0 0 20px rgba(255,215,0,0.08), 0 0 40px rgba(255,127,80,0.04);
+	border-color: rgba(255,217,92,0.40);
+	background: linear-gradient(160deg, rgba(255,217,92,0.14) 0%, rgba(255,140,105,0.08) 100%);
+	box-shadow: 0 0 24px rgba(255,217,92,0.12), 0 0 44px rgba(255,126,179,0.06);
 }
 
 /* ── Level popup ── */
 html.theme-reef .mp-level-popup {
-	background: rgba(10, 25, 48, 0.94);
-	border: 1px solid rgba(0,210,190,0.18);
+	background: rgba(45, 18, 60, 0.94);
+	border: 1px solid rgba(255,126,179,0.22);
 	border-radius: 20px;
-	-webkit-backdrop-filter: blur(24px) saturate(1.5);
-	backdrop-filter: blur(24px) saturate(1.5);
-	box-shadow: 0 32px 64px rgba(0,0,0,0.6), 0 0 50px rgba(0,210,190,0.06);
+	-webkit-backdrop-filter: blur(24px) saturate(1.6);
+	backdrop-filter: blur(24px) saturate(1.6);
+	box-shadow: 0 32px 64px rgba(20,0,30,0.55), 0 0 50px rgba(255,126,179,0.08);
 }
 
 /* ── Shop ── */
 html.theme-reef .mp-shop-card {
-	background: rgba(10, 25, 48, 0.90);
-	border: 1px solid rgba(0,210,190,0.14);
+	background: rgba(45, 18, 60, 0.92);
+	border: 1px solid rgba(255,126,179,0.18);
 	border-radius: 20px;
-	-webkit-backdrop-filter: blur(20px) saturate(1.4);
-	backdrop-filter: blur(20px) saturate(1.4);
-	box-shadow: 0 16px 48px rgba(0,0,0,0.5);
+	-webkit-backdrop-filter: blur(20px) saturate(1.5);
+	backdrop-filter: blur(20px) saturate(1.5);
+	box-shadow: 0 16px 48px rgba(20,0,30,0.50);
 }
 
 html.theme-reef .mp-shop-offering {
-	background: rgba(0,210,190,0.03);
-	border: 2px solid rgba(0,210,190,0.10);
+	background: rgba(255,126,179,0.04);
+	border: 2px solid rgba(255,126,179,0.12);
 	border-radius: 14px;
 	transition: all 0.25s ease;
 }
 
 html.theme-reef .mp-shop-offering:not(.sold):not(.cant-afford):hover {
-	border-color: rgba(255,215,0,0.4);
-	background: rgba(255,215,0,0.06);
-	box-shadow: 0 4px 20px rgba(255,215,0,0.12);
+	border-color: rgba(255,217,92,0.45);
+	background: rgba(255,217,92,0.08);
+	box-shadow: 0 4px 20px rgba(255,217,92,0.14);
 	transform: translateY(-3px);
 }
 
 html.theme-reef .mp-shop-buy-btn {
-	border: 1px solid rgba(255,215,0,0.3);
-	background: linear-gradient(135deg, rgba(255,215,0,0.08), rgba(255,127,80,0.12));
+	border: 1px solid rgba(255,217,92,0.35);
+	background: linear-gradient(135deg, rgba(255,217,92,0.10), rgba(255,140,105,0.14));
 	color: var(--mp-gold);
 	border-radius: 10px;
 	font-weight: 700;
@@ -9094,16 +9094,16 @@ html.theme-reef .mp-shop-buy-btn {
 }
 
 html.theme-reef .mp-shop-buy-btn:hover:not(:disabled) {
-	background: linear-gradient(135deg, rgba(255,215,0,0.2), rgba(255,127,80,0.25));
-	box-shadow: 0 0 14px rgba(255,215,0,0.18);
+	background: linear-gradient(135deg, rgba(255,217,92,0.24), rgba(255,140,105,0.28));
+	box-shadow: 0 0 16px rgba(255,217,92,0.20);
 }
 
 /* ── Taunt ── */
 html.theme-reef .mp-taunt-bubble {
-	background: linear-gradient(180deg, rgba(10,25,48,0.96), rgba(12,30,55,0.96));
-	border: 1px solid rgba(0,210,190,0.15);
+	background: linear-gradient(180deg, rgba(45,18,60,0.96), rgba(55,22,70,0.96));
+	border: 1px solid rgba(255,126,179,0.18);
 	border-radius: 16px;
-	box-shadow: 0 8px 24px rgba(0,0,0,0.4), 0 0 20px rgba(0,210,190,0.05);
+	box-shadow: 0 8px 24px rgba(20,0,30,0.40), 0 0 20px rgba(255,126,179,0.06);
 	-webkit-backdrop-filter: blur(10px);
 	backdrop-filter: blur(10px);
 }
@@ -9114,94 +9114,94 @@ html.theme-reef .mp-taunt-bubble-name {
 }
 
 html.theme-reef .mp-taunt-menu-toggle {
-	border-color: rgba(0,210,190,0.25);
-	background: rgba(0,210,190,0.08);
+	border-color: rgba(255,126,179,0.25);
+	background: rgba(255,126,179,0.10);
 	border-radius: 10px;
 	transition: all 0.2s ease;
 }
 
 html.theme-reef .mp-taunt-menu-panel {
-	background: rgba(10, 25, 48, 0.96);
-	border: 1px solid rgba(0,210,190,0.18);
+	background: rgba(45, 18, 60, 0.96);
+	border: 1px solid rgba(255,126,179,0.22);
 	border-radius: 14px;
 	-webkit-backdrop-filter: blur(20px);
 	backdrop-filter: blur(20px);
-	box-shadow: 0 12px 36px rgba(0,0,0,0.5);
+	box-shadow: 0 12px 36px rgba(20,0,30,0.50);
 }
 
 html.theme-reef .mp-taunt-btn {
-	border-color: rgba(0,210,190,0.10);
-	background: rgba(0,210,190,0.04);
+	border-color: rgba(255,126,179,0.12);
+	background: rgba(255,126,179,0.05);
 	transition: all 0.2s ease;
 }
 
 html.theme-reef .mp-taunt-btn:hover {
-	background: rgba(0,210,190,0.14);
-	border-color: rgba(0,210,190,0.3);
+	background: rgba(255,126,179,0.16);
+	border-color: rgba(255,126,179,0.35);
 }
 
 /* ── Card choice modal ── */
 html.theme-reef .mp-card-choice-content {
-	background: rgba(10, 25, 48, 0.94);
-	border: 1px solid rgba(0,210,190,0.18);
+	background: rgba(45, 18, 60, 0.94);
+	border: 1px solid rgba(255,126,179,0.22);
 	border-radius: 20px;
-	-webkit-backdrop-filter: blur(24px) saturate(1.4);
-	backdrop-filter: blur(24px) saturate(1.4);
-	box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+	-webkit-backdrop-filter: blur(24px) saturate(1.5);
+	backdrop-filter: blur(24px) saturate(1.5);
+	box-shadow: 0 20px 50px rgba(20,0,30,0.50);
 }
 
 html.theme-reef .mp-card-choice-option {
-	background: rgba(0,210,190,0.03);
-	border: 2px solid rgba(0,210,190,0.10);
+	background: rgba(255,126,179,0.04);
+	border: 2px solid rgba(255,126,179,0.12);
 	border-radius: 14px;
 	transition: all 0.25s ease;
 }
 
 html.theme-reef .mp-card-choice-option:hover {
-	border-color: rgba(255,215,0,0.4);
-	background: rgba(255,215,0,0.06);
+	border-color: rgba(255,217,92,0.45);
+	background: rgba(255,217,92,0.08);
 	transform: translateY(-2px);
-	box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+	box-shadow: 0 6px 20px rgba(20,0,30,0.30);
 }
 
 /* ── Random reveal ── */
 html.theme-reef .mp-random-reveal-card {
-	background: linear-gradient(165deg, rgba(10,25,48,0.96) 0%, rgba(12,30,55,0.96) 100%);
-	border: 1px solid rgba(255,215,0,0.30);
+	background: linear-gradient(165deg, rgba(45,18,60,0.96) 0%, rgba(55,22,70,0.96) 100%);
+	border: 1px solid rgba(255,217,92,0.35);
 	border-radius: 18px;
-	box-shadow: 0 20px 48px rgba(0,0,0,0.6), 0 0 30px rgba(255,215,0,0.08);
+	box-shadow: 0 20px 48px rgba(20,0,30,0.55), 0 0 30px rgba(255,217,92,0.10);
 }
 
 /* ── Move notification ── */
 html.theme-reef .mp-move-notification {
-	background: rgba(10, 25, 48, 0.92);
-	border: 1px solid rgba(0,210,190,0.18);
+	background: rgba(45, 18, 60, 0.92);
+	border: 1px solid rgba(255,126,179,0.22);
 	border-radius: 14px;
 	-webkit-backdrop-filter: blur(14px);
 	backdrop-filter: blur(14px);
-	box-shadow: 0 8px 28px rgba(0,0,0,0.4);
+	box-shadow: 0 8px 28px rgba(20,0,30,0.40);
 }
 
 /* ── Discard modal ── */
 html.theme-reef .mp-discard-modal {
-	background: rgba(10, 25, 48, 0.94);
-	border: 1px solid rgba(0,210,190,0.12);
+	background: rgba(45, 18, 60, 0.94);
+	border: 1px solid rgba(255,126,179,0.15);
 	border-radius: 16px;
-	-webkit-backdrop-filter: blur(20px) saturate(1.4);
-	backdrop-filter: blur(20px) saturate(1.4);
-	box-shadow: 0 16px 48px rgba(0,0,0,0.5);
+	-webkit-backdrop-filter: blur(20px) saturate(1.5);
+	backdrop-filter: blur(20px) saturate(1.5);
+	box-shadow: 0 16px 48px rgba(20,0,30,0.50);
 }
 
 html.theme-reef .mp-discard-card {
-	border: 1px solid rgba(0,210,190,0.12);
-	background: rgba(0,210,190,0.03);
+	border: 1px solid rgba(255,126,179,0.14);
+	background: rgba(255,126,179,0.04);
 	border-radius: 14px;
 	transition: all 0.2s ease;
 }
 
 html.theme-reef .mp-discard-card:hover {
-	border-color: rgba(255,127,80,0.45);
-	background: rgba(255,127,80,0.10);
+	border-color: rgba(255,140,105,0.50);
+	background: rgba(255,140,105,0.12);
 	transform: translateY(-2px);
 }
 
