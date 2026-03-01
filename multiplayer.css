@@ -8445,112 +8445,120 @@ html.theme-bloom .mp-opp-cards-left::after {
 }
 
 
-/* ── Core Variables ── */
+/* ── Core Variables — Tropical Sunset Palette ── */
 html.theme-reef {
-	--mp-bg: #0a1628;
-	--mp-panel: rgba(10, 28, 50, 0.85);
-	--mp-panel-light: rgba(15, 40, 65, 0.72);
-	--mp-text: #e8f4f0;
-	--mp-text-dim: #7eb8a8;
-	--mp-accent: #00d2be;
-	--mp-accent-hover: #20e8d6;
-	--mp-success: #2dd4a8;
-	--mp-warning: #ffb347;
-	--mp-error: #ff6b6b;
-	--mp-gold: #ffd700;
-	--mp-yellow: #f0c040;
-	--mp-green: #2dd4a8;
-	--mp-blue: #38c9e8;
-	--mp-red: #ff7f50;
-	--mp-purple: #c084fc;
+	--mp-bg: #1e0d2e;
+	--mp-panel: rgba(45, 18, 60, 0.82);
+	--mp-panel-light: rgba(65, 25, 75, 0.68);
+	--mp-text: #fff5ec;
+	--mp-text-dim: #d4a0c0;
+	--mp-accent: #ff7eb3;
+	--mp-accent-hover: #ffa3cc;
+	--mp-success: #5be8b4;
+	--mp-warning: #ffcf55;
+	--mp-error: #ff6b8a;
+	--mp-gold: #ffd95c;
+	--mp-yellow: #ffd55a;
+	--mp-green: #5be8b4;
+	--mp-blue: #57d5e5;
+	--mp-red: #ff8c69;
+	--mp-purple: #d4a0ff;
 	--mp-radius: 14px;
-	--mp-shadow: 0 8px 32px rgba(0,0,0,0.5), 0 0 1px rgba(0,210,190,0.08);
+	--mp-shadow: 0 8px 32px rgba(20,0,30,0.55), 0 0 1px rgba(255,126,179,0.12);
 	--mp-transition: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 
-	/* Zone achtergronden — deep ocean tints */
-	--zone-yellow-bg: rgba(240, 192, 64, 0.07);
-	--zone-green-bg: rgba(45, 212, 168, 0.06);
-	--zone-blue-bg: rgba(56, 201, 232, 0.06);
-	--zone-red-bg: rgba(255, 127, 80, 0.06);
-	--zone-purple-bg: rgba(192, 132, 252, 0.06);
+	/* Zone achtergronden — warm & levendig */
+	--zone-yellow-bg: rgba(255, 213, 90, 0.18);
+	--zone-green-bg: rgba(91, 232, 180, 0.14);
+	--zone-blue-bg: rgba(87, 213, 229, 0.14);
+	--zone-red-bg: rgba(255, 140, 105, 0.16);
+	--zone-purple-bg: rgba(212, 160, 255, 0.14);
 
-	/* Cel kleuren — levendig koraal & oceaan */
-	--cell-yellow-bg: rgba(240, 192, 64, 0.10);
-	--cell-yellow-border: rgba(240, 192, 64, 0.22);
-	--cell-yellow-active: #f0c040;
-	--cell-yellow-active-border: #ffe082;
+	/* Cel kleuren — hoge saturatie, tropisch */
+	--cell-yellow-bg: rgba(255, 213, 90, 0.25);
+	--cell-yellow-border: rgba(255, 213, 90, 0.50);
+	--cell-yellow-active: #ffd55a;
+	--cell-yellow-active-border: #ffe88a;
 
-	--cell-green-bg: rgba(45, 212, 168, 0.10);
-	--cell-green-border: rgba(45, 212, 168, 0.22);
-	--cell-green-active: #2dd4a8;
-	--cell-green-active-border: #6ee7c0;
-	--cell-green-end: #0d9668;
-	--cell-green-end-border: #087855;
+	--cell-green-bg: rgba(91, 232, 180, 0.22);
+	--cell-green-border: rgba(91, 232, 180, 0.45);
+	--cell-green-active: #5be8b4;
+	--cell-green-active-border: #8bf0ce;
+	--cell-green-end: #20b888;
+	--cell-green-end-border: #109868;
 
-	--cell-blue-bg: rgba(56, 201, 232, 0.10);
-	--cell-blue-border: rgba(56, 201, 232, 0.22);
-	--cell-blue-active: #38c9e8;
-	--cell-blue-active-border: #7dd8f0;
+	--cell-blue-bg: rgba(87, 213, 229, 0.22);
+	--cell-blue-border: rgba(87, 213, 229, 0.45);
+	--cell-blue-active: #57d5e5;
+	--cell-blue-active-border: #8ae3ef;
 
-	--cell-red-bg: rgba(255, 127, 80, 0.10);
-	--cell-red-border: rgba(255, 127, 80, 0.22);
-	--cell-red-active: #ff7f50;
-	--cell-red-active-border: #ffa07a;
+	--cell-red-bg: rgba(255, 140, 105, 0.25);
+	--cell-red-border: rgba(255, 140, 105, 0.50);
+	--cell-red-active: #ff8c69;
+	--cell-red-active-border: #ffb49a;
 
-	--cell-purple-bg: rgba(192, 132, 252, 0.10);
-	--cell-purple-border: rgba(192, 132, 252, 0.22);
-	--cell-purple-active: #c084fc;
-	--cell-purple-active-border: #d8b4fe;
+	--cell-purple-bg: rgba(212, 160, 255, 0.22);
+	--cell-purple-border: rgba(212, 160, 255, 0.45);
+	--cell-purple-active: #d4a0ff;
+	--cell-purple-active-border: #e6c5ff;
 }
 
-/* Body — animated underwater gradient with sunset tones */
+/* Body — vibrant tropical sunset gradient */
 html.theme-reef body {
-	background: linear-gradient(160deg, #0a1628 0%, #0d2137 25%, #0f2a40 45%, #162040 60%, #1a1535 80%, #0a1628 100%);
+	background: linear-gradient(160deg,
+		#1a0a2e 0%,
+		#3d1854 15%,
+		#6b2d5b 30%,
+		#a93f5c 44%,
+		#d4644a 56%,
+		#e88c4a 66%,
+		#1b7b7a 80%,
+		#0d4b5e 100%);
 	background-size: 400% 400%;
-	animation: reef-wave 30s ease infinite;
+	animation: reef-wave 40s ease infinite;
 	background-attachment: fixed;
 }
 
-/* ── Scrollbar ── */
+/* ── Scrollbar — warm gradient ── */
 html.theme-reef *::-webkit-scrollbar-thumb {
-	background: linear-gradient(180deg, rgba(0,210,190,0.6), rgba(255,127,80,0.5));
+	background: linear-gradient(180deg, rgba(255,126,179,0.6), rgba(255,140,105,0.5));
 }
 html.theme-reef *::-webkit-scrollbar-thumb:hover {
-	background: linear-gradient(180deg, rgba(32,232,214,0.8), rgba(255,160,122,0.7));
+	background: linear-gradient(180deg, rgba(255,163,204,0.8), rgba(255,180,150,0.7));
 }
 
-/* ── Lobby Logo — sunset gradient ── */
+/* ── Lobby Logo — tropical sunset gradient ── */
 html.theme-reef .mp-logo {
-	background: linear-gradient(135deg, #00d2be, #38c9e8, #ff7f50, #ffd700, #c084fc);
+	background: linear-gradient(135deg, #ff7eb3, #ff8c69, #ffd55a, #5be8b4, #d4a0ff);
 	-webkit-background-clip: text;
 	background-clip: text;
-	filter: drop-shadow(0 0 20px rgba(0,210,190,0.3));
+	filter: drop-shadow(0 0 24px rgba(255,126,179,0.4));
 }
 
 html.theme-reef .mp-logo-sub {
-	color: #7eb8a8;
+	color: #d4a0c0;
 	letter-spacing: 10px;
-	text-shadow: 0 0 12px rgba(0,210,190,0.15);
+	text-shadow: 0 0 14px rgba(255,126,179,0.2);
 }
 
-/* ── Panels + Lobby — deep ocean glass ── */
+/* ── Panels + Lobby — warm sunset glass ── */
 html.theme-reef .mp-lobby-card,
 html.theme-reef .mp-waiting-card,
 html.theme-reef .mp-goal-container,
 html.theme-reef .mp-results-container {
-	background: rgba(10, 25, 48, 0.82);
-	border: 1px solid rgba(0,210,190,0.12);
+	background: rgba(45, 18, 60, 0.80);
+	border: 1px solid rgba(255,126,179,0.18);
 	border-radius: 18px;
-	box-shadow: 0 8px 40px rgba(0,0,0,0.5), inset 0 1px 0 rgba(0,210,190,0.06), 0 0 60px rgba(0,210,190,0.03);
-	-webkit-backdrop-filter: blur(18px) saturate(1.5);
-	backdrop-filter: blur(18px) saturate(1.5);
+	box-shadow: 0 8px 40px rgba(20,0,30,0.50), inset 0 1px 0 rgba(255,200,150,0.08), 0 0 60px rgba(255,126,179,0.04);
+	-webkit-backdrop-filter: blur(18px) saturate(1.6);
+	backdrop-filter: blur(18px) saturate(1.6);
 }
 
-/* ── Inputs ── */
+/* ── Inputs — warm tinted ── */
 html.theme-reef .mp-input-group input,
 html.theme-reef .mp-input-group select {
-	background: rgba(10, 25, 48, 0.65);
-	border: 1px solid rgba(0,210,190,0.15);
+	background: rgba(45, 18, 60, 0.60);
+	border: 1px solid rgba(255,126,179,0.20);
 	border-radius: 10px;
 	color: var(--mp-text);
 	transition: border-color 0.25s ease, box-shadow 0.25s ease;
@@ -8559,12 +8567,12 @@ html.theme-reef .mp-input-group select {
 html.theme-reef .mp-input-group input:focus,
 html.theme-reef .mp-input-group select:focus {
 	border-color: var(--mp-accent);
-	box-shadow: 0 0 0 3px rgba(0,210,190,0.15), 0 0 20px rgba(0,210,190,0.08);
+	box-shadow: 0 0 0 3px rgba(255,126,179,0.18), 0 0 20px rgba(255,126,179,0.10);
 }
 
 html.theme-reef .mp-name-required {
-	border-color: rgba(0,210,190,0.25);
-	background: rgba(0,210,190,0.06);
+	border-color: rgba(255,126,179,0.25);
+	background: rgba(255,126,179,0.08);
 	border-radius: 12px;
 }
 
@@ -8577,7 +8585,7 @@ html.theme-reef .mp-name-required input:not(:placeholder-shown) {
 	box-shadow: 0 0 0 3px rgba(45,212,168,0.12);
 }
 
-/* ── Buttons — coral + teal gradient ── */
+/* ── Buttons — sunset gradient ── */
 html.theme-reef .mp-btn {
 	border-radius: 12px;
 	font-weight: 600;
@@ -8586,63 +8594,63 @@ html.theme-reef .mp-btn {
 }
 
 html.theme-reef .mp-btn-primary {
-	background: linear-gradient(135deg, #00d2be, #ff7f50);
-	box-shadow: 0 4px 18px rgba(0,210,190,0.25), 0 0 30px rgba(255,127,80,0.10);
+	background: linear-gradient(135deg, #ff7eb3, #ff8c69);
+	box-shadow: 0 4px 18px rgba(255,126,179,0.30), 0 0 30px rgba(255,140,105,0.12);
 	color: #fff;
 	font-weight: 700;
 }
 
 html.theme-reef .mp-btn-primary:hover:not(:disabled) {
-	background: linear-gradient(135deg, #20e8d6, #ffa07a);
+	background: linear-gradient(135deg, #ffa3cc, #ffb49a);
 	transform: translateY(-2px);
-	box-shadow: 0 8px 28px rgba(0,210,190,0.35), 0 0 40px rgba(255,127,80,0.15);
+	box-shadow: 0 8px 28px rgba(255,126,179,0.40), 0 0 40px rgba(255,140,105,0.18);
 }
 
 html.theme-reef .mp-btn-secondary {
-	background: rgba(0,210,190,0.08);
-	border: 1px solid rgba(0,210,190,0.18);
+	background: rgba(255,126,179,0.10);
+	border: 1px solid rgba(255,126,179,0.22);
 	border-radius: 12px;
 	color: var(--mp-text);
 }
 
 html.theme-reef .mp-btn-secondary:hover:not(:disabled) {
-	background: rgba(0,210,190,0.14);
-	border-color: rgba(0,210,190,0.35);
+	background: rgba(255,126,179,0.18);
+	border-color: rgba(255,126,179,0.40);
 	transform: translateY(-1px);
 }
 
-/* ── Invite Code — ocean glow ── */
+/* ── Invite Code — tropical glow ── */
 html.theme-reef .mp-invite-code {
 	background: linear-gradient(90deg,
-		rgba(0,210,190,0.15) 0%, rgba(56,201,232,0.2) 25%,
-		rgba(255,127,80,0.2) 50%, rgba(255,215,0,0.15) 75%,
-		rgba(0,210,190,0.15) 100%);
+		rgba(255,126,179,0.25) 0%, rgba(255,140,105,0.3) 25%,
+		rgba(255,213,92,0.3) 50%, rgba(91,232,180,0.25) 75%,
+		rgba(255,126,179,0.25) 100%);
 	background-size: 300% 100%;
 	animation: reef-code-wave 5s linear infinite;
 	-webkit-background-clip: text;
 	background-clip: text;
 	color: transparent;
 	font-weight: 800;
-	filter: drop-shadow(0 0 8px rgba(0,210,190,0.3));
+	filter: drop-shadow(0 0 10px rgba(255,126,179,0.35));
 }
 
 /* ── Player list  ── */
 html.theme-reef .mp-player-item {
-	background: rgba(0,210,190,0.04);
-	border: 1px solid rgba(0,210,190,0.10);
+	background: rgba(255,126,179,0.06);
+	border: 1px solid rgba(255,126,179,0.14);
 	border-radius: 10px;
 }
 
 html.theme-reef .mp-player-host-badge {
-	background: linear-gradient(135deg, #00d2be, #38c9e8);
-	color: #0a1628;
+	background: linear-gradient(135deg, #ff7eb3, #ffa3cc);
+	color: #1e0d2e;
 	font-weight: 700;
 }
 
 html.theme-reef .mp-player-you-badge {
-	background: rgba(255,127,80,0.15);
-	color: #ff7f50;
-	border: 1px solid rgba(255,127,80,0.3);
+	background: rgba(255,213,90,0.18);
+	color: #ffd55a;
+	border: 1px solid rgba(255,213,90,0.35);
 }
 
 /* ── Divider ── */
@@ -8652,67 +8660,67 @@ html.theme-reef .mp-divider {
 
 html.theme-reef .mp-divider::before,
 html.theme-reef .mp-divider::after {
-	background: linear-gradient(90deg, transparent, rgba(0,210,190,0.2), transparent);
+	background: linear-gradient(90deg, transparent, rgba(255,126,179,0.25), transparent);
 }
 
 /* ── Waiting dots ── */
 html.theme-reef .mp-dots span {
 	background: var(--mp-accent);
-	box-shadow: 0 0 8px rgba(0,210,190,0.4);
+	box-shadow: 0 0 8px rgba(255,126,179,0.45);
 }
 
-/* ── Zones — deep ocean with bioluminescent borders ── */
+/* ── Zones — vibrant warm colors with glow borders ── */
 html.theme-reef .mp-zone {
 	border-radius: 16px;
-	border-width: 1px;
-	box-shadow: 0 4px 24px rgba(0,0,0,0.45), inset 0 1px 0 rgba(0,210,190,0.04);
+	border-width: 2px;
+	box-shadow: 0 4px 24px rgba(20,0,30,0.40), inset 0 1px 0 rgba(255,255,255,0.06);
 	transition: transform 0.3s ease, box-shadow 0.3s ease;
 }
 
 html.theme-reef .mp-zone-yellow {
-	background: linear-gradient(160deg, rgba(240,192,64,0.10) 0%, rgba(240,192,64,0.03) 50%, rgba(240,192,64,0.07) 100%);
-	border-color: rgba(240,192,64,0.25);
-	box-shadow: 0 4px 24px rgba(0,0,0,0.45), inset 0 0 30px rgba(240,192,64,0.05), 0 0 20px rgba(240,192,64,0.04);
+	background: linear-gradient(160deg, rgba(255,213,90,0.28) 0%, rgba(255,200,60,0.12) 50%, rgba(255,213,90,0.20) 100%);
+	border-color: rgba(255,213,90,0.50);
+	box-shadow: 0 4px 24px rgba(20,0,30,0.40), inset 0 0 40px rgba(255,213,90,0.12), 0 0 25px rgba(255,213,90,0.10);
 }
 
 html.theme-reef .mp-zone-green {
-	background: linear-gradient(160deg, rgba(45,212,168,0.09) 0%, rgba(45,212,168,0.02) 50%, rgba(45,212,168,0.06) 100%);
-	border-color: rgba(45,212,168,0.25);
-	box-shadow: 0 4px 24px rgba(0,0,0,0.45), inset 0 0 30px rgba(45,212,168,0.04), 0 0 20px rgba(45,212,168,0.04);
+	background: linear-gradient(160deg, rgba(91,232,180,0.24) 0%, rgba(91,232,180,0.08) 50%, rgba(91,232,180,0.16) 100%);
+	border-color: rgba(91,232,180,0.45);
+	box-shadow: 0 4px 24px rgba(20,0,30,0.40), inset 0 0 40px rgba(91,232,180,0.10), 0 0 25px rgba(91,232,180,0.08);
 }
 
 html.theme-reef .mp-zone-blue {
-	background: linear-gradient(160deg, rgba(56,201,232,0.09) 0%, rgba(56,201,232,0.02) 50%, rgba(56,201,232,0.06) 100%);
-	border-color: rgba(56,201,232,0.25);
-	box-shadow: 0 4px 24px rgba(0,0,0,0.45), inset 0 0 30px rgba(56,201,232,0.04), 0 0 20px rgba(56,201,232,0.04);
+	background: linear-gradient(160deg, rgba(87,213,229,0.24) 0%, rgba(87,213,229,0.08) 50%, rgba(87,213,229,0.16) 100%);
+	border-color: rgba(87,213,229,0.45);
+	box-shadow: 0 4px 24px rgba(20,0,30,0.40), inset 0 0 40px rgba(87,213,229,0.10), 0 0 25px rgba(87,213,229,0.08);
 }
 
 html.theme-reef .mp-zone-red {
-	background: linear-gradient(160deg, rgba(255,127,80,0.09) 0%, rgba(255,127,80,0.02) 50%, rgba(255,127,80,0.06) 100%);
-	border-color: rgba(255,127,80,0.25);
-	box-shadow: 0 4px 24px rgba(0,0,0,0.45), inset 0 0 30px rgba(255,127,80,0.04), 0 0 20px rgba(255,127,80,0.04);
+	background: linear-gradient(160deg, rgba(255,140,105,0.26) 0%, rgba(255,140,105,0.10) 50%, rgba(255,140,105,0.18) 100%);
+	border-color: rgba(255,140,105,0.50);
+	box-shadow: 0 4px 24px rgba(20,0,30,0.40), inset 0 0 40px rgba(255,140,105,0.10), 0 0 25px rgba(255,140,105,0.08);
 }
 
 html.theme-reef .mp-zone-purple {
-	background: linear-gradient(160deg, rgba(192,132,252,0.09) 0%, rgba(192,132,252,0.02) 50%, rgba(192,132,252,0.06) 100%);
-	border-color: rgba(192,132,252,0.25);
-	box-shadow: 0 4px 24px rgba(0,0,0,0.45), inset 0 0 30px rgba(192,132,252,0.04), 0 0 20px rgba(192,132,252,0.04);
+	background: linear-gradient(160deg, rgba(212,160,255,0.24) 0%, rgba(212,160,255,0.08) 50%, rgba(212,160,255,0.16) 100%);
+	border-color: rgba(212,160,255,0.45);
+	box-shadow: 0 4px 24px rgba(20,0,30,0.40), inset 0 0 40px rgba(212,160,255,0.10), 0 0 25px rgba(212,160,255,0.08);
 }
 
 /* ── Zone labels ── */
 html.theme-reef .mp-zone-label {
-	opacity: 0.6;
+	opacity: 0.75;
 	font-weight: 800;
 	letter-spacing: 1.5px;
 	font-size: 0.65rem;
-	text-shadow: 0 0 8px currentColor;
+	text-shadow: 0 0 10px currentColor;
 }
 
-html.theme-reef .mp-zone-yellow .mp-zone-label { color: #ffe082; }
-html.theme-reef .mp-zone-green  .mp-zone-label { color: #6ee7c0; }
-html.theme-reef .mp-zone-blue   .mp-zone-label { color: #7dd8f0; }
-html.theme-reef .mp-zone-red    .mp-zone-label { color: #ffa07a; }
-html.theme-reef .mp-zone-purple .mp-zone-label { color: #d8b4fe; }
+html.theme-reef .mp-zone-yellow .mp-zone-label { color: #ffe88a; }
+html.theme-reef .mp-zone-green  .mp-zone-label { color: #8bf0ce; }
+html.theme-reef .mp-zone-blue   .mp-zone-label { color: #8ae3ef; }
+html.theme-reef .mp-zone-red    .mp-zone-label { color: #ffb49a; }
+html.theme-reef .mp-zone-purple .mp-zone-label { color: #e6c5ff; }
 
 /* ── Board layout ── */
 html.theme-reef .mp-board {
@@ -8729,14 +8737,13 @@ html.theme-reef .mp-board-col {
 }
 
 html.theme-reef .mp-board-container {
-	background: radial-gradient(ellipse at 50% 60%, rgba(0,210,190,0.04) 0%, transparent 70%);
+	background: radial-gradient(ellipse at 50% 60%, rgba(255,126,179,0.06) 0%, transparent 70%);
 }
 
-/* ── Living Board — Idle cells breathe ── */
+/* ── Board cells — no breathe animation, clean look ── */
 html.theme-reef .mp-cell {
-	animation: reef-cell-breathe 4s ease-in-out infinite;
-	animation-delay: calc(var(--cell-index, 0) * 0.15s);
 	border-radius: var(--mp-cell-radius);
+	transition: all 0.2s ease;
 }
 
 html.theme-reef .mp-cell.active {
@@ -8746,74 +8753,74 @@ html.theme-reef .mp-cell.active {
 /* ── Placement preview ripple ── */
 html.theme-reef .mp-cell.preview-valid {
 	animation: reef-ripple 0.6s ease-out !important;
-	box-shadow: 0 0 12px rgba(0,210,190,0.3);
+	box-shadow: 0 0 12px rgba(255,126,179,0.35);
 }
 
 html.theme-reef .mp-cell.preview-denied {
-	box-shadow: 0 0 12px rgba(255,107,107,0.4) !important;
+	box-shadow: 0 0 12px rgba(255,107,138,0.45) !important;
 }
 
-/* ── Cells — bioluminescent active glow ── */
+/* ── Cells — warm active glow ── */
 html.theme-reef .mp-cell.active {
-	box-shadow: 0 0 8px rgba(0,210,190,0.2), inset 0 1px 2px rgba(0,0,0,0.2);
+	box-shadow: 0 0 8px rgba(255,200,150,0.25), inset 0 1px 2px rgba(0,0,0,0.15);
 	border-width: 1px;
 }
 
 /* ── Bonus dots per zone ── */
 html.theme-reef .mp-cell.bonus-yellow .mp-cell-bonus-dot {
-	background: #f0c040;
+	background: #ffd55a;
 	width: 12px; height: 12px;
 	border-radius: 3px;
-	border: 1.5px solid #c49e20;
-	box-shadow: 0 0 8px rgba(240,192,64,0.5);
+	border: 1.5px solid #ccaa30;
+	box-shadow: 0 0 10px rgba(255,213,90,0.55);
 }
 
 html.theme-reef .mp-cell.bonus-green .mp-cell-bonus-dot {
-	background: #2dd4a8;
+	background: #5be8b4;
 	width: 12px; height: 12px;
 	border-radius: 3px;
-	border: 1.5px solid #0d9668;
-	box-shadow: 0 0 8px rgba(45,212,168,0.5);
+	border: 1.5px solid #20b888;
+	box-shadow: 0 0 10px rgba(91,232,180,0.55);
 }
 
 html.theme-reef .mp-cell.bonus-blue .mp-cell-bonus-dot {
-	background: #38c9e8;
+	background: #57d5e5;
 	width: 12px; height: 12px;
 	border-radius: 3px;
-	border: 1.5px solid #1890b0;
-	box-shadow: 0 0 8px rgba(56,201,232,0.5);
+	border: 1.5px solid #2aabb8;
+	box-shadow: 0 0 10px rgba(87,213,229,0.55);
 }
 
 html.theme-reef .mp-cell.bonus-red .mp-cell-bonus-dot {
-	background: #ff7f50;
+	background: #ff8c69;
 	width: 12px; height: 12px;
 	border-radius: 3px;
-	border: 1.5px solid #cc5530;
-	box-shadow: 0 0 8px rgba(255,127,80,0.5);
+	border: 1.5px solid #d06040;
+	box-shadow: 0 0 10px rgba(255,140,105,0.55);
 }
 
 html.theme-reef .mp-cell.bonus-purple .mp-cell-bonus-dot {
-	background: #c084fc;
+	background: #d4a0ff;
 	width: 12px; height: 12px;
 	border-radius: 3px;
-	border: 1.5px solid #9050d0;
-	box-shadow: 0 0 8px rgba(192,132,252,0.5);
+	border: 1.5px solid #a870d0;
+	box-shadow: 0 0 10px rgba(212,160,255,0.55);
 }
 
 html.theme-reef .mp-cell.bonus-any .mp-cell-bonus-dot {
-	background: linear-gradient(135deg, #f0c040 0%, #2dd4a8 24%, #38c9e8 48%, #ff7f50 72%, #c084fc 100%) !important;
+	background: linear-gradient(135deg, #ffd55a 0%, #5be8b4 24%, #57d5e5 48%, #ff8c69 72%, #d4a0ff 100%) !important;
 	width: 12px; height: 12px;
 	border-radius: 3px;
-	border: 1.5px solid rgba(0,210,190,0.5);
-	box-shadow: 0 0 10px rgba(0,210,190,0.4), 0 0 5px rgba(255,127,80,0.3);
+	border: 1.5px solid rgba(255,126,179,0.5);
+	box-shadow: 0 0 12px rgba(255,126,179,0.45), 0 0 6px rgba(255,140,105,0.35);
 }
 
 /* ── Mini cells per zone ── */
-html.theme-reef .mp-zone-yellow .mp-mini-cell.filled { background: rgba(240,192,64,0.55); }
-html.theme-reef .mp-zone-green  .mp-mini-cell.filled { background: rgba(45,212,168,0.55); }
-html.theme-reef .mp-zone-blue   .mp-mini-cell.filled { background: rgba(56,201,232,0.55); }
-html.theme-reef .mp-zone-red    .mp-mini-cell.filled { background: rgba(255,127,80,0.55); }
-html.theme-reef .mp-zone-purple .mp-mini-cell.filled { background: rgba(192,132,252,0.55); }
+html.theme-reef .mp-zone-yellow .mp-mini-cell.filled { background: rgba(255,213,90,0.65); }
+html.theme-reef .mp-zone-green  .mp-mini-cell.filled { background: rgba(91,232,180,0.60); }
+html.theme-reef .mp-zone-blue   .mp-mini-cell.filled { background: rgba(87,213,229,0.60); }
+html.theme-reef .mp-zone-red    .mp-mini-cell.filled { background: rgba(255,140,105,0.65); }
+html.theme-reef .mp-zone-purple .mp-mini-cell.filled { background: rgba(212,160,255,0.60); }
 
 /* ── Drag ghost ── */
 html.theme-reef .mp-drag-ghost .mp-mini-grid {
@@ -8822,33 +8829,33 @@ html.theme-reef .mp-drag-ghost .mp-mini-grid {
 
 html.theme-reef .mp-drag-ghost .mp-mini-cell {
 	border-radius: 6px !important;
-	box-shadow: inset 0 1px 2px rgba(0,0,0,0.2), 0 1px 0 rgba(0,210,190,0.08);
+	box-shadow: inset 0 1px 2px rgba(0,0,0,0.2), 0 1px 0 rgba(255,200,150,0.10);
 }
 
 html.theme-reef .mp-drag-ghost .mp-mini-cell.filled {
-	border: 1px solid rgba(0,210,190,0.25);
-	box-shadow: inset 0 1px 2px rgba(0,0,0,0.2), 0 0 8px rgba(0,210,190,0.18);
+	border: 1px solid rgba(255,126,179,0.30);
+	box-shadow: inset 0 1px 2px rgba(0,0,0,0.2), 0 0 8px rgba(255,126,179,0.20);
 	border-radius: 6px !important;
 }
 
 /* ── Cards — seaweed sway hover ── */
 html.theme-reef .mp-card.playable:hover {
 	animation: reef-card-sway 2.5s ease-in-out infinite;
-	box-shadow: 0 8px 24px rgba(0,210,190,0.2), 0 0 16px rgba(255,127,80,0.1);
-	border-color: rgba(0,210,190,0.35);
+	box-shadow: 0 8px 24px rgba(255,126,179,0.22), 0 0 16px rgba(255,140,105,0.12);
+	border-color: rgba(255,126,179,0.40);
 }
 
 html.theme-reef .mp-card {
-	background: rgba(10, 25, 48, 0.85);
-	border: 1px solid rgba(0,210,190,0.12);
+	background: rgba(45, 18, 60, 0.88);
+	border: 1px solid rgba(255,126,179,0.15);
 	border-radius: 14px;
 	transition: all 0.25s ease;
 }
 
 html.theme-reef .mp-card.golden {
-	background: linear-gradient(160deg, rgba(255,215,0,0.12) 0%, rgba(10,25,48,0.85) 40%);
-	border-color: rgba(255,215,0,0.3);
-	box-shadow: 0 0 16px rgba(255,215,0,0.08);
+	background: linear-gradient(160deg, rgba(255,215,92,0.15) 0%, rgba(45,18,60,0.88) 40%);
+	border-color: rgba(255,215,92,0.35);
+	box-shadow: 0 0 18px rgba(255,215,92,0.10);
 }
 
 html.theme-reef .mp-card.card-spent {
@@ -8858,51 +8865,51 @@ html.theme-reef .mp-card.card-spent {
 
 /* ── Scoreboard ── */
 html.theme-reef .mp-score-row {
-	background: rgba(0,210,190,0.04);
-	border: 1px solid rgba(0,210,190,0.08);
+	background: rgba(255,126,179,0.06);
+	border: 1px solid rgba(255,126,179,0.10);
 	border-radius: 10px;
 }
 
 html.theme-reef .mp-score-row.me {
-	border-color: rgba(0,210,190,0.25);
-	background: rgba(0,210,190,0.08);
+	border-color: rgba(255,126,179,0.30);
+	background: rgba(255,126,179,0.12);
 }
 
 /* ── Score Zones ── */
 html.theme-reef .mp-sz {
-	background: rgba(0,210,190,0.05);
+	background: rgba(255,126,179,0.07);
 	border-radius: 6px;
 }
 
-/* ── Bonus buttons — coral glass ── */
+/* ── Bonus buttons — warm coral glass ── */
 html.theme-reef .mp-bonus-btn {
 	border-radius: 10px;
-	background: rgba(255,127,80,0.06);
-	border: 1px solid rgba(255,127,80,0.15);
-	box-shadow: inset 0 1px 0 rgba(255,127,80,0.04);
+	background: rgba(255,140,105,0.08);
+	border: 1px solid rgba(255,140,105,0.20);
+	box-shadow: inset 0 1px 0 rgba(255,200,150,0.06);
 	transition: all 0.25s ease;
 }
 
 html.theme-reef .mp-bonus-btn:hover:not(.disabled) {
-	background: rgba(255,127,80,0.14);
-	border-color: rgba(255,127,80,0.35);
+	background: rgba(255,140,105,0.18);
+	border-color: rgba(255,140,105,0.40);
 	transform: translateY(-2px);
-	box-shadow: 0 4px 16px rgba(255,127,80,0.2);
+	box-shadow: 0 4px 16px rgba(255,140,105,0.25);
 }
 
 html.theme-reef .mp-bonus-btn.mp-bonus-new {
-	box-shadow: 0 0 0 2px rgba(0,210,190,0.18);
+	box-shadow: 0 0 0 2px rgba(255,126,179,0.22);
 	animation: reef-bonus-glow 2s ease infinite;
 }
 
 /* ── Gold counter — warm glow ── */
 html.theme-reef .mp-gold-counter {
 	color: var(--mp-gold);
-	background: rgba(255,215,0,0.06);
-	border: 1px solid rgba(255,215,0,0.2);
+	background: rgba(255,217,92,0.10);
+	border: 1px solid rgba(255,217,92,0.25);
 	border-radius: 12px;
 	font-weight: 700;
-	text-shadow: 0 0 8px rgba(255,215,0,0.2);
+	text-shadow: 0 0 10px rgba(255,217,92,0.25);
 }
 
 /* ── Turn indicator — bioluminescent pulse ── */
