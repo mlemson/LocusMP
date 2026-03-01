@@ -9528,3 +9528,515 @@ html.theme-reef .mp-bottom-bar {
 	background: rgba(45, 18, 60, 0.92);
 	border-color: rgba(255,126,179,0.10);
 }
+
+
+/* ═══════════════════════════════════════════════════════════════════
+   REEF "TROPICAL PARADISE" — ENHANCED VISUALS
+   Beach bottom bar, fancy cards, game-like buttons, player panels
+   ═══════════════════════════════════════════════════════════════════ */
+
+/* ── New keyframes ── */
+
+/* Sand wave for bottom bar */
+@keyframes reef-sand-wave {
+	0%   { background-position: 0% 0; }
+	100% { background-position: 200% 0; }
+}
+
+/* Card idle float */
+@keyframes reef-card-float {
+	0%, 100% { transform: translateY(0px); }
+	50%      { transform: translateY(-3px); }
+}
+
+/* Placement shockwave */
+@keyframes reef-place-shockwave {
+	0%   { transform: scale(0.3); opacity: 0.9; border-width: 4px; }
+	60%  { transform: scale(1.8); opacity: 0.3; border-width: 2px; }
+	100% { transform: scale(2.5); opacity: 0; border-width: 1px; }
+}
+
+/* Placement cell pop */
+@keyframes reef-cell-place-pop {
+	0%   { transform: scale(1);    filter: brightness(1); }
+	20%  { transform: scale(1.25); filter: brightness(1.5); }
+	40%  { transform: scale(0.92); filter: brightness(1.2); }
+	60%  { transform: scale(1.08); filter: brightness(1.1); }
+	100% { transform: scale(1);    filter: brightness(1); }
+}
+
+/* Button pulse idle */
+@keyframes reef-btn-pulse {
+	0%, 100% { box-shadow: 0 4px 18px rgba(255,126,179,0.30), 0 0 0 0 rgba(255,126,179,0.25); }
+	50%      { box-shadow: 0 4px 18px rgba(255,126,179,0.40), 0 0 0 8px rgba(255,126,179,0); }
+}
+
+/* Player panel active glow */
+@keyframes reef-panel-glow {
+	0%, 100% { box-shadow: 0 0 12px rgba(255,126,179,0.12), 0 2px 8px rgba(20,0,30,0.22); }
+	50%      { box-shadow: 0 0 22px rgba(255,126,179,0.25), 0 2px 8px rgba(20,0,30,0.22); }
+}
+
+/* ── BEACH BOTTOM BAR ── */
+html.theme-reef .mp-bottom-bar {
+	background:
+		/* Subtle wave pattern on top */
+		repeating-linear-gradient(
+			90deg,
+			transparent 0px,
+			rgba(255,220,160,0.03) 40px,
+			transparent 80px
+		),
+		/* Sandy gradient base */
+		linear-gradient(180deg,
+			rgba(80,35,30,0.92) 0%,
+			rgba(140,85,50,0.88) 30%,
+			rgba(195,145,85,0.90) 60%,
+			rgba(220,180,120,0.92) 100%);
+	border-top: 2px solid rgba(255,200,120,0.35);
+	border-color: rgba(255,200,120,0.35);
+	box-shadow: 0 -4px 20px rgba(0,0,0,0.3), inset 0 2px 12px rgba(255,220,160,0.08);
+	position: relative;
+}
+
+/* Foam edge at top of beach bar */
+html.theme-reef .mp-bottom-bar::before {
+	content: '';
+	position: absolute;
+	top: -3px;
+	left: 0;
+	right: 0;
+	height: 3px;
+	background: repeating-linear-gradient(
+		90deg,
+		rgba(255,255,255,0.5) 0px,
+		rgba(255,255,255,0.15) 20px,
+		rgba(255,255,255,0.5) 40px
+	);
+	background-size: 200% 100%;
+	animation: reef-sand-wave 8s linear infinite;
+	border-radius: 0;
+}
+
+/* ── FANCY CARDS ── */
+html.theme-reef .mp-card {
+	background: linear-gradient(165deg,
+		rgba(65, 28, 85, 0.92) 0%,
+		rgba(45, 18, 60, 0.95) 50%,
+		rgba(55, 22, 70, 0.92) 100%);
+	border: 2px solid rgba(255,126,179,0.22);
+	border-radius: 16px;
+	transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+	box-shadow: 0 4px 12px rgba(20,0,30,0.30), inset 0 1px 0 rgba(255,200,150,0.08);
+	position: relative;
+	overflow: hidden;
+}
+
+/* Decorative shimmer strip on cards */
+html.theme-reef .mp-card::before {
+	content: '';
+	position: absolute;
+	top: 0;
+	left: 0;
+	right: 0;
+	height: 3px;
+	background: linear-gradient(90deg, #ff7eb3, #ff8c69, #ffd55a, #5be8b4, #d4a0ff);
+	opacity: 0.7;
+	border-radius: 14px 14px 0 0;
+}
+
+/* Card playable idle animation */
+html.theme-reef .mp-card.playable {
+	animation: reef-card-float 3s ease-in-out infinite;
+	animation-delay: calc(var(--card-index, 0) * 0.4s);
+}
+
+html.theme-reef .mp-card.playable:hover {
+	animation: reef-card-sway 2s ease-in-out infinite;
+	box-shadow:
+		0 12px 32px rgba(255,126,179,0.30),
+		0 0 20px rgba(255,140,105,0.15),
+		inset 0 1px 0 rgba(255,200,150,0.12);
+	border-color: rgba(255,126,179,0.55);
+	transform: translateY(-8px) scale(1.03);
+}
+
+html.theme-reef .mp-card.selected {
+	border-color: rgba(91,232,180,0.70);
+	box-shadow:
+		0 0 0 3px rgba(91,232,180,0.25),
+		0 10px 28px rgba(91,232,180,0.20),
+		inset 0 1px 0 rgba(255,255,255,0.10);
+	transform: translateY(-6px) scale(1.02);
+}
+
+html.theme-reef .mp-card.selected::before {
+	background: linear-gradient(90deg, #5be8b4, #57d5e5, #5be8b4);
+	opacity: 1;
+}
+
+html.theme-reef .mp-card.golden {
+	background: linear-gradient(165deg,
+		rgba(255,215,92,0.18) 0%,
+		rgba(45,18,60,0.92) 40%,
+		rgba(65,28,85,0.90) 100%);
+	border-color: rgba(255,215,92,0.45);
+	box-shadow:
+		0 4px 16px rgba(255,215,92,0.15),
+		0 0 24px rgba(255,215,92,0.08),
+		inset 0 1px 0 rgba(255,215,92,0.12);
+}
+
+html.theme-reef .mp-card.golden::before {
+	background: linear-gradient(90deg, #ffd55a, #ffed8a, #ffd55a);
+	opacity: 1;
+}
+
+/* Card name + mini-grid styling */
+html.theme-reef .mp-card .mp-card-name {
+	color: var(--mp-text);
+	font-weight: 700;
+	font-size: 0.72rem;
+	text-shadow: 0 1px 3px rgba(0,0,0,0.3);
+}
+
+html.theme-reef .mp-card .mp-mini-cell.filled {
+	border-radius: 4px !important;
+	box-shadow: 0 0 4px currentColor;
+}
+
+/* ── GAME-LIKE BUTTONS ── */
+html.theme-reef .mp-btn {
+	border-radius: 14px;
+	font-weight: 700;
+	letter-spacing: 0.5px;
+	text-transform: uppercase;
+	font-size: 0.9rem;
+	transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+	position: relative;
+	overflow: hidden;
+}
+
+html.theme-reef .mp-btn-primary {
+	background: linear-gradient(135deg, #ff7eb3 0%, #ff6b95 40%, #ff8c69 100%);
+	box-shadow: 0 4px 18px rgba(255,126,179,0.35), 0 0 30px rgba(255,140,105,0.12);
+	color: #fff;
+	font-weight: 800;
+	padding: 14px 28px;
+	font-size: 1rem;
+	text-shadow: 0 1px 2px rgba(0,0,0,0.2);
+	animation: reef-btn-pulse 3s ease infinite;
+}
+
+html.theme-reef .mp-btn-primary::after {
+	content: '';
+	position: absolute;
+	top: 0;
+	left: -100%;
+	width: 60%;
+	height: 100%;
+	background: linear-gradient(90deg, transparent, rgba(255,255,255,0.20), transparent);
+	transition: left 0.5s ease;
+}
+
+html.theme-reef .mp-btn-primary:hover:not(:disabled)::after {
+	left: 120%;
+}
+
+html.theme-reef .mp-btn-primary:hover:not(:disabled) {
+	background: linear-gradient(135deg, #ffa3cc 0%, #ff88a8 40%, #ffb49a 100%);
+	transform: translateY(-3px) scale(1.03);
+	box-shadow: 0 10px 32px rgba(255,126,179,0.45), 0 0 44px rgba(255,140,105,0.20);
+	animation: none;
+}
+
+html.theme-reef .mp-btn-primary:active:not(:disabled) {
+	transform: translateY(-1px) scale(0.98);
+}
+
+html.theme-reef .mp-btn-secondary {
+	background: rgba(255,126,179,0.12);
+	border: 2px solid rgba(255,126,179,0.28);
+	border-radius: 14px;
+	color: var(--mp-text);
+	font-weight: 700;
+	padding: 12px 22px;
+}
+
+html.theme-reef .mp-btn-secondary:hover:not(:disabled) {
+	background: rgba(255,126,179,0.22);
+	border-color: rgba(255,126,179,0.50);
+	transform: translateY(-2px);
+	box-shadow: 0 6px 20px rgba(255,126,179,0.18);
+}
+
+/* Bottom actions (end turn, etc.) */
+html.theme-reef .mp-bottom-actions .mp-btn-primary {
+	min-width: 220px;
+	font-size: 1.15rem;
+	padding: 16px 32px;
+	border-radius: 16px;
+	text-shadow: 0 2px 4px rgba(0,0,0,0.25);
+}
+
+/* ── ENHANCED PLACEMENT ANIMATION ── */
+html.theme-reef .mp-zone-flash {
+	animation: reef-place-celebrate 0.8s ease !important;
+}
+
+/* Cell pop when placed */
+html.theme-reef .mp-cell.just-placed {
+	animation: reef-cell-place-pop 0.55s ease !important;
+}
+
+/* ── PRETTIER PLAYER INFO PANELS ── */
+html.theme-reef .mp-opponent-panel {
+	background: linear-gradient(160deg,
+		rgba(55, 22, 70, 0.75) 0%,
+		rgba(75, 30, 85, 0.55) 50%,
+		rgba(45, 18, 60, 0.70) 100%);
+	border: 2px solid rgba(255,126,179,0.18);
+	border-radius: 16px;
+	box-shadow: 0 4px 16px rgba(20,0,30,0.30);
+	padding: 10px 12px;
+	position: relative;
+	overflow: hidden;
+	transition: all 0.3s ease;
+}
+
+/* Decorative top gradient line on panels */
+html.theme-reef .mp-opponent-panel::before {
+	content: '';
+	position: absolute;
+	top: 0;
+	left: 0;
+	right: 0;
+	height: 2px;
+	background: linear-gradient(90deg,
+		transparent,
+		rgba(255,126,179,0.35),
+		rgba(255,140,105,0.30),
+		rgba(255,213,90,0.25),
+		transparent);
+	border-radius: 16px 16px 0 0;
+}
+
+html.theme-reef .mp-opponent-panel.is-active {
+	border-color: rgba(255,126,179,0.55);
+	background: linear-gradient(160deg,
+		rgba(255,126,179,0.14) 0%,
+		rgba(255,100,160,0.06) 50%,
+		rgba(255,126,179,0.10) 100%);
+	box-shadow: 0 0 20px rgba(255,126,179,0.18), 0 4px 16px rgba(20,0,30,0.30);
+	animation: reef-panel-glow 2.5s ease infinite;
+}
+
+html.theme-reef .mp-opponent-panel.is-active::before {
+	background: linear-gradient(90deg,
+		transparent,
+		rgba(255,126,179,0.60),
+		rgba(255,163,204,0.50),
+		rgba(255,126,179,0.60),
+		transparent);
+	height: 3px;
+}
+
+/* Score styling within panels */
+html.theme-reef .mp-opp-score {
+	font-weight: 800;
+	font-size: 1.2rem;
+	background: linear-gradient(135deg, #ffd55a, #ff8c69);
+	-webkit-background-clip: text;
+	background-clip: text;
+	-webkit-text-fill-color: transparent;
+	filter: drop-shadow(0 1px 3px rgba(255,213,90,0.3));
+}
+
+/* Opponent card details */
+html.theme-reef .mp-opp-card-detail {
+	background: rgba(255,126,179,0.06);
+	border: 1px solid rgba(255,126,179,0.14);
+	border-radius: 10px;
+	transition: all 0.2s ease;
+	padding: 5px 6px;
+}
+
+html.theme-reef .mp-opp-card-detail:hover {
+	background: rgba(255,126,179,0.12);
+	border-color: rgba(255,126,179,0.30);
+	transform: scale(1.12) translateY(-2px);
+	box-shadow: 0 4px 12px rgba(255,126,179,0.18);
+}
+
+html.theme-reef .mp-opp-card-detail.is-selected-by-player {
+	border-color: rgba(255,126,179,0.70) !important;
+	box-shadow: 0 0 16px rgba(255,126,179,0.40);
+	background: rgba(255,126,179,0.14);
+	transform: scale(1.08);
+}
+
+/* Player name styling */
+html.theme-reef .mp-opp-name {
+	font-weight: 700;
+	font-size: 0.85rem;
+	color: var(--mp-text);
+}
+
+/* Hand label */
+html.theme-reef .mp-opp-hand-label {
+	color: rgba(255,200,180,0.70);
+	font-weight: 600;
+	text-transform: uppercase;
+	font-size: 0.60rem;
+	letter-spacing: 0.5px;
+}
+
+/* Opponent meta (gold, objective, etc.) */
+html.theme-reef .mp-opp-meta-row {
+	color: rgba(255,200,180,0.65);
+}
+
+/* ── SIDEBAR ENHANCED ── */
+html.theme-reef .mp-sidebar {
+	background: linear-gradient(180deg,
+		rgba(45, 18, 60, 0.88) 0%,
+		rgba(55, 22, 70, 0.82) 50%,
+		rgba(45, 18, 60, 0.85) 100%);
+	border-color: rgba(255,126,179,0.12);
+	box-shadow: -2px 0 20px rgba(20,0,30,0.20);
+}
+
+/* Scoreboard row enhanced */
+html.theme-reef .mp-score-row {
+	background: rgba(255,126,179,0.06);
+	border: 1px solid rgba(255,126,179,0.10);
+	border-radius: 12px;
+	padding: 10px 12px;
+	transition: all 0.3s ease;
+}
+
+html.theme-reef .mp-score-row.is-active {
+	background: rgba(255,126,179,0.12);
+	border-color: rgba(255,126,179,0.35);
+	border-left: 4px solid #ff7eb3;
+	box-shadow: 0 0 12px rgba(255,126,179,0.10);
+}
+
+html.theme-reef .mp-score-row.is-me,
+html.theme-reef .mp-score-row.me {
+	border-color: rgba(255,126,179,0.35);
+	background: linear-gradient(135deg, rgba(255,126,179,0.12) 0%, rgba(255,140,105,0.06) 100%);
+	box-shadow: 0 0 12px rgba(255,126,179,0.08);
+}
+
+/* Score points gradient */
+html.theme-reef .mp-score-pts {
+	font-weight: 800;
+	background: linear-gradient(135deg, #ffd55a, #ff8c69);
+	-webkit-background-clip: text;
+	background-clip: text;
+	-webkit-text-fill-color: transparent;
+	filter: drop-shadow(0 1px 2px rgba(255,213,90,0.25));
+}
+
+/* ── ENHANCED PLACEMENT CONTROLS ── */
+html.theme-reef #mp-placement-controls {
+	background: linear-gradient(160deg,
+		rgba(55, 22, 70, 0.96) 0%,
+		rgba(45, 18, 60, 0.96) 100%);
+	border: 2px solid rgba(255,126,179,0.30);
+	border-radius: 18px;
+	box-shadow: 0 16px 48px rgba(20,0,30,0.55), inset 0 1px 0 rgba(255,200,150,0.10);
+	-webkit-backdrop-filter: blur(20px) saturate(1.6);
+	backdrop-filter: blur(20px) saturate(1.6);
+}
+
+html.theme-reef .mp-ctrl-btn {
+	background: linear-gradient(145deg, #ff7eb3, #d95e90);
+	border-radius: 14px;
+	box-shadow: 0 4px 14px rgba(255,126,179,0.40), inset 0 1px 0 rgba(255,255,255,0.20);
+	transition: all 0.2s ease;
+	color: #fff;
+	font-weight: 700;
+}
+
+html.theme-reef .mp-ctrl-btn:hover {
+	box-shadow: 0 0 26px rgba(255,126,179,0.60), inset 0 1px 0 rgba(255,255,255,0.25);
+	transform: scale(1.12) translateY(-2px);
+	background: linear-gradient(145deg, #ffa3cc, #e8709a);
+}
+
+html.theme-reef .mp-ctrl-cancel {
+	background: linear-gradient(145deg, #ff6b8a, #e0556a);
+	box-shadow: 0 4px 14px rgba(255,107,138,0.40), inset 0 1px 0 rgba(255,255,255,0.15);
+}
+
+/* ── LOBBY HERO BUTTON ── */
+html.theme-reef #create-game-btn {
+	font-size: 1.25rem;
+	padding: 18px 36px;
+	border-radius: 18px;
+	box-shadow: 0 8px 28px rgba(255,126,179,0.40), 0 0 50px rgba(255,140,105,0.12);
+	text-transform: uppercase;
+	letter-spacing: 1px;
+	position: relative;
+	overflow: hidden;
+}
+
+/* ── ENHANCED ZONE STYLING ── */
+html.theme-reef .mp-zone {
+	border-width: 2px;
+	border-radius: 18px;
+	position: relative;
+}
+
+/* ── HAND CONTAINER ── */
+html.theme-reef .mp-hand-container {
+	gap: 12px;
+}
+
+/* ── GOLD COUNTER FANCY ── */
+html.theme-reef .mp-gold-counter {
+	color: #ffd55a;
+	background: linear-gradient(135deg, rgba(255,213,90,0.14), rgba(255,140,105,0.08));
+	border: 2px solid rgba(255,213,90,0.30);
+	border-radius: 14px;
+	font-weight: 800;
+	text-shadow: 0 0 12px rgba(255,213,90,0.30);
+	font-size: 0.95rem;
+}
+
+/* ── TURN INDICATOR FANCY ── */
+html.theme-reef .mp-turn-indicator.my-turn {
+	color: #5be8b4;
+}
+
+html.theme-reef .mp-turn-player {
+	font-size: 1.05rem;
+	font-weight: 800;
+}
+
+/* ── BONUS BAR ── */
+html.theme-reef .mp-bonus-btn {
+	border-radius: 12px;
+	font-weight: 700;
+}
+
+/* ── INVITE CODE BIGGER ── */
+html.theme-reef .mp-invite-code {
+	font-size: 2.5rem;
+	letter-spacing: 8px;
+}
+
+/* ── NAME REQUIRED / INPUTS styled bigger ── */
+html.theme-reef .mp-name-required {
+	padding: 16px;
+	border-radius: 14px;
+}
+
+html.theme-reef .mp-input-group input,
+html.theme-reef .mp-input-group select {
+	padding: 12px 16px;
+	font-size: 1rem;
+	border-radius: 12px;
+}

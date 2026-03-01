@@ -2028,7 +2028,7 @@ class LocusLobbyUI {
 			if (!handIds.has(cardId)) delete this._cardTransforms[cardId];
 		}
 
-		container.innerHTML = hand.map(card => {
+		container.innerHTML = hand.map((card, cardIndex) => {
 			const renderMatrix = this._getTransformedCardMatrix(card);
 			const colorStyle = card.isGolden
 				? `background: linear-gradient(135deg, ${card.color?.code || '#f5d76e'}, #f5d76e, ${card.color?.code || '#f5d76e'})`
@@ -2052,6 +2052,7 @@ class LocusLobbyUI {
 				<div class="${cardClass}"
 					 data-card-id="${card.id}"
 					 data-shape="${card.shapeName}"
+					 style="--card-index: ${cardIndex}"
 					 touch-action="none">
 					<div class="mp-card-color" style="${colorStyle}"></div>
 					<div class="mp-card-shape">
@@ -5252,7 +5253,7 @@ class LocusLobbyUI {
 						if (isReef) {
 							const rr = row.getBoundingClientRect();
 							this._showConfetti(rr.left + rr.width / 2, rr.top + rr.height / 2, 10,
-								['#00d2be', '#38c9e8', '#ff7f50', '#ffd700', '#c084fc', '#ffa07a', '#2dd4a8']);
+								['#ff7eb3', '#ff8c69', '#ffd55a', '#5be8b4', '#d4a0ff', '#57d5e5']);
 						}
 						break;
 					}
@@ -5268,7 +5269,7 @@ class LocusLobbyUI {
 			const cy = window.innerHeight / 2;
 			this._showSparkle(cx, cy, 12);
 			if (isReef) {
-				this._showConfetti(cx, cy, 20, ['#00d2be', '#38c9e8', '#ff7f50', '#ffd700', '#c084fc']);
+				this._showConfetti(cx, cy, 20, ['#ff7eb3', '#ff8c69', '#ffd55a', '#5be8b4', '#d4a0ff']);
 			}
 		}
 
@@ -5340,6 +5341,38 @@ class LocusLobbyUI {
 		setTimeout(() => coin.remove(), 1000);
 	}
 
+	/** Reef theme: shockwave ring effect on card placement */
+	_showReefPlaceEffect(x, y) {
+		const ring = document.createElement('div');
+		ring.style.cssText = `
+			position: fixed; left: ${x}px; top: ${y}px;
+			width: 0; height: 0; border-radius: 50%;
+			border: 3px solid rgba(255,126,179,0.8);
+			box-shadow: 0 0 12px rgba(255,126,179,0.5), inset 0 0 12px rgba(255,126,179,0.3);
+			pointer-events: none; z-index: 9999;
+			transform: translate(-50%, -50%);
+			animation: reef-place-shockwave 0.7s ease-out forwards;
+		`;
+		document.body.appendChild(ring);
+		setTimeout(() => ring.remove(), 750);
+
+		// Second smaller delayed ring
+		setTimeout(() => {
+			const ring2 = document.createElement('div');
+			ring2.style.cssText = `
+				position: fixed; left: ${x}px; top: ${y}px;
+				width: 0; height: 0; border-radius: 50%;
+				border: 2px solid rgba(255,213,90,0.7);
+				box-shadow: 0 0 8px rgba(255,213,90,0.4);
+				pointer-events: none; z-index: 9999;
+				transform: translate(-50%, -50%);
+				animation: reef-place-shockwave 0.6s ease-out forwards;
+			`;
+			document.body.appendChild(ring2);
+			setTimeout(() => ring2.remove(), 650);
+		}, 100);
+	}
+
 	/** Wordt aangeroepen als een move wordt gebroadcast (met bonus/goud info) */
 	_onMovePlayed(data) {
 		const { playerId, playerName, zoneName, goldCollected, bonusesCollected, cardsPlayed, objectivesRevealed } = data;
@@ -5363,6 +5396,12 @@ class LocusLobbyUI {
 		if (zoneEl) {
 			zoneEl.classList.add('mp-zone-flash');
 			setTimeout(() => zoneEl.classList.remove('mp-zone-flash'), 700);
+
+			// Reef: shockwave ring + confetti burst on every placement
+			if (document.documentElement.classList.contains('theme-reef')) {
+				this._showReefPlaceEffect(cx, cy);
+				this._showConfetti(cx, cy, 8, ['#ff7eb3', '#ff8c69', '#ffd55a', '#5be8b4', '#d4a0ff']);
+			}
 		}
 
 		// Bloom effects policy: geen confetti op gewone plaatsing
@@ -5380,9 +5419,9 @@ class LocusLobbyUI {
 				this._showCoinBounce(cx, cy);
 				this._showConfetti(cx, cy, 10, ['#fff3a1', '#f5d76e', '#e8c547', '#d4a820']);
 			}
-			// Reef: underwater sparkle burst + coral confetti
+			// Reef: tropical sparkle burst + warm confetti
 			if (isReef) {
-				this._showConfetti(cx, cy, 12, ['#00d2be', '#38c9e8', '#ffd700', '#ff7f50', '#ffa07a']);
+				this._showConfetti(cx, cy, 16, ['#ff7eb3', '#ffd55a', '#ff8c69', '#5be8b4', '#d4a0ff']);
 			}
 		}
 
