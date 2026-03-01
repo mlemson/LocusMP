@@ -4611,10 +4611,9 @@ class LocusLobbyUI {
 			shopBtn.addEventListener('click', async () => {
 				shopBtn.disabled = true;
 				try {
-					// Host start de fase centraal; andere spelers mogen direct navigeren.
-					if (isHost && !isMatchFinished) {
-						const result = await this.mp.startShopPhase();
-						console.log('[Locus UI] startShopPhase result:', result);
+					// Any player can trigger the shop phase — first one wins, rest get error (that's fine)
+					if (!isMatchFinished) {
+						try { await this.mp.startShopPhase(); } catch (_) { /* already started, fine */ }
 					}
 					this._onShopPhase();
 				} catch (err) {

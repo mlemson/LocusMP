@@ -873,6 +873,7 @@ html, body {
 	grid-area: sidebar;
 	display: flex;
 	flex-direction: column;
+	justify-content: flex-start;
 	background: var(--mp-panel);
 	border-right: 1px solid rgba(255,255,255,0.06);
 	overflow-y: auto;
@@ -894,7 +895,6 @@ html, body {
 	padding: 8px 10px;
 	border-top: 1px solid rgba(255,255,255,0.06);
 	overflow-y: auto;
-	flex: 1;
 	min-height: 0;
 }
 
@@ -9660,29 +9660,43 @@ html.theme-reef .mp-bottom-bar .mp-card .mp-card-name {
 html.theme-reef .mp-game-layout::before {
 	content: '';
 	position: fixed;
-	bottom: 60px;
-	left: -20px;
-	width: 260px;
-	height: 340px;
-	background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 260 340'%3E%3C!-- trunk --%3E%3Cpath d='M130 340 C128 280 122 220 118 170 C116 145 120 125 125 110' stroke='%23654321' stroke-width='14' fill='none' stroke-linecap='round'/%3E%3Cpath d='M130 340 C132 280 126 220 120 170' stroke='%23785432' stroke-width='8' fill='none' opacity='0.4' stroke-linecap='round'/%3E%3C!-- leaves --%3E%3Cpath d='M125 110 C100 70 40 55 5 75' stroke='%23228844' stroke-width='4' fill='%23227744' opacity='0.7'/%3E%3Cpath d='M125 110 C95 60 30 30 10 20' stroke='%23228844' stroke-width='4' fill='%23227744' opacity='0.6'/%3E%3Cpath d='M125 110 C140 55 180 25 230 15' stroke='%23228844' stroke-width='4' fill='%23227744' opacity='0.65'/%3E%3Cpath d='M125 110 C150 65 200 55 250 70' stroke='%23228844' stroke-width='4' fill='%23227744' opacity='0.55'/%3E%3Cpath d='M125 110 C110 65 90 20 60 5' stroke='%23339955' stroke-width='3' fill='%23339955' opacity='0.5'/%3E%3Cpath d='M125 110 C155 50 210 40 245 35' stroke='%23339955' stroke-width='3' fill='%23339955' opacity='0.45'/%3E%3C!-- coconuts --%3E%3Ccircle cx='120' cy='115' r='6' fill='%23654321' opacity='0.6'/%3E%3Ccircle cx='132' cy='112' r='5' fill='%23654321' opacity='0.5'/%3E%3C/svg%3E") no-repeat center / contain;
-	opacity: 0.18;
+	bottom: 50px;
+	left: -10px;
+	width: 280px;
+	height: 380px;
+	background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 280 380'%3E%3Cdefs%3E%3ClinearGradient id='trunk1' x1='0' y1='0' x2='0' y2='1'%3E%3Cstop offset='0%25' stop-color='%237a5c3a'/%3E%3Cstop offset='100%25' stop-color='%23523a22'/%3E%3C/linearGradient%3E%3C/defs%3E%3C!-- trunk --%3E%3Cpath d='M140 380 C138 310 130 240 124 180 C120 150 122 125 128 105' stroke='url(%23trunk1)' stroke-width='16' fill='none' stroke-linecap='round'/%3E%3Cpath d='M140 380 C139 310 132 240 126 180' stroke='%23936e48' stroke-width='6' fill='none' opacity='0.35' stroke-linecap='round'/%3E%3C!-- trunk rings --%3E%3Cellipse cx='132' cy='160' rx='9' ry='2.5' fill='%23654321' opacity='0.25'/%3E%3Cellipse cx='130' cy='190' rx='9' ry='2.5' fill='%23654321' opacity='0.2'/%3E%3Cellipse cx='133' cy='220' rx='9' ry='2.5' fill='%23654321' opacity='0.18'/%3E%3Cellipse cx='136' cy='260' rx='10' ry='3' fill='%23654321' opacity='0.15'/%3E%3C!-- leaves --%3E%3Cpath d='M128 105 C95 55 25 40 -5 65' stroke='%231a7744' stroke-width='5' fill='%231a6633' opacity='0.75'/%3E%3Cpath d='M128 105 C90 48 20 15 -10 8' stroke='%2320884a' stroke-width='4' fill='%231d7540' opacity='0.65'/%3E%3Cpath d='M128 105 C150 45 200 18 255 10' stroke='%231a7744' stroke-width='5' fill='%231a6633' opacity='0.7'/%3E%3Cpath d='M128 105 C160 55 220 50 265 68' stroke='%2320884a' stroke-width='4' fill='%231d7540' opacity='0.6'/%3E%3Cpath d='M128 105 C105 50 70 10 40 -5' stroke='%2328a058' stroke-width='3' fill='%2325904c' opacity='0.5'/%3E%3Cpath d='M128 105 C165 38 230 30 270 28' stroke='%2328a058' stroke-width='3' fill='%2325904c' opacity='0.45'/%3E%3Cpath d='M128 105 C115 75 60 65 15 85' stroke='%2330b866' stroke-width='2.5' fill='%232ba55a' opacity='0.4'/%3E%3Cpath d='M128 105 C145 70 195 65 240 80' stroke='%2330b866' stroke-width='2.5' fill='%232ba55a' opacity='0.38'/%3E%3C!-- coconuts --%3E%3Ccircle cx='122' cy='110' r='7' fill='%23785832' opacity='0.7'/%3E%3Ccircle cx='136' cy='106' r='6' fill='%23694e2a' opacity='0.6'/%3E%3Ccircle cx='127' cy='100' r='5' fill='%23856740' opacity='0.45'/%3E%3C!-- highlight shine on coconut --%3E%3Ccircle cx='120' cy='108' r='2' fill='%23c9a86c' opacity='0.3'/%3E%3C/svg%3E") no-repeat center / contain;
+	opacity: 0.20;
 	pointer-events: none;
 	z-index: 0;
+	animation: palmSway 8s ease-in-out infinite;
+}
+
+@keyframes palmSway {
+	0%, 100% { transform: rotate(0deg) translateX(0); }
+	25%      { transform: rotate(0.6deg) translateX(2px); }
+	75%      { transform: rotate(-0.4deg) translateX(-1px); }
 }
 
 /* Second smaller palm on right side */
 html.theme-reef .mp-game-layout::after {
 	content: '';
 	position: fixed;
-	bottom: 55px;
-	right: -30px;
-	width: 180px;
-	height: 240px;
-	background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 260 340'%3E%3Cpath d='M130 340 C128 280 122 220 118 170 C116 145 120 125 125 110' stroke='%23654321' stroke-width='14' fill='none' stroke-linecap='round'/%3E%3Cpath d='M125 110 C100 70 40 55 5 75' stroke='%23228844' stroke-width='4' fill='%23227744' opacity='0.7'/%3E%3Cpath d='M125 110 C95 60 30 30 10 20' stroke='%23228844' stroke-width='4' fill='%23227744' opacity='0.6'/%3E%3Cpath d='M125 110 C140 55 180 25 230 15' stroke='%23228844' stroke-width='4' fill='%23227744' opacity='0.65'/%3E%3Cpath d='M125 110 C150 65 200 55 250 70' stroke='%23228844' stroke-width='4' fill='%23227744' opacity='0.55'/%3E%3Ccircle cx='120' cy='115' r='6' fill='%23654321' opacity='0.6'/%3E%3Ccircle cx='132' cy='112' r='5' fill='%23654321' opacity='0.5'/%3E%3C/svg%3E") no-repeat center / contain;
-	opacity: 0.12;
+	bottom: 45px;
+	right: -20px;
+	width: 200px;
+	height: 280px;
+	background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 280 380'%3E%3Cdefs%3E%3ClinearGradient id='trunk2' x1='0' y1='0' x2='0' y2='1'%3E%3Cstop offset='0%25' stop-color='%237a5c3a'/%3E%3Cstop offset='100%25' stop-color='%23523a22'/%3E%3C/linearGradient%3E%3C/defs%3E%3Cpath d='M140 380 C138 310 132 240 126 180 C122 150 124 128 130 108' stroke='url(%23trunk2)' stroke-width='14' fill='none' stroke-linecap='round'/%3E%3Cpath d='M140 380 C139 310 134 240 128 180' stroke='%23936e48' stroke-width='5' fill='none' opacity='0.3' stroke-linecap='round'/%3E%3Cellipse cx='134' cy='165' rx='8' ry='2' fill='%23654321' opacity='0.2'/%3E%3Cellipse cx='132' cy='200' rx='8' ry='2' fill='%23654321' opacity='0.18'/%3E%3Cpath d='M130 108 C100 60 30 45 0 70' stroke='%231a7744' stroke-width='4.5' fill='%231a6633' opacity='0.7'/%3E%3Cpath d='M130 108 C95 50 25 20 -5 12' stroke='%2320884a' stroke-width='3.5' fill='%231d7540' opacity='0.6'/%3E%3Cpath d='M130 108 C155 48 210 22 260 15' stroke='%231a7744' stroke-width='4.5' fill='%231a6633' opacity='0.65'/%3E%3Cpath d='M130 108 C158 58 215 52 258 70' stroke='%2320884a' stroke-width='3.5' fill='%231d7540' opacity='0.55'/%3E%3Cpath d='M130 108 C112 55 75 15 45 0' stroke='%2328a058' stroke-width='3' fill='%2325904c' opacity='0.48'/%3E%3Cpath d='M130 108 C160 42 225 35 265 32' stroke='%2328a058' stroke-width='3' fill='%2325904c' opacity='0.42'/%3E%3Ccircle cx='124' cy='112' r='6.5' fill='%23785832' opacity='0.65'/%3E%3Ccircle cx='138' cy='108' r='5.5' fill='%23694e2a' opacity='0.55'/%3E%3Ccircle cx='122' cy='110' r='1.8' fill='%23c9a86c' opacity='0.25'/%3E%3C/svg%3E") no-repeat center / contain;
+	opacity: 0.15;
 	pointer-events: none;
 	z-index: 0;
 	transform: scaleX(-1);
+	animation: palmSway2 10s ease-in-out infinite;
+}
+
+@keyframes palmSway2 {
+	0%, 100% { transform: scaleX(-1) rotate(0deg); }
+	30%      { transform: scaleX(-1) rotate(-0.5deg); }
+	70%      { transform: scaleX(-1) rotate(0.4deg); }
 }
 
 /* ── FANCY CARDS ── */

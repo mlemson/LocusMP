@@ -92,15 +92,52 @@ const BONUS_SHAPES = {
 };
 
 // ──────────────────────────────────────────────
-//  STONE SHAPES (blokkerende 2-cel vormen)
+//  STONE SHAPES (blokkerende vormen — 2, 3 of 4 cellen)
 // ──────────────────────────────────────────────
 
-const STONE_SHAPES = [
+const STONE_SHAPES_2 = [
 	{ name: 'Steen H', matrix: [[1, 1]] },        // Horizontaal
 	{ name: 'Steen V', matrix: [[1], [1]] },       // Verticaal
 	{ name: 'Steen D', matrix: [[1, 0], [0, 1]] }, // Diagonaal ↘
 	{ name: 'Steen D2', matrix: [[0, 1], [1, 0]] } // Diagonaal ↙
 ];
+
+const STONE_SHAPES_3 = [
+	{ name: 'Steen I3', matrix: [[1], [1], [1]] },                // Verticaal 3
+	{ name: 'Steen H3', matrix: [[1, 1, 1]] },                    // Horizontaal 3
+	{ name: 'Steen S3',  matrix: [[0, 1], [1, 1]] },              // S-stap (3 cellen)
+	{ name: 'Steen Z3',  matrix: [[1, 0], [1, 1]] },              // Z-stap (3 cellen)
+	{ name: 'Steen V3',  matrix: [[1, 1], [1, 0]] },              // Hoek linksboven (3 cellen)
+	{ name: 'Steen V3b', matrix: [[1, 1], [0, 1]] },              // Hoek rechtsboven (3 cellen)
+];
+
+const STONE_SHAPES_4 = [
+	{ name: 'Steen T',  matrix: [[1, 1, 1], [0, 1, 0]] },        // T-vorm (4 cellen)
+	{ name: 'Steen O',  matrix: [[1, 1], [1, 1]] },               // Vierkant blok (4 cellen)
+	{ name: 'Steen S4', matrix: [[0, 1, 1], [1, 1, 0]] },        // S groot (4 cellen)
+	{ name: 'Steen Z4', matrix: [[1, 1, 0], [0, 1, 1]] },        // Z groot (4 cellen)
+	{ name: 'Steen I4', matrix: [[1], [1], [1], [1]] },           // Verticale lijn (4 cellen)
+	{ name: 'Steen L4', matrix: [[1, 0], [1, 0], [1, 1]] },      // L-vorm (4 cellen)
+	{ name: 'Steen J4', matrix: [[0, 1], [0, 1], [1, 1]] },      // J-vorm (4 cellen)
+];
+
+// Weighted stone shape picker: mostly 2-cell, sometimes 3-cell, rarely 4-cell
+function getRandomStoneShape(rng) {
+	const roll = rng();
+	if (roll < 0.05) {
+		// 5% kans op 4-cel steen (zeer zeldzaam)
+		return STONE_SHAPES_4[Math.floor(rng() * STONE_SHAPES_4.length)];
+	} else if (roll < 0.30) {
+		// 25% kans op 3-cel steen
+		return STONE_SHAPES_3[Math.floor(rng() * STONE_SHAPES_3.length)];
+	} else {
+		// 70% kans op 2-cel steen (standaard)
+		return STONE_SHAPES_2[Math.floor(rng() * STONE_SHAPES_2.length)];
+	}
+}
+
+// All shapes combined for shop offering
+const STONE_SHAPES = [...STONE_SHAPES_2, ...STONE_SHAPES_3, ...STONE_SHAPES_4];
 
 const STONE_COLOR = { name: 'steen', code: '#8a8a8a', isStone: true };
 
@@ -3614,9 +3651,9 @@ const SHOP_ITEMS = [
 	{ id: 'extra-bonus', name: 'Bonus Charge', description: 'Krijg een bonus charge naar keuze (eenmalig)', cost: 2, icon: '⚡', oneTimePerLevel: true },
 	{ id: 'random-card', name: 'Random Kaart', description: 'Ontvang direct 1 willekeurige kaart voor je volgende level (eenmalig)', cost: 1, icon: '🎲', oneTimePerLevel: true },
 	{ id: 'time-bomb', name: 'Tijdbom', description: 'Stop de beurt van een andere speler direct! (eenmalig)', cost: 2, icon: '💣', oneTimePerLevel: true },
-	{ id: 'unlock-golden', name: 'Gouden Kaarten', description: 'Unlock gouden kaarten (wildcard, elke zone)', cost: 10, icon: '✨', unlockOnly: true, minLevel: 3 },
-	{ id: 'unlock-multikleur', name: 'Multikleur Kaarten', description: 'Unlock multikleur kaarten (elke zone)', cost: 10, icon: '🌈', unlockOnly: true, minLevel: 3 },
-	{ id: 'unlock-steen', name: 'Steen Vormen', description: 'Kies 1 van 3 steen vormen die aangrenzende plaatsing blokkeren', cost: 10, icon: '🪨', unlockOnly: true, minLevel: 3, reappearLevel: 8 },
+	{ id: 'unlock-golden', name: 'Gouden Kaarten', description: 'Unlock gouden kaarten (wildcard, elke zone)', cost: 5, icon: '✨', unlockOnly: true, minLevel: 3 },
+	{ id: 'unlock-multikleur', name: 'Multikleur Kaarten', description: 'Unlock multikleur kaarten (elke zone)', cost: 5, icon: '🌈', unlockOnly: true, minLevel: 3 },
+	{ id: 'unlock-steen', name: 'Steen Vormen', description: 'Kies 1 van 3 steen vormen die aangrenzende plaatsing blokkeren', cost: 5, icon: '🪨', unlockOnly: true, minLevel: 3, reappearLevel: 8 },
 ];
 
 function getShopItems(level, player) {
@@ -3824,13 +3861,13 @@ function buyShopItem(gameState, playerId, itemId, extra) {
 		case 'unlock-steen': {
 			player.unlockedSteen = true;
 			player.goldCoins -= item.cost;
-			// Generate 3 stone shapes to choose from (popup, player picks 1 free)
+			// Generate 3 stone shapes to choose from: 1 small (2-cel), 1 medium (3-cel), 1 large (4-cel)
 			const rngS = createRNG(Date.now() + playerId.length + 7777);
 			const stoneChoices = [];
-			const availableStones = [...STONE_SHAPES];
-			for (let i = 0; i < 3; i++) {
-				const idx = Math.floor(rngS() * availableStones.length);
-				const shape = availableStones[idx];
+			const pick2 = STONE_SHAPES_2[Math.floor(rngS() * STONE_SHAPES_2.length)];
+			const pick3 = STONE_SHAPES_3[Math.floor(rngS() * STONE_SHAPES_3.length)];
+			const pick4 = STONE_SHAPES_4[Math.floor(rngS() * STONE_SHAPES_4.length)];
+			[pick2, pick3, pick4].forEach((shape, i) => {
 				stoneChoices.push({
 					id: `stone-${i}-${Math.floor(rngS() * 100000)}`,
 					shapeName: shape.name,
@@ -3842,7 +3879,7 @@ function buyShopItem(gameState, playerId, itemId, extra) {
 					mirrored: false,
 					shopPrice: 0
 				});
-			}
+			});
 			player._pendingFreeChoices = stoneChoices;
 			gameState.updatedAt = Date.now();
 			return { success: true, freeChoices: stoneChoices };
@@ -4055,7 +4092,8 @@ function endGameFinal(gameState) {
 const GameRules = {
 	// Shapes
 	BASE_SHAPES, SHAPE_CATEGORY_WEIGHTS, COLORS, GOLDEN_COLOR, ZONE_THEMES,
-	BONUS_SHAPES, STONE_SHAPES, STONE_COLOR,
+	BONUS_SHAPES, STONE_SHAPES, STONE_SHAPES_2, STONE_SHAPES_3, STONE_SHAPES_4, STONE_COLOR,
+	getRandomStoneShape,
 	STARTING_DECK_TYPES,
 	MATCH_WINS_TARGET, DEFAULT_MAX_LEVELS,
 	YELLOW_COLUMN_PAIR_POINTS, BLUE_ROW_POINTS,
