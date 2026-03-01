@@ -189,6 +189,11 @@ html, body {
 	box-shadow: var(--mp-shadow);
 }
 
+/* When split layout is present, allow goal container to be wider */
+.mp-goal-container:has(.mp-goal-split-layout) {
+	max-width: 860px;
+}
+
 /* ── INPUTS ── */
 .mp-input-group {
 	display: flex;
@@ -725,11 +730,11 @@ html, body {
 	flex: 1;
 	overflow: hidden;
 	min-height: 0;
-	max-height: 72vh;
+	max-height: 80vh;
 }
 
 .mp-goal-cards-panel {
-	flex: 1;
+	flex: 1.3;
 	overflow-y: auto;
 	display: flex;
 	flex-direction: column;
@@ -804,6 +809,34 @@ html, body {
 	border-radius: 6px;
 	padding: 4px;
 	border: 1px solid rgba(255,255,255,0.1);
+}
+
+/* Golden card highlight in preview */
+.mp-card-preview-item.golden .mp-card-preview-shape {
+	border: 2px solid var(--mp-gold, #f5d76e);
+	box-shadow: 0 0 8px rgba(245,215,110,0.25);
+	background: rgba(245,215,110,0.08);
+}
+
+/* Reduce glow on mini-cells inside card preview */
+.mp-card-preview-shape .mp-mini-cell.filled {
+	box-shadow: none;
+	opacity: 0.85;
+}
+
+/* Golden badge on card preview item */
+.mp-card-preview-golden-badge {
+	position: absolute;
+	top: -4px;
+	right: -4px;
+	font-size: 10px;
+	line-height: 1;
+	pointer-events: none;
+}
+
+.mp-card-preview-item {
+	text-align: center;
+	position: relative;
 }
 
 /* Narrow screens: stack vertically */
@@ -8882,14 +8915,20 @@ html.theme-reef .mp-cell.active {
 	animation: none;
 }
 
-/* ── Placement preview ── */
+/* ── Placement preview — reef-styled hover blocks ── */
 html.theme-reef .mp-cell.preview-valid {
 	animation: reef-ripple 0.6s ease-out !important;
-	box-shadow: 0 0 12px rgba(255,126,179,0.35);
+	outline: 2px solid rgba(255,200,100,0.70) !important;
+	box-shadow: 0 0 14px rgba(255,200,100,0.30), inset 0 0 6px rgba(255,200,100,0.15);
+	background: rgba(255,200,100,0.18) !important;
+	border-radius: 5px !important;
 }
 
 html.theme-reef .mp-cell.preview-denied {
-	box-shadow: 0 0 12px rgba(255,107,138,0.45) !important;
+	outline: 2px solid rgba(255,107,138,0.65) !important;
+	box-shadow: 0 0 14px rgba(255,107,138,0.35), inset 0 0 6px rgba(255,80,100,0.12);
+	background: rgba(255,80,100,0.15) !important;
+	border-radius: 5px !important;
 }
 
 /* ── Active cells — vibrant zone colors ── */
@@ -10445,6 +10484,18 @@ html.theme-reef .mp-card-preview-group {
 html.theme-reef .mp-card-preview-shape {
 	background: rgba(20,8,30,0.5);
 	border-radius: 8px;
+}
+
+/* Reef golden card preview — warm gold border */
+html.theme-reef .mp-card-preview-item.golden .mp-card-preview-shape {
+	border: 2px solid rgba(255,200,80,0.65);
+	box-shadow: 0 0 10px rgba(255,200,80,0.20), inset 0 0 6px rgba(255,200,80,0.08);
+	background: rgba(255,200,80,0.06);
+}
+
+/* Reef card preview cells — less glow */
+html.theme-reef .mp-card-preview-shape .mp-mini-cell.filled {
+	box-shadow: none;
 }
 
 html.theme-reef .mp-goal-card {

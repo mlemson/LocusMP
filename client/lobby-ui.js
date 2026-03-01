@@ -1326,11 +1326,13 @@ class LocusLobbyUI {
 										const colorCode = card.color?.code === 'rainbow'
 											? 'linear-gradient(135deg, #b56069, #cfba51, #92c28c, #5689b0, #8f76b8)'
 											: (card.color?.code || '#666');
+										const goldenClass = card.isGolden ? ' golden' : '';
 										return `
-											<div class="mp-card-preview-item" title="${this._escapeHtml(card.shapeName || '')}">
-												<div class="mp-card-preview-shape" style="border-color: ${typeof colorCode === 'string' && colorCode.startsWith('#') ? colorCode + '44' : 'rgba(255,255,255,0.1)'};">
+											<div class="mp-card-preview-item${goldenClass}" title="${this._escapeHtml(card.shapeName || '')}${card.isGolden ? ' ⭐ EXTRA' : ''}">
+												<div class="mp-card-preview-shape" style="border-color: ${!card.isGolden && typeof colorCode === 'string' && colorCode.startsWith('#') ? colorCode + '44' : 'rgba(255,255,255,0.1)'};">
 													${this._renderMiniGrid(card.matrix, card.color)}
 												</div>
+												${card.isGolden ? '<div class="mp-card-preview-golden-badge">⭐</div>' : ''}
 											</div>
 										`;
 									}).join('')}
@@ -4272,11 +4274,18 @@ class LocusLobbyUI {
 			const thresholdCells = Math.ceil((totalCount || 0) * 0.8);
 			const statusIcon = isFull ? '⭐' : (isPartial ? '✅' : '⏳');
 			const progressWidth = Math.max(0, Math.min(100, fillPct));
-			const labelText = isFull
-				? `${totalPts}pt`
-				: (isPartial
-					? `vol = ${basePts + fullBonusPts}pt`
-					: `>${thresholdCells} vakjes → ${basePts}pt`);
+
+			let labelText;
+			if (isFull) {
+				// 100% filled — show total earned points
+				labelText = `${totalCount}/${totalCount} → ${totalPts} pnt`;
+			} else if (isPartial) {
+				// ≥80% — threshold reached, show progress + earned + full bonus
+				labelText = `${filledCount}/${totalCount} → ${basePts} pnt (vol = ${basePts + fullBonusPts})`;
+			} else {
+				// Not yet 80% — show progress toward threshold
+				labelText = `${filledCount}/${thresholdCells} → ${basePts} pnt`;
+			}
 
 			return `
 				<div class="mp-red-subgrid-wrap ${isFull ? 'is-full' : (isPartial ? 'is-partial' : '')}">
