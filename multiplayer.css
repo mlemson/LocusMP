@@ -8671,40 +8671,57 @@ html.theme-reef .mp-dots span {
 
 /* ── Zones — vibrant warm colors with glow borders ── */
 html.theme-reef .mp-zone {
-	border-radius: 16px;
+	border-radius: 20px;
 	border-width: 2px;
-	box-shadow: 0 4px 24px rgba(20,0,30,0.40), inset 0 1px 0 rgba(255,255,255,0.06);
+	box-shadow: 0 6px 28px rgba(20,0,30,0.45), inset 0 1px 0 rgba(255,255,255,0.08);
 	transition: transform 0.3s ease, box-shadow 0.3s ease;
+	padding: 14px;
+	padding-top: 30px;
 }
 
 html.theme-reef .mp-zone-yellow {
-	background: linear-gradient(160deg, rgba(255,213,90,0.28) 0%, rgba(255,200,60,0.12) 50%, rgba(255,213,90,0.20) 100%);
-	border-color: rgba(255,213,90,0.50);
-	box-shadow: 0 4px 24px rgba(20,0,30,0.40), inset 0 0 40px rgba(255,213,90,0.12), 0 0 25px rgba(255,213,90,0.10);
+	background: linear-gradient(145deg,
+		rgba(50,35,15,0.92) 0%,
+		rgba(40,28,8,0.95) 40%,
+		rgba(55,40,12,0.92) 100%);
+	border-color: rgba(255,213,90,0.45);
+	box-shadow: 0 6px 28px rgba(20,0,30,0.45), inset 0 0 50px rgba(255,213,90,0.08), 0 0 30px rgba(255,213,90,0.10);
 }
 
 html.theme-reef .mp-zone-green {
-	background: linear-gradient(160deg, rgba(91,232,180,0.24) 0%, rgba(91,232,180,0.08) 50%, rgba(91,232,180,0.16) 100%);
-	border-color: rgba(91,232,180,0.45);
-	box-shadow: 0 4px 24px rgba(20,0,30,0.40), inset 0 0 40px rgba(91,232,180,0.10), 0 0 25px rgba(91,232,180,0.08);
+	background: linear-gradient(145deg,
+		rgba(12,42,30,0.92) 0%,
+		rgba(8,35,22,0.95) 40%,
+		rgba(15,45,28,0.92) 100%);
+	border-color: rgba(91,232,180,0.40);
+	box-shadow: 0 6px 28px rgba(20,0,30,0.45), inset 0 0 50px rgba(91,232,180,0.06), 0 0 30px rgba(91,232,180,0.08);
 }
 
 html.theme-reef .mp-zone-blue {
-	background: linear-gradient(160deg, rgba(87,213,229,0.24) 0%, rgba(87,213,229,0.08) 50%, rgba(87,213,229,0.16) 100%);
-	border-color: rgba(87,213,229,0.45);
-	box-shadow: 0 4px 24px rgba(20,0,30,0.40), inset 0 0 40px rgba(87,213,229,0.10), 0 0 25px rgba(87,213,229,0.08);
+	background: linear-gradient(145deg,
+		rgba(10,32,42,0.92) 0%,
+		rgba(6,25,35,0.95) 40%,
+		rgba(12,38,48,0.92) 100%);
+	border-color: rgba(87,213,229,0.40);
+	box-shadow: 0 6px 28px rgba(20,0,30,0.45), inset 0 0 50px rgba(87,213,229,0.06), 0 0 30px rgba(87,213,229,0.08);
 }
 
 html.theme-reef .mp-zone-red {
-	background: linear-gradient(160deg, rgba(255,140,105,0.26) 0%, rgba(255,140,105,0.10) 50%, rgba(255,140,105,0.18) 100%);
-	border-color: rgba(255,140,105,0.50);
-	box-shadow: 0 4px 24px rgba(20,0,30,0.40), inset 0 0 40px rgba(255,140,105,0.10), 0 0 25px rgba(255,140,105,0.08);
+	background: linear-gradient(145deg,
+		rgba(48,18,12,0.92) 0%,
+		rgba(40,14,8,0.95) 40%,
+		rgba(55,22,14,0.92) 100%);
+	border-color: rgba(255,140,105,0.45);
+	box-shadow: 0 6px 28px rgba(20,0,30,0.45), inset 0 0 50px rgba(255,140,105,0.06), 0 0 30px rgba(255,140,105,0.08);
 }
 
 html.theme-reef .mp-zone-purple {
-	background: linear-gradient(160deg, rgba(212,160,255,0.24) 0%, rgba(212,160,255,0.08) 50%, rgba(212,160,255,0.16) 100%);
-	border-color: rgba(212,160,255,0.45);
-	box-shadow: 0 4px 24px rgba(20,0,30,0.40), inset 0 0 40px rgba(212,160,255,0.10), 0 0 25px rgba(212,160,255,0.08);
+	background: linear-gradient(145deg,
+		rgba(32,15,48,0.92) 0%,
+		rgba(25,10,40,0.95) 40%,
+		rgba(38,18,55,0.92) 100%);
+	border-color: rgba(212,160,255,0.40);
+	box-shadow: 0 6px 28px rgba(20,0,30,0.45), inset 0 0 50px rgba(212,160,255,0.06), 0 0 30px rgba(212,160,255,0.08);
 }
 
 /* ── Zone labels ── */
@@ -8722,35 +8739,45 @@ html.theme-reef .mp-zone-blue   .mp-zone-label { color: #8ae3ef; }
 html.theme-reef .mp-zone-red    .mp-zone-label { color: #ffb49a; }
 html.theme-reef .mp-zone-purple .mp-zone-label { color: #e6c5ff; }
 
-/* ── Board layout ── */
+/* ── Board layout — spacious, centered ── */
 html.theme-reef .mp-board {
-	gap: 14px;
-	padding: 10px;
+	gap: 18px;
+	padding: 12px;
+	align-items: flex-start;
+	justify-content: center;
 }
 
 html.theme-reef .mp-board-desktop {
-	gap: 16px;
+	gap: 20px;
 }
 
 html.theme-reef .mp-board-col {
-	gap: 14px;
+	gap: 18px;
 }
 
 html.theme-reef .mp-board-container {
-	background: radial-gradient(ellipse at 50% 60%, rgba(255,126,179,0.06) 0%, transparent 70%);
+	background: radial-gradient(ellipse at 50% 55%, rgba(255,126,179,0.05) 0%, transparent 65%);
+	justify-content: center;
+	align-items: center;
 }
 
-/* ── Board cells — no breathe animation, clean look ── */
+/* ── Board cells — vibrant and polished ── */
 html.theme-reef .mp-cell {
-	border-radius: var(--mp-cell-radius);
+	border-radius: 5px;
 	transition: all 0.2s ease;
+	background: rgba(255,255,255,0.04);
+	border: 1px solid rgba(255,255,255,0.08);
+}
+
+html.theme-reef .mp-grid {
+	gap: 3px;
 }
 
 html.theme-reef .mp-cell.active {
 	animation: none;
 }
 
-/* ── Placement preview ripple ── */
+/* ── Placement preview ── */
 html.theme-reef .mp-cell.preview-valid {
 	animation: reef-ripple 0.6s ease-out !important;
 	box-shadow: 0 0 12px rgba(255,126,179,0.35);
@@ -8760,10 +8787,42 @@ html.theme-reef .mp-cell.preview-denied {
 	box-shadow: 0 0 12px rgba(255,107,138,0.45) !important;
 }
 
-/* ── Cells — warm active glow ── */
+/* ── Active cells — vibrant zone colors ── */
 html.theme-reef .mp-cell.active {
-	box-shadow: 0 0 8px rgba(255,200,150,0.25), inset 0 1px 2px rgba(0,0,0,0.15);
-	border-width: 1px;
+	border-radius: 4px;
+	border: 1px solid rgba(255,255,255,0.18);
+	box-shadow: inset 0 1px 2px rgba(0,0,0,0.20), 0 1px 3px rgba(0,0,0,0.15);
+}
+
+/* Zone-specific active cell colors (more saturated & glowing) */
+html.theme-reef .mp-zone-yellow .mp-cell.active {
+	background: linear-gradient(145deg, rgba(255,220,80,0.85), rgba(235,190,50,0.75));
+	border-color: rgba(255,213,90,0.50);
+	box-shadow: inset 0 1px 2px rgba(0,0,0,0.15), 0 0 6px rgba(255,213,90,0.30);
+}
+
+html.theme-reef .mp-zone-green .mp-cell.active {
+	background: linear-gradient(145deg, rgba(70,210,155,0.85), rgba(50,190,135,0.75));
+	border-color: rgba(91,232,180,0.45);
+	box-shadow: inset 0 1px 2px rgba(0,0,0,0.15), 0 0 6px rgba(91,232,180,0.25);
+}
+
+html.theme-reef .mp-zone-blue .mp-cell.active {
+	background: linear-gradient(145deg, rgba(65,195,215,0.85), rgba(45,175,195,0.75));
+	border-color: rgba(87,213,229,0.45);
+	box-shadow: inset 0 1px 2px rgba(0,0,0,0.15), 0 0 6px rgba(87,213,229,0.25);
+}
+
+html.theme-reef .mp-zone-red .mp-cell.active {
+	background: linear-gradient(145deg, rgba(240,120,85,0.85), rgba(220,100,65,0.75));
+	border-color: rgba(255,140,105,0.45);
+	box-shadow: inset 0 1px 2px rgba(0,0,0,0.15), 0 0 6px rgba(255,140,105,0.25);
+}
+
+html.theme-reef .mp-zone-purple .mp-cell.active {
+	background: linear-gradient(145deg, rgba(190,140,240,0.85), rgba(170,120,220,0.75));
+	border-color: rgba(212,160,255,0.45);
+	box-shadow: inset 0 1px 2px rgba(0,0,0,0.15), 0 0 6px rgba(212,160,255,0.25);
 }
 
 /* ── Bonus dots per zone ── */
@@ -8881,25 +8940,42 @@ html.theme-reef .mp-sz {
 	border-radius: 6px;
 }
 
-/* ── Bonus buttons — warm coral glass ── */
+/* ── Bonus buttons — dark pills, readable on beach sand ── */
 html.theme-reef .mp-bonus-btn {
-	border-radius: 10px;
-	background: rgba(255,140,105,0.08);
-	border: 1px solid rgba(255,140,105,0.20);
-	box-shadow: inset 0 1px 0 rgba(255,200,150,0.06);
+	border-radius: 12px;
+	background: rgba(45,18,60,0.88);
+	border: 2px solid rgba(255,126,179,0.30);
+	box-shadow: 0 2px 8px rgba(20,0,30,0.40), inset 0 1px 0 rgba(255,200,150,0.06);
 	transition: all 0.25s ease;
+	color: #f0e6f6;
+	font-weight: 700;
+	padding: 6px 12px;
+	gap: 6px;
+	-webkit-backdrop-filter: blur(10px);
+	backdrop-filter: blur(10px);
 }
 
 html.theme-reef .mp-bonus-btn:hover:not(.disabled) {
-	background: rgba(255,140,105,0.18);
-	border-color: rgba(255,140,105,0.40);
+	background: rgba(65,28,85,0.92);
+	border-color: rgba(255,126,179,0.55);
 	transform: translateY(-2px);
-	box-shadow: 0 4px 16px rgba(255,140,105,0.25);
+	box-shadow: 0 6px 20px rgba(255,126,179,0.25), 0 2px 8px rgba(20,0,30,0.40);
 }
 
 html.theme-reef .mp-bonus-btn.mp-bonus-new {
-	box-shadow: 0 0 0 2px rgba(255,126,179,0.22);
+	box-shadow: 0 0 0 2px rgba(255,126,179,0.30), 0 2px 8px rgba(20,0,30,0.40);
 	animation: reef-bonus-glow 2s ease infinite;
+}
+
+/* Bonus bar on beach background */
+html.theme-reef .mp-bonus-bar {
+	background: rgba(45,18,60,0.65);
+	border-radius: 14px;
+	padding: 6px 14px;
+	margin: 2px 0;
+	-webkit-backdrop-filter: blur(12px);
+	backdrop-filter: blur(12px);
+	border: 1px solid rgba(255,126,179,0.15);
 }
 
 /* ── Gold counter — warm glow ── */
@@ -9974,13 +10050,6 @@ html.theme-reef #create-game-btn {
 	overflow: hidden;
 }
 
-/* ── ENHANCED ZONE STYLING ── */
-html.theme-reef .mp-zone {
-	border-width: 2px;
-	border-radius: 18px;
-	position: relative;
-}
-
 /* ── HAND CONTAINER ── */
 html.theme-reef .mp-hand-container {
 	gap: 12px;
@@ -10007,11 +10076,7 @@ html.theme-reef .mp-turn-player {
 	font-weight: 800;
 }
 
-/* ── BONUS BAR ── */
-html.theme-reef .mp-bonus-btn {
-	border-radius: 12px;
-	font-weight: 700;
-}
+/* ── BONUS BAR (already styled above) ── */
 
 /* ── INVITE CODE BIGGER ── */
 html.theme-reef .mp-invite-code {
