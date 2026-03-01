@@ -1278,8 +1278,9 @@ class LocusLobbyUI {
 	}
 
 	/**
-	 * Toon een preview van alle kaarten voordat de speler een doelstelling kiest.
-	 * Dit helpt bij het kiezen van een realistische doelstelling.
+	 * Toon kaarten + doelstellingen samen op één scherm.
+	 * Op brede schermen: kaarten links, doelstellingen rechts.
+	 * Op smalle schermen: kaarten boven, doelstellingen onder.
 	 */
 	_showCardPreviewBeforeGoals(cards, goalChoices) {
 		this._showScreen('goal-screen');
@@ -1308,46 +1309,84 @@ class LocusLobbyUI {
 			blauw: '#5689b0', paars: '#8f76b8', multikleur: '#c47bd7'
 		};
 
-		container.innerHTML = `
-			<h2 class="mp-section-title">📋 Jouw kaarten — Level ${level}</h2>
-			<p class="mp-section-subtitle">Bekijk je kaarten goed voordat je een doelstelling kiest!</p>
-			<div class="mp-card-preview-groups" style="display:flex;flex-wrap:wrap;gap:12px;justify-content:center;margin:16px 0;">
-				${sortedColors.map(colorName => {
-					const groupCards = colorGroups[colorName];
-					const zoneColor = zoneColorMap[colorName.toLowerCase()] || '#666';
-					return `
-						<div class="mp-card-preview-group" style="background:rgba(255,255,255,0.04);border-radius:10px;padding:8px 12px;border:1px solid ${zoneColor}33;">
-							<div style="font-size:12px;font-weight:600;color:${zoneColor};margin-bottom:6px;text-align:center;">${this._escapeHtml(colorName)} (${groupCards.length})</div>
-							<div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:center;">
-								${groupCards.map(card => {
-									const colorCode = card.color?.code === 'rainbow'
-										? 'linear-gradient(135deg, #b56069, #cfba51, #92c28c, #5689b0, #8f76b8)'
-										: (card.color?.code || '#666');
-									return `
-										<div class="mp-card-preview-item" style="text-align:center;" title="${this._escapeHtml(card.shapeName || '')}">
-											<div style="background:rgba(0,0,0,0.3);border-radius:6px;padding:4px;border:1px solid ${typeof colorCode === 'string' && colorCode.startsWith('#') ? colorCode + '44' : 'rgba(255,255,255,0.1)'};">
-												${this._renderMiniGrid(card.matrix, card.color)}
+		// Build cards panel HTML
+		const cardsPanelHtml = `
+			<div class="mp-goal-cards-panel">
+				<h3 class="mp-goal-panel-title">📋 Jouw kaarten — Level ${level}</h3>
+				<p class="mp-goal-panel-sub">Bekijk je kaarten om een realistische doelstelling te kiezen</p>
+				<div class="mp-card-preview-groups">
+					${sortedColors.map(colorName => {
+						const groupCards = colorGroups[colorName];
+						const zoneColor = zoneColorMap[colorName.toLowerCase()] || '#666';
+						return `
+							<div class="mp-card-preview-group" style="border-color: ${zoneColor}33;">
+								<div class="mp-card-preview-group-label" style="color:${zoneColor};">${this._escapeHtml(colorName)} (${groupCards.length})</div>
+								<div class="mp-card-preview-group-cards">
+									${groupCards.map(card => {
+										const colorCode = card.color?.code === 'rainbow'
+											? 'linear-gradient(135deg, #b56069, #cfba51, #92c28c, #5689b0, #8f76b8)'
+											: (card.color?.code || '#666');
+										return `
+											<div class="mp-card-preview-item" title="${this._escapeHtml(card.shapeName || '')}">
+												<div class="mp-card-preview-shape" style="border-color: ${typeof colorCode === 'string' && colorCode.startsWith('#') ? colorCode + '44' : 'rgba(255,255,255,0.1)'};">
+													${this._renderMiniGrid(card.matrix, card.color)}
+												</div>
 											</div>
-											<div style="font-size:9px;color:rgba(255,255,255,0.5);margin-top:2px;max-width:60px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${this._escapeHtml(card.shapeName || '')}</div>
-										</div>
-									`;
-								}).join('')}
+										`;
+									}).join('')}
+								</div>
 							</div>
-						</div>
-					`;
-				}).join('')}
+						`;
+					}).join('')}
+				</div>
 			</div>
-			<button class="mp-btn mp-btn-primary mp-card-preview-continue" style="margin:12px auto;display:block;padding:12px 40px;font-size:16px;">
-				Doelstelling kiezen →
-			</button>
 		`;
 
-		container.querySelector('.mp-card-preview-continue')?.addEventListener('click', () => {
-			this._showGoalChoices(goalChoices);
+		// Build goals panel HTML
+		const goalsPanelHtml = `
+			<div class="mp-goal-choices-panel">
+				<h3 class="mp-goal-panel-title">🎯 Kies je Doelstelling</h3>
+				<p class="mp-goal-panel-sub">Andere spelers zien niet welk doel jij kiest!</p>
+				<div class="mp-goal-grid">
+					${goalChoices.map((goal, i) => `
+						<button class="mp-goal-card" data-index="${i}">
+							<div class="mp-goal-name">${this._escapeHtml(goal?.name || 'Onbekend doel')}</div>
+							<div class="mp-goal-desc">${this._escapeHtml(this._stripObjectiveRewardText(goal?.description || ''))}</div>
+							${this._renderObjectiveRewardBadges(goal, { includeFallbackPoints: true, fallbackPoints: 15 })}
+						</button>
+					`).join('')}
+				</div>
+			</div>
+		`;
+
+		container.innerHTML = `
+			<h2 class="mp-section-title">Level ${level} — Bekijk kaarten & kies doelstelling</h2>
+			<div class="mp-goal-split-layout">
+				${cardsPanelHtml}
+				${goalsPanelHtml}
+			</div>
+		`;
+
+		// Bind goal card clicks
+		container.querySelectorAll('.mp-goal-card').forEach(btn => {
+			btn.addEventListener('click', async () => {
+				const index = Number(btn.dataset.index);
+				container.querySelectorAll('.mp-goal-card').forEach(b => b.disabled = true);
+				btn.classList.add('selected');
+
+				try {
+					await this.mp.chooseGoal(index);
+					this._showToast('Doelstelling gekozen! Wachten op andere spelers...', 'success');
+				} catch (err) {
+					this._showToast('Fout bij kiezen: ' + err.message, 'error');
+					container.querySelectorAll('.mp-goal-card').forEach(b => b.disabled = false);
+					btn.classList.remove('selected');
+				}
+			});
 		});
 	}
 
-	/** Toon de doelstelling-keuze UI */
+	/** Toon de doelstelling-keuze UI (fallback als er geen kaarten zijn) */
 	_showGoalChoices(choices) {
 		this._showScreen('goal-screen');
 		const container = this.elements['goal-choices-container'];

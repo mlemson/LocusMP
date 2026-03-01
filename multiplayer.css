@@ -715,6 +715,111 @@ html, body {
 	background: rgba(255, 255, 255, 0.08);
 }
 
+/* ═══════════════════════════════════════════════════════════════
+   GOAL SCREEN — SPLIT LAYOUT (cards + goals side by side)
+   ═══════════════════════════════════════════════════════════════ */
+
+.mp-goal-split-layout {
+	display: flex;
+	gap: 24px;
+	flex: 1;
+	overflow: hidden;
+	min-height: 0;
+	max-height: 72vh;
+}
+
+.mp-goal-cards-panel {
+	flex: 1;
+	overflow-y: auto;
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+	min-width: 0;
+	padding: 16px;
+	background: rgba(255,255,255,0.02);
+	border: 1px solid rgba(255,255,255,0.06);
+	border-radius: 12px;
+}
+
+.mp-goal-choices-panel {
+	width: 340px;
+	flex-shrink: 0;
+	overflow-y: auto;
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+	padding: 16px;
+	background: rgba(255,255,255,0.02);
+	border: 1px solid rgba(255,255,255,0.06);
+	border-radius: 12px;
+}
+
+.mp-goal-panel-title {
+	font-size: 1.05rem;
+	font-weight: 800;
+	margin: 0 0 2px 0;
+}
+
+.mp-goal-panel-sub {
+	font-size: 0.78rem;
+	color: var(--mp-text-dim);
+	margin: 0 0 10px 0;
+}
+
+/* Card preview groups */
+.mp-card-preview-groups {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 10px;
+	justify-content: center;
+}
+
+.mp-card-preview-group {
+	background: rgba(255,255,255,0.04);
+	border-radius: 10px;
+	padding: 8px 12px;
+	border: 1px solid transparent;
+}
+
+.mp-card-preview-group-label {
+	font-size: 12px;
+	font-weight: 600;
+	margin-bottom: 6px;
+	text-align: center;
+}
+
+.mp-card-preview-group-cards {
+	display: flex;
+	gap: 6px;
+	flex-wrap: wrap;
+	justify-content: center;
+}
+
+.mp-card-preview-item {
+	text-align: center;
+}
+
+.mp-card-preview-shape {
+	background: rgba(0,0,0,0.3);
+	border-radius: 6px;
+	padding: 4px;
+	border: 1px solid rgba(255,255,255,0.1);
+}
+
+/* Narrow screens: stack vertically */
+@media (max-width: 860px) {
+	.mp-goal-split-layout {
+		flex-direction: column;
+		max-height: none;
+	}
+	.mp-goal-choices-panel {
+		width: 100%;
+	}
+	.mp-goal-cards-panel {
+		max-height: 35vh;
+	}
+}
+
 /* ── GAME LAYOUT ── */
 .mp-game-layout {
 	display: grid;
@@ -9860,6 +9965,74 @@ html.theme-reef .mp-bottom-actions .mp-btn-primary {
 	text-shadow: 0 2px 4px rgba(0,0,0,0.25);
 }
 
+/* Timer bar — dark pill on sandy beach for readability */
+html.theme-reef .mp-bottom-bar .mp-turn-timer,
+html.theme-reef .mp-bottom-bar .mp-bottom-actions {
+	position: relative;
+	z-index: 2;
+}
+
+html.theme-reef .mp-turn-timer {
+	background: rgba(30, 13, 46, 0.80);
+	border-radius: 12px;
+	padding: 6px 14px;
+	-webkit-backdrop-filter: blur(6px);
+	backdrop-filter: blur(6px);
+	border: 1px solid rgba(255,126,179,0.18);
+}
+
+html.theme-reef .mp-timer-text {
+	color: rgba(255,220,240,0.9);
+	text-shadow: 0 1px 3px rgba(0,0,0,0.4);
+}
+
+html.theme-reef .mp-bottom-bar .mp-btn-secondary,
+html.theme-reef .mp-bottom-bar .mp-btn-warning {
+	background: rgba(30, 13, 46, 0.80);
+	border: 1px solid rgba(255,126,179,0.25);
+	color: rgba(255,220,240,0.92);
+	text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+	-webkit-backdrop-filter: blur(6px);
+	backdrop-filter: blur(6px);
+}
+
+html.theme-reef .mp-bottom-bar .mp-btn-secondary:hover,
+html.theme-reef .mp-bottom-bar .mp-btn-warning:hover {
+	background: rgba(50, 20, 70, 0.85);
+	border-color: rgba(255,126,179,0.4);
+}
+
+/* Deck overview button — dark pill on sandy beach */
+html.theme-reef .mp-deck-btn {
+	background: rgba(30, 13, 46, 0.82) !important;
+	border: 2px solid rgba(255,126,179,0.25) !important;
+	color: rgba(255,220,240,0.92) !important;
+	font-weight: 800;
+	padding: 8px 14px;
+	border-radius: 12px;
+	-webkit-backdrop-filter: blur(6px);
+	backdrop-filter: blur(6px);
+	text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+	box-shadow: 0 2px 8px rgba(20,0,30,0.25);
+}
+
+html.theme-reef .mp-deck-btn:hover {
+	background: rgba(50, 20, 70, 0.88) !important;
+	border-color: rgba(255,126,179,0.45) !important;
+	box-shadow: 0 4px 16px rgba(255,126,179,0.18);
+	transform: translateY(-1px);
+}
+
+html.theme-reef .mp-deck-btn #mp-deck-count {
+	color: #ffd55a;
+}
+
+/* Pass button on beach */
+html.theme-reef .mp-pass-btn,
+html.theme-reef .mp-btn-warning {
+	z-index: 2;
+}
+
 /* ── ENHANCED PLACEMENT ANIMATION ── */
 html.theme-reef .mp-zone-flash {
 	animation: reef-place-celebrate 0.8s ease !important;
@@ -10234,6 +10407,44 @@ html.theme-reef .mp-goal-container .mp-section-subtitle {
 
 html.theme-reef .mp-goal-grid {
 	gap: 14px;
+}
+
+/* Reef split goal layout panels */
+html.theme-reef .mp-goal-cards-panel {
+	background: linear-gradient(160deg,
+		rgba(45,18,60,0.55) 0%,
+		rgba(35,14,50,0.50) 100%);
+	border: 1px solid rgba(255,126,179,0.12);
+	border-radius: 16px;
+}
+
+html.theme-reef .mp-goal-choices-panel {
+	background: linear-gradient(160deg,
+		rgba(45,18,60,0.55) 0%,
+		rgba(35,14,50,0.50) 100%);
+	border: 1px solid rgba(255,126,179,0.12);
+	border-radius: 16px;
+}
+
+html.theme-reef .mp-goal-panel-title {
+	background: linear-gradient(135deg, #ffd55a, #ff8c69);
+	-webkit-background-clip: text;
+	background-clip: text;
+	-webkit-text-fill-color: transparent;
+}
+
+html.theme-reef .mp-goal-panel-sub {
+	color: rgba(230,220,240,0.6);
+}
+
+html.theme-reef .mp-card-preview-group {
+	background: rgba(255,126,179,0.06);
+	border-radius: 12px;
+}
+
+html.theme-reef .mp-card-preview-shape {
+	background: rgba(20,8,30,0.5);
+	border-radius: 8px;
 }
 
 html.theme-reef .mp-goal-card {
