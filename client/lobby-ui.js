@@ -2146,24 +2146,90 @@ class LocusLobbyUI {
 			</div>`;
 		};
 
-		container.innerHTML = `
-			<div class="mp-deck-section">
-				<h4 class="mp-deck-section-title">📥 Nog in stapel (${pile.length})</h4>
-				${renderCardList(pile)}
+		// Build objective panel HTML
+		let objectiveHtml = '';
+		const obj = player.chosenObjective;
+		if (obj) {
+			const achieved = player.objectiveAchieved || false;
+			const failed = !achieved && !!player.objectiveFailed;
+			const progress = player.objectiveProgress || null;
+			const progressText = progress ? `${progress.current}/${progress.target}` : '';
+			const pts = player.objectiveAchievedPoints || (progress ? progress.points : '');
+
+			objectiveHtml = `
+				<div class="mp-deck-objective-panel">
+					<h4 class="mp-deck-section-title">🎯 Jouw Doelstelling</h4>
+					<div class="mp-deck-objective-card ${achieved ? 'achieved' : ''} ${failed ? 'failed' : ''}">
+						<div class="mp-deck-obj-name">${achieved ? '✅' : (failed ? '❌' : '🎯')} ${this._escapeHtml(obj.name)}</div>
+						<div class="mp-deck-obj-desc">${this._escapeHtml(this._stripObjectiveRewardText(obj.description))}</div>
+						${this._renderObjectiveRewardBadges(progress || obj, { wrapperClass: 'mp-objective-rewards', includeFallbackPoints: true, fallbackPoints: pts || 15 })}
+						${failed
+							? '<div class="mp-deck-obj-progress failed">❌ Niet meer haalbaar</div>'
+							: (progressText ? `<div class="mp-deck-obj-progress ${achieved ? 'achieved' : ''}">${achieved ? `🏆 Behaald! +${pts}pt` : `Voortgang: ${progressText}`}</div>` : '')}
+					</div>
+
+					<h4 class="mp-deck-section-title" style="margin-top: 16px;">📊 Zone Scores</h4>
+					${this._renderDeckZoneScores()}
+				</div>
+			`;
+		}
+
+		const cardsHtml = `
+			<div class="mp-deck-cards-panel">
+				<div class="mp-deck-section">
+					<h4 class="mp-deck-section-title">📥 Nog in stapel (${pile.length})</h4>
+					${renderCardList(pile)}
+				</div>
+				${hand.length > 0 ? `
+					<div class="mp-deck-section">
+						<h4 class="mp-deck-section-title">✋ In hand (${hand.length})</h4>
+						${renderCardList(hand)}
+					</div>
+				` : ''}
+				${usedCards.length > 0 ? `
+					<div class="mp-deck-section">
+						<h4 class="mp-deck-section-title">✅ Gespeeld / weggegooid (${usedCards.length})</h4>
+						${renderCardList(usedCards, true)}
+					</div>
+				` : ''}
 			</div>
-			${hand.length > 0 ? `
-				<div class="mp-deck-section">
-					<h4 class="mp-deck-section-title">✋ In hand (${hand.length})</h4>
-					${renderCardList(hand)}
-				</div>
-			` : ''}
-			${usedCards.length > 0 ? `
-				<div class="mp-deck-section">
-					<h4 class="mp-deck-section-title">✅ Gespeeld / weggegooid (${usedCards.length})</h4>
-					${renderCardList(usedCards, true)}
-				</div>
-			` : ''}
 		`;
+
+		container.innerHTML = objectiveHtml
+			? `<div class="mp-deck-split-layout">${cardsHtml}${objectiveHtml}</div>`
+			: cardsHtml;
+	}
+
+	/** Render zone score summary for deck overlay */
+	_renderDeckZoneScores() {
+		const Rules = window.LocusGameRules;
+		const board = this.mp.gameState?.boardState;
+		if (!Rules || !board) return '';
+		const zones = board.zones;
+		const zoneInfo = [
+			{ name: 'yellow', label: 'Geel', color: '#ffd55a' },
+			{ name: 'green', label: 'Groen', color: '#5be8b4' },
+			{ name: 'blue', label: 'Blauw', color: '#57d5e5' },
+			{ name: 'red', label: 'Rood', color: '#ff8c69' },
+			{ name: 'purple', label: 'Paars', color: '#d4a0ff' }
+		];
+		return `<div class="mp-deck-zone-scores">
+			${zoneInfo.map(z => {
+				let score = 0;
+				try {
+					if (z.name === 'yellow') score = Rules.scoreYellowData(zones.yellow);
+					else if (z.name === 'green') score = Rules.scoreGreenData(zones.green);
+					else if (z.name === 'blue') score = Rules.scoreBlueData(zones.blue);
+					else if (z.name === 'red') score = Rules.scoreRedData(zones.red);
+					else if (z.name === 'purple') score = Rules.scorePurpleData(zones.purple);
+				} catch (e) { /* ignore */ }
+				return `<div class="mp-deck-zone-score-row">
+					<span class="mp-deck-zone-dot" style="background: ${z.color};"></span>
+					<span class="mp-deck-zone-label">${z.label}</span>
+					<span class="mp-deck-zone-pts">${score}pt</span>
+				</div>`;
+			}).join('')}
+		</div>`;
 	}
 
 	// ──────────────────────────────────────────
