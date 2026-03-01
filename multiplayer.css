@@ -4869,6 +4869,8 @@ body.mp-placing * {
 .mp-theme-btn {
 	position: relative;
 	z-index: 2;
+	flex: 1;
+	text-align: center;
 	border: none;
 	background: transparent;
 	color: rgba(255,255,255,0.50);
@@ -4877,7 +4879,7 @@ body.mp-placing * {
 	letter-spacing: 0.4px;
 	text-transform: uppercase;
 	cursor: pointer;
-	padding: 0 12px;
+	padding: 0 10px;
 	height: 100%;
 	border-radius: 999px;
 	transition: color 0.3s ease;
