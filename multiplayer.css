@@ -6023,7 +6023,7 @@ html.theme-aurora .mp-zone-purple .mp-mini-cell.filled { background: rgba(167,13
 
 /* ── Drag ghost — match board cell styling ── */
 html.theme-aurora .mp-drag-ghost .mp-mini-grid {
-	gap: 1px;
+	gap: 2px;
 }
 
 html.theme-aurora .mp-drag-ghost .mp-mini-cell {
@@ -7170,7 +7170,7 @@ html.theme-bloom .mp-zone-purple .mp-mini-cell.filled { background: rgba(150,120
 
 /* ── Drag ghost — match board cell styling ── */
 html.theme-bloom .mp-drag-ghost .mp-mini-grid {
-	gap: 1px;
+	gap: 2px;
 }
 
 html.theme-bloom .mp-drag-ghost .mp-mini-cell {
@@ -9033,7 +9033,7 @@ html.theme-reef .mp-zone-purple .mp-mini-cell.filled { background: rgba(212,160,
 
 /* ── Drag ghost ── */
 html.theme-reef .mp-drag-ghost .mp-mini-grid {
-	gap: 1px;
+	gap: 2px;
 }
 
 html.theme-reef .mp-drag-ghost .mp-mini-cell {

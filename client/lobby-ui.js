@@ -1,4 +1,4 @@
-/**
+﻿/**
  * ============================================================
  * LOCUS MULTIPLAYER — Lobby & Game UI Controller (v2)
  * ============================================================
@@ -4396,17 +4396,8 @@ class LocusLobbyUI {
 				}
 				let radiusStyle = '';
 				if (forGhost) {
-					// Neighbor-aware rounding: only round corners on exposed edges
-					const nT = r > 0 && matrix[r - 1][c];
-					const nB = r < rows - 1 && matrix[r + 1][c];
-					const nL = c > 0 && matrix[r][c - 1];
-					const nR = c < cols - 1 && matrix[r][c + 1];
-					const rad = 'var(--mp-cell-radius, 5px)';
-					const tl = (nT || nL) ? '0' : rad;
-					const tr = (nT || nR) ? '0' : rad;
-					const bl = (nB || nL) ? '0' : rad;
-					const br = (nB || nR) ? '0' : rad;
-					radiusStyle = `border-radius: ${tl} ${tr} ${br} ${bl} !important;`;
+					// Uniform radius per cell — same as board cells, no merged-shape effect
+					radiusStyle = 'border-radius: var(--mp-cell-radius, 5px) !important;';
 				}
 				html += `<div class="mp-mini-cell filled" style="${fillStyle}; ${sizeStyle} ${radiusStyle}"></div>`;
 			}
