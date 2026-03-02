@@ -92,6 +92,166 @@ const BONUS_SHAPES = {
 };
 
 // ──────────────────────────────────────────────
+//  PERK SYSTEEM
+// ──────────────────────────────────────────────
+
+const PERK_BRANCHES = {
+	bonus: {
+		id: 'bonus',
+		name: 'Meesterschappen',
+		icon: '⚡',
+		description: 'Verbeter je bonussen per kleur',
+		sequential: false, // vrije keuze welke kleur
+		perks: [
+			{ id: 'bonus_yellow', name: 'Gele Meesterschap', icon: '🟡', description: 'Upgrade gele bonus naar 3 cellen (1 optioneel)', cost: 1, color: 'yellow' },
+			{ id: 'bonus_red', name: 'Rode Meesterschap', icon: '🔴', description: 'Upgrade rode bonus naar 3 cellen (1 optioneel)', cost: 1, color: 'red' },
+			{ id: 'bonus_green', name: 'Groene Meesterschap', icon: '🟢', description: 'Upgrade groene bonus naar 3 cellen (1 optioneel)', cost: 1, color: 'green' },
+			{ id: 'bonus_purple', name: 'Paarse Meesterschap', icon: '🟣', description: 'Upgrade paarse bonus naar 3 cellen (1 optioneel)', cost: 1, color: 'purple' },
+			{ id: 'bonus_blue', name: 'Blauwe Meesterschap', icon: '🔵', description: 'Upgrade blauwe bonus naar 3 cellen (1 optioneel)', cost: 1, color: 'blue' },
+			{ id: 'bonus_multi_double', name: 'Dubbele Multikleur', icon: '🌈', description: 'Multikleur bonus geeft 2 charges i.p.v. 1', cost: 1, requiresAll: ['bonus_yellow','bonus_red','bonus_green','bonus_purple','bonus_blue'] }
+		]
+	},
+	aggressive: {
+		id: 'aggressive',
+		name: 'Saboteur',
+		icon: '💣',
+		description: 'Hindernissen en sabotage',
+		sequential: true,
+		perks: [
+			{ id: 'agg_stone', name: 'Steenblok', icon: '🧱', description: 'Krijg direct een 2×1 steenblok', cost: 1 },
+			{ id: 'agg_mine', name: 'Onzichtbare Mijn', icon: '💥', description: 'Plaats 1× per ronde een onzichtbare mijn op het bord', cost: 1 },
+			{ id: 'agg_steal', name: 'Kaartendief', icon: '🃏', description: 'Steel 1× per ronde tijdelijk een kaart van een tegenstander', cost: 1 }
+		]
+	},
+	flexible: {
+		id: 'flexible',
+		name: 'Strateeg',
+		icon: '🧩',
+		description: 'Flexibeler plaatsen en meer waarde',
+		sequential: true,
+		perks: [
+			{ id: 'flex_gap', name: 'Brugbouwer', icon: '🌉', description: 'Groen: plaats met 1 cel tussenruimte (gat wordt gevuld zonder score)', cost: 1 },
+			{ id: 'flex_rotate', name: 'Vrije Rotatie', icon: '🔄', description: 'Draai kaarten ook 45° (diagonale plaatsing op paars)', cost: 1 },
+			{ id: 'flex_wildcard', name: 'Wildcardkleur', icon: '🎨', description: 'Eén kaart per ronde op elke zone plaatsen, ongeacht kleur', cost: 1 },
+			{ id: 'flex_double_coins', name: 'Bankier', icon: '🏦', description: 'Goudmunten zijn dubbel zoveel waard', cost: 1 }
+		]
+	}
+};
+
+/**
+ * Geeft de bonus-shape terug met optionele upgrade (3e cel) als perk actief is.
+ */
+function getBonusShapeForPlayer(bonusColor, player) {
+	const isAny = bonusColor === 'any';
+	let base;
+	if (bonusColor === 'red') {
+		base = cloneMatrix(BONUS_SHAPES.red);
+	} else if (isAny) {
+		base = cloneMatrix(BONUS_SHAPES.any);
+	} else {
+		base = cloneMatrix(BONUS_SHAPES.default);
+	}
+
+	// Check perk upgrade (niet voor 'any')
+	if (!isAny && player?.perks?.bonusUpgrades?.[bonusColor]) {
+		base.push([2]); // Optionele 3e cel
+	}
+	return base;
+}
+
+/**
+ * Check of een speler een bepaalde perk heeft ontgrendeld.
+ */
+function playerHasPerk(player, perkId) {
+	if (!player?.perks?.unlockedPerks) return false;
+	return player.perks.unlockedPerks.includes(perkId);
+}
+
+/**
+ * Verkrijg beschikbare perks voor een speler (die nog niet ontgrendeld zijn en waaraan ze voldoen).
+ */
+function getAvailablePerks(player) {
+	if (!player?.perks) return [];
+	const unlocked = player.perks.unlockedPerks || [];
+	const available = [];
+
+	for (const [branchId, branch] of Object.entries(PERK_BRANCHES)) {
+		for (let i = 0; i < branch.perks.length; i++) {
+			const perk = branch.perks[i];
+			if (unlocked.includes(perk.id)) continue; // Al ontgrendeld
+
+			// Sequentiële branch: moet vorige perk hebben
+			if (branch.sequential && i > 0) {
+				const prevPerk = branch.perks[i - 1];
+				if (!unlocked.includes(prevPerk.id)) continue;
+			}
+
+			// requiresAll: alle genoemde perks moeten ontgrendeld zijn
+			if (perk.requiresAll && !perk.requiresAll.every(reqId => unlocked.includes(reqId))) {
+				continue;
+			}
+
+			available.push({ ...perk, branch: branchId, branchName: branch.name, branchIcon: branch.icon });
+		}
+	}
+
+	return available;
+}
+
+/**
+ * Ontgrendel een perk voor een speler.
+ */
+function choosePerk(gameState, playerId, perkId) {
+	const player = gameState.players[playerId];
+	if (!player) return { error: 'Speler niet gevonden' };
+	if (!player.perks) return { error: 'Perk data niet geïnitialiseerd' };
+
+	const perkPoints = player.perks.perkPoints || 0;
+	const available = getAvailablePerks(player);
+	const perk = available.find(p => p.id === perkId);
+	if (!perk) return { error: 'Perk niet beschikbaar of al ontgrendeld' };
+	if (perkPoints < perk.cost) return { error: `Niet genoeg perkpunten (nodig: ${perk.cost}, beschikbaar: ${perkPoints})` };
+
+	// Aftrekken en ontgrendelen
+	player.perks.perkPoints -= perk.cost;
+	player.perks.unlockedPerks.push(perkId);
+
+	// Bonus upgrade: markeer kleur als geüpgrade
+	if (perk.color) {
+		player.perks.bonusUpgrades[perk.color] = true;
+	}
+
+	// Aggressive branch perk awards
+	if (perkId === 'agg_stone') {
+		// Geef direct een steenblok (opslaan in inventory)
+		player.perks.stoneBlocks = (player.perks.stoneBlocks || 0) + 1;
+	}
+	if (perkId === 'agg_mine') {
+		player.perks.minesPerRound = 1;
+	}
+	if (perkId === 'agg_steal') {
+		player.perks.stealsPerRound = 1;
+	}
+
+	// Flexible branch perk awards
+	if (perkId === 'flex_gap') {
+		player.perks.greenGapAllowed = true;
+	}
+	if (perkId === 'flex_rotate') {
+		player.perks.diagonalRotation = true;
+	}
+	if (perkId === 'flex_wildcard') {
+		player.perks.wildcardPerRound = 1;
+	}
+	if (perkId === 'flex_double_coins') {
+		player.perks.doubleCoins = true;
+	}
+
+	gameState.updatedAt = Date.now();
+	return { success: true, perk: { id: perkId, name: perk.name, icon: perk.icon } };
+}
+
+// ──────────────────────────────────────────────
 //  STONE SHAPES (blokkerende vormen — 2, 3 of 4 cellen)
 // ──────────────────────────────────────────────
 
@@ -1086,24 +1246,40 @@ function hasAdjacentActive(zoneData, x, y) {
 /**
  * Verzamel alle cellen die een shape zou bezetten.
  * Returns null als plaatsing onmogelijk is (buiten grid of bezet).
+ * Ondersteunt optionele cellen (matrix value 2): mogen overlappen of buiten grid vallen.
  */
 function collectPlacementCellsData(zoneData, baseX, baseY, matrix) {
 	if (!zoneData || !Array.isArray(matrix) || !matrix.length) return null;
 	const pending = [];
+	const optionalCells = [];
 
 	for (let y = 0; y < matrix.length; y++) {
 		for (let x = 0; x < (matrix[y]?.length || 0); x++) {
-			if (!matrix[y][x]) continue;
+			const cellVal = matrix[y][x];
+			if (!cellVal) continue;
+			const isOptional = cellVal === 2;
 			const targetX = baseX + x;
 			const targetY = baseY + y;
 			const cell = getDataCell(zoneData, targetX, targetY);
+
+			if (isOptional) {
+				// Optionele cellen mogen buiten grid of bezet zijn
+				if (cell && !cell.active) {
+					optionalCells.push({ x: targetX, y: targetY, optional: true });
+				}
+				continue;
+			}
+
 			if (!cell) return null;
 			if (cell.active) return null;
 			pending.push({ x: targetX, y: targetY });
 		}
 	}
 
-	return pending.length > 0 ? pending : null;
+	if (pending.length === 0) return null;
+	// Voeg optionele cellen toe als metadata
+	pending.optionalCells = optionalCells;
+	return pending;
 }
 
 /**
@@ -1239,6 +1415,27 @@ function applyPlacement(boardState, zoneName, zoneData, baseX, baseY, matrix, co
 			if (cell.bonusSymbol) {
 				collectedBonuses.push(cell.bonusSymbol);
 			}
+		}
+	}
+
+	// Optionele cellen (perk upgrades): plaats als ze passen
+	const optCells = pendingCells.optionalCells || [];
+	for (const coord of optCells) {
+		const cell = getDataCell(zoneData, coord.x, coord.y);
+		if (cell && !cell.active) {
+			boardState._placementSeq += 1;
+			cell.active = true;
+			cell.color = placedColor;
+			cell.playerId = playerId;
+			cell.placementOrder = boardState._placementSeq;
+			placedCells.push({ ...coord, optional: true });
+			cell.isStone = isStonePlacement;
+			if (cell.flags.includes('gold')) goldCollected++;
+			if (cell.treasureCoins && cell.treasureCoins > 0) {
+				goldCollected += cell.treasureCoins;
+				pearlsCollected++;
+			}
+			if (cell.bonusSymbol) collectedBonuses.push(cell.bonusSymbol);
 		}
 	}
 
@@ -2478,8 +2675,13 @@ function generateObjectiveChoices(rng, level, gameState = null, playerId = null)
 	return shuffled.slice(0, 3).map(obj => {
 		const materialized = materializeObjectiveForPlayer(obj, gameState, playerId, rng);
 		const basePoints = getObjectiveRewardPoints(materialized, 15);
-		const baseCoins = getObjectiveRewardCoins(materialized);
-		const baseRandomBonuses = getObjectiveRandomBonuses(materialized);
+		let baseCoins = getObjectiveRewardCoins(materialized);
+		let baseRandomBonuses = getObjectiveRandomBonuses(materialized);
+		// End-only objectives: convert random bonuses to extra coins (2 coins per bonus)
+		if (materialized.endOnly && baseRandomBonuses > 0) {
+			baseCoins += baseRandomBonuses * 2;
+			baseRandomBonuses = 0;
+		}
 		return {
 			id: materialized.id,
 			name: materialized.name,
@@ -2828,6 +3030,22 @@ function addPlayer(gameState, playerId, playerName) {
 		unlockedGolden: false,
 		unlockedMultikleur: false,
 		unlockedSteen: false,
+		perks: {
+			perkPoints: 0,
+			unlockedPerks: [],
+			bonusUpgrades: {},
+			stoneBlocks: 0,
+			minesPerRound: 0,
+			stealsPerRound: 0,
+			greenGapAllowed: false,
+			diagonalRotation: false,
+			wildcardPerRound: 0,
+			doubleCoins: false,
+			minesUsedThisLevel: 0,
+			stealsUsedThisLevel: 0,
+			wildcardsUsedThisLevel: 0,
+			activeMines: []
+		},
 		connected: true,
 		joinedAt: Date.now()
 	};
@@ -2899,6 +3117,23 @@ function startGame(gameState) {
 		player.hand = [];
 		player.discardPile = [];
 		player.chosenObjective = null;
+		// Reset perks bij nieuwe match
+		player.perks = {
+			perkPoints: 0,
+			unlockedPerks: [],
+			bonusUpgrades: {},
+			stoneBlocks: 0,
+			minesPerRound: 0,
+			stealsPerRound: 0,
+			greenGapAllowed: false,
+			diagonalRotation: false,
+			wildcardPerRound: 0,
+			doubleCoins: false,
+			minesUsedThisLevel: 0,
+			stealsUsedThisLevel: 0,
+			wildcardsUsedThisLevel: 0,
+			activeMines: []
+		};
 	}
 	gameState.matchWinner = null;
 
@@ -3048,7 +3283,9 @@ function playMove(gameState, playerId, cardId, zoneName, baseX, baseY, rotation,
 	// Verwerk verzamelde bonussen
 	if (placementResult.collectedBonuses) {
 		for (const bonusColor of placementResult.collectedBonuses) {
-			player.bonusInventory[bonusColor] = (player.bonusInventory[bonusColor] || 0) + 1;
+			// Dubbele multikleur perk: 'any' bonus geeft 2 charges
+			const amount = (bonusColor === 'any' && playerHasPerk(player, 'bonus_multi_double')) ? 2 : 1;
+			player.bonusInventory[bonusColor] = (player.bonusInventory[bonusColor] || 0) + amount;
 		}
 	}
 
@@ -3069,9 +3306,12 @@ function playMove(gameState, playerId, cardId, zoneName, baseX, baseY, rotation,
 		timestamp: Date.now()
 	});
 
-	// Gold coins bijhouden als currency
+	// Gold coins bijhouden als currency (doubleCoins perk)
 	if (placementResult.goldCollected > 0) {
-		player.goldCoins = (player.goldCoins || 0) + placementResult.goldCollected;
+		const goldAmount = playerHasPerk(player, 'flex_double_coins')
+			? placementResult.goldCollected * 2
+			: placementResult.goldCollected;
+		player.goldCoins = (player.goldCoins || 0) + goldAmount;
 	}
 
 	// Scores herberekenen (alleen actieve speler)
@@ -3130,10 +3370,8 @@ function playBonus(gameState, playerId, bonusColor, zoneName, baseX, baseY, subg
 		return { error: `Geen ${bonusColor} bonussen beschikbaar` };
 	}
 
-	// Bonus shape — pas rotatie toe
-	let matrix = bonusColor === 'red'
-		? cloneMatrix(BONUS_SHAPES.red)
-		: (bonusColor === 'any' ? cloneMatrix(BONUS_SHAPES.any) : cloneMatrix(BONUS_SHAPES.default));
+	// Bonus shape — pas rotatie toe (met perk upgrade)
+	let matrix = getBonusShapeForPlayer(bonusColor, player);
 	const rot = (Number(rotation) || 0) % 4;
 	for (let r = 0; r < rot; r++) { matrix = rotateMatrix90(matrix); }
 
@@ -3171,13 +3409,17 @@ function playBonus(gameState, playerId, bonusColor, zoneName, baseX, baseY, subg
 	// Verwerk verzamelde bonussen van bonus-plaatsing (als bonus shape op bonus-dots landt)
 	if (placementResult.collectedBonuses) {
 		for (const bc of placementResult.collectedBonuses) {
-			player.bonusInventory[bc] = (player.bonusInventory[bc] || 0) + 1;
+			const amount = (bc === 'any' && playerHasPerk(player, 'bonus_multi_double')) ? 2 : 1;
+			player.bonusInventory[bc] = (player.bonusInventory[bc] || 0) + amount;
 		}
 	}
 
-	// Gold coins bijhouden als currency
+	// Gold coins bijhouden als currency (doubleCoins perk)
 	if (placementResult.goldCollected > 0) {
-		player.goldCoins = (player.goldCoins || 0) + placementResult.goldCollected;
+		const goldAmount = playerHasPerk(player, 'flex_double_coins')
+			? placementResult.goldCollected * 2
+			: placementResult.goldCollected;
+		player.goldCoins = (player.goldCoins || 0) + goldAmount;
 	}
 
 	// Track bonus move voor undo
@@ -3631,6 +3873,14 @@ function checkGameEnd(gameState) {
 		}
 	}
 
+	// ── Perk point: elke speler krijgt 1 perkpunt na elke ronde ──
+	for (const pid of gameState.playerOrder) {
+		const p = gameState.players[pid];
+		if (p?.perks) {
+			p.perks.perkPoints = (p.perks.perkPoints || 0) + 1;
+		}
+	}
+
 	for (const pid of gameState.playerOrder) {
 		if (gameState.levelScores?.[pid]) {
 			gameState.levelScores[pid].matchWins = gameState.players[pid]?.matchWins || 0;
@@ -4029,6 +4279,13 @@ function startNextLevel(gameState) {
 		player.score = 0;
 		player.scoreBreakdown = { yellow: 0, green: 0, blue: 0, red: 0, purple: 0, bonus: 0, gold: 0, total: 0 };
 		// Reset bonus inventory? Nee, behoud bonussen
+		// Reset per-level perk counters (perks zelf blijven)
+		if (player.perks) {
+			player.perks.minesUsedThisLevel = 0;
+			player.perks.stealsUsedThisLevel = 0;
+			player.perks.wildcardsUsedThisLevel = 0;
+			player.perks.activeMines = [];
+		}
 	}
 
 	// Nieuwe objective keuzes per level
@@ -4184,6 +4441,9 @@ const GameRules = {
 	SHOP_ITEMS, getShopItems, getCardPrice, generateShopCardOfferings,
 	startShopPhase, buyShopItem, claimFreeCard, sellCard, getCardSellPrice,
 	shopReady, startNextLevel, endGameFinal, useTimeBomb,
+
+	// Perks
+	PERK_BRANCHES, choosePerk, getAvailablePerks, playerHasPerk, getBonusShapeForPlayer,
 
 	// Utils
 	createRNG, shuffleWithRNG, getMajorityOwner

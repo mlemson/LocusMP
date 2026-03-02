@@ -568,6 +568,16 @@ class LocusMultiplayer {
 		}
 	}
 
+	/** Ontgrendel een perk */
+	async choosePerk(perkId) {
+		try {
+			return await this._emitWithAck('choosePerk', { perkId });
+		} catch (error) {
+			console.error('[Locus MP] Choose perk failed:', error);
+			throw error;
+		}
+	}
+
 	/** Klaar met winkelen → ready */
 	async setShopReady() {
 		try {

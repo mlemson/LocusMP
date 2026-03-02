@@ -896,6 +896,42 @@ io.on('connection', (socket) => {
 		}
 	});
 
+	// ── CHOOSE PERK ────────────────────────
+
+	socket.on('choosePerk', (data, callback) => {
+		try {
+			const info = socketToPlayer.get(socket.id);
+			if (!info) return callback({ success: false, error: 'Niet in een spel.' });
+
+			const gameState = games.get(info.gameId);
+			if (!gameState) return callback({ success: false, error: 'Spel niet gevonden.' });
+
+			const perkId = String(data.perkId || '');
+			if (!perkId) return callback({ success: false, error: 'perkId is verplicht.' });
+
+			const result = GameRules.choosePerk(gameState, info.playerId, perkId);
+			if (result.error) return callback({ success: false, error: result.error });
+
+			const playerData = gameState.players[info.playerId];
+			console.log(`[Locus] Speler ${info.playerId} ontgrendelde perk: ${result.perk?.name}`);
+
+			callback({ success: true, perk: result.perk });
+
+			// Broadcast perk unlock aan alle spelers
+			io.to(info.gameId).emit('perkUnlocked', {
+				playerId: info.playerId,
+				playerName: playerData?.name || '???',
+				perk: result.perk
+			});
+
+			broadcastGameState(io, info.gameId);
+
+		} catch (error) {
+			console.error('[Locus] choosePerk error:', error);
+			callback({ success: false, error: error.message });
+		}
+	});
+
 	// ── CLAIM FREE CARD (from unlock popup) ──
 
 	socket.on('claimFreeCard', (data, callback) => {

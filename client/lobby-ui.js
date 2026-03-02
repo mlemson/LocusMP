@@ -779,6 +779,10 @@ class LocusLobbyUI {
 		if (!this._audioCtx) {
 			this._audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 		}
+		// Resume suspended context (autoplay policy)
+		if (this._audioCtx.state === 'suspended') {
+			this._audioCtx.resume().catch(() => {});
+		}
 		return this._audioCtx;
 	}
 
@@ -826,9 +830,9 @@ class LocusLobbyUI {
 
 	_playTurnStartSound() {
 		// Duidelijker 3-noten melodie zodat spelers hun beurt niet missen
-		this._playTone(523, 0.15, 'sine', 0.18);
-		setTimeout(() => this._playTone(659, 0.15, 'sine', 0.18), 120);
-		setTimeout(() => this._playTone(784, 0.22, 'sine', 0.22), 240);
+		this._playTone(523, 0.18, 'sine', 0.28);
+		setTimeout(() => this._playTone(659, 0.18, 'sine', 0.28), 130);
+		setTimeout(() => this._playTone(784, 0.25, 'sine', 0.32), 260);
 	}
 
 	_playBombSound() {
@@ -2256,12 +2260,22 @@ class LocusLobbyUI {
 			: cardsHtml;
 	}
 
-	/** Render zone score summary for deck overlay */
+	/** Render zone score summary for deck overlay — shows ONLY your scores */
 	_renderDeckZoneScores() {
 		const Rules = window.LocusGameRules;
-		const board = this.mp.gameState?.boardState;
-		if (!Rules || !board) return '';
-		const zones = board.zones;
+		const gs = this.mp.gameState;
+		const board = gs?.boardState;
+		if (!Rules || !board || !gs) return '';
+
+		// Calculate per-player scores and show only mine
+		const myId = this.mp.userId;
+		const playerIds = gs.playerOrder || [];
+		let myScores = null;
+		try {
+			const allScores = Rules.calculatePlayerScores(board, playerIds);
+			myScores = allScores[myId];
+		} catch(e) { /* fallback */ }
+
 		const zoneInfo = [
 			{ name: 'yellow', label: 'Geel', color: '#ffd55a' },
 			{ name: 'green', label: 'Groen', color: '#5be8b4' },
@@ -2271,14 +2285,7 @@ class LocusLobbyUI {
 		];
 		return `<div class="mp-deck-zone-scores">
 			${zoneInfo.map(z => {
-				let score = 0;
-				try {
-					if (z.name === 'yellow') score = Rules.scoreYellowData(zones.yellow);
-					else if (z.name === 'green') score = Rules.scoreGreenData(zones.green);
-					else if (z.name === 'blue') score = Rules.scoreBlueData(zones.blue);
-					else if (z.name === 'red') score = Rules.scoreRedData(zones.red);
-					else if (z.name === 'purple') score = Rules.scorePurpleData(zones.purple);
-				} catch (e) { /* ignore */ }
+				const score = myScores ? (myScores[z.name] || 0) : 0;
 				return `<div class="mp-deck-zone-score-row">
 					<span class="mp-deck-zone-dot" style="background: ${z.color};"></span>
 					<span class="mp-deck-zone-label">${z.label}</span>
@@ -4783,6 +4790,8 @@ class LocusLobbyUI {
 					}).join('')}
 				</div>
 
+				${this._renderPerkSection(myPlayer, isReady)}
+
 				${(myPlayer?.permanentShopCards?.length > 0) ? `
 					<div class="mp-shop-sell-section">
 						<button class="mp-shop-sell-open-btn" id="mp-shop-sell-open">
@@ -4828,8 +4837,93 @@ class LocusLobbyUI {
 
 		// Bind ready button
 		const readyBtn = container.querySelector('#mp-shop-ready-btn');
+		// Bind perk buttons
+		container.querySelectorAll('.mp-perk-unlock-btn:not(.disabled)').forEach(btn => {
+			btn.addEventListener('click', () => this._handleChoosePerk(btn.dataset.perkId, btn));
+		});
+
 		if (readyBtn && !isReady) {
 			readyBtn.addEventListener('click', () => this._handleShopReady());
+		}
+	}
+
+	_renderPerkSection(myPlayer, isReady) {
+		const Rules = window.LocusGameRules;
+		if (!Rules || !Rules.PERK_BRANCHES) return '';
+
+		const perks = myPlayer?.perks || {};
+		const perkPoints = perks.perkPoints || 0;
+		const unlockedPerks = perks.unlockedPerks || [];
+		const availablePerks = Rules.getAvailablePerks(myPlayer) || [];
+
+		return `
+			<div class="mp-perk-section">
+				<h3 class="mp-shop-section-title">🎯 Perks <span class="mp-perk-points-badge">${perkPoints} punt${perkPoints !== 1 ? 'en' : ''}</span></h3>
+				<div class="mp-perk-branches">
+					${Object.values(Rules.PERK_BRANCHES).map(branch => {
+						const branchPerks = branch.perks;
+						return `
+							<div class="mp-perk-branch">
+								<div class="mp-perk-branch-header">
+									<span class="mp-perk-branch-icon">${branch.icon}</span>
+									<div>
+										<div class="mp-perk-branch-name">${branch.name}</div>
+										<div class="mp-perk-branch-desc">${branch.description}</div>
+									</div>
+								</div>
+								<div class="mp-perk-list">
+									${branchPerks.map(perk => {
+										const isUnlocked = unlockedPerks.includes(perk.id);
+										const isAvailable = availablePerks.some(p => p.id === perk.id);
+										const canAfford = perkPoints >= perk.cost;
+										const canUnlock = isAvailable && canAfford && !isReady;
+										let statusClass = isUnlocked ? 'unlocked' : (isAvailable ? 'available' : 'locked');
+										return `
+											<div class="mp-perk-item ${statusClass}">
+												<span class="mp-perk-icon">${perk.icon}</span>
+												<div class="mp-perk-info">
+													<div class="mp-perk-name">${perk.name}</div>
+													<div class="mp-perk-desc">${perk.description}</div>
+												</div>
+												${isUnlocked ? `
+													<span class="mp-perk-status">✅</span>
+												` : isAvailable ? `
+													<button class="mp-perk-unlock-btn ${canUnlock ? '' : 'disabled'}"
+															data-perk-id="${perk.id}"
+															${!canUnlock ? 'disabled' : ''}>
+														🔓 ${perk.cost}
+													</button>
+												` : `
+													<span class="mp-perk-status">🔒</span>
+												`}
+											</div>
+										`;
+									}).join('')}
+								</div>
+							</div>
+						`;
+					}).join('')}
+				</div>
+			</div>
+		`;
+	}
+
+	async _handleChoosePerk(perkId, sourceEl = null) {
+		try {
+			if (sourceEl) sourceEl.disabled = true;
+			const result = await this.mp.choosePerk(perkId);
+			if (!result.success) {
+				this._showToast(result.error || 'Perk ontgrendelen mislukt', 'error');
+				if (sourceEl) sourceEl.disabled = false;
+				return;
+			}
+			this._playGoldSound();
+			this._showToast(`${result.perk?.icon || '🎯'} ${result.perk?.name || 'Perk'} ontgrendeld!`, 'success');
+			this._renderShop();
+		} catch (error) {
+			console.error('[Locus UI] Choose perk error:', error);
+			this._showToast('Perk ontgrendelen mislukt', 'error');
+			if (sourceEl) sourceEl.disabled = false;
 		}
 	}
 
