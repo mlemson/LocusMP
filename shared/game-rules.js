@@ -699,9 +699,10 @@ function generateLevel1Board(rng, level, playerCount) {
 
 	// ══════════════════════════════════════════
 	//  RED ZONE — Wereldafhankelijk + spelerafhankelijk
-	//  2 subgrids bij 2p, +1 per 2 extra spelers
+	//  Minimum 3 subgrids vanaf level 3 (world>=1, lvl>=3)
 	// ══════════════════════════════════════════
-	const redSubgridCount = Math.min(2 + playerTier, 4);
+	const redBaseCount = lvl >= 3 ? 3 : 2;  // 3 grids from level 3+
+	const redSubgridCount = Math.min(redBaseCount + playerTier, 5);
 	{
 		// Pool van beschikbare subgrids per wereld (van klein naar groot)
 		const redPool = world === 1
@@ -1423,7 +1424,7 @@ function getRedSubgridScoreInfo(subgrid) {
 	const basePoints = Math.max(4, Math.round(rawBasePoints * RED_POINT_SCALE));
 	const isPartialReached = fillRatio >= RED_PARTIAL_THRESHOLD;
 	const isFull = filledCount === totalCount;
-	const fullBonusPoints = isFull ? Math.max(4, Math.round(basePoints * 0.50)) : 0;
+	const fullBonusPoints = isFull ? Math.max(6, Math.round(basePoints * 0.85)) : 0;
 	const totalPoints = isPartialReached ? (basePoints + fullBonusPoints) : 0;
 
 	return {
@@ -2464,18 +2465,24 @@ const LEVEL_OBJECTIVES = {
 /** Genereer 3 objectives voor een level (level-afhankelijk) */
 function generateObjectiveChoices(rng, level, gameState = null, playerId = null) {
 	const lvl = Math.min(level || 1, 3);
+	const actualLevel = level || 1;
 	const pool = LEVEL_OBJECTIVES[lvl] || LEVEL_OBJECTIVES[1];
 	const shuffled = shuffleWithRNG([...pool], rng);
+	// Scale rewards upward at higher levels: +20% per level beyond 1
+	const rewardScale = 1 + Math.max(0, actualLevel - 1) * 0.20;
 	return shuffled.slice(0, 3).map(obj => {
 		const materialized = materializeObjectiveForPlayer(obj, gameState, playerId, rng);
+		const basePoints = getObjectiveRewardPoints(materialized, 15);
+		const baseCoins = getObjectiveRewardCoins(materialized);
+		const baseRandomBonuses = getObjectiveRandomBonuses(materialized);
 		return {
 			id: materialized.id,
 			name: materialized.name,
 			description: materialized.description,
 			target: materialized.target,
-			points: getObjectiveRewardPoints(materialized, 15),
-			coins: getObjectiveRewardCoins(materialized),
-			randomBonuses: getObjectiveRandomBonuses(materialized),
+			points: Math.round(basePoints * rewardScale),
+			coins: Math.round(baseCoins * rewardScale),
+			randomBonuses: Math.round(baseRandomBonuses * rewardScale),
 			dynamicType: materialized.dynamicType || null,
 			endOnly: !!materialized.endOnly,
 			targetPlayerId: materialized.targetPlayerId || null,
@@ -3920,6 +3927,45 @@ function claimFreeCard(gameState, playerId, cardId) {
 	return { success: true, card };
 }
 
+/** Sell a permanent card back for coins */
+function sellCard(gameState, playerId, cardId) {
+	if (gameState.phase !== 'shopping') return { error: 'Niet in shop fase' };
+	const player = gameState.players[playerId];
+	if (!player) return { error: 'Speler niet gevonden' };
+	if (player.shopReady) return { error: 'Je bent al klaar' };
+
+	const permCards = player.permanentShopCards || [];
+	const idx = permCards.findIndex(c => c.id === cardId);
+	if (idx === -1) return { error: 'Kaart niet gevonden in je collectie' };
+
+	const card = permCards[idx];
+	const cellCount = card.matrix ? card.matrix.flat().filter(Boolean).length : 1;
+	// Sell price: base 1, +1 for cards with 4+ cells, +1 for golden/rainbow
+	let sellPrice = 1;
+	if (cellCount >= 4) sellPrice = 2;
+	if (card.isGolden || card.color?.code === 'rainbow') sellPrice += 1;
+
+	// Remove from permanent collection
+	permCards.splice(idx, 1);
+	// Also remove from shopCards if present
+	const shopIdx = (player.shopCards || []).findIndex(c => c.id === cardId);
+	if (shopIdx !== -1) player.shopCards.splice(shopIdx, 1);
+
+	player.goldCoins = (player.goldCoins || 0) + sellPrice;
+	gameState.updatedAt = Date.now();
+	return { success: true, soldCard: card, sellPrice };
+}
+
+/** Calculate sell price for a card */
+function getCardSellPrice(card) {
+	if (!card) return 1;
+	const cellCount = card.matrix ? card.matrix.flat().filter(Boolean).length : 1;
+	let price = 1;
+	if (cellCount >= 4) price = 2;
+	if (card.isGolden || card.color?.code === 'rainbow') price += 1;
+	return price;
+}
+
 /** Speler klaar met winkelen */
 function shopReady(gameState, playerId) {
 	if (gameState.phase !== 'shopping') return { error: 'Niet in shop fase' };
@@ -4130,7 +4176,7 @@ const GameRules = {
 
 	// Shop & Levels
 	SHOP_ITEMS, getShopItems, getCardPrice, generateShopCardOfferings,
-	startShopPhase, buyShopItem, claimFreeCard,
+	startShopPhase, buyShopItem, claimFreeCard, sellCard, getCardSellPrice,
 	shopReady, startNextLevel, endGameFinal, useTimeBomb,
 
 	// Utils
