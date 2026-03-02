@@ -230,6 +230,13 @@ class LocusMultiplayer {
 			}
 		});
 
+		// Perk unlocked event
+		this.socket.on('perkUnlocked', (data) => {
+			if (this.onPerkUnlocked) {
+				this.onPerkUnlocked(data);
+			}
+		});
+
 		// Live interactie van tegenstander (kaart selecteren / slepen)
 		this.socket.on('opponentInteraction', (data) => {
 			if (this.onOpponentInteraction) {

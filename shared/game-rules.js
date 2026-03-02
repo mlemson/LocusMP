@@ -2992,6 +2992,7 @@ function createGameState(gameId, hostPlayerId, settings = {}) {
 		winner: null,
 		finalScores: null,
 		levelScores: null,
+		levelScoresHistory: [],
 		moveHistory: [],
 		paused: false,
 		pausedBy: null,
@@ -3835,6 +3836,14 @@ function checkGameEnd(gameState) {
 	}
 	gameState.levelScores = levelScores;
 
+	// Sla level score history op voor het eindscherm
+	if (!gameState.levelScoresHistory) gameState.levelScoresHistory = [];
+	gameState.levelScoresHistory.push({
+		level: gameState.level || 1,
+		scores: JSON.parse(JSON.stringify(levelScores)),
+		winner: null // wordt hierna gezet
+	});
+
 	// Ga naar shopping fase (niet direct ended)
 	gameState.phase = 'levelComplete';
 	gameState.updatedAt = Date.now();
@@ -3844,6 +3853,10 @@ function checkGameEnd(gameState) {
 		.map(pid => ({ pid, score: levelScores[pid].finalTotal }))
 		.sort((a, b) => b.score - a.score);
 	gameState.levelWinner = sorted[0].pid;
+
+	// Zet winner in history
+	const lastHistory = gameState.levelScoresHistory?.[gameState.levelScoresHistory.length - 1];
+	if (lastHistory) lastHistory.winner = sorted[0].pid;
 
 	const roundWinner = gameState.players[gameState.levelWinner];
 	if (roundWinner) {

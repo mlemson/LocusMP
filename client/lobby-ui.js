@@ -224,6 +224,7 @@ class LocusLobbyUI {
 		// Init lobby particles for lobby screen
 		if (screenId === 'lobby-screen') {
 			try { this._initLobbyParticles(); } catch (_) {}
+			try { this._refreshServerBrowser(); } catch (_) {}
 		}
 	}
 
@@ -390,6 +391,7 @@ class LocusLobbyUI {
 		this.mp.onOpponentInteraction = (data) => this._onOpponentInteraction(data);
 		this.mp.onTaunt = (data) => this._onTaunt(data);
 		this.mp.onPauseChanged = (data) => this._onPauseChanged(data);
+		this.mp.onPerkUnlocked = (data) => this._onPerkUnlocked(data);
 	}
 
 	async _handlePauseToggle() {
@@ -857,6 +859,67 @@ class LocusLobbyUI {
 	// ──────────────────────────────────────────
 	//  LOBBY HANDLERS
 	// ──────────────────────────────────────────
+
+	async _refreshServerBrowser() {
+		const container = document.getElementById('server-browser-list');
+		if (!container) return;
+
+		try {
+			const response = await fetch('/api/games');
+			if (!response.ok) throw new Error('Fetch failed');
+			const data = await response.json();
+			const games = data.games || [];
+
+			if (games.length === 0) {
+				container.innerHTML = `<div class="mp-server-browser-empty">Geen open lobbys gevonden</div>`;
+				return;
+			}
+
+			container.innerHTML = games.map(game => {
+				const mapLabels = { 2: 'Klein', 4: 'Middel', 6: 'Groot', 8: 'Mega' };
+				const mapLabel = mapLabels[game.mapSize] || `${game.mapSize}`;
+				const timeAgo = this._timeAgo(game.createdAt);
+				return `
+					<div class="mp-server-browser-item" data-invite-code="${game.inviteCode || ''}">
+						<div class="mp-server-item-info">
+							<div class="mp-server-item-host">${this._escapeHtml(game.hostName)}</div>
+							<div class="mp-server-item-meta">
+								${game.playerCount}/${game.maxPlayers} spelers · ${mapLabel} · ${timeAgo}
+							</div>
+						</div>
+						<button class="mp-btn mp-btn-secondary mp-server-join-btn"
+								data-invite-code="${game.inviteCode || ''}">
+							Deelnemen
+						</button>
+					</div>
+				`;
+			}).join('');
+
+			// Bind join buttons
+			container.querySelectorAll('.mp-server-join-btn').forEach(btn => {
+				btn.addEventListener('click', () => {
+					const code = btn.dataset.inviteCode;
+					if (code) {
+						const codeInput = this.elements['invite-code-input'];
+						if (codeInput) codeInput.value = code;
+						this._handleJoinGame();
+					}
+				});
+			});
+		} catch (error) {
+			console.warn('[Locus UI] Server browser fetch failed:', error);
+			container.innerHTML = `<div class="mp-server-browser-empty">Kon lobbys niet laden</div>`;
+		}
+	}
+
+	_timeAgo(timestamp) {
+		if (!timestamp) return '';
+		const seconds = Math.floor((Date.now() - timestamp) / 1000);
+		if (seconds < 60) return 'zojuist';
+		if (seconds < 3600) return `${Math.floor(seconds / 60)} min geleden`;
+		if (seconds < 86400) return `${Math.floor(seconds / 3600)} uur geleden`;
+		return `${Math.floor(seconds / 86400)} dagen geleden`;
+	}
 
 	async _handleCreateGame() {
 		const name = this.elements['player-name-input']?.value?.trim();
@@ -2017,6 +2080,15 @@ class LocusLobbyUI {
 		this._playTauntSound();
 		// Forward to TV
 		try { this._broadcastTVTaunt(data); } catch (_) {}
+	}
+
+	_onPerkUnlocked(data) {
+		const isMe = data?.playerId === this.mp.userId;
+		const playerName = data?.playerName || 'Speler';
+		const perk = data?.perk || {};
+		if (!isMe) {
+			this._showToast(`${playerName} ontgrendelde ${perk.icon || '🎯'} ${perk.name || 'een perk'}`, 'info');
+		}
 	}
 
 	_showTauntBubble(playerName, text, isMe = false) {
@@ -4510,6 +4582,7 @@ class LocusLobbyUI {
 		const container = this.elements['results-container'];
 		if (!container || !finalScores) return;
 		const winsTarget = Math.max(1, Number(this.mp.gameState?.winsToEnd) || 4);
+		const levelHistory = this.mp.gameState?.levelScoresHistory || [];
 
 		const players = this.mp.gameState.playerOrder.map(pid => ({
 			id: pid,
@@ -4518,6 +4591,45 @@ class LocusLobbyUI {
 			...finalScores[pid]
 		}));
 		const sorted = [...players].sort((a, b) => (b.matchWins - a.matchWins) || (b.finalTotal - a.finalTotal));
+
+		// Level history tabel
+		const historyHtml = levelHistory.length > 0 ? `
+			<div class="mp-results-history">
+				<h3 class="mp-results-history-title">📊 Scores per ronde</h3>
+				<div class="mp-results-history-table">
+					<div class="mp-history-header">
+						<span class="mp-history-cell mp-history-label">Ronde</span>
+						${this.mp.gameState.playerOrder.map(pid => `
+							<span class="mp-history-cell mp-history-player ${pid === this.mp.userId ? 'is-me' : ''}">
+								${this._escapeHtml(this.mp.gameState.players[pid]?.name || '???')}
+							</span>
+						`).join('')}
+					</div>
+					${levelHistory.map(lh => `
+						<div class="mp-history-row">
+							<span class="mp-history-cell mp-history-label">Level ${lh.level}</span>
+							${this.mp.gameState.playerOrder.map(pid => {
+								const sc = lh.scores?.[pid];
+								const isWinner = lh.winner === pid;
+								return `
+									<span class="mp-history-cell ${isWinner ? 'winner' : ''} ${pid === this.mp.userId ? 'is-me' : ''}">
+										${sc?.finalTotal || 0}${isWinner ? ' 🏆' : ''}
+									</span>
+								`;
+							}).join('')}
+						</div>
+					`).join('')}
+					<div class="mp-history-row mp-history-total">
+						<span class="mp-history-cell mp-history-label">Totaal wins</span>
+						${this.mp.gameState.playerOrder.map(pid => `
+							<span class="mp-history-cell ${pid === this.mp.userId ? 'is-me' : ''}">
+								${this.mp.gameState.players[pid]?.matchWins || 0}/${winsTarget}
+							</span>
+						`).join('')}
+					</div>
+				</div>
+			</div>
+		` : '';
 
 		container.innerHTML = `
 			<h2 class="mp-results-title">🏆 Spel Afgelopen!</h2>
@@ -4545,7 +4657,19 @@ class LocusLobbyUI {
 					</div>
 				`).join('')}
 			</div>
+			${historyHtml}
+			<div class="mp-results-actions">
+				<button class="mp-btn mp-btn-primary" id="mp-new-game-btn">🔄 Nieuw Spel</button>
+			</div>
 		`;
+
+		// Bind new game button
+		const newGameBtn = container.querySelector('#mp-new-game-btn');
+		if (newGameBtn) {
+			newGameBtn.addEventListener('click', () => {
+				this._showScreen('lobby-screen');
+			});
+		}
 	}
 
 	// ──────────────────────────────────────────

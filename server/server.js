@@ -310,6 +310,38 @@ app.get('/', (req, res) => {
 	res.sendFile(path.join(clientRoot, 'multiplayer.html'));
 });
 
+// ── SERVER BROWSER API ───────────────────────
+app.get('/api/games', (req, res) => {
+	const activeGames = [];
+	for (const [gameId, gs] of games) {
+		// Alleen wachtende games tonen (die nog niet gestart zijn)
+		if (gs.phase !== 'waiting') continue;
+		const playerCount = Object.keys(gs.players).length;
+		const maxPlayers = gs.settings?.maxPlayers || 4;
+		// Toon alleen games met tenminste 1 speler en minder dan max
+		if (playerCount < 1 || playerCount >= maxPlayers) continue;
+
+		// Zoek de invite code
+		let inviteCode = null;
+		for (const [code, gid] of inviteCodes) {
+			if (gid === gameId) { inviteCode = code; break; }
+		}
+
+		activeGames.push({
+			gameId,
+			inviteCode,
+			hostName: gs.players[gs.hostPlayerId]?.name || '???',
+			playerCount,
+			maxPlayers,
+			mapSize: gs.settings?.mapSize || 4,
+			createdAt: gs.createdAt
+		});
+	}
+	// Sorteer op meest recent eerst
+	activeGames.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+	res.json({ games: activeGames });
+});
+
 // Fallback
 app.get('*', (req, res) => {
 	res.sendFile(path.join(clientRoot, 'multiplayer.html'));
