@@ -1415,7 +1415,7 @@ html, body {
 }
 
 .mp-drag-ghost .mp-mini-grid {
-	gap: 1px;
+	gap: 2px;
 }
 
 .mp-drag-ghost .mp-mini-cell {
