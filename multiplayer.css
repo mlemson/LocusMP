@@ -8286,6 +8286,112 @@ html.theme-bloom .mp-sparkle {
 	100% { opacity: 0; transform: translate(-50%, -50%) scale(0.7) translateY(-55px) rotate(0deg); }
 }
 
+/* ── Pearl collection animations ── */
+@keyframes mp-pearl-rise {
+	0%   { opacity: 1; transform: translate(-50%, -50%) scale(0.3); }
+	30%  { opacity: 1; transform: translate(-50%, -80%) scale(1.5); }
+	60%  { opacity: 1; transform: translate(-50%, -120%) scale(1.2); }
+	100% { opacity: 0; transform: translate(-50%, -180%) scale(0.6); }
+}
+@keyframes mp-pearl-sparkle {
+	0%   { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+	100% { opacity: 0; transform: translate(calc(-50% + var(--dx)), calc(-50% + var(--dy))) scale(0); }
+}
+
+/* ── Sell popup ── */
+.mp-popup-overlay {
+	position: fixed;
+	inset: 0;
+	background: rgba(0,0,0,0.65);
+	z-index: 10000;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	animation: mp-fade-in 0.2s ease;
+}
+@keyframes mp-fade-in {
+	from { opacity: 0; }
+	to   { opacity: 1; }
+}
+.mp-sell-popup {
+	background: var(--bg, #1a1a2e);
+	border: 1px solid var(--border, #3a3a5c);
+	border-radius: 16px;
+	padding: 24px;
+	max-width: 520px;
+	width: 90%;
+	max-height: 80vh;
+	overflow-y: auto;
+	box-shadow: 0 8px 40px rgba(0,0,0,0.5);
+	animation: mp-popup-slide 0.25s ease;
+}
+@keyframes mp-popup-slide {
+	from { transform: translateY(20px) scale(0.95); opacity: 0; }
+	to   { transform: translateY(0) scale(1); opacity: 1; }
+}
+.mp-sell-popup-header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	margin-bottom: 8px;
+}
+.mp-sell-popup-header h3 {
+	margin: 0;
+	font-size: 1.15rem;
+}
+.mp-sell-popup-close {
+	background: none;
+	border: none;
+	color: var(--fg, #ccc);
+	font-size: 1.3rem;
+	cursor: pointer;
+	padding: 4px 8px;
+	border-radius: 8px;
+	transition: background 0.15s;
+}
+.mp-sell-popup-close:hover {
+	background: rgba(255,255,255,0.1);
+}
+.mp-sell-popup-desc {
+	color: var(--fg-dim, #aaa);
+	font-size: 0.85rem;
+	margin: 0 0 16px 0;
+}
+.mp-sell-popup-grid {
+	gap: 12px !important;
+}
+.mp-sell-card-name {
+	font-size: 0.7rem;
+	color: var(--fg-dim, #aaa);
+	text-align: center;
+	margin: -2px 0 4px;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+/* Shop sell button in main shop */
+.mp-shop-sell-section {
+	margin-top: 10px;
+}
+.mp-shop-sell-open-btn {
+	width: 100%;
+	padding: 12px 16px;
+	border-radius: 10px;
+	border: 1px dashed #e67e73;
+	background: rgba(230, 126, 115, 0.08);
+	color: #e67e73;
+	font-weight: 600;
+	font-size: 0.9rem;
+	cursor: pointer;
+	transition: all 0.2s;
+	font-family: inherit;
+}
+.mp-shop-sell-open-btn:hover {
+	background: rgba(230, 126, 115, 0.18);
+	border-style: solid;
+}
+
 /* ══════════════════════════════════════════════════════════════════
    BLOOM — Board layout enhancements
    ══════════════════════════════════════════════════════════════════ */

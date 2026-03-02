@@ -755,8 +755,10 @@ function generateLevel1Board(rng, level, playerCount) {
 	const purpleSize = purpleBaseSize + playerTier;
 	const purpleCenter = Math.floor(purpleSize / 2);
 	const purpleBold = [];
-	const purpleBaseBoldCount = world === 1 ? 8 : (world === 2 ? 10 : 14);
-	const purpleBoldCount = purpleBaseBoldCount + playerTier * 2;
+	// Meer bolds bij grotere grids: base + extra per world + level scaling
+	const levelBonus = Math.max(0, lvl - 3);  // extra bolds vanaf level 4
+	const purpleBaseBoldCount = world === 1 ? 8 : (world === 2 ? 12 : 16);
+	const purpleBoldCount = purpleBaseBoldCount + playerTier * 2 + levelBonus;
 
 	const allPurpleCoords = [];
 	for (let y = 0; y < purpleSize; y++) {
@@ -1207,6 +1209,7 @@ function applyPlacement(boardState, zoneName, zoneData, baseX, baseY, matrix, co
 	const placedCells = [];
 	const collectedBonuses = [];
 	let goldCollected = 0;
+	let pearlsCollected = 0;
 
 	for (const coord of pendingCells) {
 		const cell = getDataCell(zoneData, coord.x, coord.y);
@@ -1229,6 +1232,7 @@ function applyPlacement(boardState, zoneName, zoneData, baseX, baseY, matrix, co
 			// Parel-schat: geeft extra munten (bijv. 5)
 			if (cell.treasureCoins && cell.treasureCoins > 0) {
 				goldCollected += cell.treasureCoins;
+				pearlsCollected++;
 			}
 
 			// Bonus symbool: geeft een bonus charge
@@ -1244,7 +1248,8 @@ function applyPlacement(boardState, zoneName, zoneData, baseX, baseY, matrix, co
 		playerId,
 		color,
 		goldCollected,
-		collectedBonuses
+		collectedBonuses,
+		pearlsCollected
 	};
 }
 
@@ -3101,6 +3106,7 @@ function playMove(gameState, playerId, cardId, zoneName, baseX, baseY, rotation,
 		scores: playerScores,
 		goldCollected: placementResult.goldCollected,
 		bonusesCollected: placementResult.collectedBonuses,
+		pearlsCollected: placementResult.pearlsCollected || 0,
 		gameEnded: false
 	};
 }

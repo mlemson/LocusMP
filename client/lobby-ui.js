@@ -4784,29 +4784,10 @@ class LocusLobbyUI {
 				</div>
 
 				${(myPlayer?.permanentShopCards?.length > 0) ? `
-					<div class="mp-shop-sell">
-						<h3 class="mp-shop-section-title">💸 Kaart verkopen</h3>
-						<div class="mp-shop-offering-grid">
-							${myPlayer.permanentShopCards.map(c => {
-								const sellPrice = Rules ? Rules.getCardSellPrice(c) : 1;
-								const colorStyle = c.isGolden
-									? `background: linear-gradient(135deg, ${c.color?.code || '#f5d76e'}, #f5d76e, ${c.color?.code || '#f5d76e'})`
-									: c.color?.code === 'rainbow'
-										? 'background: linear-gradient(135deg, #b56069, #cfba51, #92c28c, #5689b0, #8f76b8)'
-										: `background: ${c.color?.code || '#666'}`;
-								return `
-									<div class="mp-shop-offering ${isReady ? 'cant-afford' : ''}">
-										<div class="mp-shop-offering-color" style="${colorStyle}"></div>
-										<div class="mp-card-shape">${this._renderMiniGrid(c.matrix, c.color)}</div>
-										<button class="mp-shop-sell-btn ${isReady ? 'disabled' : ''}"
-												data-card-id="${c.id}"
-												${isReady ? 'disabled' : ''}>
-											💸 Verkoop (${sellPrice} 💰)
-										</button>
-									</div>
-								`;
-							}).join('')}
-						</div>
+					<div class="mp-shop-sell-section">
+						<button class="mp-shop-sell-open-btn" id="mp-shop-sell-open">
+							💸 Kaart verkopen (${myPlayer.permanentShopCards.length} kaarten)
+						</button>
 					</div>
 				` : ''}
 
@@ -4834,10 +4815,11 @@ class LocusLobbyUI {
 			btn.addEventListener('click', () => this._handleBuyItem(btn.dataset.itemId, btn));
 		});
 
-		// Bind sell buttons
-		container.querySelectorAll('.mp-shop-sell-btn:not(.disabled)').forEach(btn => {
-			btn.addEventListener('click', () => this._handleSellCard(btn.dataset.cardId, btn));
-		});
+		// Bind sell popup button
+		const sellOpenBtn = container.querySelector('#mp-shop-sell-open');
+		if (sellOpenBtn) {
+			sellOpenBtn.addEventListener('click', () => this._openSellPopup());
+		}
 
 		// Bind other shop item clicks
 		container.querySelectorAll('.mp-shop-item:not(.disabled)').forEach(btn => {
@@ -4877,6 +4859,66 @@ class LocusLobbyUI {
 		`;
 	}
 
+	_openSellPopup() {
+		const Rules = window.LocusGameRules;
+		const myPlayer = this.mp.getMyPlayer();
+		const permCards = myPlayer?.permanentShopCards || [];
+		if (permCards.length === 0) {
+			this._showToast('Je hebt geen kaarten om te verkopen', 'info');
+			return;
+		}
+
+		// Remove existing popup
+		document.getElementById('mp-sell-popup-overlay')?.remove();
+
+		const overlay = document.createElement('div');
+		overlay.id = 'mp-sell-popup-overlay';
+		overlay.className = 'mp-popup-overlay';
+		overlay.innerHTML = `
+			<div class="mp-sell-popup">
+				<div class="mp-sell-popup-header">
+					<h3>💸 Kaart verkopen</h3>
+					<button class="mp-sell-popup-close" id="mp-sell-popup-close">✕</button>
+				</div>
+				<p class="mp-sell-popup-desc">Verkoop een permanente kaart voor goudmunten.</p>
+				<div class="mp-shop-offering-grid mp-sell-popup-grid">
+					${permCards.map(c => {
+						const sellPrice = Rules ? Rules.getCardSellPrice(c) : 1;
+						const colorStyle = c.isGolden
+							? `background: linear-gradient(135deg, ${c.color?.code || '#f5d76e'}, #f5d76e, ${c.color?.code || '#f5d76e'})`
+							: c.color?.code === 'rainbow'
+								? 'background: linear-gradient(135deg, #b56069, #cfba51, #92c28c, #5689b0, #8f76b8)'
+								: `background: ${c.color?.code || '#666'}`;
+						return `
+							<div class="mp-shop-offering">
+								<div class="mp-shop-offering-color" style="${colorStyle}"></div>
+								<div class="mp-card-shape">${this._renderMiniGrid(c.matrix, c.color)}</div>
+								<div class="mp-sell-card-name">${this._escapeHtml(c.shapeName || '')}</div>
+								<button class="mp-shop-sell-btn"
+										data-card-id="${c.id}">
+									💸 Verkoop (${sellPrice} 💰)
+								</button>
+							</div>
+						`;
+					}).join('')}
+				</div>
+			</div>
+		`;
+
+		document.body.appendChild(overlay);
+
+		// Close handlers
+		overlay.querySelector('#mp-sell-popup-close').addEventListener('click', () => overlay.remove());
+		overlay.addEventListener('click', (e) => {
+			if (e.target === overlay) overlay.remove();
+		});
+
+		// Sell handlers
+		overlay.querySelectorAll('.mp-shop-sell-btn').forEach(btn => {
+			btn.addEventListener('click', () => this._handleSellCard(btn.dataset.cardId, btn));
+		});
+	}
+
 	async _handleSellCard(cardId, sourceEl = null) {
 		try {
 			if (sourceEl) sourceEl.disabled = true;
@@ -4888,7 +4930,14 @@ class LocusLobbyUI {
 			}
 			this._playGoldSound();
 			this._showToast(`Kaart verkocht voor ${result.sellPrice} 💰`, 'success');
+			// Re-open popup with updated cards, then refresh shop
+			document.getElementById('mp-sell-popup-overlay')?.remove();
 			this._renderShop();
+			// Reopen popup if there are still cards to sell
+			const myPlayer = this.mp.getMyPlayer();
+			if (myPlayer?.permanentShopCards?.length > 0) {
+				setTimeout(() => this._openSellPopup(), 100);
+			}
 		} catch (error) {
 			console.error('[Locus UI] Sell card error:', error);
 			this._showToast('Verkoop mislukt', 'error');
@@ -5537,6 +5586,56 @@ class LocusLobbyUI {
 		setTimeout(() => coin.remove(), 1000);
 	}
 
+	/** Pearl collection animation — shimmering pearl burst */
+	_showPearlCollectAnimation(x, y, count = 1) {
+		// Play a special pearl sound (ascending shimmer)
+		this._playTone(880, 0.12, 'sine', 0.15);
+		setTimeout(() => this._playTone(1100, 0.12, 'sine', 0.12), 80);
+		setTimeout(() => this._playTone(1320, 0.15, 'sine', 0.14), 160);
+		setTimeout(() => this._playTone(1760, 0.2, 'sine', 0.1), 260);
+
+		// Pearl emoji rising
+		const pearl = document.createElement('div');
+		pearl.textContent = '🫧';
+		pearl.style.cssText = `
+			position: fixed; left: ${x}px; top: ${y}px;
+			font-size: 2.2rem; pointer-events: none; z-index: 10000;
+			transform: translate(-50%, -50%) scale(0.3);
+			animation: mp-pearl-rise 1.2s ease-out forwards;
+		`;
+		document.body.appendChild(pearl);
+		setTimeout(() => pearl.remove(), 1300);
+
+		// Iridescent sparkle burst
+		const pearlColors = ['#e8dff5', '#f0f4ff', '#d4ecfc', '#fce4ec', '#fff9c4', '#e0f7fa'];
+		for (let i = 0; i < 10; i++) {
+			const s = document.createElement('div');
+			const angle = (i / 10) * Math.PI * 2;
+			const dist = 30 + Math.random() * 40;
+			const dx = Math.cos(angle) * dist;
+			const dy = Math.sin(angle) * dist;
+			const color = pearlColors[i % pearlColors.length];
+			s.style.cssText = `
+				position: fixed; left: ${x}px; top: ${y}px;
+				width: 6px; height: 6px; border-radius: 50%;
+				background: ${color};
+				box-shadow: 0 0 6px ${color}, 0 0 12px ${color};
+				pointer-events: none; z-index: 10000;
+				transform: translate(-50%, -50%);
+				animation: mp-pearl-sparkle 0.8s ease-out forwards;
+				--dx: ${dx}px; --dy: ${dy}px;
+			`;
+			document.body.appendChild(s);
+			setTimeout(() => s.remove(), 900);
+		}
+
+		// Floating text
+		const zoneEl = document.querySelector('.mp-zone-yellow');
+		if (zoneEl) {
+			this._showFloatingScore(zoneEl, `🫧 Parel! +${count * 5} goud`, '#e0f7fa');
+		}
+	}
+
 	/** Reef theme: shockwave ring effect on card placement */
 	_showReefPlaceEffect(x, y) {
 		const ring = document.createElement('div');
@@ -5571,7 +5670,7 @@ class LocusLobbyUI {
 
 	/** Wordt aangeroepen als een move wordt gebroadcast (met bonus/goud info) */
 	_onMovePlayed(data) {
-		const { playerId, playerName, zoneName, goldCollected, bonusesCollected, cardsPlayed, objectivesRevealed } = data;
+		const { playerId, playerName, zoneName, goldCollected, bonusesCollected, pearlsCollected, cardsPlayed, objectivesRevealed } = data;
 		const isMe = playerId === this.mp.userId;
 		const zoneEl = document.querySelector(`.mp-zone-${zoneName}`);
 		if (!zoneEl) return;
@@ -5619,6 +5718,13 @@ class LocusLobbyUI {
 			if (isReef) {
 				this._showConfetti(cx, cy, 16, ['#ff7eb3', '#ffd55a', '#ff8c69', '#5be8b4', '#d4a0ff']);
 			}
+		}
+
+		// Parel animatie — speciaal effect als een parel wordt opgepakt
+		if (pearlsCollected && pearlsCollected > 0) {
+			setTimeout(() => {
+				this._showPearlCollectAnimation(cx, cy, pearlsCollected);
+			}, goldCollected > 0 ? 400 : 0);
 		}
 
 		// Bonus collectie tekst

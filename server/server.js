@@ -601,6 +601,7 @@ io.on('connection', (socket) => {
 				success: true,
 				goldCollected: moveResult.goldCollected || 0,
 				bonusesCollected: moveResult.bonusesCollected || [],
+				pearlsCollected: moveResult.pearlsCollected || 0,
 				gameEnded: false
 			});
 
@@ -615,6 +616,7 @@ io.on('connection', (socket) => {
 				colorCode: moveResult.scores ? undefined : '#666',
 				goldCollected: moveResult.goldCollected || 0,
 				bonusesCollected: moveResult.bonusesCollected || [],
+				pearlsCollected: moveResult.pearlsCollected || 0,
 				cardsPlayed: countCardsPlayed(gameStateCurrent, info.playerId),
 				objectivesRevealed: shouldRevealObjectives(gameStateCurrent)
 			});
@@ -807,9 +809,9 @@ io.on('connection', (socket) => {
 				return callback({ success: false, error: undoResult.error });
 			}
 
-			console.log(`[Locus] Speler ${info.playerId} maakte zet ongedaan`);
+			console.log(`[Locus] Speler ${info.playerId} maakte zet ongedaan (type: ${undoResult.undoneType})`);
 
-			callback({ success: true });
+			callback({ success: true, undoneType: undoResult.undoneType });
 
 			broadcastGameState(io, info.gameId);
 
