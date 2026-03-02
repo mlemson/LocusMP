@@ -825,8 +825,10 @@ class LocusLobbyUI {
 	}
 
 	_playTurnStartSound() {
-		this._playTone(587, 0.12, 'sine', 0.1);
-		setTimeout(() => this._playTone(784, 0.15, 'sine', 0.12), 100);
+		// Duidelijker 3-noten melodie zodat spelers hun beurt niet missen
+		this._playTone(523, 0.15, 'sine', 0.18);
+		setTimeout(() => this._playTone(659, 0.15, 'sine', 0.18), 120);
+		setTimeout(() => this._playTone(784, 0.22, 'sine', 0.22), 240);
 	}
 
 	_playBombSound() {
@@ -4781,6 +4783,33 @@ class LocusLobbyUI {
 					}).join('')}
 				</div>
 
+				${(myPlayer?.permanentShopCards?.length > 0) ? `
+					<div class="mp-shop-sell">
+						<h3 class="mp-shop-section-title">💸 Kaart verkopen</h3>
+						<div class="mp-shop-offering-grid">
+							${myPlayer.permanentShopCards.map(c => {
+								const sellPrice = Rules ? Rules.getCardSellPrice(c) : 1;
+								const colorStyle = c.isGolden
+									? `background: linear-gradient(135deg, ${c.color?.code || '#f5d76e'}, #f5d76e, ${c.color?.code || '#f5d76e'})`
+									: c.color?.code === 'rainbow'
+										? 'background: linear-gradient(135deg, #b56069, #cfba51, #92c28c, #5689b0, #8f76b8)'
+										: `background: ${c.color?.code || '#666'}`;
+								return `
+									<div class="mp-shop-offering ${isReady ? 'cant-afford' : ''}">
+										<div class="mp-shop-offering-color" style="${colorStyle}"></div>
+										<div class="mp-card-shape">${this._renderMiniGrid(c.matrix, c.color)}</div>
+										<button class="mp-shop-sell-btn ${isReady ? 'disabled' : ''}"
+												data-card-id="${c.id}"
+												${isReady ? 'disabled' : ''}>
+											💸 Verkoop (${sellPrice} 💰)
+										</button>
+									</div>
+								`;
+							}).join('')}
+						</div>
+					</div>
+				` : ''}
+
 				${shopCards.length > 0 ? `
 					<div class="mp-shop-bought">
 						<h3>Gekochte kaarten (${shopCards.length}):</h3>
@@ -4803,6 +4832,11 @@ class LocusLobbyUI {
 		// Bind card buy buttons
 		container.querySelectorAll('.mp-shop-buy-btn:not(.disabled)').forEach(btn => {
 			btn.addEventListener('click', () => this._handleBuyItem(btn.dataset.itemId, btn));
+		});
+
+		// Bind sell buttons
+		container.querySelectorAll('.mp-shop-sell-btn:not(.disabled)').forEach(btn => {
+			btn.addEventListener('click', () => this._handleSellCard(btn.dataset.cardId, btn));
 		});
 
 		// Bind other shop item clicks
@@ -4841,6 +4875,25 @@ class LocusLobbyUI {
 				<div class="mp-ready-waiting">✅ Je bent klaar! Wachten op anderen...</div>
 			`}
 		`;
+	}
+
+	async _handleSellCard(cardId, sourceEl = null) {
+		try {
+			if (sourceEl) sourceEl.disabled = true;
+			const result = await this.mp.sellCard(cardId);
+			if (!result.success) {
+				this._showToast(result.error || 'Verkoop mislukt', 'error');
+				if (sourceEl) sourceEl.disabled = false;
+				return;
+			}
+			this._playGoldSound();
+			this._showToast(`Kaart verkocht voor ${result.sellPrice} 💰`, 'success');
+			this._renderShop();
+		} catch (error) {
+			console.error('[Locus UI] Sell card error:', error);
+			this._showToast('Verkoop mislukt', 'error');
+			if (sourceEl) sourceEl.disabled = false;
+		}
 	}
 
 	async _handleBuyItem(itemId, sourceEl = null) {

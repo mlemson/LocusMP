@@ -3430,6 +3430,34 @@ body.mp-loading .mp-btn {
 	cursor: not-allowed;
 }
 
+.mp-shop-sell-btn {
+	width: 100%;
+	padding: 6px 10px;
+	border-radius: 8px;
+	border: 1px solid #e67e73;
+	background: rgba(230, 126, 115, 0.12);
+	color: #e67e73;
+	font-weight: 700;
+	font-size: 0.8rem;
+	cursor: pointer;
+	transition: all 0.2s;
+	font-family: inherit;
+}
+
+.mp-shop-sell-btn:hover:not(:disabled) {
+	background: rgba(230, 126, 115, 0.25);
+}
+
+.mp-shop-sell-btn:disabled,
+.mp-shop-sell-btn.disabled {
+	opacity: 0.4;
+	cursor: not-allowed;
+}
+
+.mp-shop-sell h3 {
+	margin-bottom: 8px;
+}
+
 .mp-shop-item {
 	display: flex;
 	align-items: center;

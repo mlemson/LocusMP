@@ -538,6 +538,16 @@ class LocusMultiplayer {
 		}
 	}
 
+	/** Verkoop een permanente kaart voor coins */
+	async sellCard(cardId) {
+		try {
+			return await this._emitWithAck('sellCard', { cardId });
+		} catch (error) {
+			console.error('[Locus MP] Sell card failed:', error);
+			throw error;
+		}
+	}
+
 	/** Claim a free card from unlock popup (pick 1 of 3) */
 	async claimFreeCard(cardId) {
 		try {

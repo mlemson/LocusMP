@@ -870,6 +870,30 @@ io.on('connection', (socket) => {
 		}
 	});
 
+	// ── SELL CARD ────────────────────────
+
+	socket.on('sellCard', (data, callback) => {
+		try {
+			const info = socketToPlayer.get(socket.id);
+			if (!info) return callback({ success: false, error: 'Niet in een spel.' });
+
+			const gameState = games.get(info.gameId);
+			if (!gameState) return callback({ success: false, error: 'Spel niet gevonden.' });
+
+			const cardId = String(data.cardId || '');
+			const result = GameRules.sellCard(gameState, info.playerId, cardId);
+			if (result.error) return callback({ success: false, error: result.error });
+
+			console.log(`[Locus] Speler ${info.playerId} verkocht kaart ${cardId} voor ${result.sellPrice} coins`);
+			callback(result);
+			broadcastGameState(io, info.gameId);
+
+		} catch (error) {
+			console.error('[Locus] sellCard error:', error);
+			callback({ success: false, error: error.message });
+		}
+	});
+
 	// ── CLAIM FREE CARD (from unlock popup) ──
 
 	socket.on('claimFreeCard', (data, callback) => {
