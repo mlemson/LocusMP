@@ -159,9 +159,22 @@ class LocusLobbyUI {
 			case 'levelComplete':
 				if (state.levelScores) this._onLevelComplete(state.levelScores, state.levelWinner, state.level);
 				break;
-			case 'shopping':
-				this._onShopPhase();
+			case 'shopping': {
+				// Only auto-navigate if the level-complete overlay is already gone.
+				// If it's still visible the player is reading the scores — let them
+				// decide when to go to the shop themselves.
+				const lcOverlay = document.getElementById('level-complete-overlay');
+				if (lcOverlay) {
+					const btn = document.getElementById('mp-go-shop-btn');
+					if (btn) {
+						btn.disabled = false;
+						btn.textContent = '🛒 Shop is open — ga wanneer je klaar bent';
+					}
+				} else {
+					this._onShopPhase();
+				}
 				break;
+			}
 			case 'ended':
 				if (state.finalScores) this._onGameEnded(state.finalScores, state.winner);
 				break;
@@ -5190,7 +5203,18 @@ class LocusLobbyUI {
 			if (this.elements['shop-screen']?.style.display !== 'none') {
 				this._renderShop();
 			} else {
-				this._onShopPhase();
+				// Don't force-navigate while the level-complete overlay is still visible.
+				// The player is still reading scores; let them go to the shop themselves.
+				const lcOverlay2 = document.getElementById('level-complete-overlay');
+				if (lcOverlay2) {
+					const btn2 = document.getElementById('mp-go-shop-btn');
+					if (btn2) {
+						btn2.disabled = false;
+						btn2.textContent = '🛒 Shop is open — ga wanneer je klaar bent';
+					}
+				} else {
+					this._onShopPhase();
+				}
 			}
 		}
 		if (state.phase === 'ended' && state.finalScores) {
