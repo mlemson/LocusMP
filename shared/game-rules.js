@@ -223,8 +223,17 @@ function choosePerk(gameState, playerId, perkId) {
 
 	// Aggressive branch perk awards
 	if (perkId === 'agg_stone') {
-		// Geef direct een steenblok (opslaan in inventory)
+		// Geef direct een steenblok kaart in de hand
 		player.perks.stoneBlocks = (player.perks.stoneBlocks || 0) + 1;
+		const stoneShape = STONE_SHAPES_2[0]; // Horizontaal 2×1 steenblok
+		const stoneCard = {
+			id: `stone_${playerId}_${Date.now()}`,
+			shapeName: stoneShape.name,
+			matrix: cloneMatrix(stoneShape.matrix),
+			color: { ...STONE_COLOR },
+			isStone: true
+		};
+		player.hand.push(stoneCard);
 	}
 	if (perkId === 'agg_mine') {
 		player.perks.minesPerRound = 1;
@@ -4374,6 +4383,60 @@ function useTimeBomb(gameState, playerId) {
 		bomberPlayerId: playerId,
 		bomberPlayerName: player.name,
 		gameEnded: ended
+	};
+}
+
+/**
+ * Plaats een onzichtbare mijn op het bord.
+ * Kan alleen door spelers met agg_mine perk, max 1× per level.
+ * De mijn wordt geplaatst op een lege cel. Als een tegenstander daar plaatst,
+ * verliest die speler die cel (wordt leeg gemaakt na plaatsing).
+ */
+function useMine(gameState, playerId, zoneName, cellX, cellY) {
+	if (gameState.phase !== 'playing') return { error: 'Spel is niet in play fase' };
+
+	const player = gameState.players[playerId];
+	if (!player) return { error: 'Speler niet gevonden' };
+	if (!playerHasPerk(player, 'agg_mine')) return { error: 'Je hebt de mijn-perk niet' };
+	if (!player.perks.minesPerRound || player.perks.minesPerRound <= 0) return { error: 'Geen mijnen beschikbaar' };
+	if ((player.perks.minesUsedThisLevel || 0) >= 1) return { error: 'Je hebt je mijn al gebruikt dit level' };
+
+	// Validate zone
+	const zone = gameState.boardState?.zones?.[zoneName];
+	if (!zone) return { error: 'Zone niet gevonden' };
+
+	// For red zone with subgrids, find the subgrid containing these coords
+	let targetZoneData = zone;
+	if (zoneName === 'red' && zone.subgrids) {
+		// Find which subgrid contains this cell
+		for (const sg of zone.subgrids) {
+			if (cellX >= 0 && cellX < sg.cols && cellY >= 0 && cellY < sg.rows) {
+				targetZoneData = sg;
+				break;
+			}
+		}
+	}
+
+	// Check cell is empty
+	const cell = getDataCell(targetZoneData, cellX, cellY);
+	if (!cell) return { error: 'Ongeldige cel' };
+	if (cell.active) return { error: 'Cel is al bezet' };
+
+	// Place the mine (invisible to others)
+	if (!player.perks.activeMines) player.perks.activeMines = [];
+	player.perks.activeMines.push({
+		zone: zoneName,
+		x: cellX,
+		y: cellY,
+		placedAt: Date.now()
+	});
+	player.perks.minesUsedThisLevel = (player.perks.minesUsedThisLevel || 0) + 1;
+
+	gameState.updatedAt = Date.now();
+
+	return {
+		success: true,
+		mine: { zone: zoneName, x: cellX, y: cellY }
 	};
 }
 
