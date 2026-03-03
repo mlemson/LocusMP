@@ -938,6 +938,8 @@
 				async startShopPhase() { return host.hostAction('startShopPhase'); },
 				async buyShopItem(itemId, extra) { return host.hostAction('buyShopItem', { itemId, extra }); },
 				async claimFreeCard(cardId) { return host.hostAction('claimFreeCard', { cardId }); },
+				async sellCard(cardId) { return host.hostAction('sellCard', { cardId }); },
+				async choosePerk(perkId) { return host.hostAction('choosePerk', { perkId }); },
 				async setShopReady() { return host.hostAction('shopReady'); },
 				async useTimeBomb() { return host.hostAction('useTimeBomb'); },
 				async togglePause() { return host.hostAction('togglePause'); },

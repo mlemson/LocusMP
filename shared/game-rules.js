@@ -3032,7 +3032,7 @@ function addPlayer(gameState, playerId, playerName) {
 		unlockedMultikleur: false,
 		unlockedSteen: false,
 		perks: {
-			perkPoints: 0,
+			perkPoints: 1,
 			unlockedPerks: [],
 			bonusUpgrades: {},
 			stoneBlocks: 0,
@@ -3120,7 +3120,7 @@ function startGame(gameState) {
 		player.chosenObjective = null;
 		// Reset perks bij nieuwe match
 		player.perks = {
-			perkPoints: 0,
+			perkPoints: 1,
 			unlockedPerks: [],
 			bonusUpgrades: {},
 			stoneBlocks: 0,

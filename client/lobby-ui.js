@@ -865,7 +865,8 @@ class LocusLobbyUI {
 		if (!container) return;
 
 		try {
-			const response = await fetch('/api/games');
+			const baseUrl = (this.mp && this.mp.serverUrl && this.mp.serverUrl !== 'p2p') ? this.mp.serverUrl : '';
+			const response = await fetch(baseUrl + '/api/games');
 			if (!response.ok) throw new Error('Fetch failed');
 			const data = await response.json();
 			const games = data.games || [];
@@ -4914,8 +4915,6 @@ class LocusLobbyUI {
 					}).join('')}
 				</div>
 
-				${this._renderPerkSection(myPlayer, isReady)}
-
 				${(myPlayer?.permanentShopCards?.length > 0) ? `
 					<div class="mp-shop-sell-section">
 						<button class="mp-shop-sell-open-btn" id="mp-shop-sell-open">
@@ -4941,6 +4940,8 @@ class LocusLobbyUI {
 					${this._renderShopReadyStatus()}
 				</div>
 			</div>
+
+			${this._renderPerkSection(myPlayer, isReady)}
 		`;
 
 		// Bind card buy buttons
