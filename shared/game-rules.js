@@ -4677,4 +4677,23 @@ const GameRules = {
 
 	// Game state
 	createGameState, addPlayer, removePlayer, startGame, chooseStartingDeck, chooseObjective,
-	drawHand, playMove, playBonus
+	drawHand, playMove, playBonus, passMove, endTurn, undoMove,
+
+	// Shop & Levels
+	SHOP_ITEMS, getShopItems, getCardPrice, generateShopCardOfferings,
+	startShopPhase, buyShopItem, claimFreeCard, sellCard, getCardSellPrice,
+	shopReady, startNextLevel, endGameFinal, useTimeBomb, useMine, stealCard,
+
+	// Perks
+	PERK_BRANCHES, choosePerk, getAvailablePerks, playerHasPerk, getBonusShapeForPlayer,
+
+	// Utils
+	createRNG, shuffleWithRNG, getMajorityOwner
+};
+
+if (typeof module !== 'undefined' && module.exports) {
+	module.exports = GameRules;
+}
+if (typeof window !== 'undefined') {
+	window.LocusGameRules = GameRules;
+}
