@@ -8694,6 +8694,157 @@ html.theme-bloom .mp-sparkle {
 	cursor: not-allowed;
 }
 
+/* Perk popup overlay */
+.mp-perk-popup {
+	background: var(--bg, #1a1a2e);
+	border: 1px solid var(--border, #3a3a5c);
+	border-radius: 16px;
+	padding: 24px;
+	max-width: 600px;
+	width: 92%;
+	max-height: 85vh;
+	overflow-y: auto;
+	box-shadow: 0 8px 40px rgba(0,0,0,0.5);
+	animation: mp-popup-slide 0.25s ease;
+}
+.mp-perk-popup-header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	margin-bottom: 8px;
+}
+.mp-perk-popup-header h3 {
+	margin: 0;
+	font-size: 1.15rem;
+}
+.mp-perk-popup-close {
+	background: none;
+	border: none;
+	color: var(--fg, #ccc);
+	font-size: 1.3rem;
+	cursor: pointer;
+	padding: 4px 8px;
+	border-radius: 8px;
+	transition: background 0.15s;
+}
+.mp-perk-popup-close:hover {
+	background: rgba(255,255,255,0.1);
+}
+.mp-perk-popup-desc {
+	color: var(--fg-dim, #aaa);
+	font-size: 0.85rem;
+	margin: 0 0 12px 0;
+}
+
+/* Perk button in shop */
+.mp-shop-perk-open-section {
+	margin-top: 12px;
+}
+.mp-shop-perk-open-btn {
+	width: 100%;
+	padding: 12px 16px;
+	border-radius: 10px;
+	border: 1px dashed #7c5cbf;
+	background: rgba(124, 92, 191, 0.08);
+	color: #c9b8f0;
+	font-weight: 600;
+	font-size: 0.9rem;
+	cursor: pointer;
+	transition: all 0.2s;
+	font-family: inherit;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 8px;
+}
+.mp-shop-perk-open-btn:hover {
+	background: rgba(124, 92, 191, 0.18);
+	border-style: solid;
+}
+
+/* Perk button in game screen */
+.mp-perk-game-btn {
+	font-size: 1rem;
+	padding: 6px 10px;
+	min-width: 40px;
+	display: flex;
+	align-items: center;
+	gap: 4px;
+	position: relative;
+}
+.mp-perk-game-btn .mp-perk-points-badge {
+	font-size: 0.6rem;
+	padding: 1px 5px;
+	margin-left: 2px;
+}
+
+/* Steal popup */
+.mp-steal-target-list {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+}
+.mp-steal-target-btn {
+	width: 100%;
+	padding: 12px 16px;
+	border-radius: 10px;
+	border: 1px solid rgba(155, 89, 182, 0.3);
+	background: rgba(155, 89, 182, 0.08);
+	color: #d4a0ff;
+	font-weight: 600;
+	font-size: 0.9rem;
+	cursor: pointer;
+	transition: all 0.2s;
+	font-family: inherit;
+	text-align: left;
+}
+.mp-steal-target-btn:hover:not(:disabled) {
+	background: rgba(155, 89, 182, 0.2);
+	border-color: rgba(155, 89, 182, 0.6);
+}
+.mp-steal-target-btn:disabled {
+	opacity: 0.5;
+	cursor: not-allowed;
+}
+
+/* Active perks in deck overview */
+.mp-deck-perks-list {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+	margin-top: 8px;
+}
+.mp-deck-perk-item {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	padding: 6px 10px;
+	border-radius: 8px;
+	background: rgba(100, 200, 120, 0.06);
+	border: 1px solid rgba(100, 200, 120, 0.15);
+}
+.mp-deck-perk-icon {
+	font-size: 1.1rem;
+	width: 24px;
+	text-align: center;
+	flex-shrink: 0;
+}
+.mp-deck-perk-info {
+	display: flex;
+	flex-direction: column;
+	min-width: 0;
+}
+.mp-deck-perk-name {
+	font-weight: 600;
+	font-size: 0.8rem;
+	color: #e0dcf0;
+}
+.mp-deck-perk-desc {
+	font-size: 0.65rem;
+	color: rgba(255, 255, 255, 0.45);
+	line-height: 1.2;
+}
+
 /* ══════════════════════════════════════════════════════════════════
    BLOOM — Board layout enhancements
    ══════════════════════════════════════════════════════════════════ */

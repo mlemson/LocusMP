@@ -2377,9 +2377,41 @@ class LocusLobbyUI {
 			</div>
 		`;
 
+		// Build active perks HTML
+		let perksHtml = '';
+		const Rules = window.LocusGameRules;
+		if (Rules?.PERK_BRANCHES && player.perks?.unlockedPerks?.length > 0) {
+			const allPerks = [];
+			for (const branch of Object.values(Rules.PERK_BRANCHES)) {
+				for (const perk of branch.perks) {
+					if (player.perks.unlockedPerks.includes(perk.id)) {
+						allPerks.push({ ...perk, branchIcon: branch.icon, branchName: branch.name });
+					}
+				}
+			}
+			if (allPerks.length > 0) {
+				perksHtml = `
+					<div class="mp-deck-section">
+						<h4 class="mp-deck-section-title">🎯 Actieve Perks (${allPerks.length})</h4>
+						<div class="mp-deck-perks-list">
+							${allPerks.map(p => `
+								<div class="mp-deck-perk-item">
+									<span class="mp-deck-perk-icon">${p.icon}</span>
+									<div class="mp-deck-perk-info">
+										<span class="mp-deck-perk-name">${p.name}</span>
+										<span class="mp-deck-perk-desc">${p.description}</span>
+									</div>
+								</div>
+							`).join('')}
+						</div>
+					</div>
+				`;
+			}
+		}
+
 		container.innerHTML = objectiveHtml
-			? `<div class="mp-deck-split-layout">${cardsHtml}${objectiveHtml}</div>`
-			: cardsHtml;
+			? `<div class="mp-deck-split-layout">${cardsHtml}${objectiveHtml}</div>${perksHtml}`
+			: `${cardsHtml}${perksHtml}`;
 	}
 
 	/** Render zone score summary for deck overlay — shows ONLY your scores */
