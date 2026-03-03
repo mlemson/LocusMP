@@ -3492,6 +3492,10 @@ function playBonus(gameState, playerId, bonusColor, zoneName, baseX, baseY, subg
 
 	let placementResult = null;
 	const bonusColorObj = COLORS.find(c => c.zone === bonusColor) || COLORS[0];
+	const perkFlags = {
+		greenGapAllowed: !!player.perks?.greenGapAllowed,
+		diagonalRotation: !!player.perks?.diagonalRotation
+	};
 
 	if (zoneName === 'red') {
 		// If subgridId is provided, only place in that specific subgrid
@@ -3499,13 +3503,13 @@ function playBonus(gameState, playerId, bonusColor, zoneName, baseX, baseY, subg
 			? gameState.boardState.zones.red.subgrids.filter(sg => sg.id === subgridId)
 			: gameState.boardState.zones.red.subgrids;
 		for (const sg of subgridsToCheck) {
-			placementResult = applyPlacement(gameState.boardState, zoneName, sg, baseX, baseY, matrix, bonusColorObj, playerId);
+			placementResult = applyPlacement(gameState.boardState, zoneName, sg, baseX, baseY, matrix, bonusColorObj, playerId, perkFlags);
 			if (placementResult) break;
 		}
 	} else {
 		const zoneData = gameState.boardState.zones[zoneName];
 		if (!zoneData) return { error: 'Zone niet gevonden' };
-		placementResult = applyPlacement(gameState.boardState, zoneName, zoneData, baseX, baseY, matrix, bonusColorObj, playerId);
+		placementResult = applyPlacement(gameState.boardState, zoneName, zoneData, baseX, baseY, matrix, bonusColorObj, playerId, perkFlags);
 	}
 
 	if (!placementResult) return { error: 'Ongeldige bonus plaatsing' };
