@@ -4530,7 +4530,9 @@ class LocusLobbyUI {
 					// Uniform radius per cell — same as board cells, no merged-shape effect
 					radiusStyle = 'border-radius: var(--mp-cell-radius, 5px) !important;';
 				}
-				html += `<div class="mp-mini-cell filled" style="${fillStyle}; ${sizeStyle} ${radiusStyle}"></div>`;
+				// Cell value 2 = optional/perk-upgraded cell → semi-transparent
+				const optionalStyle = (cell === 2) ? 'opacity: 0.4; border: 1px dashed rgba(255,255,255,0.5);' : '';
+				html += `<div class="mp-mini-cell filled" style="${fillStyle}; ${sizeStyle} ${radiusStyle} ${optionalStyle}"></div>`;
 			}
 		}
 		html += '</div>';
