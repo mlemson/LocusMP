@@ -870,16 +870,91 @@ class LocusLobbyUI {
 		if (toggleBtn._locusbound) return;
 		toggleBtn._locusbound = true;
 
-		toggleBtn.addEventListener('click', () => {
+		toggleBtn.addEventListener('click', async () => {
 			const isOpen = list.style.display !== 'none';
 			if (isOpen) {
 				list.style.display = 'none';
 				toggleBtn.textContent = '🌐 Open lobbys';
-			} else {
+				return;
+			}
+
+			// Als Socket.IO niet beschikbaar is, probeer on-demand te laden
+			if (typeof io === 'undefined') {
 				list.style.display = '';
 				toggleBtn.textContent = '🌐 Lobbys verbergen';
-				this._refreshServerBrowser();
+
+				// Toon skip-reden als statische host
+				if (window._locusSocketSkipReason) {
+					list.innerHTML = `<div class="mp-server-browser-empty" style="color:#ff9b6b;">
+						⚠️ Server niet beschikbaar<br>
+						<span style="font-size:12px;opacity:0.8;">${window._locusSocketSkipReason}</span><br>
+						<span style="font-size:11px;opacity:0.6;margin-top:4px;display:inline-block;">Gebruik P2P modus hieronder, of start de Node.js server (zie SERVER-SETUP.md)</span>
+					</div>`;
+					return;
+				}
+
+				// Probeer server te bereiken via fetch (sneller dan script laden)
+				list.innerHTML = `<div class="mp-server-browser-loading">Server zoeken...</div>`;
+
+				const urls = [
+					{ url: '', label: window.location.origin },
+					{ url: 'http://localhost:3000', label: 'localhost:3000' }
+				];
+
+				let serverFound = false;
+				for (const { url, label } of urls) {
+					try {
+						const res = await fetch(url + '/api/games', { signal: AbortSignal.timeout(2000) });
+						if (res.ok) {
+							// Server gevonden! Laad Socket.IO en activeer server-modus
+							window._locusServerUrl = url || undefined;
+							console.log('[Locus] Server gevonden op:', label);
+							await this._loadSocketIO(url);
+							serverFound = true;
+							// Nu refreshen
+							this._refreshServerBrowser();
+							// Activeer ook server create/join knoppen
+							document.getElementById('lobby-screen')?.classList.add('mp-server-mode');
+							if (!window._mp || window._mp.serverUrl === 'p2p') {
+								const mp = new LocusMultiplayer(url || undefined);
+								window._mp = mp;
+								// Re-init UI is niet nodig, mp wordt alleen voor server-browser calls gebruikt
+								this.mp = mp;
+							}
+							break;
+						}
+					} catch (_) { /* timeout of netwerk fout */ }
+				}
+
+				if (!serverFound) {
+					list.innerHTML = `<div class="mp-server-browser-empty" style="color:#ff9b6b;">
+						⚠️ Geen Locus server gevonden<br>
+						<span style="font-size:12px;opacity:0.8;">Gecontroleerd: ${urls.map(u => u.label).join(', ')}</span><br>
+						<span style="font-size:11px;opacity:0.6;margin-top:4px;display:inline-block;">
+							Start de server met: <code style="background:rgba(255,255,255,0.1);padding:2px 6px;border-radius:3px;">npm start</code> in de server/ map<br>
+							Of gebruik P2P modus hieronder.
+						</span>
+					</div>`;
+				}
+				return;
 			}
+
+			// Socket.IO is al beschikbaar — normaal gedrag
+			list.style.display = '';
+			toggleBtn.textContent = '🌐 Lobbys verbergen';
+			this._refreshServerBrowser();
+		});
+	}
+
+	/** Laad Socket.IO client script on-demand */
+	_loadSocketIO(baseUrl) {
+		return new Promise((resolve, reject) => {
+			if (typeof io !== 'undefined') { resolve(); return; }
+			const s = document.createElement('script');
+			s.src = (baseUrl || '') + '/socket.io/socket.io.js';
+			s.onload = resolve;
+			s.onerror = () => reject(new Error('Socket.IO script kon niet geladen worden'));
+			document.head.appendChild(s);
 		});
 	}
 

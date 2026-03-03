@@ -8,8 +8,7 @@
 	<style>
 		/* Hide server-only UI until bootstrap detects Socket.IO */
 		#create-game-btn,
-		#join-game-btn,
-		#server-browser { display: none; }
+		#join-game-btn { display: none; }
 		.mp-lobby-card > .mp-divider,
 		.mp-lobby-card > .mp-input-group:not(.mp-name-required) { display: none; }
 		/* Show them when server mode is confirmed via class on lobby-screen */
@@ -17,7 +16,6 @@
 		.mp-server-mode #join-game-btn { display: inline-flex; }
 		.mp-server-mode .mp-lobby-card > .mp-divider { display: flex; }
 		.mp-server-mode .mp-lobby-card > .mp-input-group:not(.mp-name-required) { display: block; }
-		.mp-server-mode #server-browser { display: block; }
 	</style>
 </head>
 <body>
@@ -290,44 +288,20 @@
 
 	<!-- Socket.IO client (alleen laden als we via de Locus Node.js server draaien) -->
 	<script>
+		// Socket.IO wordt NIET meer automatisch geladen bij pageload.
+		// Dit voorkomt de vertraging. Socket.IO wordt pas geladen wanneer
+		// de gebruiker op de server browser knop klikt.
 		(function() {
 			var host = window.location.hostname || '';
 			var proto = window.location.protocol || '';
 			// Skip Socket.IO op file://, GitHub Pages, Netlify, Vercel, en andere static hosts
-			if (proto === 'file:') return;
-			if (host.endsWith('.github.io')) return;
-			if (host.endsWith('.netlify.app')) return;
-			if (host.endsWith('.vercel.app')) return;
-			if (host.endsWith('.pages.dev')) return;
-
-			// Probeer socket.io te laden van de huidige origin
-			var s = document.createElement('script');
-			s.src = '/socket.io/socket.io.js';
-			s.onload = function() {
-				// Socket.IO geladen — als bootstrap al gedraaid heeft zonder io, opnieuw bootstrappen
-				if (window._locusBootstrapped && !window._locusHasSocketIO) {
-					console.log('[Locus] Socket.IO alsnog geladen na bootstrap — herstart');
-					window._locusBootstrapped = false;
-					_bootstrapApp();
-				}
-			};
-			s.onerror = function() {
-				// Socket.IO niet beschikbaar op huidige host — probeer localhost:3000
-				console.log('[Locus] Socket.IO niet gevonden op huidige host, probeer localhost:3000...');
-				var s2 = document.createElement('script');
-				s2.src = 'http://localhost:3000/socket.io/socket.io.js';
-				s2.onload = function() {
-					// Socket.IO geladen van localhost — sla server URL op
-					window._locusServerUrl = 'http://localhost:3000';
-					if (window._locusBootstrapped && !window._locusHasSocketIO) {
-						window._locusBootstrapped = false;
-						_bootstrapApp();
-					}
-				};
-				s2.onerror = function() { /* P2P modus beschikbaar als alternatief */ };
-				document.head.appendChild(s2);
-			};
-			document.head.appendChild(s);
+			if (proto === 'file:') { window._locusSocketSkipReason = 'Geopend als lokaal bestand (file://). Start een webserver of gebruik de Node.js server.'; return; }
+			if (host.endsWith('.github.io')) { window._locusSocketSkipReason = 'GitHub Pages is een statische host zonder server-backend.'; return; }
+			if (host.endsWith('.netlify.app')) { window._locusSocketSkipReason = 'Netlify is een statische host zonder server-backend.'; return; }
+			if (host.endsWith('.vercel.app')) { window._locusSocketSkipReason = 'Vercel is een statische host zonder server-backend.'; return; }
+			if (host.endsWith('.pages.dev')) { window._locusSocketSkipReason = 'Cloudflare Pages is een statische host zonder server-backend.'; return; }
+			// Host komt in aanmerking voor server-modus
+			window._locusSocketEligible = true;
 		})();
 	</script>
 
@@ -475,21 +449,9 @@
 			});
 		}
 
-		// Wacht op dynamisch geladen scripts (socket.io, peerjs) met polling
+		// Bootstrap direct bij load — niet meer wachten op Socket.IO
 		window.addEventListener('load', () => {
-			let attempts = 0;
-			const maxAttempts = 30;
-			const pollInterval = 100; // 100ms per check, max 3s totaal
-
-			function tryBootstrap() {
-				attempts++;
-				if (typeof io !== 'undefined' || attempts >= maxAttempts) {
-					_bootstrapApp();
-				} else {
-					setTimeout(tryBootstrap, pollInterval);
-				}
-			}
-			setTimeout(tryBootstrap, 100);
+			_bootstrapApp();
 		});
 
 		function _applyJoinCodeFromUrl() {
@@ -509,6 +471,121 @@
 					nameInput.focus();
 				}
 			} catch (_) {}
+		}
+
+		/** Initialiseer de server browser knop standalone (zonder UI klasse) */
+		function _initServerBrowseStandalone() {
+			const toggleBtn = document.getElementById('server-browse-toggle');
+			const list = document.getElementById('server-browser-list');
+			if (!toggleBtn || !list) return;
+			if (toggleBtn._locusStandaloneBound) return;
+			toggleBtn._locusStandaloneBound = true;
+
+			toggleBtn.addEventListener('click', async () => {
+				const isOpen = list.style.display !== 'none';
+				if (isOpen) {
+					list.style.display = 'none';
+					toggleBtn.textContent = '🌐 Open lobbys';
+					return;
+				}
+
+				list.style.display = '';
+				toggleBtn.textContent = '🌐 Lobbys verbergen';
+
+				// Als er al een UI met server browser is, gebruik die
+				if (window._ui && window._ui._refreshServerBrowser) {
+					window._ui._refreshServerBrowser();
+					return;
+				}
+
+				// Als Socket.IO beschikbaar is maar nog geen UI, refreshen via fetch
+				if (typeof io !== 'undefined' && window._mp) {
+					// Normaal pad — delegate naar ui als die er is
+					return;
+				}
+
+				// Statische host → toon waarom
+				if (window._locusSocketSkipReason) {
+					list.innerHTML = '<div class="mp-server-browser-empty" style="color:#ff9b6b;">'
+						+ '<b>⚠️ Server niet beschikbaar</b><br>'
+						+ '<span style="font-size:12px;opacity:0.8;">' + window._locusSocketSkipReason + '</span><br>'
+						+ '<span style="font-size:11px;opacity:0.6;margin-top:4px;display:inline-block;">Gebruik P2P modus hieronder, of start de Node.js server (zie SERVER-SETUP.md)</span>'
+						+ '</div>';
+					return;
+				}
+
+				// Probeer server te bereiken
+				list.innerHTML = '<div class="mp-server-browser-loading">Server zoeken...</div>';
+
+				var urls = [
+					{ url: '', label: window.location.origin },
+					{ url: 'http://localhost:3000', label: 'localhost:3000' }
+				];
+
+				for (var i = 0; i < urls.length; i++) {
+					try {
+						var res = await fetch(urls[i].url + '/api/games', { signal: AbortSignal.timeout(2000) });
+						if (res.ok) {
+							var data = await res.json();
+							var games = data.games || [];
+							window._locusServerUrl = urls[i].url || undefined;
+							console.log('[Locus] Server gevonden op:', urls[i].label);
+
+							// Laad Socket.IO async
+							try {
+								await new Promise(function(resolve, reject) {
+									if (typeof io !== 'undefined') { resolve(); return; }
+									var s = document.createElement('script');
+									s.src = (urls[i].url || '') + '/socket.io/socket.io.js';
+									s.onload = resolve;
+									s.onerror = reject;
+									document.head.appendChild(s);
+								});
+							} catch (_) {}
+
+							// Activeer server-modus
+							if (typeof io !== 'undefined') {
+								document.getElementById('lobby-screen')?.classList.add('mp-server-mode');
+								if (!window._mp || window._mp.serverUrl === 'p2p') {
+									var mp = new LocusMultiplayer(urls[i].url || undefined);
+									var ui = new LocusLobbyUI(mp);
+									ui.init();
+									window._mp = mp;
+									window._ui = ui;
+								}
+								if (window._ui) window._ui._refreshServerBrowser();
+							}
+
+							// Toon lobbys direct
+							if (games.length === 0) {
+								list.innerHTML = '<div class="mp-server-browser-empty">Geen open lobbys gevonden</div>';
+							} else {
+								list.innerHTML = games.map(function(game) {
+									var mapLabels = { 2: 'Klein', 4: 'Middel', 6: 'Groot', 8: 'Mega' };
+									return '<div class="mp-server-browser-item" data-invite-code="' + (game.inviteCode || '') + '">'
+										+ '<div class="mp-server-item-info">'
+										+ '<div class="mp-server-item-host">' + (game.hostName || 'Host') + '</div>'
+										+ '<div class="mp-server-item-meta">' + game.playerCount + '/' + game.maxPlayers + ' spelers · ' + (mapLabels[game.mapSize] || game.mapSize) + '</div>'
+										+ '</div>'
+										+ '<button class="mp-btn mp-btn-secondary mp-server-join-btn" data-invite-code="' + (game.inviteCode || '') + '">Deelnemen</button>'
+										+ '</div>';
+								}).join('');
+							}
+							return;
+						}
+					} catch (_) { /* timeout of netwerk fout */ }
+				}
+
+				// Geen server gevonden — toon diagnostiek
+				list.innerHTML = '<div class="mp-server-browser-empty" style="color:#ff9b6b;">'
+					+ '<b>⚠️ Geen Locus server gevonden</b><br>'
+					+ '<span style="font-size:12px;opacity:0.8;">Gecontroleerd: ' + urls.map(function(u) { return u.label; }).join(', ') + '</span><br>'
+					+ '<span style="font-size:11px;opacity:0.6;margin-top:4px;display:inline-block;">'
+					+ 'Start de server: <code style="background:rgba(255,255,255,0.1);padding:2px 6px;border-radius:3px;">npm start</code> in de server/ map<br>'
+					+ 'Of gebruik P2P modus hieronder.'
+					+ '</span>'
+					+ '</div>';
+			});
 		}
 
 		async function _bootstrapApp() {
@@ -537,6 +614,9 @@
 				// Geen server — verberg server-only knoppen, toon P2P opties
 				console.log('[Locus] Geen Socket.IO server — alleen P2P modus');
 			}
+
+			// Server browser knop altijd initialiseren (ook zonder Socket.IO)
+			_initServerBrowseStandalone();
 
 			if (mp) {
 				const ui = new LocusLobbyUI(mp);

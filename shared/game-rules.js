@@ -1411,6 +1411,10 @@ function collectPlacementCellsData(zoneData, baseX, baseY, matrix) {
  * - Green: eerste=moet bold anchor raken; daarna=anchor OF adjacent
  * - Red: altijd vrij plaatsen (geen adjacency constraint)
  * - Purple: eerste=portal OF alleen inner grid (geen outer ring); daarna=portal OF adjacent
+ *
+ * Optionele cellen (perk-upgrades) tellen mee als anker voor adjacency/floor/bold checks.
+ * Ze zijn optioneel in de zin dat ze niet geplaatst HOEVEN, maar als ze wél passen
+ * mogen ze als anker dienen.
  */
 function validatePlacement(zoneName, zoneData, pendingCells, perkFlags) {
 	if (!pendingCells || !pendingCells.length) return false;
@@ -1425,53 +1429,65 @@ function validatePlacement(zoneName, zoneData, pendingCells, perkFlags) {
 	}
 }
 
+/** Combineer required + optionele cellen voor validatiechecks */
+function _getAllValidationCells(pendingCells) {
+	const all = [...pendingCells];
+	const optCells = pendingCells.optionalCells || [];
+	for (const oc of optCells) all.push(oc);
+	return all;
+}
+
 function validateYellow(zoneData, pendingCells) {
+	const allCells = _getAllValidationCells(pendingCells);
 	const hasActive = zoneHasActive(zoneData);
-	const touchesBold = pendingCells.some(c => {
+	const touchesBold = allCells.some(c => {
 		const cell = getDataCell(zoneData, c.x, c.y);
 		return cell && cell.flags.includes('bold');
 	});
-	const touchesPortal = pendingCells.some(c => {
+	const touchesPortal = allCells.some(c => {
 		const cell = getDataCell(zoneData, c.x, c.y);
 		return cell && cell.flags.includes('portal');
 	});
 	if (!hasActive) return touchesBold || touchesPortal;
 	if (touchesBold || touchesPortal) return true;
-	return pendingCells.some(c => hasAdjacentActive(zoneData, c.x, c.y));
+	return allCells.some(c => hasAdjacentActive(zoneData, c.x, c.y));
 }
 
 function validateBlue(zoneData, pendingCells) {
+	const allCells = _getAllValidationCells(pendingCells);
 	const hasActive = zoneHasActive(zoneData);
 	const maxY = zoneData.rows - 1;
-	const touchesFloor = pendingCells.some(c => c.y === maxY);
+	const touchesFloor = allCells.some(c => c.y === maxY);
 
 	// Eerste plaatsing: MOET de onderste rij raken
 	if (!hasActive) return touchesFloor;
 	// Daarna: adjacent aan bestaande actieve cel
 	if (touchesFloor) return true;
-	return pendingCells.some(c => hasAdjacentActive(zoneData, c.x, c.y));
+	return allCells.some(c => hasAdjacentActive(zoneData, c.x, c.y));
 }
 
 function validateGreen(zoneData, pendingCells, perkFlags) {
+	const allCells = _getAllValidationCells(pendingCells);
 	const hasActive = zoneHasActive(zoneData);
-	const touchesBold = pendingCells.some(c => {
+	const touchesBold = allCells.some(c => {
 		const cell = getDataCell(zoneData, c.x, c.y);
 		return cell && cell.flags.includes('bold');
 	});
-	const touchesPortal = pendingCells.some(c => {
+	const touchesPortal = allCells.some(c => {
 		const cell = getDataCell(zoneData, c.x, c.y);
 		return cell && cell.flags.includes('portal');
 	});
 
 	if (!hasActive) return touchesBold || touchesPortal;
 	if (touchesBold || touchesPortal) return true;
-	// Normale orthogonale adjacency (optionele cellen via matrix maken plaatsing flexibeler)
-	return pendingCells.some(c => hasAdjacentActive(zoneData, c.x, c.y));
+	// Normale orthogonale adjacency
+	return allCells.some(c => hasAdjacentActive(zoneData, c.x, c.y));
 }
 
 function validatePurple(zoneData, pendingCells, perkFlags) {
+	const allCells = _getAllValidationCells(pendingCells);
 	const hasActive = zoneHasActive(zoneData);
-	const touchesPortal = pendingCells.some(c => {
+	const touchesPortal = allCells.some(c => {
 		const cell = getDataCell(zoneData, c.x, c.y);
 		return cell && cell.flags.includes('portal');
 	});
@@ -1479,6 +1495,7 @@ function validatePurple(zoneData, pendingCells, perkFlags) {
 	if (!hasActive) {
 		if (touchesPortal) return true;
 		// Eerste plaatsing: alleen inner grid (geen outer ring 0 of 1)
+		// Gebruik alleen required cellen voor inner-grid check (optionele cellen mogen buiten vallen)
 		return pendingCells.every(c => {
 			const cell = getDataCell(zoneData, c.x, c.y);
 			return cell && !cell.flags.includes('outer-ring-0') && !cell.flags.includes('outer-ring-1');
@@ -1486,8 +1503,8 @@ function validatePurple(zoneData, pendingCells, perkFlags) {
 	}
 
 	if (touchesPortal) return true;
-	// Standaard orthogonale adjacency (extra optionele cel via matrix geeft meer flexibiliteit)
-	return pendingCells.some(c => hasAdjacentActive(zoneData, c.x, c.y));
+	// Standaard orthogonale adjacency
+	return allCells.some(c => hasAdjacentActive(zoneData, c.x, c.y));
 }
 
 /**
