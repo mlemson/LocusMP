@@ -3421,6 +3421,18 @@ function playMove(gameState, playerId, cardId, zoneName, baseX, baseY, rotation,
 	// Verwijder kaart uit hand
 	player.hand.splice(cardIndex, 1);
 
+	// Tijdelijk gestolen kaart: geef terug aan oorspronkelijke eigenaar na spelen
+	if (card.isStolenTemp && card.originalOwnerId) {
+		const originalOwner = gameState.players[card.originalOwnerId];
+		if (originalOwner) {
+			// Verwijder de stolen markering en voeg toe aan drawPile
+			const returnedCard = { ...card };
+			delete returnedCard.isStolenTemp;
+			delete returnedCard.originalOwnerId;
+			originalOwner.drawPile.push(returnedCard);
+		}
+	}
+
 	// Verwerk verzamelde bonussen
 	if (placementResult.collectedBonuses) {
 		for (const bonusColor of placementResult.collectedBonuses) {
