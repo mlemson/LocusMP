@@ -1078,6 +1078,32 @@ io.on('connection', (socket) => {
 		}
 	});
 
+	// ── USE MINE ─────────────────────────────
+
+	socket.on('useMine', (data, callback) => {
+		try {
+			const info = socketToPlayer.get(socket.id);
+			if (!info) return callback({ success: false, error: 'Niet in een spel.' });
+
+			const gameState = games.get(info.gameId);
+			if (!gameState) return callback({ success: false, error: 'Spel niet gevonden.' });
+
+			const { zoneName, cellX, cellY } = data || {};
+			const result = GameRules.useMine(gameState, info.playerId, zoneName, cellX, cellY);
+			if (result.error) {
+				return callback({ success: false, error: result.error });
+			}
+
+			console.log(`[Locus] Speler ${info.playerId} plaatste een mijn op ${zoneName} (${cellX},${cellY})`);
+			callback({ success: true, mine: result.mine });
+			broadcastGameState(io, info.gameId);
+
+		} catch (error) {
+			console.error('[Locus] useMine error:', error);
+			callback({ success: false, error: error.message });
+		}
+	});
+
 	// ── TOGGLE PAUSE ─────────────────────────
 
 	socket.on('togglePause', (data, callback) => {
