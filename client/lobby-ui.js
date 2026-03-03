@@ -197,7 +197,7 @@ class LocusLobbyUI {
 			'mp-room-code-badge',
 			'mp-end-turn-btn', 'mp-undo-btn', 'mp-turn-timer',
 			'mp-deck-overview-btn', 'mp-deck-overlay', 'mp-deck-close-btn', 'mp-deck-cards', 'mp-deck-count',
-			'mp-perk-btn',
+
 			'results-container', 'play-again-btn',
 			'shop-container', 'shop-ready-btn',
 			'tv-cast-btn', 'tv-cast-game-btn'
@@ -247,7 +247,7 @@ class LocusLobbyUI {
 		this.elements['shop-ready-btn']?.addEventListener('click', () => this._handleShopReady());
 		this.elements['mp-deck-overview-btn']?.addEventListener('click', () => this._toggleDeckOverview());
 		this.elements['mp-deck-close-btn']?.addEventListener('click', () => this._closeDeckOverview());
-		this.elements['mp-perk-btn']?.addEventListener('click', () => this._openPerkPopup());
+
 		// TV Cast buttons
 		this.elements['tv-cast-btn']?.addEventListener('click', () => this.startTVCast());
 		this.elements['tv-cast-game-btn']?.addEventListener('click', () => {
@@ -1366,17 +1366,36 @@ class LocusLobbyUI {
 				this._startDeckOverlay = null;
 			}
 
-			// ── Toon eerst de kaarten die de speler heeft gekregen ──
 			const player = this.mp.getMyPlayer();
-			const drawPile = player?.drawPile || player?.deck || [];
-			const hand = Array.isArray(player?.hand) ? player.hand : [];
-			const allCards = [...hand, ...(Array.isArray(drawPile) ? drawPile : [])];
+			const perkPoints = player?.perks?.perkPoints || 0;
 
-			if (allCards.length > 0) {
-				this._showCardPreviewBeforeGoals(allCards, choices);
+			const showGoals = () => {
+				// ── Toon de kaarten die de speler heeft gekregen ──
+				const drawPile = player?.drawPile || player?.deck || [];
+				const hand = Array.isArray(player?.hand) ? player.hand : [];
+				const allCards = [...hand, ...(Array.isArray(drawPile) ? drawPile : [])];
+
+				if (allCards.length > 0) {
+					this._showCardPreviewBeforeGoals(allCards, choices);
+				} else {
+					// Geen kaarten beschikbaar (zeldzaam) → meteen doelstellingen tonen
+					this._showGoalChoices(choices);
+				}
+			};
+
+			// Als de speler perk punten heeft, toon eerst de perk popup
+			if (perkPoints > 0) {
+				this._showScreen('goal-screen');
+				const container = this.elements['goal-choices-container'];
+				if (container) container.innerHTML = '<h2 class="mp-section-title">Kies eerst je perks...</h2>';
+				setTimeout(() => {
+					this._openPerkPopup(() => {
+						// Na sluiten perk popup, toon doelstellingen
+						showGoals();
+					});
+				}, 300);
 			} else {
-				// Geen kaarten beschikbaar (zeldzaam) → meteen doelstellingen tonen
-				this._showGoalChoices(choices);
+				showGoals();
 			}
 		} catch (err) {
 			console.error('[Locus UI] _onGoalPhase ERROR:', err);
@@ -1637,14 +1656,6 @@ class LocusLobbyUI {
 		this._renderMyObjective();
 		this._renderBonusBar();
 		this._renderOpponentPanels();
-		this._updatePerkButton();
-
-		// Auto-open perk popup before level 1 if player has perk points
-		const myPlayer = this.mp.getMyPlayer();
-		const level = state.level || 1;
-		if (level === 1 && myPlayer?.perks?.perkPoints > 0) {
-			setTimeout(() => this._openPerkPopup(), 600);
-		}
 	}
 
 	_onTurnChanged(currentPlayerId, turnCount) {
@@ -2272,24 +2283,6 @@ class LocusLobbyUI {
 	_closeDeckOverview() {
 		const overlay = this.elements['mp-deck-overlay'];
 		if (overlay) overlay.style.display = 'none';
-	}
-
-	_updatePerkButton() {
-		const btn = this.elements['mp-perk-btn'];
-		if (!btn) return;
-		const myPlayer = this.mp.getMyPlayer();
-		const perkPoints = myPlayer?.perks?.perkPoints || 0;
-		const hasPerks = myPlayer?.perks?.unlockedPerks?.length > 0;
-		if (perkPoints > 0 || hasPerks) {
-			btn.style.display = '';
-			if (perkPoints > 0) {
-				btn.innerHTML = `🎯 <span class="mp-perk-points-badge">${perkPoints}</span>`;
-			} else {
-				btn.innerHTML = '🎯';
-			}
-		} else {
-			btn.style.display = 'none';
-		}
 	}
 
 	_renderDeckOverview() {
@@ -5214,16 +5207,6 @@ class LocusLobbyUI {
 				</div>
 			</div>
 
-			${(() => {
-				const perkPoints = myPlayer?.perks?.perkPoints || 0;
-				return perkPoints > 0 ? `
-					<div class="mp-shop-perk-open-section">
-						<button class="mp-shop-perk-open-btn" id="mp-shop-perk-open">
-							🎯 Perks bekijken <span class="mp-perk-points-badge">${perkPoints} punt${perkPoints !== 1 ? 'en' : ''}</span>
-						</button>
-					</div>
-				` : '';
-			})()}
 		`;
 
 		// Bind card buy buttons
@@ -5235,12 +5218,6 @@ class LocusLobbyUI {
 		const sellOpenBtn = container.querySelector('#mp-shop-sell-open');
 		if (sellOpenBtn) {
 			sellOpenBtn.addEventListener('click', () => this._openSellPopup());
-		}
-
-		// Bind perk popup button
-		const perkOpenBtn = container.querySelector('#mp-shop-perk-open');
-		if (perkOpenBtn) {
-			perkOpenBtn.addEventListener('click', () => this._openPerkPopup());
 		}
 
 		// Bind other shop item clicks
@@ -5318,9 +5295,16 @@ class LocusLobbyUI {
 		`;
 	}
 
-	_openPerkPopup() {
+	_openPerkPopup(onClose = null) {
 		const Rules = window.LocusGameRules;
-		if (!Rules || !Rules.PERK_BRANCHES) return;
+		if (!Rules || !Rules.PERK_BRANCHES) {
+			if (onClose) onClose();
+			return;
+		}
+
+		const myPlayer = this.mp.getMyPlayer();
+		const perkPoints = myPlayer?.perks?.perkPoints || 0;
+		const isChoosingGoals = this.mp.gameState?.phase === 'choosingGoals';
 
 		// Remove existing popup
 		document.getElementById('mp-perk-popup-overlay')?.remove();
@@ -5334,26 +5318,44 @@ class LocusLobbyUI {
 					<h3>🎯 Perks</h3>
 					<button class="mp-perk-popup-close" id="mp-perk-popup-close">✕</button>
 				</div>
-				<p class="mp-perk-popup-desc">Ontgrendel perks om je strategie te versterken.</p>
+				<p class="mp-perk-popup-desc">${isChoosingGoals && perkPoints > 0
+					? 'Kies je perks voordat je een doelstelling kiest!'
+					: 'Ontgrendel perks om je strategie te versterken.'}</p>
 				${this._renderPerkSectionHTML()}
+				${isChoosingGoals ? `<button class="mp-btn mp-btn-primary" id="mp-perk-popup-continue" style="margin-top:12px;width:100%;">
+					${perkPoints > 0 ? '⏭ Overslaan — Ga naar doelstellingen' : '✅ Ga naar doelstellingen'}
+				</button>` : ''}
 			</div>
 		`;
 
 		document.body.appendChild(overlay);
 
+		const closePopup = () => {
+			overlay.remove();
+			if (onClose) onClose();
+		};
+
 		// Close handlers
-		overlay.querySelector('#mp-perk-popup-close').addEventListener('click', () => overlay.remove());
-		overlay.addEventListener('click', (e) => {
-			if (e.target === overlay) overlay.remove();
-		});
+		overlay.querySelector('#mp-perk-popup-close').addEventListener('click', closePopup);
+		if (!isChoosingGoals) {
+			overlay.addEventListener('click', (e) => {
+				if (e.target === overlay) closePopup();
+			});
+		}
+
+		// Continue button (only during choosingGoals)
+		const continueBtn = overlay.querySelector('#mp-perk-popup-continue');
+		if (continueBtn) {
+			continueBtn.addEventListener('click', closePopup);
+		}
 
 		// Bind perk unlock buttons
 		overlay.querySelectorAll('.mp-perk-unlock-btn:not(.disabled)').forEach(btn => {
-			btn.addEventListener('click', () => this._handleChoosePerk(btn.dataset.perkId, btn));
+			btn.addEventListener('click', () => this._handleChoosePerk(btn.dataset.perkId, btn, onClose));
 		});
 	}
 
-	async _handleChoosePerk(perkId, sourceEl = null) {
+	async _handleChoosePerk(perkId, sourceEl = null, onClose = null) {
 		try {
 			if (sourceEl) sourceEl.disabled = true;
 			const result = await this.mp.choosePerk(perkId);
@@ -5364,12 +5366,8 @@ class LocusLobbyUI {
 			}
 			this._playGoldSound();
 			this._showToast(`${result.perk?.icon || '🎯'} ${result.perk?.name || 'Perk'} ontgrendeld!`, 'success');
-			// Re-open perk popup with updated state
-			this._openPerkPopup();
-			// Also refresh shop if visible
-			if (this.elements['shop-screen']?.style.display !== 'none') {
-				this._renderShop();
-			}
+			// Re-open perk popup with updated state (pass onClose through)
+			this._openPerkPopup(onClose);
 			// Re-render bonus bar and hand in case of stone/mine perks
 			try { this._renderBonusBar(); } catch (e) {}
 			try { this._renderHand(); } catch (e) {}
@@ -5812,15 +5810,7 @@ class LocusLobbyUI {
 			try { this._renderOpponentPanels(); } catch (e) { console.error('[Locus UI] renderOpponentPanels error:', e); }
 			try { this._updateDeckCount(); } catch (e) { console.error('[Locus UI] updateDeckCount error:', e); }
 			try { this._renderMyObjective(); } catch (e) { console.error('[Locus UI] renderMyObjective error:', e); }
-			try { this._updatePerkButton(); } catch (e) { console.error('[Locus UI] updatePerkButton error:', e); }
 
-			// Auto-open perk popup when transitioning into playing phase with available perk points
-			if (prevState?.phase !== 'playing') {
-				const myP = this.mp.getMyPlayer();
-				if (myP?.perks?.perkPoints > 0) {
-					setTimeout(() => this._openPerkPopup(), 600);
-				}
-			}
 
 			// Check objective achievement (detect transition)
 			try { this._checkObjectiveAchievement(state, prevState); } catch (e) { console.error('[Locus UI] checkObjectiveAchievement error:', e); }

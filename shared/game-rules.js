@@ -202,6 +202,7 @@ function getAvailablePerks(player) {
  * Ontgrendel een perk voor een speler.
  */
 function choosePerk(gameState, playerId, perkId) {
+	if (gameState.phase !== 'choosingGoals') return { error: 'Perks kunnen alleen vóór de doelstelling gekozen worden' };
 	const player = gameState.players[playerId];
 	if (!player) return { error: 'Speler niet gevonden' };
 	if (!player.perks) return { error: 'Perk data niet geïnitialiseerd' };
@@ -4265,6 +4266,7 @@ function sellCard(gameState, playerId, cardId) {
 	if (idx === -1) return { error: 'Kaart niet gevonden in je collectie' };
 
 	const card = permCards[idx];
+	if (card.isStone) return { error: 'Tijdelijke kaarten kunnen niet verkocht worden' };
 	const cellCount = card.matrix ? card.matrix.flat().filter(Boolean).length : 1;
 	// Sell price: base 1, +1 for cards with 4+ cells, +1 for golden/rainbow
 	let sellPrice = 1;

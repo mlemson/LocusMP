@@ -214,9 +214,7 @@
 				<button id="mp-deck-overview-btn" class="mp-btn mp-btn-secondary mp-deck-btn" title="Bekijk je deck">
 					<span id="mp-deck-count">0</span>
 				</button>
-				<button id="mp-perk-btn" class="mp-btn mp-btn-secondary mp-perk-game-btn" title="Perks bekijken" style="display:none;">
-					🎯
-				</button>
+
 				<div id="mp-hand-container" class="mp-hand-container">
 					<!-- Dynamisch gevuld -->
 				</div>
@@ -452,9 +450,21 @@
 			});
 		}
 
-		// Wacht iets langer zodat dynamisch geladen scripts (socket.io, peerjs fallback) tijd hebben
+		// Wacht op dynamisch geladen scripts (socket.io, peerjs) met polling
 		window.addEventListener('load', () => {
-			setTimeout(_bootstrapApp, 150);
+			let attempts = 0;
+			const maxAttempts = 10;
+			const pollInterval = 100; // 100ms per check, max 1s totaal
+
+			function tryBootstrap() {
+				attempts++;
+				if (typeof io !== 'undefined' || attempts >= maxAttempts) {
+					_bootstrapApp();
+				} else {
+					setTimeout(tryBootstrap, pollInterval);
+				}
+			}
+			setTimeout(tryBootstrap, 100);
 		});
 
 		function _applyJoinCodeFromUrl() {
