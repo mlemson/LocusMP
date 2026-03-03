@@ -449,6 +449,16 @@ class LocusP2PHost {
 				break;
 			}
 
+			case 'useMine': {
+				if (!playerId) return;
+				const result = this.Rules.useMine(this.gameState, playerId, msg.zoneName, msg.cellX, msg.cellY);
+				conn.send({ type: 'result', action: 'useMine', ...result });
+				if (result.success) {
+					this._broadcastState();
+				}
+				break;
+			}
+
 			case 'sendTaunt': {
 				if (!playerId) return;
 				const playerName = this.gameState.players[playerId]?.name || 'Speler';
