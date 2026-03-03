@@ -1121,8 +1121,8 @@ io.on('connection', (socket) => {
 			const gameState = games.get(info.gameId);
 			if (!gameState) return callback({ success: false, error: 'Spel niet gevonden.' });
 
-			const { targetPlayerId } = data || {};
-			const result = GameRules.stealCard(gameState, info.playerId, targetPlayerId);
+			const { targetPlayerId, cardId } = data || {};
+			const result = GameRules.stealCard(gameState, info.playerId, targetPlayerId, cardId);
 			if (result.error) {
 				return callback({ success: false, error: result.error });
 			}
@@ -1133,6 +1133,25 @@ io.on('connection', (socket) => {
 
 		} catch (error) {
 			console.error('[Locus] stealCard error:', error);
+			callback({ success: false, error: error.message });
+		}
+	});
+
+	// ── GET STEALABLE CARDS ──────────────────
+
+	socket.on('getStealableCards', (data, callback) => {
+		try {
+			const info = socketToPlayer.get(socket.id);
+			if (!info) return callback({ success: false, error: 'Niet in een spel.' });
+
+			const gameState = games.get(info.gameId);
+			if (!gameState) return callback({ success: false, error: 'Spel niet gevonden.' });
+
+			const { targetPlayerId } = data || {};
+			const result = GameRules.getStealableCards(gameState, info.playerId, targetPlayerId);
+			callback(result);
+		} catch (error) {
+			console.error('[Locus] getStealableCards error:', error);
 			callback({ success: false, error: error.message });
 		}
 	});

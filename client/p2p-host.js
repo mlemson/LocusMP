@@ -462,11 +462,18 @@ class LocusP2PHost {
 
 			case 'stealCard': {
 				if (!playerId) return;
-				const result = this.Rules.stealCard(this.gameState, playerId, msg.targetPlayerId);
+				const result = this.Rules.stealCard(this.gameState, playerId, msg.targetPlayerId, msg.cardId);
 				conn.send({ type: 'result', action: 'stealCard', ...result });
 				if (result.success) {
 					this._broadcastState();
 				}
+				break;
+			}
+
+			case 'getStealableCards': {
+				if (!playerId) return;
+				const result = this.Rules.getStealableCards(this.gameState, playerId, msg.targetPlayerId);
+				conn.send({ type: 'result', action: 'getStealableCards', ...result });
 				break;
 			}
 
@@ -659,7 +666,10 @@ class LocusP2PHost {
 				result = this.Rules.useMine(this.gameState, playerId, data.zoneName, data.cellX, data.cellY);
 				break;
 			case 'stealCard':
-				result = this.Rules.stealCard(this.gameState, playerId, data.targetPlayerId);
+				result = this.Rules.stealCard(this.gameState, playerId, data.targetPlayerId, data.cardId);
+				break;
+			case 'getStealableCards':
+				result = this.Rules.getStealableCards(this.gameState, playerId, data.targetPlayerId);
 				break;
 			case 'togglePause': {
 				// Host toggled pause
@@ -1107,7 +1117,8 @@ class LocusP2PGuest {
 	async setShopReady() { return this._sendCommand('shopReady'); }
 	async useTimeBomb() { return this._sendCommand('useTimeBomb'); }
 	async useMine(zoneName, cellX, cellY) { return this._sendCommand('useMine', { zoneName, cellX, cellY }); }
-	async stealCard(targetPlayerId) { return this._sendCommand('stealCard', { targetPlayerId }); }
+	async stealCard(targetPlayerId, cardId) { return this._sendCommand('stealCard', { targetPlayerId, cardId }); }
+	async getStealableCards(targetPlayerId) { return this._sendCommand('getStealableCards', { targetPlayerId }); }
 	async togglePause() { return this._sendCommand('togglePause'); }
 	async sendTaunt(text) { return this._sendCommand('sendTaunt', { text }); }
 	sendInteraction(data) {

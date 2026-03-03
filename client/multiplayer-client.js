@@ -586,11 +586,21 @@ class LocusMultiplayer {
 	}
 
 	/** Steel een kaart van een tegenstander */
-	async stealCard(targetPlayerId) {
+	async stealCard(targetPlayerId, cardId) {
 		try {
-			return await this._emitWithAck('stealCard', { targetPlayerId });
+			return await this._emitWithAck('stealCard', { targetPlayerId, cardId });
 		} catch (error) {
 			console.error('[Locus MP] Steal card failed:', error);
+			throw error;
+		}
+	}
+
+	/** Bekijk welke kaarten je kunt stelen van een tegenstander */
+	async getStealableCards(targetPlayerId) {
+		try {
+			return await this._emitWithAck('getStealableCards', { targetPlayerId });
+		} catch (error) {
+			console.error('[Locus MP] Get stealable cards failed:', error);
 			throw error;
 		}
 	}
