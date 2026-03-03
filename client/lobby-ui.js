@@ -197,6 +197,7 @@ class LocusLobbyUI {
 			'mp-room-code-badge',
 			'mp-end-turn-btn', 'mp-undo-btn', 'mp-turn-timer',
 			'mp-deck-overview-btn', 'mp-deck-overlay', 'mp-deck-close-btn', 'mp-deck-cards', 'mp-deck-count',
+			'mp-perk-btn',
 			'results-container', 'play-again-btn',
 			'shop-container', 'shop-ready-btn',
 			'tv-cast-btn', 'tv-cast-game-btn'
@@ -246,6 +247,7 @@ class LocusLobbyUI {
 		this.elements['shop-ready-btn']?.addEventListener('click', () => this._handleShopReady());
 		this.elements['mp-deck-overview-btn']?.addEventListener('click', () => this._toggleDeckOverview());
 		this.elements['mp-deck-close-btn']?.addEventListener('click', () => this._closeDeckOverview());
+		this.elements['mp-perk-btn']?.addEventListener('click', () => this._openPerkPopup());
 		// TV Cast buttons
 		this.elements['tv-cast-btn']?.addEventListener('click', () => this.startTVCast());
 		this.elements['tv-cast-game-btn']?.addEventListener('click', () => {
@@ -1635,6 +1637,14 @@ class LocusLobbyUI {
 		this._renderMyObjective();
 		this._renderBonusBar();
 		this._renderOpponentPanels();
+		this._updatePerkButton();
+
+		// Auto-open perk popup before level 1 if player has perk points
+		const myPlayer = this.mp.getMyPlayer();
+		const level = state.level || 1;
+		if (level === 1 && myPlayer?.perks?.perkPoints > 0) {
+			setTimeout(() => this._openPerkPopup(), 600);
+		}
 	}
 
 	_onTurnChanged(currentPlayerId, turnCount) {
@@ -2261,6 +2271,24 @@ class LocusLobbyUI {
 	_closeDeckOverview() {
 		const overlay = this.elements['mp-deck-overlay'];
 		if (overlay) overlay.style.display = 'none';
+	}
+
+	_updatePerkButton() {
+		const btn = this.elements['mp-perk-btn'];
+		if (!btn) return;
+		const myPlayer = this.mp.getMyPlayer();
+		const perkPoints = myPlayer?.perks?.perkPoints || 0;
+		const hasPerks = myPlayer?.perks?.unlockedPerks?.length > 0;
+		if (perkPoints > 0 || hasPerks) {
+			btn.style.display = '';
+			if (perkPoints > 0) {
+				btn.innerHTML = `🎯 <span class="mp-perk-points-badge">${perkPoints}</span>`;
+			} else {
+				btn.innerHTML = '🎯';
+			}
+		} else {
+			btn.style.display = 'none';
+		}
 	}
 
 	_renderDeckOverview() {
@@ -4965,7 +4993,16 @@ class LocusLobbyUI {
 				</div>
 			</div>
 
-			${this._renderPerkSection(myPlayer, isReady)}
+			${(() => {
+				const perkPoints = myPlayer?.perks?.perkPoints || 0;
+				return perkPoints > 0 ? `
+					<div class="mp-shop-perk-open-section">
+						<button class="mp-shop-perk-open-btn" id="mp-shop-perk-open">
+							🎯 Perks bekijken <span class="mp-perk-points-badge">${perkPoints} punt${perkPoints !== 1 ? 'en' : ''}</span>
+						</button>
+					</div>
+				` : '';
+			})()}
 		`;
 
 		// Bind card buy buttons
@@ -4979,6 +5016,12 @@ class LocusLobbyUI {
 			sellOpenBtn.addEventListener('click', () => this._openSellPopup());
 		}
 
+		// Bind perk popup button
+		const perkOpenBtn = container.querySelector('#mp-shop-perk-open');
+		if (perkOpenBtn) {
+			perkOpenBtn.addEventListener('click', () => this._openPerkPopup());
+		}
+
 		// Bind other shop item clicks
 		container.querySelectorAll('.mp-shop-item:not(.disabled)').forEach(btn => {
 			btn.addEventListener('click', () => this._handleBuyItem(btn.dataset.itemId, btn));
@@ -4986,20 +5029,17 @@ class LocusLobbyUI {
 
 		// Bind ready button
 		const readyBtn = container.querySelector('#mp-shop-ready-btn');
-		// Bind perk buttons
-		container.querySelectorAll('.mp-perk-unlock-btn:not(.disabled)').forEach(btn => {
-			btn.addEventListener('click', () => this._handleChoosePerk(btn.dataset.perkId, btn));
-		});
 
 		if (readyBtn && !isReady) {
 			readyBtn.addEventListener('click', () => this._handleShopReady());
 		}
 	}
 
-	_renderPerkSection(myPlayer, isReady) {
+	_renderPerkSectionHTML() {
 		const Rules = window.LocusGameRules;
 		if (!Rules || !Rules.PERK_BRANCHES) return '';
 
+		const myPlayer = this.mp.getMyPlayer();
 		const perks = myPlayer?.perks || {};
 		const perkPoints = perks.perkPoints || 0;
 		const unlockedPerks = perks.unlockedPerks || [];
@@ -5025,7 +5065,7 @@ class LocusLobbyUI {
 										const isUnlocked = unlockedPerks.includes(perk.id);
 										const isAvailable = availablePerks.some(p => p.id === perk.id);
 										const canAfford = perkPoints >= perk.cost;
-										const canUnlock = isAvailable && canAfford && !isReady;
+										const canUnlock = isAvailable && canAfford;
 										let statusClass = isUnlocked ? 'unlocked' : (isAvailable ? 'available' : 'locked');
 										return `
 											<div class="mp-perk-item ${statusClass}">
@@ -5057,6 +5097,41 @@ class LocusLobbyUI {
 		`;
 	}
 
+	_openPerkPopup() {
+		const Rules = window.LocusGameRules;
+		if (!Rules || !Rules.PERK_BRANCHES) return;
+
+		// Remove existing popup
+		document.getElementById('mp-perk-popup-overlay')?.remove();
+
+		const overlay = document.createElement('div');
+		overlay.id = 'mp-perk-popup-overlay';
+		overlay.className = 'mp-popup-overlay';
+		overlay.innerHTML = `
+			<div class="mp-perk-popup">
+				<div class="mp-perk-popup-header">
+					<h3>🎯 Perks</h3>
+					<button class="mp-perk-popup-close" id="mp-perk-popup-close">✕</button>
+				</div>
+				<p class="mp-perk-popup-desc">Ontgrendel perks om je strategie te versterken.</p>
+				${this._renderPerkSectionHTML()}
+			</div>
+		`;
+
+		document.body.appendChild(overlay);
+
+		// Close handlers
+		overlay.querySelector('#mp-perk-popup-close').addEventListener('click', () => overlay.remove());
+		overlay.addEventListener('click', (e) => {
+			if (e.target === overlay) overlay.remove();
+		});
+
+		// Bind perk unlock buttons
+		overlay.querySelectorAll('.mp-perk-unlock-btn:not(.disabled)').forEach(btn => {
+			btn.addEventListener('click', () => this._handleChoosePerk(btn.dataset.perkId, btn));
+		});
+	}
+
 	async _handleChoosePerk(perkId, sourceEl = null) {
 		try {
 			if (sourceEl) sourceEl.disabled = true;
@@ -5068,7 +5143,15 @@ class LocusLobbyUI {
 			}
 			this._playGoldSound();
 			this._showToast(`${result.perk?.icon || '🎯'} ${result.perk?.name || 'Perk'} ontgrendeld!`, 'success');
-			this._renderShop();
+			// Re-open perk popup with updated state
+			this._openPerkPopup();
+			// Also refresh shop if visible
+			if (this.elements['shop-screen']?.style.display !== 'none') {
+				this._renderShop();
+			}
+			// Re-render bonus bar and hand in case of stone/mine perks
+			try { this._renderBonusBar(); } catch (e) {}
+			try { this._renderHand(); } catch (e) {}
 		} catch (error) {
 			console.error('[Locus UI] Choose perk error:', error);
 			this._showToast('Perk ontgrendelen mislukt', 'error');
