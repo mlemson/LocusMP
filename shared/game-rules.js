@@ -130,8 +130,8 @@ const PERK_BRANCHES = {
 		description: 'Flexibeler plaatsen en meer waarde',
 		sequential: true,
 		perks: [
-			{ id: 'flex_gap', name: 'Brugbouwer', icon: '🌉', description: 'Groen: plaats met 1 cel tussenruimte (gat wordt gevuld zonder score)', cost: 1 },
-			{ id: 'flex_rotate', name: 'Vrije Rotatie', icon: '🔄', description: 'Paars: plaats ook diagonaal naast bestaande blokken', cost: 1 },
+			{ id: 'flex_gap', name: 'Brugbouwer', icon: '🌉', description: 'Groen: 1 cel van je kaart is optioneel plaatsbaar', cost: 1 },
+			{ id: 'flex_rotate', name: 'Vrije Rotatie', icon: '🔄', description: 'Paars: voeg 1 extra optionele cel toe aan je kaart', cost: 1 },
 			{ id: 'flex_wildcard', name: 'Wildcardkleur', icon: '🎨', description: 'Eén kaart per ronde op elke zone plaatsen, ongeacht kleur', cost: 1 },
 			{ id: 'flex_double_coins', name: 'Bankier', icon: '🏦', description: 'Goudmunten zijn dubbel zoveel waard', cost: 1 }
 		]
@@ -1283,6 +1283,85 @@ function hasGapOneActive(zoneData, x, y) {
 		}
 	}
 	return false;
+}
+
+/**
+ * Brugbouwer perk (groen): maak de laatste cel van de shape optioneel (value 1 → 2).
+ * Hiermee wordt de kaart makkelijker plaatsbaar doordat 1 cel mag worden overgeslagen.
+ */
+function makeOneCellOptional(matrix) {
+	const m = cloneMatrix(matrix);
+	// Zoek de laatste cel (bottom-right scan) en maak deze optioneel
+	for (let y = m.length - 1; y >= 0; y--) {
+		for (let x = (m[y]?.length || 0) - 1; x >= 0; x--) {
+			if (m[y][x] === 1) {
+				// Controleer dat er minstens 2 verplichte cellen overblijven
+				let requiredCount = 0;
+				for (const row of m) { for (const c of (row || [])) { if (c === 1) requiredCount++; } }
+				if (requiredCount >= 2) {
+					m[y][x] = 2;
+					return m;
+				}
+			}
+		}
+	}
+	return m; // geen wijziging mogelijk
+}
+
+/**
+ * Vrije Rotatie perk (paars): voeg 1 extra optionele cel (value 2) toe aan de shape.
+ * De cel wordt toegevoegd op de eerste beschikbare positie naast de bestaande shape.
+ */
+function addExtraOptionalCell(matrix) {
+	const m = cloneMatrix(matrix);
+	// Vind alle bezette posities
+	const occupied = new Set();
+	for (let y = 0; y < m.length; y++) {
+		for (let x = 0; x < (m[y]?.length || 0); x++) {
+			if (m[y][x]) occupied.add(`${x},${y}`);
+		}
+	}
+	// Zoek alle aangrenzende lege posities
+	const candidates = [];
+	for (let y = 0; y < m.length; y++) {
+		for (let x = 0; x < (m[y]?.length || 0); x++) {
+			if (!m[y][x]) continue;
+			const neighbors = [{x:x-1,y},{x:x+1,y},{x,y:y-1},{x,y:y+1}];
+			for (const n of neighbors) {
+				if (n.x < 0 || n.y < 0) continue;
+				const key = `${n.x},${n.y}`;
+				if (!occupied.has(key) && !candidates.some(c => c.x === n.x && c.y === n.y)) {
+					candidates.push(n);
+				}
+			}
+		}
+	}
+	if (candidates.length === 0) return m;
+	// Kies de eerste kandidaat (voorspelbare positie)
+	const pick = candidates[0];
+	// Vergroot matrix indien nodig
+	while (m.length <= pick.y) m.push([]);
+	while ((m[pick.y]?.length || 0) <= pick.x) m[pick.y].push(0);
+	// Zorg dat alle rijen even breed zijn
+	const maxW = Math.max(...m.map(r => r?.length || 0));
+	for (const row of m) { while (row.length < maxW) row.push(0); }
+	m[pick.y][pick.x] = 2;
+	return m;
+}
+
+/**
+ * Pas shape matrix aan op basis van perks en doelzone.
+ * Wordt zowel server-side (playMove) als client-side (preview) gebruikt.
+ */
+function getEnhancedMatrix(matrix, zoneName, perkFlags) {
+	if (!matrix || !zoneName || !perkFlags) return matrix;
+	if (zoneName === 'green' && perkFlags.greenGapAllowed) {
+		return makeOneCellOptional(matrix);
+	}
+	if (zoneName === 'purple' && perkFlags.diagonalRotation) {
+		return addExtraOptionalCell(matrix);
+	}
+	return matrix;
 }
 
 /**
