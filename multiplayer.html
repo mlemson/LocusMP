@@ -301,6 +301,14 @@
 			if (host.endsWith('.pages.dev')) return;
 			var s = document.createElement('script');
 			s.src = '/socket.io/socket.io.js';
+			s.onload = function() {
+				// Socket.IO geladen — als bootstrap al gedraaid heeft zonder io, opnieuw bootstrappen
+				if (window._locusBootstrapped && !window._locusHasSocketIO) {
+					console.log('[Locus] Socket.IO alsnog geladen na bootstrap — herstart');
+					window._locusBootstrapped = false;
+					_bootstrapApp();
+				}
+			};
 			s.onerror = function() { /* P2P modus beschikbaar als alternatief */ };
 			document.head.appendChild(s);
 		})();
@@ -453,8 +461,8 @@
 		// Wacht op dynamisch geladen scripts (socket.io, peerjs) met polling
 		window.addEventListener('load', () => {
 			let attempts = 0;
-			const maxAttempts = 10;
-			const pollInterval = 100; // 100ms per check, max 1s totaal
+			const maxAttempts = 30;
+			const pollInterval = 100; // 100ms per check, max 3s totaal
 
 			function tryBootstrap() {
 				attempts++;
@@ -487,6 +495,9 @@
 		}
 
 		async function _bootstrapApp() {
+			if (window._locusBootstrapped) return;
+			window._locusBootstrapped = true;
+
 			_initThemeSwitcher();
 			_initLobbyNamePersistence();
 			_applyJoinCodeFromUrl();
@@ -494,6 +505,7 @@
 
 			// Detecteer of Socket.IO server beschikbaar is
 			const hasSocketIO = typeof io !== 'undefined';
+			window._locusHasSocketIO = hasSocketIO;
 			const hasPeerJS = typeof Peer !== 'undefined';
 			let mp = null;
 

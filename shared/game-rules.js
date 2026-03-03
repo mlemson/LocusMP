@@ -3346,7 +3346,8 @@ function playMove(gameState, playerId, cardId, zoneName, baseX, baseY, rotation,
 	if (zoneName === 'green' && perkFlags.greenGapAllowed && placementResult.cells?.length > 0) {
 		const greenZoneData = gameState.boardState.zones.green;
 		const directions = [{ dx: -1, dy: 0 }, { dx: 1, dy: 0 }, { dx: 0, dy: -1 }, { dx: 0, dy: 1 }];
-		for (const pc of placementResult.cells) {
+		const originalCells = [...placementResult.cells]; // Snapshot om oneindige loop te voorkomen
+		for (const pc of originalCells) {
 			for (const { dx, dy } of directions) {
 				const gapCell = getDataCell(greenZoneData, pc.x + dx, pc.y + dy);
 				const farCell = getDataCell(greenZoneData, pc.x + dx * 2, pc.y + dy * 2);
