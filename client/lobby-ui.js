@@ -5180,7 +5180,7 @@ class LocusLobbyUI {
 
 				${(() => {
 					const _shopIds = new Set((shopCards || []).map(c => c.id));
-					const _sellable = (myPlayer?.permanentShopCards || []).filter(c => !_shopIds.has(c.id));
+					const _sellable = (myPlayer?.permanentShopCards || []).filter(c => !_shopIds.has(c.id) && !c.isStone);
 					return _sellable.length > 0 ? `
 					<div class="mp-shop-sell-section">
 						<button class="mp-shop-sell-open-btn" id="mp-shop-sell-open">
@@ -5407,9 +5407,9 @@ class LocusLobbyUI {
 	_openSellPopup() {
 		const Rules = window.LocusGameRules;
 		const myPlayer = this.mp.getMyPlayer();
-		// Only show permanent cards that were NOT bought this shopping session
+		// Only show permanent cards that were NOT bought this shopping session and are NOT temporary
 		const shopCardIds = new Set((myPlayer?.shopCards || []).map(c => c.id));
-		const permCards = (myPlayer?.permanentShopCards || []).filter(c => !shopCardIds.has(c.id));
+		const permCards = (myPlayer?.permanentShopCards || []).filter(c => !shopCardIds.has(c.id) && !c.isStone);
 		if (permCards.length === 0) {
 			this._showToast('Je hebt geen kaarten om te verkopen', 'info');
 			return;
