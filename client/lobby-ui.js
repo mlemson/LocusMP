@@ -2879,6 +2879,16 @@ class LocusLobbyUI {
 			this._lastPreviewBaseX = baseX;
 			this._lastPreviewBaseY = baseY;
 			this._lastPreviewSubgridId = subgridId;
+
+			// Update ghost als enhanced matrix verschilt (perk optionele cellen)
+			if (adjPreview.enhancedMatrix && ghost) {
+				const emStr = JSON.stringify(adjPreview.enhancedMatrix);
+				if (this._lastGhostMatrixStr !== emStr) {
+					this._lastGhostMatrixStr = emStr;
+					ghost.innerHTML = this._renderMiniGrid(adjPreview.enhancedMatrix, this._dragState.card.color, true, true);
+				}
+			}
+
 			this._sendInteraction('move', {
 				mode: 'card',
 				cardName: this._dragState.card?.shapeName || null,
@@ -2895,6 +2905,15 @@ class LocusLobbyUI {
 					: `.mp-cell[data-zone="${bestZone}"][data-x="${coord.x}"][data-y="${coord.y}"]`;
 				const el = document.querySelector(sel);
 				if (el) el.classList.add('preview-valid');
+			}
+			// Toon optionele cellen (perk) met semi-transparante preview
+			const optCells = adjPreview.cells.optionalCells || [];
+			for (const coord of optCells) {
+				const sel = subgridId
+					? `.mp-cell[data-zone="${bestZone}"][data-subgrid="${subgridId}"][data-x="${coord.x}"][data-y="${coord.y}"]`
+					: `.mp-cell[data-zone="${bestZone}"][data-x="${coord.x}"][data-y="${coord.y}"]`;
+				const el = document.querySelector(sel);
+				if (el) { el.classList.add('preview-valid'); el.style.opacity = '0.45'; }
 			}
 			if (ghost) { ghost.classList.remove('preview-denied'); ghost.classList.add('preview-ok'); }
 		} else {

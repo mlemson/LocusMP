@@ -693,6 +693,14 @@ class LocusMultiplayer {
 		const Rules = window.LocusGameRules;
 		if (!Rules) return { valid: false };
 
+		// Bouw perk flags en pas matrix aan voor preview
+		const player = this.gameState.players?.[this.userId];
+		const perkFlags = {
+			greenGapAllowed: !!player?.perks?.greenGapAllowed,
+			diagonalRotation: !!player?.perks?.diagonalRotation
+		};
+		const enhancedMatrix = Rules.getEnhancedMatrix(matrix, zoneName, perkFlags);
+
 		let zoneData;
 		if (zoneName === 'red') {
 			const red = this.gameState.boardState.zones.red;
@@ -702,9 +710,9 @@ class LocusMultiplayer {
 				? red.subgrids.filter(sg => sg.id === subgridId)
 				: red.subgrids;
 			for (const sg of subgridsToCheck) {
-				const cells = Rules.collectPlacementCellsData(sg, baseX, baseY, matrix);
-				if (cells && Rules.validatePlacement('red', sg, cells)) {
-					return { valid: true, cells, zoneName: 'red', subgridId: sg.id };
+				const cells = Rules.collectPlacementCellsData(sg, baseX, baseY, enhancedMatrix);
+				if (cells && Rules.validatePlacement('red', sg, cells, perkFlags)) {
+					return { valid: true, cells, zoneName: 'red', subgridId: sg.id, enhancedMatrix };
 				}
 			}
 			return { valid: false };
@@ -713,11 +721,11 @@ class LocusMultiplayer {
 		zoneData = this.gameState.boardState.zones[zoneName];
 		if (!zoneData) return { valid: false };
 
-		const cells = Rules.collectPlacementCellsData(zoneData, baseX, baseY, matrix);
+		const cells = Rules.collectPlacementCellsData(zoneData, baseX, baseY, enhancedMatrix);
 		if (!cells) return { valid: false };
 
-		const valid = Rules.validatePlacement(zoneName, zoneData, cells);
-		return { valid, cells };
+		const valid = Rules.validatePlacement(zoneName, zoneData, cells, perkFlags);
+		return { valid, cells, enhancedMatrix };
 	}
 
 	/** Stop met luisteren en disconnect */
