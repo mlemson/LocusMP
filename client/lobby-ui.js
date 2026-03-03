@@ -224,7 +224,7 @@ class LocusLobbyUI {
 		// Init lobby particles for lobby screen
 		if (screenId === 'lobby-screen') {
 			try { this._initLobbyParticles(); } catch (_) {}
-			try { this._refreshServerBrowser(); } catch (_) {}
+			this._initServerBrowseToggle();
 		}
 	}
 
@@ -859,6 +859,27 @@ class LocusLobbyUI {
 	// ──────────────────────────────────────────
 	//  LOBBY HANDLERS
 	// ──────────────────────────────────────────
+
+	_initServerBrowseToggle() {
+		const toggleBtn = document.getElementById('server-browse-toggle');
+		const list = document.getElementById('server-browser-list');
+		if (!toggleBtn || !list) return;
+		// Don't re-bind if already bound
+		if (toggleBtn._locusbound) return;
+		toggleBtn._locusbound = true;
+
+		toggleBtn.addEventListener('click', () => {
+			const isOpen = list.style.display !== 'none';
+			if (isOpen) {
+				list.style.display = 'none';
+				toggleBtn.textContent = '🌐 Open lobbys';
+			} else {
+				list.style.display = '';
+				toggleBtn.textContent = '🌐 Lobbys verbergen';
+				this._refreshServerBrowser();
+			}
+		});
+	}
 
 	async _refreshServerBrowser() {
 		const container = document.getElementById('server-browser-list');

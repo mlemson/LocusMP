@@ -5,6 +5,20 @@
 	<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 	<title>LOCUS — Multiplayer</title>
 	<link rel="stylesheet" href="multiplayer.css?v=12">
+	<style>
+		/* Hide server-only UI until bootstrap detects Socket.IO */
+		#create-game-btn,
+		#join-game-btn,
+		#server-browser { display: none; }
+		.mp-lobby-card > .mp-divider,
+		.mp-lobby-card > .mp-input-group:not(.mp-name-required) { display: none; }
+		/* Show them when server mode is confirmed via class on lobby-screen */
+		.mp-server-mode #create-game-btn { display: inline-flex; }
+		.mp-server-mode #join-game-btn { display: inline-flex; }
+		.mp-server-mode .mp-lobby-card > .mp-divider { display: flex; }
+		.mp-server-mode .mp-lobby-card > .mp-input-group:not(.mp-name-required) { display: block; }
+		.mp-server-mode #server-browser { display: block; }
+	</style>
 </head>
 <body>
 	<!-- ═══════════════════════════════════
@@ -81,8 +95,10 @@
 		</div>
 
 		<div class="mp-server-browser" id="server-browser">
-			<div class="mp-divider"><span>🌐 Open lobbys</span></div>
-			<div id="server-browser-list" class="mp-server-browser-list">
+			<button class="mp-btn mp-btn-secondary mp-server-browse-toggle" id="server-browse-toggle">
+				🌐 Open lobbys
+			</button>
+			<div id="server-browser-list" class="mp-server-browser-list" style="display:none;">
 				<div class="mp-server-browser-loading">Lobbys laden...</div>
 			</div>
 		</div>
@@ -472,21 +488,12 @@
 			console.log('[Locus] PeerJS:', hasPeerJS ? 'beschikbaar' : 'niet beschikbaar');
 
 			if (hasSocketIO) {
-				// Normale server modus
+				// Normale server modus — toon server-only UI
+				document.getElementById('lobby-screen')?.classList.add('mp-server-mode');
 				mp = new LocusMultiplayer();
 			} else {
 				// Geen server — verberg server-only knoppen, toon P2P opties
 				console.log('[Locus] Geen Socket.IO server — alleen P2P modus');
-				const createBtn = document.getElementById('create-game-btn');
-				const joinBtn = document.getElementById('join-game-btn');
-				if (createBtn) createBtn.style.display = 'none';
-				if (joinBtn) joinBtn.style.display = 'none';
-				// Verberg de "OF" divider boven join
-				const dividers = document.querySelectorAll('.mp-lobby-card > .mp-divider');
-				if (dividers.length > 0) dividers[0].style.display = 'none';
-				// Verberg invite code input group
-				const inviteInput = document.getElementById('invite-code-input');
-				if (inviteInput && inviteInput.parentElement) inviteInput.parentElement.style.display = 'none';
 			}
 
 			if (mp) {

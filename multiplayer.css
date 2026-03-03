@@ -457,12 +457,23 @@ html, body {
 .mp-server-browser {
 	width: 100%;
 	max-width: 460px;
-	margin-top: 8px;
+	margin-top: 12px;
+}
+
+.mp-server-browse-toggle {
+	width: 100%;
+	opacity: 0.8;
+	font-size: 0.85rem !important;
+}
+
+.mp-server-browse-toggle:hover {
+	opacity: 1;
 }
 
 .mp-server-browser-list {
 	display: flex;
 	flex-direction: column;
+	margin-top: 8px;
 	gap: 6px;
 }
 
