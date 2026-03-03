@@ -258,7 +258,7 @@ function choosePerk(gameState, playerId, perkId) {
 	}
 
 	gameState.updatedAt = Date.now();
-	return { success: true, perk: { id: perkId, name: perk.name, icon: perk.icon } };
+	return { success: true, perk: { id: perkId, name: perk.name, icon: perk.icon, cost: perk.cost } };
 }
 
 // ──────────────────────────────────────────────

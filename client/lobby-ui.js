@@ -5502,7 +5502,7 @@ class LocusLobbyUI {
 			// Reopen popup if there are still sellable cards
 			const myPlayer = this.mp.getMyPlayer();
 			const _shopIds = new Set((myPlayer?.shopCards || []).map(c => c.id));
-			const _sellableLeft = (myPlayer?.permanentShopCards || []).filter(c => !_shopIds.has(c.id));
+			const _sellableLeft = (myPlayer?.permanentShopCards || []).filter(c => !_shopIds.has(c.id) && !c.isStone);
 			if (_sellableLeft.length > 0) {
 				setTimeout(() => this._openSellPopup(), 100);
 			}
