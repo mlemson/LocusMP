@@ -4915,13 +4915,16 @@ class LocusLobbyUI {
 					}).join('')}
 				</div>
 
-				${(myPlayer?.permanentShopCards?.length > 0) ? `
+				${(() => {
+					const _shopIds = new Set((shopCards || []).map(c => c.id));
+					const _sellable = (myPlayer?.permanentShopCards || []).filter(c => !_shopIds.has(c.id));
+					return _sellable.length > 0 ? `
 					<div class="mp-shop-sell-section">
 						<button class="mp-shop-sell-open-btn" id="mp-shop-sell-open">
-							💸 Kaart verkopen (${myPlayer.permanentShopCards.length} kaarten)
+							💸 Kaart verkopen (${_sellable.length} kaarten)
 						</button>
-					</div>
-				` : ''}
+					</div>` : '';
+				})()}
 
 				${shopCards.length > 0 ? `
 					<div class="mp-shop-bought">
@@ -5081,7 +5084,9 @@ class LocusLobbyUI {
 	_openSellPopup() {
 		const Rules = window.LocusGameRules;
 		const myPlayer = this.mp.getMyPlayer();
-		const permCards = myPlayer?.permanentShopCards || [];
+		// Only show permanent cards that were NOT bought this shopping session
+		const shopCardIds = new Set((myPlayer?.shopCards || []).map(c => c.id));
+		const permCards = (myPlayer?.permanentShopCards || []).filter(c => !shopCardIds.has(c.id));
 		if (permCards.length === 0) {
 			this._showToast('Je hebt geen kaarten om te verkopen', 'info');
 			return;
@@ -5152,9 +5157,11 @@ class LocusLobbyUI {
 			// Re-open popup with updated cards, then refresh shop
 			document.getElementById('mp-sell-popup-overlay')?.remove();
 			this._renderShop();
-			// Reopen popup if there are still cards to sell
+			// Reopen popup if there are still sellable cards
 			const myPlayer = this.mp.getMyPlayer();
-			if (myPlayer?.permanentShopCards?.length > 0) {
+			const _shopIds = new Set((myPlayer?.shopCards || []).map(c => c.id));
+			const _sellableLeft = (myPlayer?.permanentShopCards || []).filter(c => !_shopIds.has(c.id));
+			if (_sellableLeft.length > 0) {
 				setTimeout(() => this._openSellPopup(), 100);
 			}
 		} catch (error) {
