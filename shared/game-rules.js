@@ -1268,6 +1268,23 @@ function hasDiagonalOrAdjacentActive(zoneData, x, y) {
 	return neighbors.some(n => n && n.active && !n.isStone);
 }
 
+/** Brugbouwer: check of er een actieve cel op afstand 2 is (met lege tussencel) */
+function hasGapOneActive(zoneData, x, y) {
+	const directions = [
+		{ dx: -1, dy: 0 }, { dx: 1, dy: 0 },
+		{ dx: 0, dy: -1 }, { dx: 0, dy: 1 }
+	];
+	for (const { dx, dy } of directions) {
+		const gapCell = getDataCell(zoneData, x + dx, y + dy);
+		const farCell = getDataCell(zoneData, x + dx * 2, y + dy * 2);
+		// Er moet een lege tussencel zijn EN een actieve cel op afstand 2
+		if (gapCell && !gapCell.active && farCell && farCell.active && !farCell.isStone) {
+			return true;
+		}
+	}
+	return false;
+}
+
 /**
  * Verzamel alle cellen die een shape zou bezetten.
  * Returns null als plaatsing onmogelijk is (buiten grid of bezet).
@@ -1356,7 +1373,7 @@ function validateBlue(zoneData, pendingCells) {
 	return pendingCells.some(c => hasAdjacentActive(zoneData, c.x, c.y));
 }
 
-function validateGreen(zoneData, pendingCells) {
+function validateGreen(zoneData, pendingCells, perkFlags) {
 	const hasActive = zoneHasActive(zoneData);
 	const touchesBold = pendingCells.some(c => {
 		const cell = getDataCell(zoneData, c.x, c.y);
@@ -1369,7 +1386,13 @@ function validateGreen(zoneData, pendingCells) {
 
 	if (!hasActive) return touchesBold || touchesPortal;
 	if (touchesBold || touchesPortal) return true;
-	return pendingCells.some(c => hasAdjacentActive(zoneData, c.x, c.y));
+	// Normale orthogonale adjacency
+	if (pendingCells.some(c => hasAdjacentActive(zoneData, c.x, c.y))) return true;
+	// Brugbouwer perk: ook 1 cel tussenruimte (gap van 1)
+	if (perkFlags?.greenGapAllowed) {
+		return pendingCells.some(c => hasGapOneActive(zoneData, c.x, c.y));
+	}
+	return false;
 }
 
 function validatePurple(zoneData, pendingCells, perkFlags) {
@@ -4654,23 +4677,4 @@ const GameRules = {
 
 	// Game state
 	createGameState, addPlayer, removePlayer, startGame, chooseStartingDeck, chooseObjective,
-	drawHand, playMove, playBonus, passMove, endTurn, undoMove,
-
-	// Shop & Levels
-	SHOP_ITEMS, getShopItems, getCardPrice, generateShopCardOfferings,
-	startShopPhase, buyShopItem, claimFreeCard, sellCard, getCardSellPrice,
-	shopReady, startNextLevel, endGameFinal, useTimeBomb, useMine, stealCard,
-
-	// Perks
-	PERK_BRANCHES, choosePerk, getAvailablePerks, playerHasPerk, getBonusShapeForPlayer,
-
-	// Utils
-	createRNG, shuffleWithRNG, getMajorityOwner
-};
-
-if (typeof module !== 'undefined' && module.exports) {
-	module.exports = GameRules;
-}
-if (typeof window !== 'undefined') {
-	window.LocusGameRules = GameRules;
-}
+	drawHand, playMove, playBonus
