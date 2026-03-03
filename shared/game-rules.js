@@ -4641,11 +4641,42 @@ function useMine(gameState, playerId, zoneName, cellX, cellY) {
 }
 
 /**
- * Steel een willekeurige kaart van een tegenstander.
+ * Bekijk welke kaarten een speler kan stelen van een tegenstander.
+ * Retourneert de niet-gouden/niet-steen kaarten met id en shapeName.
+ */
+function getStealableCards(gameState, playerId, targetPlayerId) {
+	if (gameState.phase !== 'playing') return { error: 'Spel is niet in play fase' };
+	const player = gameState.players[playerId];
+	if (!player) return { error: 'Speler niet gevonden' };
+	if (!playerHasPerk(player, 'agg_steal')) return { error: 'Je hebt de diefstal-perk niet' };
+	if ((player.perks.stealsUsedThisLevel || 0) >= (player.perks.stealsPerRound || 0)) {
+		return { error: 'Je hebt je steal al gebruikt dit level' };
+	}
+	if (playerId === targetPlayerId) return { error: 'Je kunt niet van jezelf stelen' };
+	const target = gameState.players[targetPlayerId];
+	if (!target) return { error: 'Doelspeler niet gevonden' };
+
+	const stealableCards = target.hand
+		.filter(c => !c.isGolden && !c.isStone)
+		.map(c => ({
+			id: c.id,
+			shapeName: c.shapeName,
+			colorName: c.color?.name || '???',
+			colorCode: c.color?.code || '#888',
+			matrix: c.matrix
+		}));
+
+	if (stealableCards.length === 0) return { error: 'Tegenstander heeft geen stealbare kaarten' };
+	return { success: true, cards: stealableCards, targetPlayerName: target.name };
+}
+
+/**
+ * Steel een specifieke kaart van een tegenstander.
  * Kan alleen door spelers met agg_steal perk, max 1× per level.
  * De gestolen kaart wordt tijdelijk aan je hand toegevoegd.
+ * Na het spelen gaat de kaart terug naar het deck van de oorspronkelijke eigenaar.
  */
-function stealCard(gameState, playerId, targetPlayerId) {
+function stealCard(gameState, playerId, targetPlayerId, cardId) {
 	if (gameState.phase !== 'playing') return { error: 'Spel is niet in play fase' };
 
 	const player = gameState.players[playerId];
@@ -4659,15 +4690,16 @@ function stealCard(gameState, playerId, targetPlayerId) {
 	const target = gameState.players[targetPlayerId];
 	if (!target) return { error: 'Doelspeler niet gevonden' };
 
-	const nonGoldenCards = target.hand.filter(c => !c.isGolden);
-	if (nonGoldenCards.length === 0) return { error: 'Tegenstander heeft geen stealbare kaarten' };
+	// Zoek de specifieke kaart die de speler kiest
+	const targetIdx = target.hand.findIndex(c => c.id === cardId && !c.isGolden && !c.isStone);
+	if (targetIdx < 0) return { error: 'Kaart niet gevonden of niet stealbaar' };
 
-	// Steal a random card
-	const rng = createRNG(Date.now());
-	const idx = Math.floor(rng() * nonGoldenCards.length);
-	const stolenCard = nonGoldenCards[idx];
-	const targetIdx = target.hand.findIndex(c => c.id === stolenCard.id);
-	if (targetIdx >= 0) target.hand.splice(targetIdx, 1);
+	const stolenCard = target.hand[targetIdx];
+	target.hand.splice(targetIdx, 1);
+
+	// Markeer als tijdelijk gestolen — gaat terug na spelen
+	stolenCard.isStolenTemp = true;
+	stolenCard.originalOwnerId = targetPlayerId;
 
 	// Add to stealing player's hand
 	player.hand.push(stolenCard);
@@ -4758,7 +4790,7 @@ const GameRules = {
 	// Shop & Levels
 	SHOP_ITEMS, getShopItems, getCardPrice, generateShopCardOfferings,
 	startShopPhase, buyShopItem, claimFreeCard, sellCard, getCardSellPrice,
-	shopReady, startNextLevel, endGameFinal, useTimeBomb, useMine, stealCard,
+	shopReady, startNextLevel, endGameFinal, useTimeBomb, useMine, stealCard, getStealableCards,
 
 	// Perks
 	PERK_BRANCHES, choosePerk, getAvailablePerks, playerHasPerk, getBonusShapeForPlayer,
