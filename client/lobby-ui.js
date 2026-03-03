@@ -5373,6 +5373,16 @@ class LocusLobbyUI {
 				if (sourceEl) sourceEl.disabled = false;
 				return;
 			}
+			// Onmiddellijk lokale state bijwerken (P2P broadcastState kan vertraagd zijn)
+			const myPlayer = this.mp.getMyPlayer?.();
+			if (myPlayer?.perks) {
+				if (!myPlayer.perks.unlockedPerks.includes(perkId)) {
+					myPlayer.perks.unlockedPerks.push(perkId);
+				}
+				if (result.perk?.cost) {
+					myPlayer.perks.perkPoints = Math.max(0, (myPlayer.perks.perkPoints || 0) - (result.perk.cost || 0));
+				}
+			}
 			this._playGoldSound();
 			this._showToast(`${result.perk?.icon || '🎯'} ${result.perk?.name || 'Perk'} ontgrendeld!`, 'success');
 			// Re-open perk popup with updated state (pass onClose through)

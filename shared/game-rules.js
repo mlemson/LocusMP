@@ -3342,6 +3342,26 @@ function playMove(gameState, playerId, cardId, zoneName, baseX, baseY, rotation,
 		if (!placementResult) return { error: 'Ongeldige plaatsing' };
 	}
 
+	// Brugbouwer perk: vul gapcellen op groen (zonder score/bonussen)
+	if (zoneName === 'green' && perkFlags.greenGapAllowed && placementResult.cells?.length > 0) {
+		const greenZoneData = gameState.boardState.zones.green;
+		const directions = [{ dx: -1, dy: 0 }, { dx: 1, dy: 0 }, { dx: 0, dy: -1 }, { dx: 0, dy: 1 }];
+		for (const pc of placementResult.cells) {
+			for (const { dx, dy } of directions) {
+				const gapCell = getDataCell(greenZoneData, pc.x + dx, pc.y + dy);
+				const farCell = getDataCell(greenZoneData, pc.x + dx * 2, pc.y + dy * 2);
+				if (gapCell && !gapCell.active && farCell && farCell.active && !farCell.isStone) {
+					// Vul de gap cel (zonder bonus/gold)
+					gapCell.active = true;
+					gapCell.color = card.color;
+					gapCell.playerId = playerId;
+					gapCell.isBridged = true; // markeer als overbrugd
+					placementResult.cells.push({ x: pc.x + dx, y: pc.y + dy });
+				}
+			}
+		}
+	}
+
 	// Verwijder kaart uit hand
 	player.hand.splice(cardIndex, 1);
 
