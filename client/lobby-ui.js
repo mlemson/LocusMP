@@ -3216,9 +3216,10 @@ class LocusLobbyUI {
 		const hasTimeBombs = (player.timeBombs || 0) > 0;
 		const Rules = window.LocusGameRules;
 		const hasMines = Rules?.playerHasPerk?.(player, 'agg_mine') && (player.perks?.minesUsedThisLevel || 0) < (player.perks?.minesPerRound || 0);
+		const hasSteals = Rules?.playerHasPerk?.(player, 'agg_steal') && (player.perks?.stealsUsedThisLevel || 0) < (player.perks?.stealsPerRound || 0);
 		const isMyTurn = this.mp.isMyTurn();
 
-		if (!hasAny && !hasTimeBombs && !hasMines) {
+		if (!hasAny && !hasTimeBombs && !hasMines && !hasSteals) {
 			container.innerHTML = '';
 			container.style.display = 'none';
 			return;
@@ -3279,6 +3280,15 @@ class LocusLobbyUI {
 					<span class="mp-bonus-count">×1</span>
 				</button>
 			` : ''}
+			${hasSteals ? `
+				<button class="mp-bonus-btn mp-steal-btn ${!isMyTurn ? 'disabled' : ''}"
+						id="mp-steal-btn"
+						style="border-color: #9b59b6"
+						${!isMyTurn ? 'disabled title="Kan alleen tijdens jouw beurt"' : ''}>
+					<span style="color: #9b59b6">🃏 Steel</span>
+					<span class="mp-bonus-count">×1</span>
+				</button>
+			` : ''}
 		`;
 
 		if (isMyTurn) {
@@ -3310,6 +3320,14 @@ class LocusLobbyUI {
 			const mineBtn = document.getElementById('mp-mine-btn');
 			if (mineBtn) {
 				mineBtn.addEventListener('click', () => this._activateMineMode());
+			}
+		}
+
+		// Steal click handler — alleen als het WEL jouw beurt is
+		if (hasSteals && isMyTurn) {
+			const stealBtn = document.getElementById('mp-steal-btn');
+			if (stealBtn) {
+				stealBtn.addEventListener('click', () => this._openStealPopup());
 			}
 		}
 	}
