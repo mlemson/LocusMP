@@ -4583,6 +4583,15 @@ class LocusLobbyUI {
 		if (cell.treasureCoins && !cell.active) {
 			inner += `<span class="mp-cell-pearl-dot" title="Parel: +${cell.treasureCoins} munten"></span>`;
 		}
+		// Toon eigen mijn-indicator op het bord (alleen voor de plaatser)
+		if (!cell.active) {
+			const myPlayer = this.mp.getMyPlayer?.();
+			const myMines = myPlayer?.perks?.activeMines || [];
+			const hasMine = myMines.some(m => m.zone === zoneName && m.x === cell.x && m.y === cell.y);
+			if (hasMine) {
+				inner += `<span class="mp-cell-mine-dot" title="Jouw mijn">💥</span>`;
+			}
+		}
 		if (zoneName === 'green' && cell.flags.includes('end') && cell.active) {
 			inner += `<span class="mp-green-end-check">✓</span>`;
 		}

@@ -716,6 +716,10 @@ class LocusP2PHost {
 				sanitized.players[pid].deck = [];
 				sanitized.players[pid].shopOfferings = [];
 				delete sanitized.players[pid]._pendingFreeChoices;
+				// Verberg tegenstanders' actieve mijnen
+				if (sanitized.players[pid].perks) {
+					sanitized.players[pid].perks.activeMines = [];
+				}
 				if (sanitized.players[pid].chosenObjective) {
 					if (revealObjectives) {
 						sanitized.players[pid].chosenObjective._revealed = true;

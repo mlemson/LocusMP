@@ -131,7 +131,7 @@ const PERK_BRANCHES = {
 		sequential: true,
 		perks: [
 			{ id: 'flex_gap', name: 'Brugbouwer', icon: '🌉', description: 'Groen: plaats met 1 cel tussenruimte (gat wordt gevuld zonder score)', cost: 1 },
-			{ id: 'flex_rotate', name: 'Vrije Rotatie', icon: '🔄', description: 'Draai kaarten ook 45° (diagonale plaatsing op paars)', cost: 1 },
+			{ id: 'flex_rotate', name: 'Vrije Rotatie', icon: '🔄', description: 'Paars: plaats ook diagonaal naast bestaande blokken', cost: 1 },
 			{ id: 'flex_wildcard', name: 'Wildcardkleur', icon: '🎨', description: 'Eén kaart per ronde op elke zone plaatsen, ongeacht kleur', cost: 1 },
 			{ id: 'flex_double_coins', name: 'Bankier', icon: '🏦', description: 'Goudmunten zijn dubbel zoveel waard', cost: 1 }
 		]
@@ -1253,6 +1253,21 @@ function hasAdjacentActive(zoneData, x, y) {
 	return neighbors.some(n => n && n.active && !n.isStone);
 }
 
+/** Diagonale adjacency check (voor vrije rotatie perk op paars) */
+function hasDiagonalOrAdjacentActive(zoneData, x, y) {
+	const neighbors = [
+		getDataCell(zoneData, x - 1, y),
+		getDataCell(zoneData, x + 1, y),
+		getDataCell(zoneData, x, y - 1),
+		getDataCell(zoneData, x, y + 1),
+		getDataCell(zoneData, x - 1, y - 1),
+		getDataCell(zoneData, x + 1, y - 1),
+		getDataCell(zoneData, x - 1, y + 1),
+		getDataCell(zoneData, x + 1, y + 1)
+	];
+	return neighbors.some(n => n && n.active && !n.isStone);
+}
+
 /**
  * Verzamel alle cellen die een shape zou bezetten.
  * Returns null als plaatsing onmogelijk is (buiten grid of bezet).
@@ -1301,15 +1316,15 @@ function collectPlacementCellsData(zoneData, baseX, baseY, matrix) {
  * - Red: altijd vrij plaatsen (geen adjacency constraint)
  * - Purple: eerste=portal OF alleen inner grid (geen outer ring); daarna=portal OF adjacent
  */
-function validatePlacement(zoneName, zoneData, pendingCells) {
+function validatePlacement(zoneName, zoneData, pendingCells, perkFlags) {
 	if (!pendingCells || !pendingCells.length) return false;
 
 	switch (zoneName) {
 		case 'yellow': return validateYellow(zoneData, pendingCells);
 		case 'blue':   return validateBlue(zoneData, pendingCells);
-		case 'green':  return validateGreen(zoneData, pendingCells);
+		case 'green':  return validateGreen(zoneData, pendingCells, perkFlags);
 		case 'red':    return true;
-		case 'purple': return validatePurple(zoneData, pendingCells);
+		case 'purple': return validatePurple(zoneData, pendingCells, perkFlags);
 		default: return true;
 	}
 }
@@ -1357,7 +1372,7 @@ function validateGreen(zoneData, pendingCells) {
 	return pendingCells.some(c => hasAdjacentActive(zoneData, c.x, c.y));
 }
 
-function validatePurple(zoneData, pendingCells) {
+function validatePurple(zoneData, pendingCells, perkFlags) {
 	const hasActive = zoneHasActive(zoneData);
 	const touchesPortal = pendingCells.some(c => {
 		const cell = getDataCell(zoneData, c.x, c.y);
@@ -1374,17 +1389,19 @@ function validatePurple(zoneData, pendingCells) {
 	}
 
 	if (touchesPortal) return true;
-	return pendingCells.some(c => hasAdjacentActive(zoneData, c.x, c.y));
+	// Met vrije rotatie perk: ook diagonale adjacency toegestaan
+	const adjacencyFn = perkFlags?.diagonalRotation ? hasDiagonalOrAdjacentActive : hasAdjacentActive;
+	return pendingCells.some(c => adjacencyFn(zoneData, c.x, c.y));
 }
 
 /**
  * Plaats een shape en geef de resultaten terug.
  * Retourneert ook verzamelde bonussen en gold cells.
  */
-function applyPlacement(boardState, zoneName, zoneData, baseX, baseY, matrix, color, playerId) {
+function applyPlacement(boardState, zoneName, zoneData, baseX, baseY, matrix, color, playerId, perkFlags) {
 	const pendingCells = collectPlacementCellsData(zoneData, baseX, baseY, matrix);
 	if (!pendingCells) return null;
-	if (!validatePlacement(zoneName, zoneData, pendingCells)) return null;
+	if (!validatePlacement(zoneName, zoneData, pendingCells, perkFlags)) return null;
 	const isStonePlacement = !!color?.isStone;
 	const placedColor = isStonePlacement ? { ...STONE_COLOR } : color;
 
@@ -3268,6 +3285,12 @@ function playMove(gameState, playerId, cardId, zoneName, baseX, baseY, rotation,
 	matrix = rotateMatrixN(matrix, rotation || 0);
 	if (mirrored) matrix = mirrorMatrix(matrix);
 
+	// Bouw perk flags voor plaatsingsvalidatie
+	const perkFlags = {
+		greenGapAllowed: !!player.perks?.greenGapAllowed,
+		diagonalRotation: !!player.perks?.diagonalRotation
+	};
+
 	// Zoek zone data en plaats
 	let placementResult = null;
 	let usedSubgridId = subgridId || null;
@@ -3284,7 +3307,7 @@ function playMove(gameState, playerId, cardId, zoneName, baseX, baseY, rotation,
 		for (const subgrid of subgridsToCheck) {
 			const pending = collectPlacementCellsData(subgrid, baseX, baseY, matrix);
 			if (pending) {
-				placementResult = applyPlacement(gameState.boardState, zoneName, subgrid, baseX, baseY, matrix, card.color, playerId);
+				placementResult = applyPlacement(gameState.boardState, zoneName, subgrid, baseX, baseY, matrix, card.color, playerId, perkFlags);
 				if (placementResult) { usedSubgridId = subgrid.id; break; }
 			}
 		}
@@ -3292,7 +3315,7 @@ function playMove(gameState, playerId, cardId, zoneName, baseX, baseY, rotation,
 	} else {
 		const zoneData = gameState.boardState.zones[zoneName];
 		if (!zoneData) return { error: `Zone '${zoneName}' niet gevonden` };
-		placementResult = applyPlacement(gameState.boardState, zoneName, zoneData, baseX, baseY, matrix, card.color, playerId);
+		placementResult = applyPlacement(gameState.boardState, zoneName, zoneData, baseX, baseY, matrix, card.color, playerId, perkFlags);
 		if (!placementResult) return { error: 'Ongeldige plaatsing' };
 	}
 
@@ -3333,11 +3356,10 @@ function playMove(gameState, playerId, cardId, zoneName, baseX, baseY, rotation,
 		player.goldCoins = (player.goldCoins || 0) + goldAmount;
 	}
 
-	// Mine trigger check: als een tegenstander een mijn op deze cellen had, verwijder de geplaatste cel
+	// Mine trigger check: als IEMAND een mijn op deze cellen had, verwijder het HELE geplaatste blok
 	let mineTriggered = null;
 	if (placementResult.cells && placementResult.cells.length > 0) {
 		for (const opId of gameState.playerOrder) {
-			if (opId === playerId) continue;
 			const opPlayer = gameState.players[opId];
 			if (!opPlayer?.perks?.activeMines?.length) continue;
 			for (let mi = opPlayer.perks.activeMines.length - 1; mi >= 0; mi--) {
@@ -3346,20 +3368,45 @@ function playMove(gameState, playerId, cardId, zoneName, baseX, baseY, rotation,
 				const hit = placementResult.cells.some(c => c.x === mine.x && c.y === mine.y);
 				if (hit) {
 					mineTriggered = { mineOwner: opId, mineOwnerName: opPlayer.name, zone: zoneName, x: mine.x, y: mine.y };
-					// Clear the mined cell on the board
-					const zd = zoneName === 'red' ?
-						(gameState.boardState.zones.red.subgrids?.find(sg => {
-							const c2 = getDataCell(sg, mine.x, mine.y);
-							return c2 && c2.active;
-						}) || gameState.boardState.zones[zoneName]) :
-						gameState.boardState.zones[zoneName];
-					const minedCell = getDataCell(zd, mine.x, mine.y);
-					if (minedCell) {
-						minedCell.active = false;
-						minedCell.playerId = null;
-						minedCell.color = null;
-					}
 					opPlayer.perks.activeMines.splice(mi, 1);
+
+					// Verwijder ALLE cellen van het geplaatste blok (niet alleen de gemijnde cel)
+					const mineZd = zoneName === 'red'
+						? (gameState.boardState.zones.red.subgrids?.find(sg => getDataCell(sg, placementResult.cells[0].x, placementResult.cells[0].y)?.active) || gameState.boardState.zones[zoneName])
+						: gameState.boardState.zones[zoneName];
+					for (const pc of placementResult.cells) {
+						const pcCell = getDataCell(mineZd, pc.x, pc.y);
+						if (pcCell) {
+							pcCell.active = false;
+							pcCell.playerId = null;
+							pcCell.color = null;
+							pcCell.isStone = false;
+							pcCell.placementOrder = 0;
+						}
+					}
+
+					// Undo bonussen die bij het plaatsen werden verzameld
+					if (placementResult.collectedBonuses) {
+						for (const bonusColor of placementResult.collectedBonuses) {
+							const amount = (bonusColor === 'any' && playerHasPerk(player, 'bonus_multi_double')) ? 2 : 1;
+							player.bonusInventory[bonusColor] = Math.max(0, (player.bonusInventory[bonusColor] || 0) - amount);
+						}
+					}
+
+					// Undo goudmunten die bij het plaatsen werden verzameld
+					if (placementResult.goldCollected > 0) {
+						const goldAmount = playerHasPerk(player, 'flex_double_coins')
+							? placementResult.goldCollected * 2
+							: placementResult.goldCollected;
+						player.goldCoins = Math.max(0, (player.goldCoins || 0) - goldAmount);
+					}
+
+					// Geef kaart terug in discard pile (kaart is 'opgeofferd')
+					// We verwijderen de move uit history
+					if (gameState.moveHistory.length > 0) {
+						gameState.moveHistory.pop();
+					}
+
 					break;
 				}
 			}
@@ -4581,9 +4628,9 @@ const GameRules = {
 	// Placement
 	getDataCell, collectPlacementCellsData, validatePlacement, applyPlacement,
 	getAllowedZones,
-	canPlace: function(zoneData, zoneName, baseX, baseY, matrix) {
+	canPlace: function(zoneData, zoneName, baseX, baseY, matrix, perkFlags) {
 		const cells = collectPlacementCellsData(zoneData, baseX, baseY, matrix);
-		return !!(cells && cells.length > 0 && validatePlacement(zoneName, zoneData, cells));
+		return !!(cells && cells.length > 0 && validatePlacement(zoneName, zoneData, cells, perkFlags));
 	},
 
 	// Transform
