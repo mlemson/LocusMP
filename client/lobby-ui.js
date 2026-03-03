@@ -3525,11 +3525,11 @@ class LocusLobbyUI {
 					<h3>🃏 Kaartendief</h3>
 					<button class="mp-sell-popup-close" id="mp-steal-popup-close">✕</button>
 				</div>
-				<p class="mp-sell-popup-desc">Steel een willekeurige kaart van een tegenstander.</p>
+				<p class="mp-sell-popup-desc">Kies een tegenstander om een kaart van te stelen.</p>
 				<div class="mp-steal-target-list">
 					${opponents.map(o => `
 						<button class="mp-steal-target-btn" data-target-id="${o.id}">
-							🃏 Steel van ${this._escapeHtml(o.name)} (${o.handSize} kaarten in hand)
+							🃏 ${this._escapeHtml(o.name)} (${o.handSize} kaarten in hand)
 						</button>
 					`).join('')}
 				</div>
@@ -3545,19 +3545,79 @@ class LocusLobbyUI {
 			btn.addEventListener('click', async () => {
 				btn.disabled = true;
 				try {
-					const result = await this.mp.stealCard(btn.dataset.targetId);
+					const result = await this.mp.getStealableCards(btn.dataset.targetId);
+					if (result.success && result.cards?.length > 0) {
+						this._openStealCardChoicePopup(btn.dataset.targetId, result.targetPlayerName, result.cards);
+						overlay.remove();
+					} else {
+						this._showToast(result.error || 'Geen stealbare kaarten', 'error');
+						btn.disabled = false;
+					}
+				} catch (err) {
+					this._showToast('Ophalen kaarten mislukt: ' + (err.message || err), 'error');
+					btn.disabled = false;
+				}
+			});
+		});
+	}
+
+	_openStealCardChoicePopup(targetId, targetName, cards) {
+		// Remove existing popup
+		document.getElementById('mp-steal-popup-overlay')?.remove();
+
+		const overlay = document.createElement('div');
+		overlay.id = 'mp-steal-popup-overlay';
+		overlay.className = 'mp-popup-overlay';
+		overlay.innerHTML = `
+			<div class="mp-sell-popup">
+				<div class="mp-sell-popup-header">
+					<h3>🃏 Kies een kaart van ${this._escapeHtml(targetName)}</h3>
+					<button class="mp-sell-popup-close" id="mp-steal-popup-close">✕</button>
+				</div>
+				<p class="mp-sell-popup-desc">Kies een kaart om tijdelijk te stelen. Na het spelen gaat de kaart terug.</p>
+				<div class="mp-steal-card-list" style="display:flex;gap:12px;flex-wrap:wrap;justify-content:center;padding:12px 0;">
+					${cards.map(c => `
+						<button class="mp-steal-card-btn" data-card-id="${c.id}" style="
+							background:rgba(255,255,255,0.08);border:2px solid rgba(255,255,255,0.15);
+							border-radius:10px;padding:10px;cursor:pointer;transition:all 0.2s;
+							display:flex;flex-direction:column;align-items:center;gap:6px;min-width:80px;
+						">
+							<div style="font-size:12px;color:${c.colorCode};font-weight:600;">${this._escapeHtml(c.colorName)}</div>
+							<div>${this._renderMiniGrid(c.matrix, { code: c.colorCode })}</div>
+							<div style="font-size:11px;color:#ccc;">${this._escapeHtml(c.shapeName)}</div>
+						</button>
+					`).join('')}
+				</div>
+			</div>
+		`;
+
+		document.body.appendChild(overlay);
+
+		overlay.querySelector('#mp-steal-popup-close').addEventListener('click', () => overlay.remove());
+		overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.remove(); });
+
+		overlay.querySelectorAll('.mp-steal-card-btn').forEach(btn => {
+			// Hover effect
+			btn.addEventListener('mouseenter', () => { btn.style.borderColor = '#ffd55a'; btn.style.background = 'rgba(255,213,90,0.15)'; });
+			btn.addEventListener('mouseleave', () => { btn.style.borderColor = 'rgba(255,255,255,0.15)'; btn.style.background = 'rgba(255,255,255,0.08)'; });
+
+			btn.addEventListener('click', async () => {
+				btn.disabled = true;
+				overlay.querySelectorAll('.mp-steal-card-btn').forEach(b => b.disabled = true);
+				try {
+					const result = await this.mp.stealCard(targetId, btn.dataset.cardId);
 					if (result.success) {
-						this._showToast(`🃏 Kaart gestolen van ${result.targetPlayerName}!`, 'success');
+						this._showToast(`🃏 Kaart gestolen van ${result.targetPlayerName}! (tijdelijk)`, 'success');
 						overlay.remove();
 						this._renderBonusBar();
 						this._renderHand();
 					} else {
 						this._showToast(result.error || 'Stelen mislukt', 'error');
-						btn.disabled = false;
+						overlay.querySelectorAll('.mp-steal-card-btn').forEach(b => b.disabled = false);
 					}
 				} catch (err) {
 					this._showToast('Stelen mislukt: ' + (err.message || err), 'error');
-					btn.disabled = false;
+					overlay.querySelectorAll('.mp-steal-card-btn').forEach(b => b.disabled = false);
 				}
 			});
 		});

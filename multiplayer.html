@@ -299,6 +299,8 @@
 			if (host.endsWith('.netlify.app')) return;
 			if (host.endsWith('.vercel.app')) return;
 			if (host.endsWith('.pages.dev')) return;
+
+			// Probeer socket.io te laden van de huidige origin
 			var s = document.createElement('script');
 			s.src = '/socket.io/socket.io.js';
 			s.onload = function() {
@@ -309,7 +311,22 @@
 					_bootstrapApp();
 				}
 			};
-			s.onerror = function() { /* P2P modus beschikbaar als alternatief */ };
+			s.onerror = function() {
+				// Socket.IO niet beschikbaar op huidige host — probeer localhost:3000
+				console.log('[Locus] Socket.IO niet gevonden op huidige host, probeer localhost:3000...');
+				var s2 = document.createElement('script');
+				s2.src = 'http://localhost:3000/socket.io/socket.io.js';
+				s2.onload = function() {
+					// Socket.IO geladen van localhost — sla server URL op
+					window._locusServerUrl = 'http://localhost:3000';
+					if (window._locusBootstrapped && !window._locusHasSocketIO) {
+						window._locusBootstrapped = false;
+						_bootstrapApp();
+					}
+				};
+				s2.onerror = function() { /* P2P modus beschikbaar als alternatief */ };
+				document.head.appendChild(s2);
+			};
 			document.head.appendChild(s);
 		})();
 	</script>
@@ -515,7 +532,7 @@
 			if (hasSocketIO) {
 				// Normale server modus — toon server-only UI
 				document.getElementById('lobby-screen')?.classList.add('mp-server-mode');
-				mp = new LocusMultiplayer();
+				mp = new LocusMultiplayer(window._locusServerUrl || undefined);
 			} else {
 				// Geen server — verberg server-only knoppen, toon P2P opties
 				console.log('[Locus] Geen Socket.IO server — alleen P2P modus');

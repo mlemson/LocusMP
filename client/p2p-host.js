@@ -1180,26 +1180,35 @@ class LocusP2PGuest {
 		if (!this.gameState?.boardState) return { valid: false };
 		const Rules = window.LocusGameRules;
 		if (!Rules) return { valid: false };
+
+		// Bouw perk flags en pas matrix aan voor preview (zoals server dat doet)
+		const player = this.gameState.players[this.userId || this.hostPlayerId];
+		const perkFlags = {
+			greenGapAllowed: !!player?.perks?.greenGapAllowed,
+			diagonalRotation: !!player?.perks?.diagonalRotation
+		};
+		const enhancedMatrix = Rules.getEnhancedMatrix(matrix, zoneName, perkFlags);
+
 		let zoneData;
 		if (zoneName === 'red') {
 			const subgridsToCheck = subgridId
 				? (this.gameState.boardState.zones.red?.subgrids || []).filter(sg => sg.id === subgridId)
 				: (this.gameState.boardState.zones.red?.subgrids || []);
 			for (const sg of subgridsToCheck) {
-				const cells = Rules.collectPlacementCellsData(sg, baseX, baseY, matrix);
+				const cells = Rules.collectPlacementCellsData(sg, baseX, baseY, enhancedMatrix);
 				if (cells) {
-					const valid = Rules.validatePlacement(zoneName, sg, cells);
-					return { valid, cells };
+					const valid = Rules.validatePlacement(zoneName, sg, cells, perkFlags);
+					return { valid, cells, enhancedMatrix };
 				}
 			}
 			return { valid: false };
 		}
 		zoneData = this.gameState.boardState.zones[zoneName];
 		if (!zoneData) return { valid: false };
-		const cells = Rules.collectPlacementCellsData(zoneData, baseX, baseY, matrix);
+		const cells = Rules.collectPlacementCellsData(zoneData, baseX, baseY, enhancedMatrix);
 		if (!cells) return { valid: false };
-		const valid = Rules.validatePlacement(zoneName, zoneData, cells);
-		return { valid, cells };
+		const valid = Rules.validatePlacement(zoneName, zoneData, cells, perkFlags);
+		return { valid, cells, enhancedMatrix };
 	}
 
 	disconnect() {
