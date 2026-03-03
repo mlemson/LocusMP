@@ -1465,13 +1465,8 @@ function validateGreen(zoneData, pendingCells, perkFlags) {
 
 	if (!hasActive) return touchesBold || touchesPortal;
 	if (touchesBold || touchesPortal) return true;
-	// Normale orthogonale adjacency
-	if (pendingCells.some(c => hasAdjacentActive(zoneData, c.x, c.y))) return true;
-	// Brugbouwer perk: ook 1 cel tussenruimte (gap van 1)
-	if (perkFlags?.greenGapAllowed) {
-		return pendingCells.some(c => hasGapOneActive(zoneData, c.x, c.y));
-	}
-	return false;
+	// Normale orthogonale adjacency (optionele cellen via matrix maken plaatsing flexibeler)
+	return pendingCells.some(c => hasAdjacentActive(zoneData, c.x, c.y));
 }
 
 function validatePurple(zoneData, pendingCells, perkFlags) {
@@ -1491,9 +1486,8 @@ function validatePurple(zoneData, pendingCells, perkFlags) {
 	}
 
 	if (touchesPortal) return true;
-	// Met vrije rotatie perk: ook diagonale adjacency toegestaan
-	const adjacencyFn = perkFlags?.diagonalRotation ? hasDiagonalOrAdjacentActive : hasAdjacentActive;
-	return pendingCells.some(c => adjacencyFn(zoneData, c.x, c.y));
+	// Standaard orthogonale adjacency (extra optionele cel via matrix geeft meer flexibiliteit)
+	return pendingCells.some(c => hasAdjacentActive(zoneData, c.x, c.y));
 }
 
 /**
@@ -3393,6 +3387,9 @@ function playMove(gameState, playerId, cardId, zoneName, baseX, baseY, rotation,
 		diagonalRotation: !!player.perks?.diagonalRotation
 	};
 
+	// Pas matrix aan op basis van perks (optionele cellen toevoegen/aanpassen)
+	matrix = getEnhancedMatrix(matrix, zoneName, perkFlags);
+
 	// Zoek zone data en plaats
 	let placementResult = null;
 	let usedSubgridId = subgridId || null;
@@ -3419,27 +3416,6 @@ function playMove(gameState, playerId, cardId, zoneName, baseX, baseY, rotation,
 		if (!zoneData) return { error: `Zone '${zoneName}' niet gevonden` };
 		placementResult = applyPlacement(gameState.boardState, zoneName, zoneData, baseX, baseY, matrix, card.color, playerId, perkFlags);
 		if (!placementResult) return { error: 'Ongeldige plaatsing' };
-	}
-
-	// Brugbouwer perk: vul gapcellen op groen (zonder score/bonussen)
-	if (zoneName === 'green' && perkFlags.greenGapAllowed && placementResult.cells?.length > 0) {
-		const greenZoneData = gameState.boardState.zones.green;
-		const directions = [{ dx: -1, dy: 0 }, { dx: 1, dy: 0 }, { dx: 0, dy: -1 }, { dx: 0, dy: 1 }];
-		const originalCells = [...placementResult.cells]; // Snapshot om oneindige loop te voorkomen
-		for (const pc of originalCells) {
-			for (const { dx, dy } of directions) {
-				const gapCell = getDataCell(greenZoneData, pc.x + dx, pc.y + dy);
-				const farCell = getDataCell(greenZoneData, pc.x + dx * 2, pc.y + dy * 2);
-				if (gapCell && !gapCell.active && farCell && farCell.active && !farCell.isStone) {
-					// Vul de gap cel (zonder bonus/gold)
-					gapCell.active = true;
-					gapCell.color = card.color;
-					gapCell.playerId = playerId;
-					gapCell.isBridged = true; // markeer als overbrugd
-					placementResult.cells.push({ x: pc.x + dx, y: pc.y + dy });
-				}
-			}
-		}
 	}
 
 	// Verwijder kaart uit hand
@@ -4754,7 +4730,7 @@ const GameRules = {
 
 	// Placement
 	getDataCell, collectPlacementCellsData, validatePlacement, applyPlacement,
-	getAllowedZones,
+	getAllowedZones, getEnhancedMatrix, makeOneCellOptional, addExtraOptionalCell,
 	canPlace: function(zoneData, zoneName, baseX, baseY, matrix, perkFlags) {
 		const cells = collectPlacementCellsData(zoneData, baseX, baseY, matrix);
 		return !!(cells && cells.length > 0 && validatePlacement(zoneName, zoneData, cells, perkFlags));
