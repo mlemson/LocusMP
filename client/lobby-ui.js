@@ -1659,6 +1659,7 @@ class LocusLobbyUI {
 		this._renderOpponentPanels();
 		this._cancelDrag();
 		this._cancelBonusMode();
+		if (this._mineMode) this._cancelMineMode();
 
 		if (currentPlayerId === this.mp.userId) {
 			this._showToast('Jouw beurt!', 'info');
@@ -3963,6 +3964,8 @@ class LocusLobbyUI {
 
 	_cancelBonusMode() {
 		this._sendInteraction('end', { mode: 'bonus' });
+		// Cancel mine mode if active
+		if (this._mineMode) this._cancelMineMode();
 		// Verwijder ghost
 		if (this._bonusMode?.ghostEl) {
 			this._bonusMode.ghostEl.remove();
