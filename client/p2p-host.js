@@ -643,6 +643,9 @@ class LocusP2PHost {
 				}
 				if (!result?.gameEnded) this._startTimerForCurrentPlayer(true);
 				break;
+			case 'useMine':
+				result = this.Rules.useMine(this.gameState, playerId, data.zoneName, data.cellX, data.cellY);
+				break;
 			case 'togglePause': {
 				// Host toggled pause
 				if (this.gameState.paused) {
@@ -1084,6 +1087,7 @@ class LocusP2PGuest {
 	async choosePerk(perkId) { return this._sendCommand('choosePerk', { perkId }); }
 	async setShopReady() { return this._sendCommand('shopReady'); }
 	async useTimeBomb() { return this._sendCommand('useTimeBomb'); }
+	async useMine(zoneName, cellX, cellY) { return this._sendCommand('useMine', { zoneName, cellX, cellY }); }
 	async togglePause() { return this._sendCommand('togglePause'); }
 	async sendTaunt(text) { return this._sendCommand('sendTaunt', { text }); }
 	sendInteraction(data) {
