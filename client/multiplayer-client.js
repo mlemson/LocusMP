@@ -575,6 +575,16 @@ class LocusMultiplayer {
 		}
 	}
 
+	/** Plaats een onzichtbare mijn op het bord */
+	async useMine(zoneName, cellX, cellY) {
+		try {
+			return await this._emitWithAck('useMine', { zoneName, cellX, cellY });
+		} catch (error) {
+			console.error('[Locus MP] Use mine failed:', error);
+			throw error;
+		}
+	}
+
 	/** Ontgrendel een perk */
 	async choosePerk(perkId) {
 		try {

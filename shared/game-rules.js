@@ -3324,6 +3324,40 @@ function playMove(gameState, playerId, cardId, zoneName, baseX, baseY, rotation,
 		player.goldCoins = (player.goldCoins || 0) + goldAmount;
 	}
 
+	// Mine trigger check: als een tegenstander een mijn op deze cellen had, verwijder de geplaatste cel
+	let mineTriggered = null;
+	if (placementResult.cells && placementResult.cells.length > 0) {
+		for (const opId of gameState.playerOrder) {
+			if (opId === playerId) continue;
+			const opPlayer = gameState.players[opId];
+			if (!opPlayer?.perks?.activeMines?.length) continue;
+			for (let mi = opPlayer.perks.activeMines.length - 1; mi >= 0; mi--) {
+				const mine = opPlayer.perks.activeMines[mi];
+				if (mine.zone !== zoneName) continue;
+				const hit = placementResult.cells.some(c => c.x === mine.x && c.y === mine.y);
+				if (hit) {
+					mineTriggered = { mineOwner: opId, mineOwnerName: opPlayer.name, zone: zoneName, x: mine.x, y: mine.y };
+					// Clear the mined cell on the board
+					const zd = zoneName === 'red' ?
+						(gameState.boardState.zones.red.subgrids?.find(sg => {
+							const c2 = getDataCell(sg, mine.x, mine.y);
+							return c2 && c2.active;
+						}) || gameState.boardState.zones[zoneName]) :
+						gameState.boardState.zones[zoneName];
+					const minedCell = getDataCell(zd, mine.x, mine.y);
+					if (minedCell) {
+						minedCell.active = false;
+						minedCell.playerId = null;
+						minedCell.color = null;
+					}
+					opPlayer.perks.activeMines.splice(mi, 1);
+					break;
+				}
+			}
+			if (mineTriggered) break;
+		}
+	}
+
 	// Scores herberekenen (alleen actieve speler)
 	const playerScores = recalcScoresForActivePlayer(gameState);
 
@@ -3357,6 +3391,7 @@ function playMove(gameState, playerId, cardId, zoneName, baseX, baseY, rotation,
 		goldCollected: placementResult.goldCollected,
 		bonusesCollected: placementResult.collectedBonuses,
 		pearlsCollected: placementResult.pearlsCollected || 0,
+		mineTriggered: mineTriggered || null,
 		gameEnded: false
 	};
 }
@@ -4516,7 +4551,7 @@ const GameRules = {
 	// Shop & Levels
 	SHOP_ITEMS, getShopItems, getCardPrice, generateShopCardOfferings,
 	startShopPhase, buyShopItem, claimFreeCard, sellCard, getCardSellPrice,
-	shopReady, startNextLevel, endGameFinal, useTimeBomb,
+	shopReady, startNextLevel, endGameFinal, useTimeBomb, useMine,
 
 	// Perks
 	PERK_BRANCHES, choosePerk, getAvailablePerks, playerHasPerk, getBonusShapeForPlayer,

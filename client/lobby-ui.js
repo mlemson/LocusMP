@@ -3214,9 +3214,11 @@ class LocusLobbyUI {
 		const inv = player.bonusInventory || {};
 		const hasAny = Object.values(inv).some(v => v > 0);
 		const hasTimeBombs = (player.timeBombs || 0) > 0;
+		const Rules = window.LocusGameRules;
+		const hasMines = Rules?.playerHasPerk?.(player, 'agg_mine') && (player.perks?.minesUsedThisLevel || 0) < (player.perks?.minesPerRound || 0);
 		const isMyTurn = this.mp.isMyTurn();
 
-		if (!hasAny && !hasTimeBombs) {
+		if (!hasAny && !hasTimeBombs && !hasMines) {
 			container.innerHTML = '';
 			container.style.display = 'none';
 			return;
@@ -3268,6 +3270,15 @@ class LocusLobbyUI {
 					<span class="mp-bonus-count">×${player.timeBombs}</span>
 				</button>
 			` : ''}
+			${hasMines ? `
+				<button class="mp-bonus-btn mp-mine-btn ${!isMyTurn ? 'disabled' : ''}"
+						id="mp-mine-btn"
+						style="border-color: #ff4444"
+						${!isMyTurn ? 'disabled title="Kan alleen tijdens jouw beurt"' : ''}>
+					<span style="color: #ff4444">💥 Mijn</span>
+					<span class="mp-bonus-count">×1</span>
+				</button>
+			` : ''}
 		`;
 
 		if (isMyTurn) {
@@ -3293,6 +3304,14 @@ class LocusLobbyUI {
 				bombBtn.addEventListener('click', () => this._useTimeBomb());
 			}
 		}
+
+		// Mine click handler — alleen als het WEL jouw beurt is
+		if (hasMines && isMyTurn) {
+			const mineBtn = document.getElementById('mp-mine-btn');
+			if (mineBtn) {
+				mineBtn.addEventListener('click', () => this._activateMineMode());
+			}
+		}
 	}
 
 	async _useTimeBomb() {
@@ -3307,6 +3326,85 @@ class LocusLobbyUI {
 			}
 		} catch (err) {
 			this._showToast('Tijdbom mislukt: ' + (err.message || err), 'error');
+		}
+	}
+
+	_activateMineMode() {
+		if (!this.mp.isMyTurn()) {
+			this._showToast('Je kan alleen een mijn plaatsen tijdens jouw beurt!', 'warning');
+			return;
+		}
+
+		this._cancelDrag();
+		this._cancelBonusMode();
+
+		this._mineMode = true;
+		this._showToast('💥 Klik op een lege cel om je mijn te plaatsen', 'info');
+
+		// Add placement controls
+		const existing = document.getElementById('mp-placement-controls');
+		if (existing) existing.remove();
+
+		const controls = document.createElement('div');
+		controls.id = 'mp-placement-controls';
+		controls.innerHTML = `
+			<span class="mp-ctrl-label">💥 Mijn plaatsen — klik op een lege cel</span>
+			<button class="mp-ctrl-btn mp-ctrl-cancel" id="mp-cancel-btn" title="Annuleer (Esc)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+		`;
+		document.getElementById('game-screen')?.appendChild(controls);
+		document.getElementById('mp-cancel-btn')?.addEventListener('click', () => this._cancelMineMode());
+
+		const board = document.querySelector('.mp-board');
+		if (board) board.classList.add('placement-mode');
+
+		// Listen for cell clicks
+		const container = this.elements['mp-board-container'];
+		if (!container) return;
+
+		this._mineClickHandler = async (e) => {
+			if (!this._mineMode) return;
+			const cell = e.target.closest('.mp-cell:not(.void)');
+			if (!cell) return;
+			const zoneName = cell.dataset.zone;
+			const x = parseInt(cell.dataset.x);
+			const y = parseInt(cell.dataset.y);
+			if (!zoneName || isNaN(x) || isNaN(y)) return;
+
+			// Check cell is empty
+			if (cell.classList.contains('active')) {
+				this._showToast('Cel is al bezet!', 'warning');
+				return;
+			}
+
+			await this._placeMine(zoneName, x, y);
+		};
+		container.addEventListener('click', this._mineClickHandler);
+	}
+
+	_cancelMineMode() {
+		this._mineMode = false;
+		const controls = document.getElementById('mp-placement-controls');
+		if (controls) controls.remove();
+		const board = document.querySelector('.mp-board');
+		if (board) board.classList.remove('placement-mode');
+		if (this._mineClickHandler) {
+			this.elements['mp-board-container']?.removeEventListener('click', this._mineClickHandler);
+			this._mineClickHandler = null;
+		}
+	}
+
+	async _placeMine(zoneName, x, y) {
+		try {
+			const result = await this.mp.useMine(zoneName, x, y);
+			if (result.success) {
+				this._showToast('💥 Mijn geplaatst!', 'success');
+				this._cancelMineMode();
+				this._renderBonusBar();
+			} else {
+				this._showToast(result.error || 'Mijn plaatsen mislukt', 'error');
+			}
+		} catch (err) {
+			this._showToast('Mijn plaatsen mislukt: ' + (err.message || err), 'error');
 		}
 	}
 
