@@ -3321,9 +3321,9 @@ class LocusLobbyUI {
 		// Verberg cursor tijdens bonus plaatsing
 		document.body.classList.add('mp-placing');
 
-		const matrix = bonusColor === 'red'
-			? Rules.cloneMatrix(Rules.BONUS_SHAPES.red)
-			: (bonusColor === 'any' ? Rules.cloneMatrix(Rules.BONUS_SHAPES.any) : Rules.cloneMatrix(Rules.BONUS_SHAPES.default));
+		// Use getBonusShapeForPlayer to get upgraded shape (with optional [2] cell)
+		const player = this.mp.getMyPlayer();
+		const matrix = Rules.getBonusShapeForPlayer(bonusColor, player);
 
 		this._bonusMode = { color: bonusColor, matrix, rotation: 0, baseRotation: 0, ghostEl: null };
 		this._setTouchDragScrollLock(this._isTouchLikeDevice());
@@ -5591,6 +5591,15 @@ class LocusLobbyUI {
 			try { this._renderOpponentPanels(); } catch (e) { console.error('[Locus UI] renderOpponentPanels error:', e); }
 			try { this._updateDeckCount(); } catch (e) { console.error('[Locus UI] updateDeckCount error:', e); }
 			try { this._renderMyObjective(); } catch (e) { console.error('[Locus UI] renderMyObjective error:', e); }
+			try { this._updatePerkButton(); } catch (e) { console.error('[Locus UI] updatePerkButton error:', e); }
+
+			// Auto-open perk popup when transitioning into playing phase with available perk points
+			if (prevState?.phase !== 'playing') {
+				const myP = this.mp.getMyPlayer();
+				if (myP?.perks?.perkPoints > 0) {
+					setTimeout(() => this._openPerkPopup(), 600);
+				}
+			}
 
 			// Check objective achievement (detect transition)
 			try { this._checkObjectiveAchievement(state, prevState); } catch (e) { console.error('[Locus UI] checkObjectiveAchievement error:', e); }
