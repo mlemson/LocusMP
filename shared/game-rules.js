@@ -130,8 +130,8 @@ const PERK_BRANCHES = {
 		description: 'Flexibeler plaatsen en meer waarde',
 		sequential: true,
 		perks: [
-			{ id: 'flex_gap', name: 'Brugbouwer', icon: '🌉', description: 'Groen: 1 cel van je kaart is optioneel plaatsbaar', cost: 1 },
-			{ id: 'flex_rotate', name: 'Vrije Rotatie', icon: '🔄', description: 'Paars: voeg 1 extra optionele cel toe aan je kaart', cost: 1 },
+			{ id: 'flex_gap', name: 'Brugbouwer', icon: '🌉', description: 'Groen: 1 cel van je kaart wordt optioneel (transparant) — mag overgeslagen worden', cost: 1 },
+			{ id: 'flex_rotate', name: 'Vrije Rotatie', icon: '🔄', description: 'Paars: voeg 1 extra optionele cel toe aan je kaart (transparant)', cost: 1 },
 			{ id: 'flex_wildcard', name: 'Wildcardkleur', icon: '🎨', description: 'Eén kaart per ronde op elke zone plaatsen, ongeacht kleur', cost: 1 },
 			{ id: 'flex_double_coins', name: 'Bankier', icon: '🏦', description: 'Goudmunten zijn dubbel zoveel waard', cost: 1 }
 		]

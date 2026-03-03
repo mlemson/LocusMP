@@ -2319,7 +2319,22 @@ class LocusLobbyUI {
 		}
 
 		container.innerHTML = hand.map((card, cardIndex) => {
-			const renderMatrix = this._getTransformedCardMatrix(card);
+			let renderMatrix = this._getTransformedCardMatrix(card);
+
+			// Toon enhanced matrix in de hand als speler perk heeft
+			// Hiermee zie je direct welke cel optioneel is (transparant/dashed)
+			const Rules = window.LocusGameRules;
+			const myPlayer = this.mp.getMyPlayer();
+			if (Rules?.getEnhancedMatrix && myPlayer?.perks) {
+				const zoneName = card.color?.zone;
+				if (zoneName) {
+					const perkFlags = {
+						greenGapAllowed: !!myPlayer.perks.greenGapAllowed,
+						diagonalRotation: !!myPlayer.perks.diagonalRotation
+					};
+					renderMatrix = Rules.getEnhancedMatrix(renderMatrix, zoneName, perkFlags);
+				}
+			}
 			const colorStyle = card.isGolden
 				? `background: linear-gradient(135deg, ${card.color?.code || '#f5d76e'}, #f5d76e, ${card.color?.code || '#f5d76e'})`
 				: card.color?.code === 'rainbow'
