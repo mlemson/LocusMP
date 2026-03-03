@@ -2262,6 +2262,7 @@ class LocusLobbyUI {
 				cardClass += ' playable';
 			}
 			if (card.isGolden) cardClass += ' golden';
+			if (card.isStolenTemp) cardClass += ' stolen-temp';
 
 			return `
 				<div class="${cardClass}"
@@ -2274,6 +2275,7 @@ class LocusLobbyUI {
 						${this._renderMiniGrid(renderMatrix, card.color)}
 					</div>
 					${card.isGolden ? '<div class="mp-card-extra-badge">⭐ EXTRA</div>' : ''}
+					${card.isStolenTemp ? '<div class="mp-card-extra-badge" style="background:rgba(255,100,100,0.85);">🃏 TIJDELIJK</div>' : ''}
 				</div>
 			`;
 		}).join('');
@@ -3260,12 +3262,14 @@ class LocusLobbyUI {
 	_clearPreview() {
 		document.querySelectorAll('.mp-cell.preview-valid, .mp-cell.preview-denied').forEach(el => {
 			el.classList.remove('preview-valid', 'preview-denied');
+			el.style.opacity = '';
 		});
 		this._lastPreviewZone = null;
 		this._lastPreviewCells = null;
 		this._lastPreviewBaseX = null;
 		this._lastPreviewBaseY = null;
 		this._lastPreviewSubgridId = null;
+		this._lastGhostMatrixStr = null;
 	}
 
 	_showPlacementControls(card) {
