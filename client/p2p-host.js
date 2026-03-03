@@ -312,7 +312,8 @@ class LocusP2PHost {
 					this._broadcastEvent('movePlayed', {
 						playerId,
 						zoneName: msg.zoneName,
-						objectivesRevealed: this._shouldRevealObjectives()
+						objectivesRevealed: this._shouldRevealObjectives(),
+						mineTriggered: result.mineTriggered || null
 					});
 				}
 				this._broadcastState();
@@ -577,7 +578,8 @@ class LocusP2PHost {
 					this._broadcastEvent('movePlayed', {
 						playerId,
 						zoneName: data.zoneName,
-						objectivesRevealed: this._shouldRevealObjectives()
+						objectivesRevealed: this._shouldRevealObjectives(),
+						mineTriggered: result.mineTriggered || null
 					});
 				}
 				break;

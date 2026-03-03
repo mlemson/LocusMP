@@ -2102,6 +2102,45 @@ class LocusLobbyUI {
 		}
 	}
 
+	_onMineTriggered(mineData, triggerPlayerId) {
+		const isMe = triggerPlayerId === this.mp.userId;
+		const mineOwnerName = mineData.mineOwnerName || 'Iemand';
+
+		// Geluid (zelfde als tijdbom)
+		this._playBombSound();
+
+		// Volledig scherm explosie-overlay
+		const overlay = document.createElement('div');
+		overlay.className = 'mp-bomb-overlay';
+		overlay.innerHTML = `
+			<div class="mp-bomb-emoji">💥🔥</div>
+			<div class="mp-bomb-text">
+				${isMe
+					? `Je bent op een mijn van ${mineOwnerName} getrapt!<br>Je blok is vernietigd!`
+					: `Een speler trapte op de mijn van ${mineOwnerName}!`
+				}
+			</div>
+		`;
+		document.body.appendChild(overlay);
+
+		// Animatie starten
+		requestAnimationFrame(() => overlay.classList.add('active'));
+
+		// Na 2 seconden verwijderen
+		setTimeout(() => {
+			overlay.classList.remove('active');
+			overlay.classList.add('fade-out');
+			setTimeout(() => overlay.remove(), 500);
+		}, 2000);
+
+		// Toast
+		if (isMe) {
+			this._showToast('💥 Je blok is vernietigd door een mijn!', 'warning');
+		} else {
+			this._showToast(`💥 Een mijn van ${mineOwnerName} is afgegaan!`, 'info');
+		}
+	}
+
 	async _handleTaunt(text) {
 		if (!text) return;
 		if (this.mp.gameState?.phase !== 'playing') return;
@@ -3049,6 +3088,10 @@ class LocusLobbyUI {
 
 			this._cancelDrag();
 			if (result.success) {
+				// Mine getriggerd: toon explosie-effect aan de plaatser
+				if (result.mineTriggered) {
+					this._onMineTriggered(result.mineTriggered, this.mp.userId);
+				}
 				// Timer loopt al vanuit begin van beurt
 			}
 		} catch (err) {
@@ -6239,7 +6282,7 @@ class LocusLobbyUI {
 
 	/** Wordt aangeroepen als een move wordt gebroadcast (met bonus/goud info) */
 	_onMovePlayed(data) {
-		const { playerId, playerName, zoneName, goldCollected, bonusesCollected, pearlsCollected, cardsPlayed, objectivesRevealed } = data;
+		const { playerId, playerName, zoneName, goldCollected, bonusesCollected, pearlsCollected, cardsPlayed, objectivesRevealed, mineTriggered } = data;
 		const isMe = playerId === this.mp.userId;
 		const zoneEl = document.querySelector(`.mp-zone-${zoneName}`);
 		if (!zoneEl) return;
@@ -6308,6 +6351,11 @@ class LocusLobbyUI {
 					this._showFloatingScore(zoneEl, '↙ BONUS', bonusColors[bc] || '#fff');
 				}, 200 + i * 300);
 			}
+		}
+
+		// Mine getriggerd: volledig scherm explosie-effect (zoals tijdbom)
+		if (mineTriggered) {
+			setTimeout(() => this._onMineTriggered(mineTriggered, playerId), 300);
 		}
 
 		// Check objective reveal

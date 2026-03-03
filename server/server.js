@@ -639,6 +639,7 @@ io.on('connection', (socket) => {
 				goldCollected: moveResult.goldCollected || 0,
 				bonusesCollected: moveResult.bonusesCollected || [],
 				pearlsCollected: moveResult.pearlsCollected || 0,
+				mineTriggered: moveResult.mineTriggered || null,
 				gameEnded: false
 			});
 
@@ -655,7 +656,8 @@ io.on('connection', (socket) => {
 				bonusesCollected: moveResult.bonusesCollected || [],
 				pearlsCollected: moveResult.pearlsCollected || 0,
 				cardsPlayed: countCardsPlayed(gameStateCurrent, info.playerId),
-				objectivesRevealed: shouldRevealObjectives(gameStateCurrent)
+				objectivesRevealed: shouldRevealObjectives(gameStateCurrent),
+				mineTriggered: moveResult.mineTriggered || null
 			});
 
 			broadcastGameState(io, info.gameId);
