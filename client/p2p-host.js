@@ -459,6 +459,16 @@ class LocusP2PHost {
 				break;
 			}
 
+			case 'stealCard': {
+				if (!playerId) return;
+				const result = this.Rules.stealCard(this.gameState, playerId, msg.targetPlayerId);
+				conn.send({ type: 'result', action: 'stealCard', ...result });
+				if (result.success) {
+					this._broadcastState();
+				}
+				break;
+			}
+
 			case 'sendTaunt': {
 				if (!playerId) return;
 				const playerName = this.gameState.players[playerId]?.name || 'Speler';
@@ -645,6 +655,9 @@ class LocusP2PHost {
 				break;
 			case 'useMine':
 				result = this.Rules.useMine(this.gameState, playerId, data.zoneName, data.cellX, data.cellY);
+				break;
+			case 'stealCard':
+				result = this.Rules.stealCard(this.gameState, playerId, data.targetPlayerId);
 				break;
 			case 'togglePause': {
 				// Host toggled pause
@@ -1088,6 +1101,7 @@ class LocusP2PGuest {
 	async setShopReady() { return this._sendCommand('shopReady'); }
 	async useTimeBomb() { return this._sendCommand('useTimeBomb'); }
 	async useMine(zoneName, cellX, cellY) { return this._sendCommand('useMine', { zoneName, cellX, cellY }); }
+	async stealCard(targetPlayerId) { return this._sendCommand('stealCard', { targetPlayerId }); }
 	async togglePause() { return this._sendCommand('togglePause'); }
 	async sendTaunt(text) { return this._sendCommand('sendTaunt', { text }); }
 	sendInteraction(data) {

@@ -3426,6 +3426,74 @@ class LocusLobbyUI {
 		}
 	}
 
+	_openStealPopup() {
+		if (!this.mp.isMyTurn()) {
+			this._showToast('Je kan alleen stelen tijdens jouw beurt!', 'warning');
+			return;
+		}
+
+		const gs = this.mp.gameState;
+		const myId = this.mp.userId;
+		const opponents = (gs?.playerOrder || [])
+			.filter(pid => pid !== myId)
+			.map(pid => ({ id: pid, name: gs.players[pid]?.name || '???', handSize: gs.players[pid]?.hand?.length || 0 }))
+			.filter(o => o.handSize > 0);
+
+		if (opponents.length === 0) {
+			this._showToast('Geen tegenstanders met kaarten om te stelen', 'info');
+			return;
+		}
+
+		// Remove existing popup
+		document.getElementById('mp-steal-popup-overlay')?.remove();
+
+		const overlay = document.createElement('div');
+		overlay.id = 'mp-steal-popup-overlay';
+		overlay.className = 'mp-popup-overlay';
+		overlay.innerHTML = `
+			<div class="mp-sell-popup">
+				<div class="mp-sell-popup-header">
+					<h3>🃏 Kaartendief</h3>
+					<button class="mp-sell-popup-close" id="mp-steal-popup-close">✕</button>
+				</div>
+				<p class="mp-sell-popup-desc">Steel een willekeurige kaart van een tegenstander.</p>
+				<div class="mp-steal-target-list">
+					${opponents.map(o => `
+						<button class="mp-steal-target-btn" data-target-id="${o.id}">
+							🃏 Steel van ${this._escapeHtml(o.name)} (${o.handSize} kaarten in hand)
+						</button>
+					`).join('')}
+				</div>
+			</div>
+		`;
+
+		document.body.appendChild(overlay);
+
+		overlay.querySelector('#mp-steal-popup-close').addEventListener('click', () => overlay.remove());
+		overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.remove(); });
+
+		overlay.querySelectorAll('.mp-steal-target-btn').forEach(btn => {
+			btn.addEventListener('click', async () => {
+				btn.disabled = true;
+				try {
+					const result = await this.mp.stealCard(btn.dataset.targetId);
+					if (result.success) {
+						this._showToast(`🃏 Kaart gestolen van ${result.targetPlayerName}!`, 'success');
+						overlay.remove();
+						this._renderBonusBar();
+						this._renderHand();
+					} else {
+						this._showToast(result.error || 'Stelen mislukt', 'error');
+						btn.disabled = false;
+					}
+				} catch (err) {
+					this._showToast('Stelen mislukt: ' + (err.message || err), 'error');
+					btn.disabled = false;
+				}
+			});
+		});
+	}
+
 	_activateBonusMode(bonusColor, startPointerEvent = null) {
 		const Rules = window.LocusGameRules;
 		if (!Rules) return;

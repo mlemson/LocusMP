@@ -1104,6 +1104,32 @@ io.on('connection', (socket) => {
 		}
 	});
 
+	// ── STEAL CARD ───────────────────────────
+
+	socket.on('stealCard', (data, callback) => {
+		try {
+			const info = socketToPlayer.get(socket.id);
+			if (!info) return callback({ success: false, error: 'Niet in een spel.' });
+
+			const gameState = games.get(info.gameId);
+			if (!gameState) return callback({ success: false, error: 'Spel niet gevonden.' });
+
+			const { targetPlayerId } = data || {};
+			const result = GameRules.stealCard(gameState, info.playerId, targetPlayerId);
+			if (result.error) {
+				return callback({ success: false, error: result.error });
+			}
+
+			console.log(`[Locus] Speler ${info.playerId} stal een kaart van ${result.targetPlayerName}`);
+			callback({ success: true, stolenCard: result.stolenCard, targetPlayerName: result.targetPlayerName });
+			broadcastGameState(io, info.gameId);
+
+		} catch (error) {
+			console.error('[Locus] stealCard error:', error);
+			callback({ success: false, error: error.message });
+		}
+	});
+
 	// ── TOGGLE PAUSE ─────────────────────────
 
 	socket.on('togglePause', (data, callback) => {

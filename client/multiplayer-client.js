@@ -585,6 +585,16 @@ class LocusMultiplayer {
 		}
 	}
 
+	/** Steel een kaart van een tegenstander */
+	async stealCard(targetPlayerId) {
+		try {
+			return await this._emitWithAck('stealCard', { targetPlayerId });
+		} catch (error) {
+			console.error('[Locus MP] Steal card failed:', error);
+			throw error;
+		}
+	}
+
 	/** Ontgrendel een perk */
 	async choosePerk(perkId) {
 		try {
