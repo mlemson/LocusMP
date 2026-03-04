@@ -2319,12 +2319,11 @@ class LocusLobbyUI {
 		}
 
 		container.innerHTML = hand.map((card, cardIndex) => {
-			let renderMatrix = this._getTransformedCardMatrix(card);
-
 			// Toon enhanced matrix in de hand als speler perk heeft
-			// Hiermee zie je direct welke cel optioneel is (transparant/dashed)
+			// Enhancement wordt VÓÓR rotatie toegepast zodat optionele cellen meedraaien
 			const Rules = window.LocusGameRules;
 			const myPlayer = this.mp.getMyPlayer();
+			let baseMatrix = card.matrix;
 			if (Rules?.getEnhancedMatrix && myPlayer?.perks) {
 				const zoneName = card.color?.zone;
 				if (zoneName) {
@@ -2332,9 +2331,13 @@ class LocusLobbyUI {
 						greenGapAllowed: !!myPlayer.perks.greenGapAllowed,
 						diagonalRotation: !!myPlayer.perks.diagonalRotation
 					};
-					renderMatrix = Rules.getEnhancedMatrix(renderMatrix, zoneName, perkFlags);
+					baseMatrix = Rules.getEnhancedMatrix(baseMatrix, zoneName, perkFlags);
 				}
 			}
+			// Pas rotation/mirror toe op de enhanced matrix
+			const transform = this._getCardTransform(card.id);
+			let renderMatrix = Rules ? Rules.rotateMatrixN(baseMatrix, ((Number(transform.rotation) || 0) + 4) % 4) : baseMatrix;
+			if (transform.mirrored && Rules) renderMatrix = Rules.mirrorMatrix(renderMatrix);
 			const colorStyle = card.isGolden
 				? `background: linear-gradient(135deg, ${card.color?.code || '#f5d76e'}, #f5d76e, ${card.color?.code || '#f5d76e'})`
 				: card.color?.code === 'rainbow'
@@ -2963,7 +2966,7 @@ class LocusLobbyUI {
 			}
 		}
 
-		const adjPreview = this.mp.previewPlacement(bestZone, baseX, baseY, matrix, subgridId);
+		const adjPreview = this.mp.previewPlacement(bestZone, baseX, baseY, this._dragState.card.matrix, subgridId, this._dragState.rotation, this._dragState.mirrored);
 
 		if (adjPreview.valid && adjPreview.cells) {
 			this._lastPreviewZone = bestZone;
@@ -3172,7 +3175,7 @@ class LocusLobbyUI {
 			return;
 		}
 
-		const preview = this.mp.previewPlacement(zoneName, baseX, baseY, this._dragState.matrix, subgridId);
+		const preview = this.mp.previewPlacement(zoneName, baseX, baseY, this._dragState.card.matrix, subgridId, this._dragState.rotation, this._dragState.mirrored);
 		if (!preview.valid) {
 			this._showToast('Ongeldige plaatsing!', 'warning');
 			return;
@@ -5468,53 +5471,95 @@ class LocusLobbyUI {
 		const unlockedPerks = perks.unlockedPerks || [];
 		const availablePerks = Rules.getAvailablePerks(myPlayer) || [];
 
+		// Helper to render a single perk node
+		const renderPerkNode = (perk) => {
+			const isUnlocked = unlockedPerks.includes(perk.id);
+			const isAvailable = availablePerks.some(p => p.id === perk.id);
+			const canAfford = perkPoints >= perk.cost;
+			const canUnlock = isAvailable && canAfford;
+			let statusClass = isUnlocked ? 'unlocked' : (isAvailable ? 'available' : 'locked');
+			return `
+				<div class="mp-perk-item ${statusClass}">
+					<span class="mp-perk-icon">${perk.icon}</span>
+					<div class="mp-perk-info">
+						<div class="mp-perk-name">${perk.name}</div>
+						<div class="mp-perk-desc">${perk.description}</div>
+					</div>
+					${isUnlocked ? `
+						<span class="mp-perk-status">✅</span>
+					` : isAvailable ? `
+						<button class="mp-perk-unlock-btn ${canUnlock ? '' : 'disabled'}"
+								data-perk-id="${perk.id}"
+								${!canUnlock ? 'disabled' : ''}>
+							🔓 ${perk.cost}
+						</button>
+					` : `
+						<span class="mp-perk-status">🔒</span>
+					`}
+				</div>
+			`;
+		};
+
+		// Helper to check if a tier-2 connector should be "active" (any prerequisite unlocked)
+		const isConnectorActive = (perk) => {
+			if (perk.requiresAnyOf) return perk.requiresAnyOf.some(id => unlockedPerks.includes(id));
+			if (perk.requiresAnyCount) return perk.requiresAnyCount.from.filter(id => unlockedPerks.includes(id)).length >= perk.requiresAnyCount.min;
+			if (perk.requiresAll) return perk.requiresAll.every(id => unlockedPerks.includes(id));
+			return true;
+		};
+
+		// Build each branch as a tree
+		const renderBranch = (branch) => {
+			const tier1 = branch.perks.filter(p => !p.tier || p.tier === 1);
+			const tier2 = branch.perks.filter(p => p.tier === 2);
+
+			// Determine connector label for tier 2
+			let connectorLabel = '';
+			if (tier2.length > 0) {
+				const t2 = tier2[0];
+				if (t2.requiresAnyCount) {
+					connectorLabel = `Unlock ${t2.requiresAnyCount.min} van ${t2.requiresAnyCount.from.length} hierboven`;
+				} else if (t2.requiresAnyOf) {
+					connectorLabel = 'Unlock 1 hierboven';
+				}
+			}
+
+			const hasAnyT2Active = tier2.some(p => isConnectorActive(p));
+			const hasAnyT2Unlocked = tier2.some(p => unlockedPerks.includes(p.id));
+
+			return `
+				<div class="mp-perk-branch">
+					<div class="mp-perk-branch-header">
+						<span class="mp-perk-branch-icon">${branch.icon}</span>
+						<div>
+							<div class="mp-perk-branch-name">${branch.name}</div>
+							<div class="mp-perk-branch-desc">${branch.description}</div>
+						</div>
+					</div>
+					<div class="mp-perk-tree">
+						<div class="mp-perk-tier mp-perk-tier-1">
+							${tier1.map(p => renderPerkNode(p)).join('')}
+						</div>
+						${tier2.length > 0 ? `
+							<div class="mp-perk-tree-connector ${hasAnyT2Active || hasAnyT2Unlocked ? 'active' : ''}">
+								<div class="mp-perk-tree-line"></div>
+								${connectorLabel ? `<div class="mp-perk-tree-connector-label">${connectorLabel}</div>` : ''}
+								<div class="mp-perk-tree-line"></div>
+							</div>
+							<div class="mp-perk-tier mp-perk-tier-2">
+								${tier2.map(p => renderPerkNode(p)).join('')}
+							</div>
+						` : ''}
+					</div>
+				</div>
+			`;
+		};
+
 		return `
 			<div class="mp-perk-section">
 				<h3 class="mp-shop-section-title">🎯 Perks <span class="mp-perk-points-badge">${perkPoints} punt${perkPoints !== 1 ? 'en' : ''}</span></h3>
 				<div class="mp-perk-branches">
-					${Object.values(Rules.PERK_BRANCHES).map(branch => {
-						const branchPerks = branch.perks;
-						return `
-							<div class="mp-perk-branch">
-								<div class="mp-perk-branch-header">
-									<span class="mp-perk-branch-icon">${branch.icon}</span>
-									<div>
-										<div class="mp-perk-branch-name">${branch.name}</div>
-										<div class="mp-perk-branch-desc">${branch.description}</div>
-									</div>
-								</div>
-								<div class="mp-perk-list">
-									${branchPerks.map(perk => {
-										const isUnlocked = unlockedPerks.includes(perk.id);
-										const isAvailable = availablePerks.some(p => p.id === perk.id);
-										const canAfford = perkPoints >= perk.cost;
-										const canUnlock = isAvailable && canAfford;
-										let statusClass = isUnlocked ? 'unlocked' : (isAvailable ? 'available' : 'locked');
-										return `
-											<div class="mp-perk-item ${statusClass}">
-												<span class="mp-perk-icon">${perk.icon}</span>
-												<div class="mp-perk-info">
-													<div class="mp-perk-name">${perk.name}</div>
-													<div class="mp-perk-desc">${perk.description}</div>
-												</div>
-												${isUnlocked ? `
-													<span class="mp-perk-status">✅</span>
-												` : isAvailable ? `
-													<button class="mp-perk-unlock-btn ${canUnlock ? '' : 'disabled'}"
-															data-perk-id="${perk.id}"
-															${!canUnlock ? 'disabled' : ''}>
-														🔓 ${perk.cost}
-													</button>
-												` : `
-													<span class="mp-perk-status">🔒</span>
-												`}
-											</div>
-										`;
-									}).join('')}
-								</div>
-							</div>
-						`;
-					}).join('')}
+					${Object.values(Rules.PERK_BRANCHES).map(branch => renderBranch(branch)).join('')}
 				</div>
 			</div>
 		`;
@@ -5644,7 +5689,7 @@ class LocusLobbyUI {
 		const myPlayer = this.mp.getMyPlayer();
 		// Only show permanent cards that were NOT bought this shopping session and are NOT temporary
 		const shopCardIds = new Set((myPlayer?.shopCards || []).map(c => c.id));
-		const permCards = (myPlayer?.permanentShopCards || []).filter(c => !shopCardIds.has(c.id) && !c.isStone);
+		const permCards = (myPlayer?.permanentShopCards || []).filter(c => !shopCardIds.has(c.id) && !c.isStone && !c.isTemporary);
 		if (permCards.length === 0) {
 			this._showToast('Je hebt geen kaarten om te verkopen', 'info');
 			return;

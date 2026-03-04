@@ -688,7 +688,7 @@ class LocusMultiplayer {
 	 * Gebruikt shared game rules voor instant feedback.
 	 * Definitieve validatie gebeurt server-side.
 	 */
-	previewPlacement(zoneName, baseX, baseY, matrix, subgridId = null) {
+	previewPlacement(zoneName, baseX, baseY, matrix, subgridId = null, rotation, mirrored) {
 		if (!this.gameState?.boardState) return { valid: false };
 		const Rules = window.LocusGameRules;
 		if (!Rules) return { valid: false };
@@ -699,7 +699,17 @@ class LocusMultiplayer {
 			greenGapAllowed: !!player?.perks?.greenGapAllowed,
 			diagonalRotation: !!player?.perks?.diagonalRotation
 		};
-		const enhancedMatrix = Rules.getEnhancedMatrix(matrix, zoneName, perkFlags);
+
+		// Als rotation info is meegegeven, pas enhancement toe VÓÓR rotatie
+		// zodat optionele cellen meedraaien met het blok
+		let enhancedMatrix;
+		if (rotation !== undefined) {
+			enhancedMatrix = Rules.getEnhancedMatrix(matrix, zoneName, perkFlags);
+			enhancedMatrix = Rules.rotateMatrixN(enhancedMatrix, ((Number(rotation) || 0) + 4) % 4);
+			if (mirrored) enhancedMatrix = Rules.mirrorMatrix(enhancedMatrix);
+		} else {
+			enhancedMatrix = Rules.getEnhancedMatrix(matrix, zoneName, perkFlags);
+		}
 
 		let zoneData;
 		if (zoneName === 'red') {

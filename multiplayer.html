@@ -1072,7 +1072,8 @@
 				async setShopReady() { return host.hostAction('shopReady'); },
 				async useTimeBomb() { return host.hostAction('useTimeBomb'); },
 				async useMine(zoneName, cellX, cellY) { return host.hostAction('useMine', { zoneName, cellX, cellY }); },
-				async stealCard(targetPlayerId) { return host.hostAction('stealCard', { targetPlayerId }); },
+				async stealCard(targetPlayerId, cardId) { return host.hostAction('stealCard', { targetPlayerId, cardId }); },
+				async getStealableCards(targetPlayerId) { return host.hostAction('getStealableCards', { targetPlayerId }); },
 				async togglePause() { return host.hostAction('togglePause'); },
 				async sendTaunt(text) {
 					// Host broadcast taunt locally

@@ -1176,7 +1176,7 @@ class LocusP2PGuest {
 		return this.gameState.boardState;
 	}
 
-	previewPlacement(zoneName, baseX, baseY, matrix, subgridId) {
+	previewPlacement(zoneName, baseX, baseY, matrix, subgridId, rotation, mirrored) {
 		if (!this.gameState?.boardState) return { valid: false };
 		const Rules = window.LocusGameRules;
 		if (!Rules) return { valid: false };
@@ -1187,7 +1187,16 @@ class LocusP2PGuest {
 			greenGapAllowed: !!player?.perks?.greenGapAllowed,
 			diagonalRotation: !!player?.perks?.diagonalRotation
 		};
-		const enhancedMatrix = Rules.getEnhancedMatrix(matrix, zoneName, perkFlags);
+
+		// Als rotation info is meegegeven, pas enhancement toe VÓÓR rotatie
+		let enhancedMatrix;
+		if (rotation !== undefined) {
+			enhancedMatrix = Rules.getEnhancedMatrix(matrix, zoneName, perkFlags);
+			enhancedMatrix = Rules.rotateMatrixN(enhancedMatrix, ((Number(rotation) || 0) + 4) % 4);
+			if (mirrored) enhancedMatrix = Rules.mirrorMatrix(enhancedMatrix);
+		} else {
+			enhancedMatrix = Rules.getEnhancedMatrix(matrix, zoneName, perkFlags);
+		}
 
 		let zoneData;
 		if (zoneName === 'red') {

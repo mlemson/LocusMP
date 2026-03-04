@@ -8634,6 +8634,90 @@ html.theme-bloom .mp-sparkle {
 	gap: 6px;
 }
 
+/* ── Perk Tree Layout ── */
+.mp-perk-tree {
+	display: flex;
+	flex-direction: column;
+	align-items: stretch;
+}
+
+.mp-perk-tier {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+}
+
+.mp-perk-tier-1 {
+	position: relative;
+}
+
+.mp-perk-tier-2 {
+	position: relative;
+}
+
+/* Tree connector between tiers */
+.mp-perk-tree-connector {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 8px;
+	padding: 6px 16px;
+	position: relative;
+}
+
+.mp-perk-tree-line {
+	flex: 1;
+	height: 2px;
+	background: rgba(255, 255, 255, 0.08);
+	border-radius: 1px;
+	position: relative;
+}
+
+.mp-perk-tree-connector.active .mp-perk-tree-line {
+	background: linear-gradient(90deg, rgba(124, 92, 191, 0.15), rgba(124, 92, 191, 0.5), rgba(124, 92, 191, 0.15));
+}
+
+.mp-perk-tree-connector::before,
+.mp-perk-tree-connector::after {
+	content: '';
+	position: absolute;
+	width: 2px;
+	height: 10px;
+	background: rgba(255, 255, 255, 0.08);
+	left: 50%;
+	transform: translateX(-50%);
+}
+
+.mp-perk-tree-connector.active::before,
+.mp-perk-tree-connector.active::after {
+	background: rgba(124, 92, 191, 0.5);
+}
+
+.mp-perk-tree-connector::before {
+	top: -4px;
+}
+
+.mp-perk-tree-connector::after {
+	bottom: -4px;
+}
+
+.mp-perk-tree-connector-label {
+	font-size: 0.65rem;
+	color: rgba(255, 255, 255, 0.35);
+	white-space: nowrap;
+	padding: 2px 8px;
+	background: rgba(255, 255, 255, 0.04);
+	border-radius: 10px;
+	border: 1px solid rgba(255, 255, 255, 0.06);
+	flex-shrink: 0;
+}
+
+.mp-perk-tree-connector.active .mp-perk-tree-connector-label {
+	color: rgba(180, 160, 230, 0.7);
+	background: rgba(124, 92, 191, 0.08);
+	border-color: rgba(124, 92, 191, 0.2);
+}
+
 .mp-perk-item {
 	display: flex;
 	align-items: center;

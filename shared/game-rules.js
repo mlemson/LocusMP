@@ -101,14 +101,15 @@ const PERK_BRANCHES = {
 		name: 'Meesterschappen',
 		icon: '⚡',
 		description: 'Verbeter je bonussen per kleur',
-		sequential: false, // vrije keuze welke kleur
+		sequential: false,
 		perks: [
-			{ id: 'bonus_yellow', name: 'Gele Meesterschap', icon: '🟡', description: 'Upgrade gele bonus naar 3 cellen (1 optioneel)', cost: 1, color: 'yellow' },
-			{ id: 'bonus_red', name: 'Rode Meesterschap', icon: '🔴', description: 'Upgrade rode bonus naar 3 cellen (1 optioneel)', cost: 1, color: 'red' },
-			{ id: 'bonus_green', name: 'Groene Meesterschap', icon: '🟢', description: 'Upgrade groene bonus naar 3 cellen (1 optioneel)', cost: 1, color: 'green' },
-			{ id: 'bonus_purple', name: 'Paarse Meesterschap', icon: '🟣', description: 'Upgrade paarse bonus naar 3 cellen (1 optioneel)', cost: 1, color: 'purple' },
-			{ id: 'bonus_blue', name: 'Blauwe Meesterschap', icon: '🔵', description: 'Upgrade blauwe bonus naar 3 cellen (1 optioneel)', cost: 1, color: 'blue' },
-			{ id: 'bonus_multi_double', name: 'Dubbele Multikleur', icon: '🌈', description: 'Multikleur bonus geeft 2 charges i.p.v. 1', cost: 1, requiresAll: ['bonus_yellow','bonus_red','bonus_green','bonus_purple','bonus_blue'] }
+			{ id: 'bonus_yellow', name: 'Gele Meesterschap', icon: '🟡', description: 'Upgrade gele bonus naar 3 cellen (1 optioneel)', cost: 1, color: 'yellow', tier: 1 },
+			{ id: 'bonus_red', name: 'Rode Meesterschap', icon: '🔴', description: 'Upgrade rode bonus naar 3 cellen (1 optioneel)', cost: 1, color: 'red', tier: 1 },
+			{ id: 'bonus_green', name: 'Groene Meesterschap', icon: '🟢', description: 'Upgrade groene bonus naar 3 cellen (1 optioneel)', cost: 1, color: 'green', tier: 1 },
+			{ id: 'bonus_purple', name: 'Paarse Meesterschap', icon: '🟣', description: 'Upgrade paarse bonus naar 3 cellen (1 optioneel)', cost: 1, color: 'purple', tier: 1 },
+			{ id: 'bonus_blue', name: 'Blauwe Meesterschap', icon: '🔵', description: 'Upgrade blauwe bonus naar 3 cellen (1 optioneel)', cost: 1, color: 'blue', tier: 1 },
+			{ id: 'bonus_multi_double', name: 'Dubbele Multikleur', icon: '🌈', description: 'Multikleur bonus geeft 2 charges i.p.v. 1', cost: 1, tier: 2,
+				requiresAnyCount: { from: ['bonus_yellow','bonus_red','bonus_green','bonus_purple','bonus_blue'], min: 3 } }
 		]
 	},
 	aggressive: {
@@ -116,11 +117,12 @@ const PERK_BRANCHES = {
 		name: 'Saboteur',
 		icon: '💣',
 		description: 'Hindernissen en sabotage',
-		sequential: true,
+		sequential: false,
 		perks: [
-			{ id: 'agg_stone', name: 'Steenblok', icon: '🧱', description: 'Krijg direct een 2×1 steenblok', cost: 1 },
-			{ id: 'agg_mine', name: 'Onzichtbare Mijn', icon: '💥', description: 'Plaats 1× per ronde een onzichtbare mijn op het bord', cost: 1 },
-			{ id: 'agg_steal', name: 'Kaartendief', icon: '🃏', description: 'Steel 1× per ronde tijdelijk een kaart van een tegenstander', cost: 1 }
+			{ id: 'agg_stone', name: 'Steenblok', icon: '🧱', description: 'Krijg direct een 2×1 steenblok', cost: 1, tier: 1 },
+			{ id: 'agg_mine', name: 'Onzichtbare Mijn', icon: '💥', description: 'Plaats 1× per ronde een onzichtbare mijn op het bord', cost: 1, tier: 1 },
+			{ id: 'agg_steal', name: 'Kaartendief', icon: '🃏', description: 'Steel 1× per ronde tijdelijk een kaart van een tegenstander', cost: 1, tier: 2,
+				requiresAnyOf: ['agg_stone', 'agg_mine'] }
 		]
 	},
 	flexible: {
@@ -128,12 +130,14 @@ const PERK_BRANCHES = {
 		name: 'Strateeg',
 		icon: '🧩',
 		description: 'Flexibeler plaatsen en meer waarde',
-		sequential: true,
+		sequential: false,
 		perks: [
-			{ id: 'flex_gap', name: 'Brugbouwer', icon: '🌉', description: 'Groen: 1 cel van je kaart wordt optioneel (transparant) — mag overgeslagen worden', cost: 1 },
-			{ id: 'flex_rotate', name: 'Vrije Rotatie', icon: '🔄', description: 'Paars: voeg 1 extra optionele cel toe aan je kaart (transparant)', cost: 1 },
-			{ id: 'flex_wildcard', name: 'Wildcardkleur', icon: '🎨', description: 'Eén kaart per ronde op elke zone plaatsen, ongeacht kleur', cost: 1 },
-			{ id: 'flex_double_coins', name: 'Bankier', icon: '🏦', description: 'Goudmunten zijn dubbel zoveel waard', cost: 1 }
+			{ id: 'flex_gap', name: 'Brugbouwer', icon: '🌉', description: 'Groen: 1 cel van je kaart wordt optioneel (transparant) — mag overgeslagen worden', cost: 1, tier: 1 },
+			{ id: 'flex_rotate', name: 'Vrije Rotatie', icon: '🔄', description: 'Paars: voeg 1 extra optionele cel toe aan je kaart (transparant)', cost: 1, tier: 1 },
+			{ id: 'flex_wildcard', name: 'Wildcardkleur', icon: '🎨', description: 'Eén kaart per ronde op elke zone plaatsen, ongeacht kleur', cost: 1, tier: 2,
+				requiresAnyOf: ['flex_gap', 'flex_rotate'] },
+			{ id: 'flex_double_coins', name: 'Bankier', icon: '🏦', description: 'Goudmunten zijn dubbel zoveel waard', cost: 1, tier: 2,
+				requiresAnyOf: ['flex_gap', 'flex_rotate'] }
 		]
 	}
 };
@@ -189,6 +193,17 @@ function getAvailablePerks(player) {
 			// requiresAll: alle genoemde perks moeten ontgrendeld zijn
 			if (perk.requiresAll && !perk.requiresAll.every(reqId => unlocked.includes(reqId))) {
 				continue;
+			}
+
+			// requiresAnyOf: minstens één van de genoemde perks moet ontgrendeld zijn
+			if (perk.requiresAnyOf && !perk.requiresAnyOf.some(reqId => unlocked.includes(reqId))) {
+				continue;
+			}
+
+			// requiresAnyCount: minstens N van de genoemde perks moeten ontgrendeld zijn
+			if (perk.requiresAnyCount) {
+				const unlockedCount = perk.requiresAnyCount.from.filter(reqId => unlocked.includes(reqId)).length;
+				if (unlockedCount < perk.requiresAnyCount.min) continue;
 			}
 
 			available.push({ ...perk, branch: branchId, branchName: branch.name, branchIcon: branch.icon });
@@ -3393,19 +3408,19 @@ function playMove(gameState, playerId, cardId, zoneName, baseX, baseY, rotation,
 		}
 	}
 
-	// Apply rotation en mirror (zelfde volgorde als client: rotate dan mirror)
-	let matrix = cloneMatrix(card.matrix);
-	matrix = rotateMatrixN(matrix, rotation || 0);
-	if (mirrored) matrix = mirrorMatrix(matrix);
-
 	// Bouw perk flags voor plaatsingsvalidatie
 	const perkFlags = {
 		greenGapAllowed: !!player.perks?.greenGapAllowed,
 		diagonalRotation: !!player.perks?.diagonalRotation
 	};
 
-	// Pas matrix aan op basis van perks (optionele cellen toevoegen/aanpassen)
+	// Pas matrix aan op basis van perks VÓÓR rotatie (optionele cellen draaien mee)
+	let matrix = cloneMatrix(card.matrix);
 	matrix = getEnhancedMatrix(matrix, zoneName, perkFlags);
+
+	// Apply rotation en mirror (zelfde volgorde als client: rotate dan mirror)
+	matrix = rotateMatrixN(matrix, rotation || 0);
+	if (mirrored) matrix = mirrorMatrix(matrix);
 
 	// Zoek zone data en plaats
 	let placementResult = null;
@@ -4323,9 +4338,9 @@ function buyShopItem(gameState, playerId, itemId, extra) {
 				multikleurChance: 0.10,
 			});
 			const randomCard = deck[0];
+			randomCard.isTemporary = true; // Tijdelijke kaart — verdwijnt na de ronde
 			player.shopCards.push(randomCard);
-			player.permanentShopCards = player.permanentShopCards || [];
-			player.permanentShopCards.push(randomCard);
+			// NIET toevoegen aan permanentShopCards — tijdelijke kaart verdwijnt na dit level
 			player.goldCoins -= item.cost;
 			if (item.oneTimePerLevel) {
 				player.shopPurchasesThisLevel = player.shopPurchasesThisLevel || {};
@@ -4445,7 +4460,8 @@ function sellCard(gameState, playerId, cardId) {
 	if (idx === -1) return { error: 'Kaart niet gevonden in je collectie' };
 
 	const card = permCards[idx];
-	if (card.isStone) return { error: 'Tijdelijke kaarten kunnen niet verkocht worden' };
+	if (card.isStone) return { error: 'Steenblokken kunnen niet verkocht worden' };
+	if (card.isTemporary) return { error: 'Tijdelijke kaarten kunnen niet verkocht worden' };
 	const cellCount = card.matrix ? card.matrix.flat().filter(Boolean).length : 1;
 	// Sell price: base 1, +1 for cards with 4+ cells, +1 for golden/rainbow
 	let sellPrice = 1;
@@ -4507,10 +4523,12 @@ function startNextLevel(gameState) {
 			const fallbackBaseDeck = buildStartingDeckByType(gameState.settings.cardsPerPlayer, fallbackDeckRng, fallbackDeckType);
 			player.permanentBaseCards = cloneDeckCards(fallbackBaseDeck);
 		}
-		// Voeg blijvende shop kaarten toe
+		// Voeg blijvende shop kaarten toe + tijdelijke kaarten (voor alleen dit level)
+		const tempCards = (player.shopCards || []).filter(c => c.isTemporary);
 		const mergedDeck = [
 			...cloneDeckCards(player.permanentBaseCards),
-			...cloneDeckCards(player.permanentShopCards || [])
+			...cloneDeckCards(player.permanentShopCards || []),
+			...cloneDeckCards(tempCards)
 		];
 		const playerDeckRng = createRNG((gameState.seed | 0) ^ ((gameState.level || 1) * 4099) ^ hashStringToInt(pid));
 		const fullDeck = shuffleWithRNG(mergedDeck, playerDeckRng);
