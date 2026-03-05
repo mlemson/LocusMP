@@ -310,16 +310,16 @@
 	</script>
 
 	<!-- Shared game rules -->
-	<script src="shared/game-rules.js?v=12"></script>
+	<script src="shared/game-rules.js?v=13"></script>
 
 	<!-- Multiplayer client (Socket.IO) -->
-	<script src="client/multiplayer-client.js?v=12"></script>
+	<script src="client/multiplayer-client.js?v=13"></script>
 
 	<!-- P2P Host/Guest module (WebRTC) -->
-	<script src="client/p2p-host.js?v=12"></script>
+	<script src="client/p2p-host.js?v=13"></script>
 
 	<!-- Lobby UI -->
-	<script src="client/lobby-ui.js?v=12"></script>
+	<script src="client/lobby-ui.js?v=13"></script>
 
 	<!-- App bootstrap -->
 	<script>
@@ -1054,6 +1054,7 @@
 				async joinGame() { /* host is already in */ },
 
 				async startGame() { return host.hostAction('startGame'); },
+				async addAIPlayer() { return host.hostAction('addAIPlayer'); },
 				async chooseStartingDeck(dt) { return host.hostAction('chooseStartingDeck', { deckType: dt }); },
 				async chooseGoal(idx) { return host.hostAction('chooseGoal', { objectiveIndex: idx }); },
 

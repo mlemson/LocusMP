@@ -30,6 +30,8 @@ class LocusP2PHost {
 		this._turnTimer = null;
 		this._turnTimerStart = 0;
 		this._turnTimerDuration = 40000;
+		this.aiPlayerIds = new Set();
+		this._aiTimer = null;
 
 		// Callbacks voor de host-UI
 		this.onStateChanged = null; // (sanitizedState) => {}
@@ -207,6 +209,17 @@ class LocusP2PHost {
 		const playerId = this.playerMap.get(conn.peer);
 
 		switch (msg.type) {
+			case 'addAIPlayer': {
+				if (playerId !== this.hostPlayerId && playerId) {
+					conn.send({ type: 'result', action: 'addAIPlayer', success: false, error: 'Alleen de host kan AI toevoegen.' });
+					return;
+				}
+				const result = this._addAIPlayer();
+				conn.send({ type: 'result', action: 'addAIPlayer', ...result });
+				this._broadcastState();
+				break;
+			}
+
 			case 'joinGame': {
 				const name = String(msg.playerName || 'Speler').slice(0, 20);
 				const reconnectPlayerId = msg.reconnectPlayerId ? String(msg.reconnectPlayerId) : null;
@@ -567,6 +580,9 @@ class LocusP2PHost {
 		let result;
 
 		switch (type) {
+			case 'addAIPlayer':
+				result = this._addAIPlayer();
+				break;
 			case 'startGame':
 				result = this.Rules.startGame(this.gameState);
 				break;
@@ -801,6 +817,192 @@ class LocusP2PHost {
 				console.error('[P2P Host] Broadcast error naar', peerId, err);
 			}
 		}
+
+		// Laat AI reageren na state-updates
+		this._scheduleAI();
+	}
+
+	_addAIPlayer() {
+		if (!this.gameState) return { success: false, error: 'Geen game state.' };
+		if (this.gameState.phase !== 'waiting') return { success: false, error: 'Kan alleen AI toevoegen in de wachtkamer.' };
+
+		const maxPlayers = Number(this.gameState.settings?.maxPlayers) || 4;
+		const currentPlayers = Object.keys(this.gameState.players || {}).length;
+		if (currentPlayers >= maxPlayers) return { success: false, error: 'Maximum spelers bereikt.' };
+
+		const aiCount = this.aiPlayerIds.size + 1;
+		const aiId = 'AI_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+		const aiName = `Bot ${aiCount}`;
+		const addResult = this.Rules.addPlayer(this.gameState, aiId, aiName);
+		if (addResult?.error) return { success: false, error: addResult.error };
+
+		this.aiPlayerIds.add(aiId);
+		if (this.gameState.players?.[aiId]) {
+			this.gameState.players[aiId].isAI = true;
+			this.gameState.players[aiId].connected = true;
+		}
+		if (this.onPlayerJoined) this.onPlayerJoined({ playerId: aiId, name: aiName, isAI: true });
+		return { success: true, playerId: aiId, name: aiName, isAI: true };
+	}
+
+	_scheduleAI() {
+		if (!this.gameState) return;
+		if (this.aiPlayerIds.size === 0) return;
+		if (this._aiTimer) return;
+		this._aiTimer = setTimeout(() => {
+			this._aiTimer = null;
+			this._runAI();
+		}, 500);
+	}
+
+	_runAI() {
+		if (!this.gameState || this.aiPlayerIds.size === 0) return;
+
+		let changed = false;
+		const phase = this.gameState.phase;
+
+		if (phase === 'choosingStartDeck') {
+			for (const aiId of this.aiPlayerIds) {
+				const p = this.gameState.players?.[aiId];
+				if (!p || p.startingDeckType) continue;
+				const result = this.Rules.chooseStartingDeck(this.gameState, aiId, 'random');
+				if (!result?.error) changed = true;
+			}
+		}
+
+		if (phase === 'choosingGoals') {
+			for (const aiId of this.aiPlayerIds) {
+				const p = this.gameState.players?.[aiId];
+				if (!p || p.chosenObjective) continue;
+				const choices = this.gameState.objectiveChoices?.[aiId] || [];
+				if (!choices.length) continue;
+				let bestIdx = 0;
+				let bestScore = -Infinity;
+				for (let i = 0; i < choices.length; i++) {
+					const c = choices[i] || {};
+					const score = (c.points || 0) + ((c.coins || 0) * 2) + ((c.randomBonuses || 0) * 3);
+					if (score > bestScore) { bestScore = score; bestIdx = i; }
+				}
+				const result = this.Rules.chooseObjective(this.gameState, aiId, bestIdx);
+				if (!result?.error) {
+					changed = true;
+					if (result.allChosen) this._startTimerForCurrentPlayer(true);
+				}
+			}
+		}
+
+		if (phase === 'playing' && !this.gameState.paused) {
+			const currentPid = this.gameState.playerOrder?.[this.gameState.currentTurnIndex];
+			if (currentPid && this.aiPlayerIds.has(currentPid)) {
+				this._clearTimer();
+				this._aiPlayCardIfPossible(currentPid);
+				const result = this.Rules.endTurn(this.gameState, currentPid, null);
+				changed = true;
+				if (result?.gameEnded) {
+					this._broadcastEvent('levelComplete', {
+						levelScores: this.gameState.levelScores,
+						levelWinner: this.gameState.levelWinner,
+						level: this.gameState.level
+					});
+				} else {
+					this._startTimerForCurrentPlayer(true);
+				}
+			}
+		}
+
+		if (phase === 'levelComplete') {
+			const result = this.Rules.startShopPhase(this.gameState);
+			if (!result?.error) changed = true;
+		}
+
+		if (phase === 'shopping') {
+			for (const aiId of this.aiPlayerIds) {
+				const p = this.gameState.players?.[aiId];
+				if (!p || p.shopReady) continue;
+
+				// Perk kiezen als beschikbaar
+				if ((p.perks?.perkPoints || 0) > 0) {
+					const available = this.Rules.getAvailablePerks(p) || [];
+					if (available.length > 0) {
+						this.Rules.choosePerk(this.gameState, aiId, available[0].id);
+						changed = true;
+					}
+				}
+
+				// Koop goedkope waarde-items
+				if ((p.goldCoins || 0) >= 1) {
+					this.Rules.buyShopItem(this.gameState, aiId, 'random-card', {});
+					changed = true;
+				}
+
+				const readyResult = this.Rules.shopReady(this.gameState, aiId);
+				if (!readyResult?.error) {
+					changed = true;
+					if (readyResult.allReady) {
+						this.Rules.startNextLevel(this.gameState);
+						this._broadcastEvent('nextLevelStarted', { level: this.gameState.level });
+						if (this.gameState.phase === 'playing') this._startTimerForCurrentPlayer(true);
+					}
+				}
+			}
+		}
+
+		if (changed) {
+			this._broadcastState();
+		}
+	}
+
+	_aiPlayCardIfPossible(playerId) {
+		const player = this.gameState?.players?.[playerId];
+		const board = this.gameState?.boardState;
+		if (!player || !board) return false;
+
+		const hand = Array.isArray(player.hand) ? player.hand : [];
+		for (const card of hand) {
+			const allowedZones = this.Rules.getAllowedZones(card);
+			const rotations = [0, 1, 2, 3];
+			for (const zoneName of allowedZones) {
+				const tryOnZone = (zoneData, subgridId = null) => {
+					if (!zoneData) return false;
+					for (const rotation of rotations) {
+						let matrix = this.Rules.cloneMatrix(card.matrix);
+						matrix = this.Rules.rotateMatrixN(matrix, rotation);
+						for (let y = 0; y < zoneData.rows; y++) {
+							for (let x = 0; x < zoneData.cols; x++) {
+								const cells = this.Rules.collectPlacementCellsData(zoneData, x, y, matrix);
+								if (!cells) continue;
+								if (!this.Rules.validatePlacement(zoneName, zoneData, cells, {
+									greenGapAllowed: !!player.perks?.greenGapAllowed,
+									diagonalRotation: !!player.perks?.diagonalRotation
+								})) continue;
+								const result = this.Rules.playMove(this.gameState, playerId, card.id, zoneName, x, y, rotation, false, subgridId);
+								if (!result?.error) {
+									this._broadcastEvent('movePlayed', {
+										playerId,
+										zoneName,
+										objectivesRevealed: this._shouldRevealObjectives(),
+										mineTriggered: result.mineTriggered || null
+									});
+									return true;
+								}
+							}
+						}
+					}
+					return false;
+				};
+
+				if (zoneName === 'red') {
+					const subgrids = board.zones?.red?.subgrids || [];
+					for (const sg of subgrids) {
+						if (tryOnZone(sg, sg.id)) return true;
+					}
+				} else {
+					if (tryOnZone(board.zones?.[zoneName], null)) return true;
+				}
+			}
+		}
+
+		return false;
 	}
 
 	_broadcastEvent(eventType, data) {
@@ -905,6 +1107,10 @@ class LocusP2PHost {
 
 	destroy() {
 		this._clearTimer();
+		if (this._aiTimer) {
+			clearTimeout(this._aiTimer);
+			this._aiTimer = null;
+		}
 		for (const [, conn] of this.connections) {
 			try { conn.close(); } catch (e) { /* skip */ }
 		}
