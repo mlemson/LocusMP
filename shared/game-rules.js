@@ -3258,7 +3258,7 @@ function initializeLevelOneAfterDeckChoice(gameState) {
 
 function startGame(gameState) {
 	const playerCount = Object.keys(gameState.players).length;
-	if (playerCount < 2) return { error: 'Minimaal 2 spelers nodig' };
+	if (playerCount < 1) return { error: 'Minimaal 1 speler nodig' };
 	if (gameState.phase !== 'waiting') return { error: 'Spel is al gestart' };
 
 	gameState.boardState = null;

@@ -200,7 +200,8 @@ class LocusLobbyUI {
 
 			'results-container', 'play-again-btn',
 			'shop-container', 'shop-ready-btn',
-			'tv-cast-btn', 'tv-cast-game-btn'
+			'tv-cast-btn', 'tv-cast-game-btn',
+			'add-ai-btn'
 		];
 		for (const id of ids) {
 			this.elements[id] = document.getElementById(id);
@@ -237,6 +238,7 @@ class LocusLobbyUI {
 		this.elements['create-game-btn']?.addEventListener('click', () => this._handleCreateGame());
 		this.elements['join-game-btn']?.addEventListener('click', () => this._handleJoinGame());
 		this.elements['start-game-btn']?.addEventListener('click', () => this._handleStartGame());
+		this.elements['add-ai-btn']?.addEventListener('click', () => this._handleAddAI());
 		this.elements['mp-pass-btn']?.addEventListener('click', () => this._handlePass());
 		this.elements['mp-end-turn-btn']?.addEventListener('click', () => this._handleEndTurn());
 		this.elements['mp-undo-btn']?.addEventListener('click', () => this._handleUndo());
@@ -1084,6 +1086,13 @@ class LocusLobbyUI {
 		this._setLoading(false);
 	}
 
+	async _handleAddAI() {
+		this._setLoading(true);
+		try { await this.mp.addAIPlayer(); this._showToast('🤖 AI speler toegevoegd!', 'success'); }
+		catch (err) { this._showToast('Kan AI niet toevoegen: ' + (err.message || err), 'error'); }
+		this._setLoading(false);
+	}
+
 	async _handlePass() {
 		if (!this.mp.isMyTurn()) return;
 		const gs = this.mp.gameState;
@@ -1336,6 +1345,10 @@ class LocusLobbyUI {
 		const startBtn = this.elements['start-game-btn'];
 		if (startBtn) startBtn.style.display = isHost ? 'block' : 'none';
 
+		// Show add-AI button for host
+		const addAiBtn = this.elements['add-ai-btn'];
+		if (addAiBtn) addAiBtn.style.display = isHost ? 'block' : 'none';
+
 		// Show cast button for host (P2P only for now)
 		const castBtn = this.elements['tv-cast-btn'];
 		if (castBtn) castBtn.style.display = isHost ? 'flex' : 'none';
@@ -1367,6 +1380,7 @@ class LocusLobbyUI {
 				<span class="mp-player-name">${this._escapeHtml(p.name)}</span>
 				${p.id === this.mp.gameState.hostPlayerId ? '<span class="mp-host-badge">HOST</span>' : ''}
 				${p.id === this.mp.userId ? '<span class="mp-you-badge">JIJ</span>' : ''}
+				${p.isAI ? '<span class="mp-ai-badge">AI</span>' : ''}
 			</div>
 		`).join('');
 
@@ -1381,7 +1395,13 @@ class LocusLobbyUI {
 
 		const startBtn = this.elements['start-game-btn'];
 		if (startBtn && this.mp.gameState.hostPlayerId === this.mp.userId) {
-			startBtn.disabled = players.length < 2;
+			startBtn.disabled = players.length < 1;
+		}
+
+		const addAiBtn = this.elements['add-ai-btn'];
+		if (addAiBtn && this.mp.gameState.hostPlayerId === this.mp.userId) {
+			const max = this.mp.gameState.settings.maxPlayers;
+			addAiBtn.disabled = players.length >= max;
 		}
 	}
 
