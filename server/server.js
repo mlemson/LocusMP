@@ -1608,17 +1608,20 @@ io.on('connection', (socket) => {
 
 				broadcastGameState(io, info.gameId);
 
-				// Als alle spelers weg zijn, verwijder game na 5 minuten
-				const allDisconnected = Object.values(gameState.players)
+				// Als alle menselijke spelers weg zijn, verwijder game na 5 minuten
+				const allHumansDisconnected = Object.values(gameState.players)
+					.filter(p => !p.isAI)
 					.every(p => p.connected === false);
-				if (allDisconnected) {
+				if (allHumansDisconnected) {
 					setTimeout(() => {
 						const current = games.get(info.gameId);
 						if (current) {
 							const stillAllGone = Object.values(current.players)
+								.filter(p => !p.isAI)
 								.every(p => p.connected === false);
 							if (stillAllGone) {
 								games.delete(info.gameId);
+								aiPlayers.delete(info.gameId);
 								if (current.inviteCode) inviteCodes.delete(current.inviteCode);
 								console.log(`[Locus] Game ${info.gameId} verwijderd (alle spelers weg)`);
 							}
