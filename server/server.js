@@ -1622,6 +1622,8 @@ io.on('connection', (socket) => {
 							if (stillAllGone) {
 								games.delete(info.gameId);
 								aiPlayers.delete(info.gameId);
+								const pendingAiTimer = aiTimers.get(info.gameId);
+								if (pendingAiTimer) { clearTimeout(pendingAiTimer); aiTimers.delete(info.gameId); }
 								if (current.inviteCode) inviteCodes.delete(current.inviteCode);
 								console.log(`[Locus] Game ${info.gameId} verwijderd (alle spelers weg)`);
 							}
