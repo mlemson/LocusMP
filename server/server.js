@@ -14,6 +14,7 @@ const http = require('http');
 const path = require('path');
 const { Server } = require('socket.io');
 const GameRules = require('../shared/game-rules');
+const AIPlayer = require('./ai-player');
 
 // ──────────────────────────────────────────────
 //  CONFIG
@@ -38,6 +39,9 @@ const socketToPlayer = new Map();
 const turnTimers = new Map();
 /** @type {Map<string, number>} playerId → last taunt timestamp */
 const tauntCooldowns = new Map();
+
+/** @type {Map<string, Set<string>>} gameId → set of AI player IDs */
+const aiPlayers = new Map();
 
 const TAUNT_COOLDOWN_MS = 2000;
 const ALLOWED_TAUNTS = new Set([
