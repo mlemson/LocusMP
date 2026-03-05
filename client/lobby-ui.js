@@ -2874,7 +2874,10 @@ class LocusLobbyUI {
 					const zoneCounts = {};
 					cellHits.forEach(h => { if (h.zoneName) zoneCounts[h.zoneName] = (zoneCounts[h.zoneName] || 0) + 1; });
 					const bestZone = Object.keys(zoneCounts).reduce((a, b) => zoneCounts[a] > zoneCounts[b] ? a : b);
-					const zoneHits = cellHits.filter(h => h.zoneName === bestZone);
+					let zoneHits = cellHits.filter(h => h.zoneName === bestZone);
+					if (bestZone === 'red') {
+						zoneHits = this._filterRedHitsBySubgrid(zoneHits);
+					}
 					if (zoneHits.length > 0) {
 						const baseX = this._pickBestVote(zoneHits.map(h => h.gridX - h.shapeCol), null);
 						const baseY = this._pickBestVote(zoneHits.map(h => h.gridY - h.shapeRow), null);
@@ -2954,7 +2957,10 @@ class LocusLobbyUI {
 			zoneCounts[h.zoneName] = (zoneCounts[h.zoneName] || 0) + 1;
 		});
 		const bestZone = Object.keys(zoneCounts).reduce((a, b) => zoneCounts[a] > zoneCounts[b] ? a : b);
-		const zoneHits = cellHits.filter(h => h.zoneName === bestZone);
+		let zoneHits = cellHits.filter(h => h.zoneName === bestZone);
+		if (bestZone === 'red') {
+			zoneHits = this._filterRedHitsBySubgrid(zoneHits);
+		}
 		if (zoneHits.length === 0) return;
 
 		// Vote for best base coordinates
@@ -3245,8 +3251,7 @@ class LocusLobbyUI {
 
 		if (this._dragState) {
 			this._dragState.rotation = (this._dragState.rotation + 1) % 4;
-			this._dragState.matrix = Rules.rotateMatrixN(this._dragState.card.matrix, this._dragState.rotation);
-			if (this._dragState.mirrored) this._dragState.matrix = Rules.mirrorMatrix(this._dragState.matrix);
+			this._dragState.matrix = this._buildCardMatrix(this._dragState.card, this._dragState.rotation, this._dragState.mirrored);
 			this._saveCardTransform(this._dragState.card.id, this._dragState.rotation, this._dragState.mirrored);
 			this._updateGhost();
 			this._clearPreview();
@@ -3265,8 +3270,7 @@ class LocusLobbyUI {
 
 		if (this._dragState) {
 			this._dragState.mirrored = !this._dragState.mirrored;
-			this._dragState.matrix = Rules.rotateMatrixN(this._dragState.card.matrix, this._dragState.rotation);
-			if (this._dragState.mirrored) this._dragState.matrix = Rules.mirrorMatrix(this._dragState.matrix);
+			this._dragState.matrix = this._buildCardMatrix(this._dragState.card, this._dragState.rotation, this._dragState.mirrored);
 			this._saveCardTransform(this._dragState.card.id, this._dragState.rotation, this._dragState.mirrored);
 			this._updateGhost();
 			this._clearPreview();
@@ -3306,9 +3310,45 @@ class LocusLobbyUI {
 	_buildCardMatrix(card, rotation = 0, mirrored = false) {
 		const Rules = window.LocusGameRules;
 		if (!Rules || !card?.matrix) return card?.matrix || [];
-		let matrix = Rules.rotateMatrixN(card.matrix, ((Number(rotation) || 0) + 4) % 4);
+
+		// Keep drag/preview matrix aligned with server rules.
+		// For single-zone cards, apply perk-based matrix enhancements before rotation.
+		let matrix = card.matrix;
+		try {
+			const allowedZones = Rules.getAllowedZones ? Rules.getAllowedZones(card) : [];
+			if (Array.isArray(allowedZones) && allowedZones.length === 1) {
+				const myPlayer = this.mp?.getMyPlayer ? this.mp.getMyPlayer() : null;
+				const perkFlags = {
+					greenGapAllowed: !!myPlayer?.perks?.greenGapAllowed,
+					diagonalRotation: !!myPlayer?.perks?.diagonalRotation
+				};
+				matrix = Rules.getEnhancedMatrix(matrix, allowedZones[0], perkFlags);
+			}
+		} catch (_) {
+			matrix = card.matrix;
+		}
+
+		matrix = Rules.rotateMatrixN(matrix, ((Number(rotation) || 0) + 4) % 4);
 		if (mirrored) matrix = Rules.mirrorMatrix(matrix);
 		return matrix;
+	}
+
+	_filterRedHitsBySubgrid(hits) {
+		if (!Array.isArray(hits) || hits.length === 0) return hits || [];
+		const subgridCounts = new Map();
+		for (const h of hits) {
+			const sid = h?.subgridId || '';
+			subgridCounts.set(sid, (subgridCounts.get(sid) || 0) + 1);
+		}
+		let bestId = null;
+		let bestCount = -1;
+		for (const [sid, cnt] of subgridCounts.entries()) {
+			if (cnt > bestCount) {
+				bestCount = cnt;
+				bestId = sid;
+			}
+		}
+		return hits.filter(h => (h?.subgridId || '') === bestId);
 	}
 
 	_getTransformedCardMatrix(card) {
