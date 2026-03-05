@@ -2771,6 +2771,7 @@ class LocusLobbyUI {
 			e.preventDefault();
 		}
 
+		this._lastPointerEvent = e;
 		this._positionGhost(e);
 
 		// Throttle preview ~30fps
@@ -3012,7 +3013,9 @@ class LocusLobbyUI {
 				const emStr = JSON.stringify(adjPreview.enhancedMatrix);
 				if (this._lastGhostMatrixStr !== emStr) {
 					this._lastGhostMatrixStr = emStr;
+					this._dragState.matrix = adjPreview.enhancedMatrix;
 					ghost.innerHTML = this._renderMiniGrid(adjPreview.enhancedMatrix, this._dragState.card.color, true, true);
+					this._computeGhostOffsets();
 				}
 			}
 
@@ -3256,6 +3259,10 @@ class LocusLobbyUI {
 			this._updateGhost();
 			this._clearPreview();
 			this._updateOriginCardVisual();
+			if (this._lastPointerEvent) {
+				this._positionGhost(this._lastPointerEvent);
+				this._updateDragPreview(this._lastPointerEvent);
+			}
 		}
 		if (this._bonusMode) {
 			this._bonusMode.rotation = ((this._bonusMode.rotation || 0) + 1) % 4;
@@ -3275,6 +3282,10 @@ class LocusLobbyUI {
 			this._updateGhost();
 			this._clearPreview();
 			this._updateOriginCardVisual();
+			if (this._lastPointerEvent) {
+				this._positionGhost(this._lastPointerEvent);
+				this._updateDragPreview(this._lastPointerEvent);
+			}
 		}
 		if (this._bonusMode) {
 			this._bonusMode.matrix = Rules.mirrorMatrix(this._bonusMode.matrix);
@@ -3368,6 +3379,7 @@ class LocusLobbyUI {
 		this._lastDragBaseY = null;
 		this._ghostOffsetX = 0;
 		this._ghostOffsetY = 0;
+		this._lastPointerEvent = null;
 
 		// Herstel cursor
 		document.body.classList.remove('mp-placing');
