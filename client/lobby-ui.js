@@ -1087,6 +1087,10 @@ class LocusLobbyUI {
 	}
 
 	async _handleAddAI() {
+		if (!this.mp || typeof this.mp.addAIPlayer !== 'function') {
+			this._showToast('AI toevoegen werkt alleen in server-modus (niet in P2P).', 'warning');
+			return;
+		}
 		this._setLoading(true);
 		try { await this.mp.addAIPlayer(); this._showToast('🤖 AI speler toegevoegd!', 'success'); }
 		catch (err) { this._showToast('Kan AI niet toevoegen: ' + (err.message || err), 'error'); }
@@ -1347,7 +1351,8 @@ class LocusLobbyUI {
 
 		// Show add-AI button for host
 		const addAiBtn = this.elements['add-ai-btn'];
-		if (addAiBtn) addAiBtn.style.display = isHost ? 'block' : 'none';
+		const canAddAI = !!(this.mp && typeof this.mp.addAIPlayer === 'function');
+		if (addAiBtn) addAiBtn.style.display = (isHost && canAddAI) ? 'block' : 'none';
 
 		// Show cast button for host (P2P only for now)
 		const castBtn = this.elements['tv-cast-btn'];
@@ -1401,7 +1406,8 @@ class LocusLobbyUI {
 		const addAiBtn = this.elements['add-ai-btn'];
 		if (addAiBtn && this.mp.gameState.hostPlayerId === this.mp.userId) {
 			const max = this.mp.gameState.settings.maxPlayers;
-			addAiBtn.disabled = players.length >= max;
+			const canAddAI = !!(this.mp && typeof this.mp.addAIPlayer === 'function');
+			addAiBtn.disabled = !canAddAI || players.length >= max;
 		}
 	}
 
