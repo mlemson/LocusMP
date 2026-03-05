@@ -293,6 +293,253 @@ function broadcastGameState(io, gameId) {
 		const sanitized = sanitizeGameStateForPlayer(gameState, info.playerId);
 		socket.emit('gameState', sanitized);
 	}
+
+	// Na elke broadcast: check of AI actie nodig is
+	scheduleAIActions(gameId);
+}
+
+// ──────────────────────────────────────────────
+//  AI SPELER LOGICA
+// ──────────────────────────────────────────────
+
+/** @type {Map<string, NodeJS.Timeout>} gameId → pending AI timer */
+const aiTimers = new Map();
+
+function isAIPlayer(gameId, playerId) {
+	return aiPlayers.get(gameId)?.has(playerId) || false;
+}
+
+function scheduleAIActions(gameId) {
+	// Debounce: voorkom dubbele AI timers
+	if (aiTimers.has(gameId)) return;
+
+	const gameState = games.get(gameId);
+	if (!gameState) return;
+
+	const gameAIs = aiPlayers.get(gameId);
+	if (!gameAIs || gameAIs.size === 0) return;
+
+	const delay = AIPlayer.AI_THINK_DELAY_MS;
+
+	const timer = setTimeout(() => {
+		aiTimers.delete(gameId);
+		executeAIActions(gameId);
+	}, delay);
+	aiTimers.set(gameId, timer);
+}
+
+function executeAIActions(gameId) {
+	const gameState = games.get(gameId);
+	if (!gameState) return;
+
+	const gameAIs = aiPlayers.get(gameId);
+	if (!gameAIs || gameAIs.size === 0) return;
+
+	const phase = gameState.phase;
+
+	// ── CHOOSING START DECK ──
+	if (phase === 'choosingStartDeck') {
+		let changed = false;
+		for (const aiId of gameAIs) {
+			const player = gameState.players[aiId];
+			if (!player || player.startingDeckType) continue;
+			const deckType = AIPlayer.chooseStartingDeck();
+			const result = GameRules.chooseStartingDeck(gameState, aiId, deckType);
+			if (result.success) {
+				console.log(`[Locus AI] ${player.name} koos startdeck "${deckType}"`);
+				changed = true;
+			}
+		}
+		if (changed) broadcastGameState(io, gameId);
+		return;
+	}
+
+	// ── CHOOSING GOALS ──
+	if (phase === 'choosingGoals') {
+		let changed = false;
+		for (const aiId of gameAIs) {
+			const player = gameState.players[aiId];
+			if (!player || player.chosenObjective) continue;
+			const choices = gameState.objectiveChoices?.[aiId] || [];
+			if (choices.length === 0) continue;
+			const idx = AIPlayer.chooseObjective(choices);
+			const result = GameRules.chooseObjective(gameState, aiId, idx);
+			if (!result.error) {
+				console.log(`[Locus AI] ${player.name} koos objective ${idx}`);
+				changed = true;
+				if (result.allChosen) {
+					_startTimerForCurrentPlayer(gameId, true);
+				}
+			}
+		}
+		if (changed) broadcastGameState(io, gameId);
+		return;
+	}
+
+	// ── PLAYING ──
+	if (phase === 'playing') {
+		if (gameState.paused) return;
+		const currentPid = gameState.playerOrder[gameState.currentTurnIndex];
+		if (!currentPid || !gameAIs.has(currentPid)) return;
+
+		executeAITurn(gameId, currentPid);
+		return;
+	}
+
+	// ── LEVEL COMPLETE → start shop ──
+	if (phase === 'levelComplete') {
+		// Check als alle echte spelers ook level-complete gezien hebben
+		// Start shop meteen als er AI in zit
+		setTimeout(() => {
+			const gs = games.get(gameId);
+			if (!gs || gs.phase !== 'levelComplete') return;
+			const result = GameRules.startShopPhase(gs);
+			if (result.success) {
+				console.log(`[Locus AI] Shop fase auto-gestart voor game ${gameId}`);
+				broadcastGameState(io, gameId);
+			}
+		}, 2000);
+		return;
+	}
+
+	// ── SHOPPING ──
+	if (phase === 'shopping') {
+		let changed = false;
+		for (const aiId of gameAIs) {
+			const player = gameState.players[aiId];
+			if (!player || player.shopReady) continue;
+
+			// Perk kiezen
+			const perkId = AIPlayer.choosePerk(gameState, aiId);
+			if (perkId) {
+				const perkResult = GameRules.choosePerk(gameState, aiId, perkId);
+				if (!perkResult.error) {
+					console.log(`[Locus AI] ${player.name} koos perk "${perkResult.perk?.name}"`);
+					changed = true;
+				}
+			}
+
+			// Shop acties
+			const shopActions = AIPlayer.planShop(gameState, aiId);
+			for (const action of shopActions) {
+				if (action.type === 'buyShopItem') {
+					const buyResult = GameRules.buyShopItem(gameState, aiId, action.itemId, action.extra || {});
+					if (buyResult.success) {
+						console.log(`[Locus AI] ${player.name} kocht ${action.itemId}`);
+						// Als er free choices zijn (unlock), kies de eerste
+						if (buyResult.freeChoices?.length > 0) {
+							GameRules.claimFreeCard(gameState, aiId, buyResult.freeChoices[0].id);
+						}
+						changed = true;
+					}
+				} else if (action.type === 'shopReady') {
+					const readyResult = GameRules.shopReady(gameState, aiId);
+					if (!readyResult.error) {
+						console.log(`[Locus AI] ${player.name} is klaar met winkelen`);
+						changed = true;
+						if (readyResult.allReady) {
+							const levelResult = GameRules.startNextLevel(gameState);
+							console.log(`[Locus AI] Level ${gameState.level} gestart voor game ${gameId}`);
+							io.to(gameId).emit('nextLevelStarted', { level: gameState.level });
+							if (gameState.phase === 'playing') {
+								_startTimerForCurrentPlayer(gameId, true);
+							}
+						}
+					}
+				}
+			}
+		}
+		if (changed) broadcastGameState(io, gameId);
+		return;
+	}
+}
+
+function executeAITurn(gameId, aiPlayerId) {
+	const gameState = games.get(gameId);
+	if (!gameState || gameState.phase !== 'playing') return;
+	if (gameState.paused) return;
+
+	const currentPid = gameState.playerOrder[gameState.currentTurnIndex];
+	if (currentPid !== aiPlayerId) return;
+
+	const player = gameState.players[aiPlayerId];
+	if (!player) return;
+
+	_clearTurnTimer(gameId);
+
+	const actions = AIPlayer.planTurn(gameState, aiPlayerId);
+	let gameEnded = false;
+
+	for (const action of actions) {
+		if (gameEnded) break;
+		const gs = games.get(gameId);
+		if (!gs || gs.phase !== 'playing') break;
+
+		if (action.type === 'playCard') {
+			const moveResult = GameRules.playMove(
+				gs, aiPlayerId, action.cardId, action.zoneName,
+				action.baseX, action.baseY, action.rotation || 0, !!action.mirrored, action.subgridId
+			);
+			if (moveResult.error) {
+				console.log(`[Locus AI] ${player.name} move mislukt: ${moveResult.error}`);
+				continue;
+			}
+			console.log(`[Locus AI] ${player.name} speelde ${action.cardId} op ${action.zoneName} (${action.baseX},${action.baseY})`);
+
+			io.to(gameId).emit('movePlayed', {
+				playerId: aiPlayerId,
+				playerName: player.name,
+				zoneName: action.zoneName,
+				baseX: action.baseX,
+				baseY: action.baseY,
+				rotation: action.rotation || 0,
+				cardId: action.cardId,
+				goldCollected: moveResult.goldCollected || 0,
+				bonusesCollected: moveResult.bonusesCollected || [],
+				pearlsCollected: moveResult.pearlsCollected || 0,
+				cardsPlayed: countCardsPlayed(gs, aiPlayerId),
+				objectivesRevealed: shouldRevealObjectives(gs),
+				mineTriggered: moveResult.mineTriggered || null
+			});
+		} else if (action.type === 'playBonus') {
+			// Herbereken bonus plaatsingen na eerdere acties
+			const bonusPlacements = AIPlayer.findValidBonusPlacements(gs, aiPlayerId, action.bonusColor);
+			if (bonusPlacements.length === 0) continue;
+			bonusPlacements.sort((a, b) => b.score - a.score);
+			const best = bonusPlacements[0];
+			const bonusResult = GameRules.playBonus(
+				gs, aiPlayerId, action.bonusColor, best.zoneName, best.baseX, best.baseY, best.subgridId, best.rotation || 0
+			);
+			if (bonusResult.error) {
+				console.log(`[Locus AI] ${player.name} bonus mislukt: ${bonusResult.error}`);
+				continue;
+			}
+			console.log(`[Locus AI] ${player.name} speelde ${action.bonusColor} bonus op ${best.zoneName}`);
+		} else if (action.type === 'endTurn') {
+			const endResult = GameRules.endTurn(gs, aiPlayerId, action.discardCardId || null);
+			if (endResult.error) {
+				console.log(`[Locus AI] ${player.name} endTurn mislukt: ${endResult.error}`);
+				break;
+			}
+			console.log(`[Locus AI] ${player.name} beëindigde beurt (gameEnded: ${endResult.gameEnded})`);
+
+			if (endResult.gameEnded) {
+				gameEnded = true;
+				broadcastGameState(io, gameId);
+				io.to(gameId).emit('levelComplete', {
+					levelScores: gs.levelScores,
+					levelWinner: gs.levelWinner,
+					level: gs.level
+				});
+				return;
+			}
+		}
+	}
+
+	if (!gameEnded) {
+		_startTimerForCurrentPlayer(gameId, true);
+		broadcastGameState(io, gameId);
+	}
 }
 
 // ──────────────────────────────────────────────
@@ -533,6 +780,69 @@ io.on('connection', (socket) => {
 
 		} catch (error) {
 			console.error('[Locus] startGame error:', error);
+			callback({ success: false, error: error.message });
+		}
+	});
+
+	// ── ADD AI PLAYER ────────────────────────
+
+	socket.on('addAIPlayer', (data, callback) => {
+		try {
+			const info = socketToPlayer.get(socket.id);
+			if (!info) return callback({ success: false, error: 'Niet in een spel.' });
+
+			const gameState = games.get(info.gameId);
+			if (!gameState) return callback({ success: false, error: 'Spel niet gevonden.' });
+
+			if (gameState.hostPlayerId !== info.playerId) {
+				return callback({ success: false, error: 'Alleen de host kan AI spelers toevoegen.' });
+			}
+
+			if (gameState.phase !== 'waiting') {
+				return callback({ success: false, error: 'Kan alleen AI toevoegen in de wachtkamer.' });
+			}
+
+			// Bepaal AI naam
+			const existingAIs = aiPlayers.get(info.gameId) || new Set();
+			const aiIndex = existingAIs.size;
+			if (aiIndex >= AIPlayer.AI_NAMES.length) {
+				return callback({ success: false, error: 'Maximum aantal AI spelers bereikt.' });
+			}
+			const aiName = AIPlayer.AI_NAMES[aiIndex];
+			const aiPlayerId = 'AI_' + generateId();
+
+			const addResult = GameRules.addPlayer(gameState, aiPlayerId, aiName);
+			if (addResult.error) {
+				return callback({ success: false, error: addResult.error });
+			}
+
+			// Markeer als AI
+			gameState.players[aiPlayerId].isAI = true;
+			gameState.players[aiPlayerId].connected = true;
+
+			// Track AI speler
+			if (!aiPlayers.has(info.gameId)) aiPlayers.set(info.gameId, new Set());
+			aiPlayers.get(info.gameId).add(aiPlayerId);
+
+			console.log(`[Locus] AI speler "${aiName}" (${aiPlayerId}) toegevoegd aan game ${info.gameId}`);
+
+			callback({
+				success: true,
+				playerId: aiPlayerId,
+				name: aiName
+			});
+
+			// Broadcast de update
+			io.to(info.gameId).emit('playerJoined', {
+				playerId: aiPlayerId,
+				name: aiName,
+				isAI: true
+			});
+
+			broadcastGameState(io, info.gameId);
+
+		} catch (error) {
+			console.error('[Locus] addAIPlayer error:', error);
 			callback({ success: false, error: error.message });
 		}
 	});

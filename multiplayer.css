@@ -651,7 +651,8 @@ html, body {
 }
 
 .mp-host-badge,
-.mp-you-badge {
+.mp-you-badge,
+.mp-ai-badge {
 	font-size: 0.65rem;
 	text-transform: uppercase;
 	letter-spacing: 1px;
@@ -667,6 +668,11 @@ html, body {
 
 .mp-you-badge {
 	background: var(--mp-accent);
+	color: white;
+}
+
+.mp-ai-badge {
+	background: #6c5ce7;
 	color: white;
 }
 
