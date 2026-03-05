@@ -389,6 +389,19 @@ class LocusMultiplayer {
 		}
 	}
 
+	/** Voeg een AI speler toe aan het spel */
+	async addAIPlayer() {
+		try {
+			const result = await this._emitWithAck('addAIPlayer', {});
+			console.log('[Locus MP] AI player added:', result.playerId);
+			return result;
+		} catch (error) {
+			console.error('[Locus MP] Add AI player failed:', error);
+			if (this.onError) this.onError(error);
+			throw error;
+		}
+	}
+
 	async chooseStartingDeck(deckType) {
 		try {
 			return await this._emitWithAck('chooseStartingDeck', { deckType });
