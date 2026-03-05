@@ -30,6 +30,7 @@ class LocusLobbyUI {
 		this._lastDragBaseY = null;
 		this._ghostOffsetX = 0;
 		this._ghostOffsetY = 0;
+		this._lastPointerEvent = null;
 
 		// Bonus state
 		this._bonusMode = null; // null | { color, matrix }
