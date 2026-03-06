@@ -534,6 +534,14 @@ function executeAITurn(gameId, aiPlayerId) {
 		if (!gs || gs.phase !== 'playing') break;
 
 		if (action.type === 'playCard') {
+			const transformedMatrix = buildTransformedCardMatrix(
+				gs,
+				aiPlayerId,
+				action.cardId,
+				action.zoneName,
+				action.rotation || 0,
+				!!action.mirrored
+			);
 			const moveResult = GameRules.playMove(
 				gs, aiPlayerId, action.cardId, action.zoneName,
 				action.baseX, action.baseY, action.rotation || 0, !!action.mirrored, action.subgridId
@@ -551,6 +559,9 @@ function executeAITurn(gameId, aiPlayerId) {
 				baseX: action.baseX,
 				baseY: action.baseY,
 				rotation: action.rotation || 0,
+				mirrored: !!action.mirrored,
+				subgridId: action.subgridId || null,
+				matrix: transformedMatrix,
 				cardId: action.cardId,
 				goldCollected: moveResult.goldCollected || 0,
 				bonusesCollected: moveResult.bonusesCollected || [],
