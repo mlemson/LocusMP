@@ -1046,6 +1046,8 @@ io.on('connection', (socket) => {
 				return callback({ success: false, error: 'baseX en baseY moeten getallen zijn.' });
 			}
 
+			const transformedMatrix = buildTransformedCardMatrix(gameState, info.playerId, cardId, zoneName, rotation, mirrored);
+
 			const moveResult = GameRules.playMove(
 				gameState, info.playerId, cardId, zoneName,
 				baseX, baseY, rotation, mirrored, subgridId
@@ -1069,7 +1071,6 @@ io.on('connection', (socket) => {
 			});
 
 			// Broadcast gedetailleerde move info aan alle spelers voor animaties
-			const transformedMatrix = buildTransformedCardMatrix(gameState, info.playerId, cardId, zoneName, rotation, mirrored);
 			io.to(info.gameId).emit('movePlayed', {
 				playerId: info.playerId,
 				playerName: playerData?.name || '???',

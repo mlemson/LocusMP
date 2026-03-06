@@ -11729,6 +11729,55 @@ html.theme-reef .mp-deck-objective-card.achieved::before {
 	background: linear-gradient(90deg, #5be8b4, #57d5e5, #5be8b4);
 }
 
+@media (max-width: 768px) {
+	.mp-popup-overlay,
+	.mp-discard-overlay,
+	.mp-level-overlay {
+		align-items: flex-start;
+		overflow-y: auto;
+		-webkit-overflow-scrolling: touch;
+		padding: calc(12px + env(safe-area-inset-top)) 10px calc(14px + env(safe-area-inset-bottom));
+	}
+
+	.mp-sell-popup,
+	.mp-discard-modal,
+	.mp-level-popup {
+		max-height: none;
+		margin: 0 auto;
+	}
+
+	.mp-bottom-actions {
+		position: relative;
+		justify-content: flex-start;
+		padding-right: 104px;
+		min-height: 46px;
+	}
+
+	#mp-end-turn-btn {
+		position: absolute;
+		right: 6px;
+		top: 50%;
+		transform: translateY(-50%);
+		min-width: 88px;
+		padding: 8px 12px;
+		font-size: 0.76rem;
+		z-index: 2;
+	}
+}
+
+@media (max-width: 480px) {
+	.mp-bottom-actions {
+		padding-right: 90px;
+	}
+
+	#mp-end-turn-btn {
+		right: 4px;
+		min-width: 78px;
+		padding: 7px 10px;
+		font-size: 0.72rem;
+	}
+}
+
 html.theme-reef .mp-deck-obj-name {
 	background: linear-gradient(135deg, #ffd55a, #ff8c69);
 	-webkit-background-clip: text;
