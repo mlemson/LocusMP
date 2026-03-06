@@ -657,6 +657,47 @@ app.get('/api/games', (req, res) => {
 	res.json({ games: activeGames });
 });
 
+app.get('/api/p2p-lobbies', (req, res) => {
+	res.json({ lobbies: _serializeOpenP2PLobbies() });
+});
+
+app.post('/api/p2p-lobbies', (req, res) => {
+	try {
+		const body = req.body || {};
+		const roomCode = String(body.roomCode || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6);
+		if (!roomCode || roomCode.length !== 6) {
+			return res.status(400).json({ success: false, error: 'Geldige roomCode vereist.' });
+		}
+
+		const now = Date.now();
+		const maxPlayers = Math.min(8, Math.max(2, Number(body.maxPlayers) || 4));
+		const playerCount = Math.min(maxPlayers, Math.max(1, Number(body.playerCount) || 1));
+		p2pLobbies.set(roomCode, {
+			roomCode,
+			hostName: String(body.hostName || 'P2P Host').slice(0, 32),
+			playerCount,
+			maxPlayers,
+			mapSize: Math.min(8, Math.max(2, Number(body.mapSize) || 4)),
+			phase: String(body.phase || 'waiting'),
+			createdAt: Number(body.createdAt) || now,
+			expiresAt: now + P2P_LOBBY_TTL_MS
+		});
+
+		return res.json({ success: true });
+	} catch (error) {
+		return res.status(500).json({ success: false, error: error.message || 'Kon P2P lobby niet registreren.' });
+	}
+});
+
+app.delete('/api/p2p-lobbies/:roomCode', (req, res) => {
+	const roomCode = String(req.params.roomCode || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6);
+	if (!roomCode) {
+		return res.status(400).json({ success: false, error: 'roomCode vereist.' });
+	}
+	const removed = p2pLobbies.delete(roomCode);
+	return res.json({ success: true, removed });
+});
+
 // Fallback
 app.get('*', (req, res) => {
 	res.sendFile(path.join(clientRoot, 'multiplayer.html'));
@@ -1017,12 +1058,16 @@ io.on('connection', (socket) => {
 			});
 
 			// Broadcast gedetailleerde move info aan alle spelers voor animaties
+			const transformedMatrix = buildTransformedCardMatrix(gameState, info.playerId, cardId, zoneName, rotation, mirrored);
 			io.to(info.gameId).emit('movePlayed', {
 				playerId: info.playerId,
 				playerName: playerData?.name || '???',
 				zoneName,
 				baseX, baseY,
 				rotation: rotation,
+				mirrored,
+				subgridId,
+				matrix: transformedMatrix,
 				cardId,
 				colorCode: moveResult.scores ? undefined : '#666',
 				goldCollected: moveResult.goldCollected || 0,
