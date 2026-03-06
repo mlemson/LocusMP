@@ -32,6 +32,9 @@ const games = new Map();
 /** @type {Map<string, string>} inviteCode → gameId */
 const inviteCodes = new Map();
 
+/** @type {Map<string, object>} roomCode → p2p lobby metadata */
+const p2pLobbies = new Map();
+
 /** @type {Map<string, {gameId: string, playerId: string}>} socket.id → { gameId, playerId } */
 const socketToPlayer = new Map();
 
@@ -53,6 +56,7 @@ const ALLOWED_TAUNTS = new Set([
 ]);
 
 const TURN_TIMER_MS = 40000; // 40 seconden per beurt
+const P2P_LOBBY_TTL_MS = 45000;
 
 function _startTurnTimer(gameId, playerId, durationMs = TURN_TIMER_MS) {
 	_clearTurnTimer(gameId);
@@ -196,6 +200,60 @@ function countCardsPlayed(gameState, playerId) {
 function shouldRevealObjectives(gameState) {
 	const round = Number(gameState?.turnCount || 0);
 	return round > 4;
+}
+
+function buildTransformedCardMatrix(gameState, playerId, cardId, zoneName, rotation = 0, mirrored = false) {
+	const player = gameState?.players?.[playerId];
+	if (!player) return null;
+	const hand = Array.isArray(player.hand) ? player.hand : [];
+	const card = hand.find((c) => c && c.id === cardId);
+	if (!card || !Array.isArray(card.matrix)) return null;
+
+	const perkFlags = {
+		greenGapAllowed: !!player.perks?.greenGapAllowed,
+		diagonalRotation: !!player.perks?.diagonalRotation
+	};
+
+	let matrix = GameRules.cloneMatrix(card.matrix);
+	matrix = GameRules.getEnhancedMatrix(matrix, zoneName, perkFlags);
+	matrix = GameRules.rotateMatrixN(matrix, Number(rotation) || 0);
+	if (mirrored) matrix = GameRules.mirrorMatrix(matrix);
+	return matrix;
+}
+
+function _cleanupP2PLobbies() {
+	const now = Date.now();
+	for (const [roomCode, lobby] of p2pLobbies) {
+		if (!lobby || Number(lobby.expiresAt || 0) <= now) {
+			p2pLobbies.delete(roomCode);
+		}
+	}
+}
+
+function _serializeOpenP2PLobbies() {
+	_cleanupP2PLobbies();
+	const now = Date.now();
+	const result = [];
+	for (const lobby of p2pLobbies.values()) {
+		if (!lobby) continue;
+		if ((lobby.phase || 'waiting') !== 'waiting') continue;
+		const playerCount = Number(lobby.playerCount || 0);
+		const maxPlayers = Number(lobby.maxPlayers || 4);
+		if (playerCount < 1 || playerCount >= maxPlayers) continue;
+		result.push({
+			mode: 'p2p',
+			roomCode: lobby.roomCode,
+			inviteCode: lobby.roomCode,
+			hostName: lobby.hostName || 'P2P Host',
+			playerCount,
+			maxPlayers,
+			mapSize: Number(lobby.mapSize || 4),
+			createdAt: Number(lobby.createdAt || now),
+			expiresAt: Number(lobby.expiresAt || (now + P2P_LOBBY_TTL_MS))
+		});
+	}
+	result.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+	return result;
 }
 
 /** Verberg kaarten/doelstellingen van andere spelers */
@@ -548,6 +606,7 @@ function executeAITurn(gameId, aiPlayerId) {
 
 const app = express();
 const server = http.createServer(app);
+app.use(express.json({ limit: '64kb' }));
 
 // Serve de frontend vanuit de root folder (parent van server/)
 const clientRoot = path.join(__dirname, '..');

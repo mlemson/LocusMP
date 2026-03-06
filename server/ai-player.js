@@ -11,7 +11,7 @@
 const GameRules = require('../shared/game-rules');
 
 const AI_NAMES = ['Bot Alpha', 'Bot Beta', 'Bot Gamma', 'Bot Delta', 'Bot Epsilon', 'Bot Zeta'];
-const AI_THINK_DELAY_MS = 800; // Simuleer "denktijd"
+const AI_THINK_DELAY_MS = 280; // Korte, merkbare denktijd
 
 /**
  * Geeft alle geldige plaatsingen terug voor een kaart in een zone.
