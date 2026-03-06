@@ -965,53 +965,23 @@ class LocusLobbyUI {
 		const container = document.getElementById('server-browser-list');
 		if (!container) return;
 
+		let games = [];
 		try {
 			const baseUrl = (this.mp && this.mp.serverUrl && this.mp.serverUrl !== 'p2p') ? this.mp.serverUrl : '';
 			const response = await fetch(baseUrl + '/api/games');
 			if (!response.ok) throw new Error('Fetch failed');
 			const data = await response.json();
-			const games = data.games || [];
-
-			if (games.length === 0) {
-				container.innerHTML = `<div class="mp-server-browser-empty">Geen open lobbys gevonden</div>`;
-				return;
-			}
-
-			container.innerHTML = games.map(game => {
-				const mapLabels = { 2: 'Klein', 4: 'Middel', 6: 'Groot', 8: 'Mega' };
-				const mapLabel = mapLabels[game.mapSize] || `${game.mapSize}`;
-				const timeAgo = this._timeAgo(game.createdAt);
-				return `
-					<div class="mp-server-browser-item" data-invite-code="${game.inviteCode || ''}">
-						<div class="mp-server-item-info">
-							<div class="mp-server-item-host">${this._escapeHtml(game.hostName)}</div>
-							<div class="mp-server-item-meta">
-								${game.playerCount}/${game.maxPlayers} spelers · ${mapLabel} · ${timeAgo}
-							</div>
-						</div>
-						<button class="mp-btn mp-btn-secondary mp-server-join-btn"
-								data-invite-code="${game.inviteCode || ''}">
-							Deelnemen
-						</button>
-					</div>
-				`;
-			}).join('');
-
-			// Bind join buttons
-			container.querySelectorAll('.mp-server-join-btn').forEach(btn => {
-				btn.addEventListener('click', () => {
-					const code = btn.dataset.inviteCode;
-					if (code) {
-						const codeInput = this.elements['invite-code-input'];
-						if (codeInput) codeInput.value = code;
-						this._handleJoinGame();
-					}
-				});
-			});
+			games = data.games || [];
 		} catch (error) {
 			console.warn('[Locus UI] Server browser fetch failed:', error);
-			container.innerHTML = `<div class="mp-server-browser-empty">Kon lobbys niet laden</div>`;
 		}
+
+		if (window._renderOpenLobbyBrowserList) {
+			window._renderOpenLobbyBrowserList(container, games);
+			return;
+		}
+
+		container.innerHTML = `<div class="mp-server-browser-empty">${games.length ? 'Open lobbys beschikbaar' : 'Kon lobbys niet laden'}</div>`;
 	}
 
 	_timeAgo(timestamp) {
@@ -2935,11 +2905,12 @@ class LocusLobbyUI {
 		const adjPreview = this.mp.previewPlacement(bestZone, baseX, baseY, this._dragState.card.matrix, subgridId, this._dragState.rotation, this._dragState.mirrored);
 
 		if (adjPreview.valid && adjPreview.cells) {
+			const resolvedSubgridId = adjPreview.subgridId || subgridId || null;
 			this._lastPreviewZone = bestZone;
 			this._lastPreviewCells = adjPreview.cells;
 			this._lastPreviewBaseX = baseX;
 			this._lastPreviewBaseY = baseY;
-			this._lastPreviewSubgridId = subgridId;
+			this._lastPreviewSubgridId = resolvedSubgridId;
 
 			this._sendInteraction('move', {
 				mode: 'card',
@@ -2947,26 +2918,11 @@ class LocusLobbyUI {
 				zoneName: bestZone,
 				baseX,
 				baseY,
-				subgridId,
+				subgridId: resolvedSubgridId,
 				matrix,
 				isValid: true
 			});
-			for (const coord of adjPreview.cells) {
-				const sel = subgridId
-					? `.mp-cell[data-zone="${bestZone}"][data-subgrid="${subgridId}"][data-x="${coord.x}"][data-y="${coord.y}"]`
-					: `.mp-cell[data-zone="${bestZone}"][data-x="${coord.x}"][data-y="${coord.y}"]`;
-				const el = document.querySelector(sel);
-				if (el) el.classList.add('preview-valid');
-			}
-			// Toon optionele cellen (perk) met semi-transparante preview
-			const optCells = adjPreview.cells.optionalCells || [];
-			for (const coord of optCells) {
-				const sel = subgridId
-					? `.mp-cell[data-zone="${bestZone}"][data-subgrid="${subgridId}"][data-x="${coord.x}"][data-y="${coord.y}"]`
-					: `.mp-cell[data-zone="${bestZone}"][data-x="${coord.x}"][data-y="${coord.y}"]`;
-				const el = document.querySelector(sel);
-				if (el) { el.classList.add('preview-valid'); el.style.opacity = '0.45'; }
-			}
+			this._paintCardPreviewCells(bestZone, baseX, baseY, matrix, resolvedSubgridId, adjPreview.cells.optionalCells || []);
 			if (ghost) { ghost.classList.remove('preview-denied'); ghost.classList.add('preview-ok'); }
 		} else {
 			this._sendInteraction('move', {
@@ -4126,6 +4082,28 @@ class LocusLobbyUI {
 					: `.mp-cell[data-zone="${zoneName}"][data-x="${cx}"][data-y="${cy}"]`;
 				const el = document.querySelector(sel);
 				if (el) el.classList.add('preview-denied');
+			}
+		}
+	}
+
+	_paintCardPreviewCells(zoneName, baseX, baseY, matrix, subgridId = null, optionalCells = []) {
+		if (!matrix || !matrix.length) return;
+		const optionalSet = new Set((optionalCells || []).map(cell => `${cell.x},${cell.y}`));
+		for (let r = 0; r < matrix.length; r++) {
+			for (let c = 0; c < (matrix[r]?.length || 0); c++) {
+				const value = matrix[r][c];
+				if (!value) continue;
+				const x = baseX + c;
+				const y = baseY + r;
+				const isOptional = optionalSet.has(`${x},${y}`);
+				if (value === 2 && !isOptional) continue;
+				const sel = subgridId
+					? `.mp-cell[data-zone="${zoneName}"][data-subgrid="${subgridId}"][data-x="${x}"][data-y="${y}"]`
+					: `.mp-cell[data-zone="${zoneName}"][data-x="${x}"][data-y="${y}"]`;
+				const el = document.querySelector(sel);
+				if (!el) continue;
+				el.classList.add('preview-valid');
+				if (isOptional) el.style.opacity = '0.45';
 			}
 		}
 	}

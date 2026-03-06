@@ -319,7 +319,7 @@
 	<script src="client/p2p-host.js?v=14"></script>
 
 	<!-- Lobby UI -->
-	<script src="client/lobby-ui.js?v=16"></script>
+	<script src="client/lobby-ui.js?v=17"></script>
 
 	<!-- App bootstrap -->
 	<script>
@@ -477,6 +477,154 @@
 			} catch (_) {}
 		}
 
+		const P2P_BROWSER_STORAGE_KEY = 'locus_p2p_open_lobbies';
+		const P2P_BROWSER_INSTANCE_KEY = 'locus_p2p_browser_instance';
+		const P2P_BROWSER_TTL_MS = 30000;
+
+		function _getP2PBrowserInstanceId() {
+			try {
+				let id = sessionStorage.getItem(P2P_BROWSER_INSTANCE_KEY);
+				if (!id) {
+					id = 'tab-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8);
+					sessionStorage.setItem(P2P_BROWSER_INSTANCE_KEY, id);
+				}
+				return id;
+			} catch (_) {
+				return 'tab-fallback';
+			}
+		}
+
+		function _readRegisteredP2PLobbies() {
+			try {
+				const raw = localStorage.getItem(P2P_BROWSER_STORAGE_KEY);
+				const now = Date.now();
+				const parsed = raw ? JSON.parse(raw) : [];
+				return Array.isArray(parsed) ? parsed.filter(item => item && item.expiresAt > now) : [];
+			} catch (_) {
+				return [];
+			}
+		}
+
+		function _writeRegisteredP2PLobbies(entries) {
+			try {
+				localStorage.setItem(P2P_BROWSER_STORAGE_KEY, JSON.stringify(entries || []));
+			} catch (_) {}
+		}
+
+		function _escapeBrowserText(value) {
+			return String(value || '')
+				.replace(/&/g, '&amp;')
+				.replace(/</g, '&lt;')
+				.replace(/>/g, '&gt;')
+				.replace(/"/g, '&quot;')
+				.replace(/'/g, '&#39;');
+		}
+
+		function _syncRegisteredP2PLobby(host, hostName) {
+			if (!host?.roomCode) return;
+			const instanceId = _getP2PBrowserInstanceId();
+			const entries = _readRegisteredP2PLobbies().filter(item => !(item.instanceId === instanceId && item.roomCode === host.roomCode));
+			const phase = host.gameState?.phase || 'waiting';
+			if (phase !== 'waiting') {
+				_writeRegisteredP2PLobbies(entries);
+				return;
+			}
+			const playerCount = Array.isArray(host.gameState?.playerOrder) ? host.gameState.playerOrder.length : Object.keys(host.gameState?.players || {}).length;
+			const maxPlayers = Number(host.gameState?.settings?.maxPlayers || 4);
+			entries.push({
+				instanceId,
+				mode: 'p2p',
+				roomCode: host.roomCode,
+				inviteCode: host.roomCode,
+				hostName: hostName || host.gameState?.players?.[host.hostPlayerId]?.name || 'P2P Host',
+				playerCount,
+				maxPlayers,
+				mapSize: Number(host.gameState?.settings?.mapSize || 4),
+				createdAt: Number(host.gameState?.createdAt || Date.now()),
+				expiresAt: Date.now() + P2P_BROWSER_TTL_MS
+			});
+			_writeRegisteredP2PLobbies(entries.slice(-20));
+		}
+
+		function _clearRegisteredP2PLobby(roomCode) {
+			if (!roomCode) return;
+			const instanceId = _getP2PBrowserInstanceId();
+			const entries = _readRegisteredP2PLobbies().filter(item => !(item.instanceId === instanceId && item.roomCode === roomCode));
+			_writeRegisteredP2PLobbies(entries);
+		}
+
+		function _getOpenP2PLobbies() {
+			return _readRegisteredP2PLobbies()
+				.map(item => ({ ...item, mode: 'p2p' }))
+				.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+		}
+
+		function _getCombinedOpenLobbies(serverGames) {
+			const serverEntries = Array.isArray(serverGames)
+				? serverGames.map(game => ({ ...game, mode: game.mode || 'server' }))
+				: [];
+			return [...serverEntries, ..._getOpenP2PLobbies()];
+		}
+
+		function _renderOpenLobbyBrowserList(container, serverGames) {
+			if (!container) return;
+			const games = _getCombinedOpenLobbies(serverGames);
+			if (games.length === 0) {
+				container.innerHTML = '<div class="mp-server-browser-empty">Geen open lobbys gevonden</div>';
+				return;
+			}
+			const mapLabels = { 2: 'Klein', 4: 'Middel', 6: 'Groot', 8: 'Mega' };
+			container.innerHTML = games.map(function(game) {
+				const mapLabel = mapLabels[game.mapSize] || game.mapSize || '?';
+				const ageMs = Math.max(0, Date.now() - Number(game.createdAt || Date.now()));
+				const ageMin = Math.floor(ageMs / 60000);
+				const timeAgo = ageMin <= 0 ? 'zojuist' : (ageMin < 60 ? ageMin + ' min geleden' : Math.floor(ageMin / 60) + ' uur geleden');
+				const modeBadge = game.mode === 'p2p' ? 'P2P' : 'Server';
+				const joinCode = game.mode === 'p2p' ? (game.roomCode || game.inviteCode || '') : (game.inviteCode || '');
+				return '<div class="mp-server-browser-item" data-mode="' + game.mode + '" data-invite-code="' + _escapeBrowserText(joinCode) + '">'
+					+ '<div class="mp-server-item-info">'
+					+ '<div class="mp-server-item-host">' + _escapeBrowserText(game.hostName || 'Host') + ' <span style="opacity:0.65;font-size:11px;">' + modeBadge + '</span></div>'
+					+ '<div class="mp-server-item-meta">' + (game.playerCount || 0) + '/' + (game.maxPlayers || 0) + ' spelers · ' + _escapeBrowserText(mapLabel) + ' · ' + _escapeBrowserText(timeAgo) + '</div>'
+					+ '</div>'
+					+ '<button class="mp-btn mp-btn-secondary mp-server-join-btn" data-mode="' + game.mode + '" data-invite-code="' + _escapeBrowserText(joinCode) + '">Deelnemen</button>'
+					+ '</div>';
+			}).join('');
+
+			container.querySelectorAll('.mp-server-join-btn').forEach(function(btn) {
+				btn.addEventListener('click', function() {
+					const mode = btn.dataset.mode || 'server';
+					const code = btn.dataset.inviteCode || '';
+					if (!code) return;
+					if (mode === 'p2p') {
+						const p2pInput = document.getElementById('p2p-room-code-input');
+						if (p2pInput) p2pInput.value = code;
+						document.getElementById('p2p-join-btn')?.click();
+						return;
+					}
+					const inviteInput = document.getElementById('invite-code-input');
+					if (inviteInput) inviteInput.value = code;
+					if (window._ui && window._ui._handleJoinGame) {
+						window._ui._handleJoinGame();
+						return;
+					}
+					document.getElementById('join-game-btn')?.click();
+				});
+			});
+		}
+
+		window._getOpenP2PLobbies = _getOpenP2PLobbies;
+		window._renderOpenLobbyBrowserList = _renderOpenLobbyBrowserList;
+		window._syncRegisteredP2PLobby = _syncRegisteredP2PLobby;
+		window._clearRegisteredP2PLobby = _clearRegisteredP2PLobby;
+
+		window.addEventListener('pagehide', () => {
+			try {
+				if (window._p2pHost?.roomCode) {
+					_clearRegisteredP2PLobby(window._p2pHost.roomCode);
+				}
+			} catch (_) {}
+		});
+
 		/** Initialiseer de server browser knop standalone (zonder UI klasse) */
 		function _initServerBrowseStandalone() {
 			const toggleBtn = document.getElementById('server-browse-toggle');
@@ -560,24 +708,16 @@
 								if (window._ui) window._ui._refreshServerBrowser();
 							}
 
-							// Toon lobbys direct
-							if (games.length === 0) {
-								list.innerHTML = '<div class="mp-server-browser-empty">Geen open lobbys gevonden</div>';
-							} else {
-								list.innerHTML = games.map(function(game) {
-									var mapLabels = { 2: 'Klein', 4: 'Middel', 6: 'Groot', 8: 'Mega' };
-									return '<div class="mp-server-browser-item" data-invite-code="' + (game.inviteCode || '') + '">'
-										+ '<div class="mp-server-item-info">'
-										+ '<div class="mp-server-item-host">' + (game.hostName || 'Host') + '</div>'
-										+ '<div class="mp-server-item-meta">' + game.playerCount + '/' + game.maxPlayers + ' spelers · ' + (mapLabels[game.mapSize] || game.mapSize) + '</div>'
-										+ '</div>'
-										+ '<button class="mp-btn mp-btn-secondary mp-server-join-btn" data-invite-code="' + (game.inviteCode || '') + '">Deelnemen</button>'
-										+ '</div>';
-								}).join('');
-							}
+							window._renderOpenLobbyBrowserList?.(list, games);
 							return;
 						}
 					} catch (_) { /* timeout of netwerk fout */ }
+				}
+
+				var p2pGames = window._getOpenP2PLobbies ? window._getOpenP2PLobbies() : [];
+				if (p2pGames.length > 0) {
+					window._renderOpenLobbyBrowserList?.(list, []);
+					return;
 				}
 
 				// Geen server gevonden — toon diagnostiek
@@ -738,6 +878,7 @@
 					window._mp = p2pMp;
 					window._ui = ui;
 					window._p2pHost = host;
+					window._syncRegisteredP2PLobby?.(host, userName);
 
 					try {
 						sessionStorage.setItem('locus_p2p_role', 'host');
@@ -750,6 +891,7 @@
 					host.onStateChanged = (state) => {
 						const prev = p2pMp.gameState;
 						p2pMp.gameState = state;
+						window._syncRegisteredP2PLobby?.(host, userName);
 						if (p2pMp.onGameStateChanged) {
 							try { p2pMp.onGameStateChanged(state, prev); } catch (err) { console.error('[P2P Adapter] onGameStateChanged ERROR:', err); }
 						}
@@ -757,10 +899,12 @@
 					};
 
 					host.onPlayerJoined = (data) => {
+						window._syncRegisteredP2PLobby?.(host, userName);
 						if (p2pMp.onPlayerJoined) p2pMp.onPlayerJoined(data);
 					};
 
 					host.onPlayerLeft = (leftPlayerId) => {
+						window._syncRegisteredP2PLobby?.(host, userName);
 						if (p2pMp.onPlayerLeft) p2pMp.onPlayerLeft(leftPlayerId);
 					};
 
@@ -872,6 +1016,7 @@
 					window._mp = p2pMp;
 					window._ui = ui;
 					window._p2pHost = host;
+					window._syncRegisteredP2PLobby?.(host, name);
 					try {
 						sessionStorage.setItem('locus_p2p_role', 'host');
 						sessionStorage.setItem('locus_p2p_roomCode', result.roomCode);
@@ -885,6 +1030,7 @@
 						console.log('[P2P Adapter] onStateChanged, phase:', state?.phase, 'userId:', p2pMp.userId);
 						const prev = p2pMp.gameState;
 						p2pMp.gameState = state;
+						window._syncRegisteredP2PLobby?.(host, name);
 						if (p2pMp.onGameStateChanged) {
 							try {
 								p2pMp.onGameStateChanged(state, prev);
@@ -898,10 +1044,12 @@
 					};
 
 					host.onPlayerJoined = (data) => {
+						window._syncRegisteredP2PLobby?.(host, name);
 						if (p2pMp.onPlayerJoined) p2pMp.onPlayerJoined(data);
 					};
 
 					host.onPlayerLeft = (playerId) => {
+						window._syncRegisteredP2PLobby?.(host, name);
 						if (p2pMp.onPlayerLeft) p2pMp.onPlayerLeft(playerId);
 					};
 
