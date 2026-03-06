@@ -882,7 +882,7 @@ class LocusP2PHost {
 		this._aiTimer = setTimeout(() => {
 			this._aiTimer = null;
 			this._runAI();
-		}, 260);
+		}, 1100);
 	}
 
 	_runAI() {

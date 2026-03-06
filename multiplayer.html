@@ -1397,26 +1397,45 @@
 					return this.gameState?.boardState || null;
 				},
 
-				previewPlacement(zoneName, baseX, baseY, matrix, subgridId) {
+				previewPlacement(zoneName, baseX, baseY, matrix, subgridId, rotation, mirrored) {
 					if (!this.gameState?.boardState) return { valid: false };
 					const Rules = window.LocusGameRules;
 					if (!Rules) return { valid: false };
+
+					const player = this.gameState.players?.[host.hostPlayerId];
+					const perkFlags = {
+						greenGapAllowed: !!player?.perks?.greenGapAllowed,
+						diagonalRotation: !!player?.perks?.diagonalRotation
+					};
+
+					let enhancedMatrix;
+					if (rotation !== undefined) {
+						enhancedMatrix = Rules.getEnhancedMatrix(matrix, zoneName, perkFlags);
+						enhancedMatrix = Rules.rotateMatrixN(enhancedMatrix, ((Number(rotation) || 0) + 4) % 4);
+						if (mirrored) enhancedMatrix = Rules.mirrorMatrix(enhancedMatrix);
+					} else {
+						enhancedMatrix = Rules.getEnhancedMatrix(matrix, zoneName, perkFlags);
+					}
+
 					let zoneData;
 					if (zoneName === 'red') {
 						const sgs = subgridId
 							? (this.gameState.boardState.zones.red?.subgrids || []).filter(sg => sg.id === subgridId)
 							: (this.gameState.boardState.zones.red?.subgrids || []);
 						for (const sg of sgs) {
-							const cells = Rules.collectPlacementCellsData(sg, baseX, baseY, matrix);
-							if (cells) return { valid: Rules.validatePlacement(zoneName, sg, cells), cells };
+							const cells = Rules.collectPlacementCellsData(sg, baseX, baseY, enhancedMatrix);
+							if (cells && Rules.validatePlacement(zoneName, sg, cells, perkFlags)) {
+								return { valid: true, cells, subgridId: sg.id, enhancedMatrix };
+							}
 						}
 						return { valid: false };
 					}
 					zoneData = this.gameState.boardState.zones[zoneName];
 					if (!zoneData) return { valid: false };
-					const cells = Rules.collectPlacementCellsData(zoneData, baseX, baseY, matrix);
+					const cells = Rules.collectPlacementCellsData(zoneData, baseX, baseY, enhancedMatrix);
 					if (!cells) return { valid: false };
-					return { valid: Rules.validatePlacement(zoneName, zoneData, cells), cells };
+					const valid = Rules.validatePlacement(zoneName, zoneData, cells, perkFlags);
+					return { valid, cells, enhancedMatrix };
 				},
 
 				disconnect() {
