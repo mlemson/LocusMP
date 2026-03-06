@@ -2820,95 +2820,12 @@ class LocusLobbyUI {
 		// Als preview al groen/geldig was, plaats exact die preview-locatie
 		if (this._attemptPlacementFromCurrentPreview()) return;
 
-		const ghost = this._dragState.ghostEl;
-		const matrix = this._dragState.matrix;
-
-		// Per-cell hit testing for drop (same approach as hover)
-		if (ghost && matrix && matrix.length) {
-			const gridEl = ghost.querySelector('.mp-mini-grid');
-			if (gridEl) {
-				// CRITICAL: Measure cell metrics BEFORE hiding the ghost
-				const sampleCell = ghost.querySelector('.mp-mini-cell');
-				const cellRect = sampleCell ? sampleCell.getBoundingClientRect() : null;
-				const cellSize = cellRect ? Math.max(Math.min(cellRect.width, cellRect.height), 1) : 20;
-				const gridStyle = getComputedStyle(gridEl);
-				const gap = gridStyle ? (parseFloat(gridStyle.gap) || parseFloat(gridStyle.columnGap) || 0) : 0;
-				const step = cellSize + gap;
-				const ghostRect = gridEl.getBoundingClientRect();
-
-				ghost.style.display = 'none';
-
-				// Use same tolerance-based 9-point sampling as preview
-				const dropTolerance = 6;
-				const dropOffsets = [
-					[0, 0],
-					[dropTolerance, 0], [-dropTolerance, 0],
-					[0, dropTolerance], [0, -dropTolerance],
-					[dropTolerance, dropTolerance], [-dropTolerance, dropTolerance],
-					[dropTolerance, -dropTolerance], [-dropTolerance, -dropTolerance]
-				];
-				const cellHits = [];
-				for (let row = 0; row < matrix.length; row++) {
-					for (let col = 0; col < (matrix[row]?.length || 0); col++) {
-						if (!matrix[row][col]) continue;
-						const hitCX = ghostRect.left + (col * step) + (cellSize / 2);
-						const hitCY = ghostRect.top + (row * step) + (cellSize / 2);
-						let gridCell = null;
-						for (const [dx, dy] of dropOffsets) {
-							const elem = document.elementFromPoint(hitCX + dx, hitCY + dy);
-							const c = elem ? elem.closest('.mp-cell:not(.void)') : null;
-							if (c && c.dataset.x !== undefined && c.dataset.y !== undefined) { gridCell = c; break; }
-						}
-						if (!gridCell) continue;
-						cellHits.push({
-							shapeRow: row, shapeCol: col,
-							gridX: parseInt(gridCell.dataset.x, 10),
-							gridY: parseInt(gridCell.dataset.y, 10),
-							zoneName: gridCell.dataset.zone,
-							subgridId: gridCell.dataset.subgrid || null
-						});
-					}
-				}
-
-				ghost.style.display = '';
-
-				if (cellHits.length > 0) {
-					const zoneCounts = {};
-					cellHits.forEach(h => { if (h.zoneName) zoneCounts[h.zoneName] = (zoneCounts[h.zoneName] || 0) + 1; });
-					const bestZone = Object.keys(zoneCounts).reduce((a, b) => zoneCounts[a] > zoneCounts[b] ? a : b);
-					let zoneHits = cellHits.filter(h => h.zoneName === bestZone);
-					if (bestZone === 'red') {
-						zoneHits = this._filterRedHitsBySubgrid(zoneHits);
-					}
-					if (zoneHits.length > 0) {
-						const baseX = this._pickBestVote(zoneHits.map(h => h.gridX - h.shapeCol), null);
-						const baseY = this._pickBestVote(zoneHits.map(h => h.gridY - h.shapeRow), null);
-						const subgridId = zoneHits[0]?.subgridId || null;
-						this._attemptPlacement(bestZone, baseX, baseY, subgridId);
-						return;
-					}
-				}
-			}
-		}
-
-		// Fallback: single-point detection
-		if (ghost) ghost.style.display = 'none';
-		const target = document.elementFromPoint(e.clientX, e.clientY);
-		if (ghost) ghost.style.display = '';
-
-		const cell = target?.closest('.mp-cell:not(.void)');
-
-		if (cell) {
-			const x = Number(cell.dataset.x);
-			const y = Number(cell.dataset.y);
-			const zoneName = cell.dataset.zone;
-			const subgridId = cell.dataset.subgrid || null;
-
-			if (zoneName && Number.isFinite(x) && Number.isFinite(y)) {
-				const adj = this._adjustBaseForMatrix(x, y, this._dragState.matrix);
-				this._attemptPlacement(zoneName, adj.x, adj.y, subgridId);
-				return;
-			}
+		const resolved = this._resolveHoveredCardPlacement();
+		if (resolved) {
+			this._lastDragBaseX = resolved.baseX;
+			this._lastDragBaseY = resolved.baseY;
+			this._attemptPlacement(resolved.zoneName, resolved.baseX, resolved.baseY, resolved.subgridId);
+			return;
 		}
 
 		// Drop niet op een cell → ghost verwijderen, click-fallback aanzetten
@@ -2939,41 +2856,56 @@ class LocusLobbyUI {
 		return true;
 	}
 
+	_resolveHoveredCardPlacement() {
+		if (!this._dragState) return null;
+
+		const ghost = this._dragState.ghostEl;
+		const matrix = this._dragState.matrix;
+		if (!ghost || !matrix || !matrix.length) return null;
+
+		const cellHits = this._collectHoveredShapeCellHits(ghost, matrix, 6);
+		if (cellHits.length === 0) return null;
+
+		const zoneCounts = {};
+		cellHits.forEach(h => {
+			if (!h.zoneName) return;
+			zoneCounts[h.zoneName] = (zoneCounts[h.zoneName] || 0) + 1;
+		});
+		const zoneNames = Object.keys(zoneCounts);
+		if (zoneNames.length === 0) return null;
+
+		const bestZone = zoneNames.reduce((a, b) => zoneCounts[a] > zoneCounts[b] ? a : b);
+		let zoneHits = cellHits.filter(h => h.zoneName === bestZone);
+		if (bestZone === 'red') {
+			zoneHits = this._filterRedHitsBySubgrid(zoneHits);
+		}
+		if (zoneHits.length === 0) return null;
+
+		const baseX = this._pickBestVote(zoneHits.map(h => h.gridX - h.shapeCol), this._lastDragBaseX);
+		const baseY = this._pickBestVote(zoneHits.map(h => h.gridY - h.shapeRow), this._lastDragBaseY);
+
+		return {
+			zoneName: bestZone,
+			baseX,
+			baseY,
+			subgridId: zoneHits[0]?.subgridId || null,
+			zoneHits,
+			matrix
+		};
+	}
+
 	_updateDragPreview(e) {
 		if (!this._dragState) return;
 
 		this._clearPreview();
 
 		const ghost = this._dragState.ghostEl;
-		const matrix = this._dragState.matrix;
-		if (!ghost || !matrix || !matrix.length) return;
+		const resolved = this._resolveHoveredCardPlacement();
+		if (!ghost || !resolved) return;
 
-		const cellHits = this._collectHoveredShapeCellHits(ghost, matrix, 6);
-
-		if (cellHits.length === 0) return;
-
-		// Vote for best zone
-		const zoneCounts = {};
-		cellHits.forEach(h => {
-			if (!h.zoneName) return;
-			zoneCounts[h.zoneName] = (zoneCounts[h.zoneName] || 0) + 1;
-		});
-		const bestZone = Object.keys(zoneCounts).reduce((a, b) => zoneCounts[a] > zoneCounts[b] ? a : b);
-		let zoneHits = cellHits.filter(h => h.zoneName === bestZone);
-		if (bestZone === 'red') {
-			zoneHits = this._filterRedHitsBySubgrid(zoneHits);
-		}
-		if (zoneHits.length === 0) return;
-
-		// Vote for best base coordinates
-		const baseXCandidates = zoneHits.map(h => h.gridX - h.shapeCol);
-		const baseYCandidates = zoneHits.map(h => h.gridY - h.shapeRow);
-		const baseX = this._pickBestVote(baseXCandidates, this._lastDragBaseX);
-		const baseY = this._pickBestVote(baseYCandidates, this._lastDragBaseY);
+		const { zoneName: bestZone, baseX, baseY, subgridId, zoneHits, matrix } = resolved;
 		this._lastDragBaseX = baseX;
 		this._lastDragBaseY = baseY;
-
-		const subgridId = zoneHits[0]?.subgridId || null;
 
 		// Kleur-check: kaart mag alleen op matching zone geplaatst worden
 		const Rules = window.LocusGameRules;
@@ -3008,17 +2940,6 @@ class LocusLobbyUI {
 			this._lastPreviewBaseX = baseX;
 			this._lastPreviewBaseY = baseY;
 			this._lastPreviewSubgridId = subgridId;
-
-			// Update ghost als enhanced matrix verschilt (perk optionele cellen)
-			if (adjPreview.enhancedMatrix && ghost) {
-				const emStr = JSON.stringify(adjPreview.enhancedMatrix);
-				if (this._lastGhostMatrixStr !== emStr) {
-					this._lastGhostMatrixStr = emStr;
-					this._dragState.matrix = adjPreview.enhancedMatrix;
-					ghost.innerHTML = this._renderMiniGrid(adjPreview.enhancedMatrix, this._dragState.card.color, true, true);
-					this._computeGhostOffsets();
-				}
-			}
 
 			this._sendInteraction('move', {
 				mode: 'card',
@@ -3158,6 +3079,14 @@ class LocusLobbyUI {
 			// Als preview geldig is, plaats exact die preview (niet opnieuw afleiden uit klikpunt)
 			if (this._attemptPlacementFromCurrentPreview()) return;
 
+			const resolved = this._resolveHoveredCardPlacement();
+			if (resolved) {
+				this._lastDragBaseX = resolved.baseX;
+				this._lastDragBaseY = resolved.baseY;
+				this._attemptPlacement(resolved.zoneName, resolved.baseX, resolved.baseY, resolved.subgridId);
+				return;
+			}
+
 			// Direct target check + tolerance-based fallback (prevents gap-click misses)
 			let cell = e.target.closest('.mp-cell:not(.void)');
 			if (!cell) {
@@ -3187,8 +3116,10 @@ class LocusLobbyUI {
 			const subgridId = cell.dataset.subgrid || null;
 			if (!zoneName || !Number.isFinite(x) || !Number.isFinite(y)) return;
 
-			const adj = this._adjustBaseForMatrix(x, y, this._dragState.matrix);
-			this._attemptPlacement(zoneName, adj.x, adj.y, subgridId);
+			const preview = this.mp.previewPlacement(zoneName, x, y, this._dragState.card.matrix, subgridId, this._dragState.rotation, this._dragState.mirrored);
+			if (preview.valid) {
+				this._attemptPlacement(zoneName, x, y, preview.subgridId || subgridId || null);
+			}
 		};
 
 		container.addEventListener('click', this._clickPlacementHandler);
@@ -3441,7 +3372,6 @@ class LocusLobbyUI {
 		this._lastPreviewBaseX = null;
 		this._lastPreviewBaseY = null;
 		this._lastPreviewSubgridId = null;
-		this._lastGhostMatrixStr = null;
 	}
 
 	_showPlacementControls(card) {
