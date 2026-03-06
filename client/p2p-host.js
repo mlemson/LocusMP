@@ -606,7 +606,7 @@ class LocusP2PHost {
 				result = this.Rules.chooseObjective(this.gameState, playerId, data.objectiveIndex);
 				if (result.allChosen) this._startTimerForCurrentPlayer(true);
 				break;
-			case 'playMove':
+			case 'playMove': {
 				const transformedMatrix = this._getTransformedMoveMatrix(
 					playerId,
 					data.cardId,
@@ -632,6 +632,7 @@ class LocusP2PHost {
 					});
 				}
 				break;
+			}
 			case 'playBonus':
 				result = this.Rules.playBonus(this.gameState, playerId, data.bonusColor, data.zoneName,
 					data.baseX, data.baseY, data.subgridId || null, data.rotation || 0);
