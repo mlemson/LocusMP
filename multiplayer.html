@@ -319,7 +319,7 @@
 	<script src="client/p2p-host.js?v=14"></script>
 
 	<!-- Lobby UI -->
-	<script src="client/lobby-ui.js?v=17"></script>
+	<script src="client/lobby-ui.js?v=18"></script>
 
 	<!-- App bootstrap -->
 	<script>
@@ -546,6 +546,28 @@
 			_writeRegisteredP2PLobbies(entries.slice(-20));
 		}
 
+		function _startRegisteredP2PLobbyHeartbeat(host, hostName) {
+			_stopRegisteredP2PLobbyHeartbeat();
+			if (!host?.roomCode) return;
+			_syncRegisteredP2PLobby(host, hostName);
+			window._locusP2PBrowserHeartbeat = window.setInterval(() => {
+				try {
+					if (!window._p2pHost || window._p2pHost !== host) {
+						_stopRegisteredP2PLobbyHeartbeat();
+						return;
+					}
+					_syncRegisteredP2PLobby(host, hostName);
+				} catch (_) {}
+			}, 10000);
+		}
+
+		function _stopRegisteredP2PLobbyHeartbeat() {
+			if (window._locusP2PBrowserHeartbeat) {
+				clearInterval(window._locusP2PBrowserHeartbeat);
+				window._locusP2PBrowserHeartbeat = null;
+			}
+		}
+
 		function _clearRegisteredP2PLobby(roomCode) {
 			if (!roomCode) return;
 			const instanceId = _getP2PBrowserInstanceId();
@@ -616,9 +638,12 @@
 		window._renderOpenLobbyBrowserList = _renderOpenLobbyBrowserList;
 		window._syncRegisteredP2PLobby = _syncRegisteredP2PLobby;
 		window._clearRegisteredP2PLobby = _clearRegisteredP2PLobby;
+		window._startRegisteredP2PLobbyHeartbeat = _startRegisteredP2PLobbyHeartbeat;
+		window._stopRegisteredP2PLobbyHeartbeat = _stopRegisteredP2PLobbyHeartbeat;
 
 		window.addEventListener('pagehide', () => {
 			try {
+				_stopRegisteredP2PLobbyHeartbeat();
 				if (window._p2pHost?.roomCode) {
 					_clearRegisteredP2PLobby(window._p2pHost.roomCode);
 				}
@@ -878,7 +903,7 @@
 					window._mp = p2pMp;
 					window._ui = ui;
 					window._p2pHost = host;
-					window._syncRegisteredP2PLobby?.(host, userName);
+					window._startRegisteredP2PLobbyHeartbeat?.(host, userName);
 
 					try {
 						sessionStorage.setItem('locus_p2p_role', 'host');
@@ -1016,7 +1041,7 @@
 					window._mp = p2pMp;
 					window._ui = ui;
 					window._p2pHost = host;
-					window._syncRegisteredP2PLobby?.(host, name);
+					window._startRegisteredP2PLobbyHeartbeat?.(host, name);
 					try {
 						sessionStorage.setItem('locus_p2p_role', 'host');
 						sessionStorage.setItem('locus_p2p_roomCode', result.roomCode);
@@ -1143,6 +1168,8 @@
 
 					window._mp = guest;
 					window._ui = ui;
+					window._stopRegisteredP2PLobbyHeartbeat?.();
+					window._p2pHost = null;
 					try {
 						sessionStorage.setItem('locus_p2p_role', 'guest');
 						sessionStorage.setItem('locus_p2p_roomCode', code);

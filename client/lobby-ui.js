@@ -2906,6 +2906,7 @@ class LocusLobbyUI {
 
 		if (adjPreview.valid && adjPreview.cells) {
 			const resolvedSubgridId = adjPreview.subgridId || subgridId || null;
+			const previewMatrix = adjPreview.enhancedMatrix || matrix;
 			this._lastPreviewZone = bestZone;
 			this._lastPreviewCells = adjPreview.cells;
 			this._lastPreviewBaseX = baseX;
@@ -2919,10 +2920,10 @@ class LocusLobbyUI {
 				baseX,
 				baseY,
 				subgridId: resolvedSubgridId,
-				matrix,
+				matrix: previewMatrix,
 				isValid: true
 			});
-			this._paintCardPreviewCells(bestZone, baseX, baseY, matrix, resolvedSubgridId, adjPreview.cells.optionalCells || []);
+			this._paintCardPreviewCells(bestZone, baseX, baseY, previewMatrix, resolvedSubgridId, adjPreview.cells.optionalCells || []);
 			if (ghost) { ghost.classList.remove('preview-denied'); ghost.classList.add('preview-ok'); }
 		} else {
 			this._sendInteraction('move', {
@@ -3143,6 +3144,8 @@ class LocusLobbyUI {
 		if (this._dragState) {
 			this._dragState.rotation = (this._dragState.rotation + 1) % 4;
 			this._dragState.matrix = this._buildCardMatrix(this._dragState.card, this._dragState.rotation, this._dragState.mirrored);
+			this._lastDragBaseX = null;
+			this._lastDragBaseY = null;
 			this._saveCardTransform(this._dragState.card.id, this._dragState.rotation, this._dragState.mirrored);
 			this._updateGhost();
 			this._clearPreview();
@@ -3166,6 +3169,8 @@ class LocusLobbyUI {
 		if (this._dragState) {
 			this._dragState.mirrored = !this._dragState.mirrored;
 			this._dragState.matrix = this._buildCardMatrix(this._dragState.card, this._dragState.rotation, this._dragState.mirrored);
+			this._lastDragBaseX = null;
+			this._lastDragBaseY = null;
 			this._saveCardTransform(this._dragState.card.id, this._dragState.rotation, this._dragState.mirrored);
 			this._updateGhost();
 			this._clearPreview();
