@@ -315,6 +315,7 @@ class LocusP2PHost {
 
 			case 'playMove': {
 				if (!playerId) return;
+				const movePlayerName = this.gameState?.players?.[playerId]?.name || 'Speler';
 				const transformedMatrix = this._getTransformedMoveMatrix(
 					playerId,
 					msg.cardId,
@@ -331,6 +332,7 @@ class LocusP2PHost {
 					this._grantExtraTurnTime(playerId, 5000);
 					this._broadcastEvent('movePlayed', {
 						playerId,
+						playerName: movePlayerName,
 						zoneName: msg.zoneName,
 						baseX: msg.baseX,
 						baseY: msg.baseY,
@@ -620,6 +622,7 @@ class LocusP2PHost {
 					this._grantExtraTurnTime(playerId, 5000);
 					this._broadcastEvent('movePlayed', {
 						playerId,
+						playerName: this.gameState?.players?.[playerId]?.name || 'Host',
 						zoneName: data.zoneName,
 						baseX: data.baseX,
 						baseY: data.baseY,
@@ -1006,6 +1009,7 @@ class LocusP2PHost {
 								if (!result?.error) {
 									this._broadcastEvent('movePlayed', {
 										playerId,
+										playerName: player.name,
 										zoneName,
 										baseX: x,
 										baseY: y,
