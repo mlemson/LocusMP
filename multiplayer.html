@@ -784,6 +784,11 @@
 							var games = data.games || [];
 							window._locusServerUrl = urls[i].url || undefined;
 							console.log('[Locus] Server gevonden op:', urls[i].label);
+							try {
+								if (window._fetchServerP2PLobbies) {
+									await window._fetchServerP2PLobbies(urls[i].url || '');
+								}
+							} catch (_) {}
 
 							// Laad Socket.IO async
 							try {

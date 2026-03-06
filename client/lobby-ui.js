@@ -972,6 +972,9 @@ class LocusLobbyUI {
 			if (!response.ok) throw new Error('Fetch failed');
 			const data = await response.json();
 			games = data.games || [];
+			if (window._fetchServerP2PLobbies) {
+				await window._fetchServerP2PLobbies(baseUrl);
+			}
 		} catch (error) {
 			console.warn('[Locus UI] Server browser fetch failed:', error);
 		}
