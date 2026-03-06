@@ -315,6 +315,13 @@ class LocusP2PHost {
 
 			case 'playMove': {
 				if (!playerId) return;
+				const transformedMatrix = this._getTransformedMoveMatrix(
+					playerId,
+					msg.cardId,
+					msg.zoneName,
+					msg.rotation || 0,
+					!!msg.mirrored
+				);
 				const result = this.Rules.playMove(
 					this.gameState, playerId, msg.cardId, msg.zoneName,
 					msg.baseX, msg.baseY, msg.rotation || 0, !!msg.mirrored, msg.subgridId || null
@@ -325,6 +332,12 @@ class LocusP2PHost {
 					this._broadcastEvent('movePlayed', {
 						playerId,
 						zoneName: msg.zoneName,
+						baseX: msg.baseX,
+						baseY: msg.baseY,
+						rotation: msg.rotation || 0,
+						mirrored: !!msg.mirrored,
+						subgridId: msg.subgridId || null,
+						matrix: transformedMatrix,
 						objectivesRevealed: this._shouldRevealObjectives(),
 						mineTriggered: result.mineTriggered || null
 					});
@@ -594,6 +607,13 @@ class LocusP2PHost {
 				if (result.allChosen) this._startTimerForCurrentPlayer(true);
 				break;
 			case 'playMove':
+				const transformedMatrix = this._getTransformedMoveMatrix(
+					playerId,
+					data.cardId,
+					data.zoneName,
+					data.rotation || 0,
+					!!data.mirrored
+				);
 				result = this.Rules.playMove(this.gameState, playerId, data.cardId, data.zoneName,
 					data.baseX, data.baseY, data.rotation || 0, !!data.mirrored, data.subgridId || null);
 				if (result.success) {
@@ -601,6 +621,12 @@ class LocusP2PHost {
 					this._broadcastEvent('movePlayed', {
 						playerId,
 						zoneName: data.zoneName,
+						baseX: data.baseX,
+						baseY: data.baseY,
+						rotation: data.rotation || 0,
+						mirrored: !!data.mirrored,
+						subgridId: data.subgridId || null,
+						matrix: transformedMatrix,
 						objectivesRevealed: this._shouldRevealObjectives(),
 						mineTriggered: result.mineTriggered || null
 					});
@@ -980,6 +1006,12 @@ class LocusP2PHost {
 									this._broadcastEvent('movePlayed', {
 										playerId,
 										zoneName,
+										baseX: x,
+										baseY: y,
+										rotation,
+										mirrored: false,
+										subgridId: subgridId || null,
+										matrix,
 										objectivesRevealed: this._shouldRevealObjectives(),
 										mineTriggered: result.mineTriggered || null
 									});
@@ -1003,6 +1035,23 @@ class LocusP2PHost {
 		}
 
 		return false;
+	}
+
+	_getTransformedMoveMatrix(playerId, cardId, zoneName, rotation = 0, mirrored = false) {
+		const player = this.gameState?.players?.[playerId];
+		if (!player) return null;
+		const hand = Array.isArray(player.hand) ? player.hand : [];
+		const card = hand.find((c) => c && c.id === cardId);
+		if (!card || !Array.isArray(card.matrix)) return null;
+
+		let matrix = this.Rules.cloneMatrix(card.matrix);
+		matrix = this.Rules.getEnhancedMatrix(matrix, zoneName, {
+			greenGapAllowed: !!player.perks?.greenGapAllowed,
+			diagonalRotation: !!player.perks?.diagonalRotation
+		});
+		matrix = this.Rules.rotateMatrixN(matrix, Number(rotation) || 0);
+		if (mirrored) matrix = this.Rules.mirrorMatrix(matrix);
+		return matrix;
 	}
 
 	_broadcastEvent(eventType, data) {
