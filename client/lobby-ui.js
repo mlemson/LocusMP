@@ -2639,7 +2639,7 @@ class LocusLobbyUI {
 
 		// Touch/coarse: spring direct naar de bijbehorende kleur-zone bij single-color kaarten
 		const allowedZones = Rules.getAllowedZones(card);
-		if (allowedZones.length === 1 && (e.pointerType === 'touch' || e.pointerType === 'pen' || this._isTouchLikeDevice())) {
+		if (allowedZones.length >= 1 && (e.pointerType === 'touch' || e.pointerType === 'pen' || this._isTouchLikeDevice())) {
 			this._scrollMobileBoardToZone(allowedZones[0], true);
 		}
 
@@ -2944,8 +2944,9 @@ class LocusLobbyUI {
 		}
 	}
 
-	_collectHoveredShapeCellHits(ghost, matrix, tolerancePx = 6) {
+	_collectHoveredShapeCellHits(ghost, matrix, tolerancePx = 6, options = {}) {
 		if (!ghost || !matrix || !matrix.length) return [];
+		const includeOptional = !!options.includeOptional;
 
 		const gridEl = ghost.querySelector('.mp-mini-grid');
 		if (!gridEl) return [];
@@ -2979,7 +2980,9 @@ class LocusLobbyUI {
 
 		for (let row = 0; row < shapeHeight; row++) {
 			for (let col = 0; col < shapeWidth; col++) {
-				if (!matrix[row][col]) continue;
+				const cellVal = matrix[row][col];
+				if (!cellVal) continue;
+				if (cellVal === 2 && !includeOptional) continue;
 
 				const centerX = originX + (col * step) + (cellSize / 2);
 				const centerY = originY + (row * step) + (cellSize / 2);
@@ -3126,6 +3129,9 @@ class LocusLobbyUI {
 
 			this._cancelDrag();
 			if (result.success) {
+				if (this._useMobileBoardLayout()) {
+					this._scrollMobileBoardToZone(zoneName, false);
+				}
 				// Mine getriggerd: toon explosie-effect aan de plaatser
 				if (result.mineTriggered) {
 					this._onMineTriggered(result.mineTriggered, this.mp.userId);
@@ -4127,6 +4133,9 @@ class LocusLobbyUI {
 			const result = await this.mp.playBonus(this._bonusMode.color, zoneName, baseX, baseY, subgridId, this._bonusMode.rotation || 0);
 			if (result?.error) throw new Error(result.error);
 			if (result?.success) {
+				if (this._useMobileBoardLayout()) {
+					this._scrollMobileBoardToZone(zoneName, false);
+				}
 				this._playPlaceSound();
 				this._cancelBonusMode();
 			}
@@ -6507,6 +6516,9 @@ class LocusLobbyUI {
 		if (!isMe && playerName) {
 			this._showMoveNotification(playerName, zoneName);
 			this._scrollMobileBoardToZone(zoneName, true);
+			if (Array.isArray(data.matrix) && Number.isFinite(data.baseX) && Number.isFinite(data.baseY)) {
+				this._showBotPlacementHover(data);
+			}
 		}
 
 		// Animate cells flashing on the zone
@@ -6575,6 +6587,27 @@ class LocusLobbyUI {
 
 		// Update opponent panels
 		this._renderOpponentPanels();
+	}
+
+	_showBotPlacementHover(data) {
+		this._clearOpponentPreview();
+		const isValid = data.isValid !== false;
+		for (let r = 0; r < data.matrix.length; r++) {
+			for (let c = 0; c < (data.matrix[r]?.length || 0); c++) {
+				if (!data.matrix[r][c]) continue;
+				const x = data.baseX + c;
+				const y = data.baseY + r;
+				const sel = data.subgridId
+					? `.mp-cell[data-zone="${data.zoneName}"][data-subgrid="${data.subgridId}"][data-x="${x}"][data-y="${y}"]`
+					: `.mp-cell[data-zone="${data.zoneName}"][data-x="${x}"][data-y="${y}"]`;
+				const el = document.querySelector(sel);
+				if (!el) continue;
+				el.classList.add('preview-opponent');
+				el.classList.toggle('preview-opponent-denied', !isValid);
+				this._oppPreviewCells.push(el);
+			}
+		}
+		setTimeout(() => this._clearOpponentPreview(), 900);
 	}
 
 	/** Toon een notificatie wanneer een andere speler een kaart speelt */
