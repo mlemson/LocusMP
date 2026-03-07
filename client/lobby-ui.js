@@ -1590,7 +1590,30 @@ class LocusLobbyUI {
 				${cardsPanelHtml}
 				${goalsPanelHtml}
 			</div>
+			<div class="mp-goal-swipe-dots">
+				<button class="mp-goal-swipe-dot active" data-panel="0" title="Kaarten"></button>
+				<button class="mp-goal-swipe-dot" data-panel="1" title="Doelstellingen"></button>
+			</div>
 		`;
+
+		// Swipe dot navigation
+		const splitLayout = container.querySelector('.mp-goal-split-layout');
+		const dots = container.querySelectorAll('.mp-goal-swipe-dot');
+		if (splitLayout && dots.length === 2) {
+			const panels = splitLayout.querySelectorAll('.mp-goal-cards-panel, .mp-goal-choices-panel');
+			const updateDots = () => {
+				const w = Math.max(1, splitLayout.clientWidth);
+				const idx = Math.round(splitLayout.scrollLeft / w);
+				dots.forEach((d, i) => d.classList.toggle('active', i === idx));
+			};
+			splitLayout.addEventListener('scroll', updateDots, { passive: true });
+			dots.forEach(dot => {
+				dot.addEventListener('click', () => {
+					const i = Number(dot.dataset.panel);
+					if (panels[i]) panels[i].scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'start' });
+				});
+			});
+		}
 
 		// Bind goal card clicks
 		container.querySelectorAll('.mp-goal-card').forEach(btn => {
