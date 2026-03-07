@@ -1770,6 +1770,8 @@ class LocusLobbyUI {
 		if (undoBtn && undoBtn.parentNode !== handRow) handRow.appendChild(undoBtn);
 		if (endTurnBtn.parentNode !== handRow) handRow.appendChild(endTurnBtn);
 		endTurnBtn.classList.add('mp-end-turn-mobile');
+		endTurnBtn.innerHTML = '✅ Klaar';
+		if (undoBtn) undoBtn.innerHTML = '↩';
 	}
 
 	_onTurnChanged(currentPlayerId, turnCount) {
