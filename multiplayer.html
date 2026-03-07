@@ -412,17 +412,6 @@
 					try { window._ui._tvPostMessage({ type: 'theme', theme }); } catch (_) {}
 				}
 			}
-
-								if (!candidates.length) {
-									list.innerHTML = '<div class="mp-server-browser-empty" style="color:#ff9b6b;">'
-										+ '<b>⚠️ Vul eerst je server-URL in</b><br>'
-										+ '<span style="font-size:12px;opacity:0.8;">Bijvoorbeeld: https://jouw-server.onrender.com</span><br>'
-										+ '<span style="font-size:11px;opacity:0.6;margin-top:4px;display:inline-block;">'
-										+ 'Of open deze pagina met <code style="background:rgba(255,255,255,0.1);padding:2px 6px;border-radius:3px;">?server=https://jouw-server</code>.'
-										+ '</span>'
-										+ '</div>';
-									return;
-								}
 			setActive(saved);
 
 			btns.forEach(btn => {
