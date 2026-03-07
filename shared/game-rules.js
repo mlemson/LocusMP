@@ -2511,7 +2511,12 @@ function syncSabotageObjectiveTarget(gameState, sourcePlayerId, objective) {
 
 	objective.targetObjectiveId = chosen.id || null;
 	objective.targetObjectiveName = chosen.name || 'Doelstelling';
-	objective.description = `Zorg dat ${targetPlayerName} zijn/haar doel niet haalt: ${chosen.name || 'Doelstelling'} — ${chosen.description || ''}`;
+	// Prevent infinite description loop when two players block each other
+	if (isNamedSabotageObjective(chosen)) {
+		objective.description = `Zorg dat ${targetPlayerName} zijn/haar doel niet haalt: ${chosen.name || 'Doelstelling'}.`;
+	} else {
+		objective.description = `Zorg dat ${targetPlayerName} zijn/haar doel niet haalt: ${chosen.name || 'Doelstelling'} — ${chosen.description || ''}`;
+	}
 	return objective;
 }
 
@@ -2683,6 +2688,8 @@ const LEVEL_OBJECTIVES = {
 		  useContext: true, check: (ctx) => countPlayerGoldCells(ctx.boardState, ctx.playerId)},
 		{ id: 'deny_named_l1', name: 'Lichte Sabotage', description: 'Zorg dat een gekozen speler zijn/haar doel niet haalt.', target: 1, points: 10, coins: 2, useContext: true, endOnly: true, dynamicType: 'deny_named_objective',
 		  check: (ctx, objective) => {
+			const player = ctx?.gameState?.players?.[ctx?.playerId];
+			if (player?._mutualSabotageFailed) return 0;
 			const targetPid = objective?.targetPlayerId;
 			if (!targetPid || targetPid === ctx?.playerId) return 0;
 			const targetPlayer = ctx?.gameState?.players?.[targetPid];
@@ -2690,6 +2697,8 @@ const LEVEL_OBJECTIVES = {
 			return targetPlayer.objectiveAchieved ? 0 : 1;
 		  },
 		  failCheck: (ctx, objective) => {
+			const player = ctx?.gameState?.players?.[ctx?.playerId];
+			if (player?._mutualSabotageFailed) return true;
 			const targetPid = objective?.targetPlayerId;
 			if (!targetPid || targetPid === ctx?.playerId) return true;
 			const targetPlayer = ctx?.gameState?.players?.[targetPid];
@@ -2729,6 +2738,8 @@ const LEVEL_OBJECTIVES = {
 		  useContext: true, check: (ctx) => countPlayerZonesAtLeast(ctx?.playerScore, 10) },
 		{ id: 'deny_named_l2', name: 'Gerichte Sabotage', description: 'Zorg dat een gekozen speler zijn/haar doel niet haalt.', target: 1, points: 16, coins: 3, useContext: true, endOnly: true, dynamicType: 'deny_named_objective',
 		  check: (ctx, objective) => {
+			const player = ctx?.gameState?.players?.[ctx?.playerId];
+			if (player?._mutualSabotageFailed) return 0;
 			const targetPid = objective?.targetPlayerId;
 			if (!targetPid || targetPid === ctx?.playerId) return 0;
 			const targetPlayer = ctx?.gameState?.players?.[targetPid];
@@ -2736,6 +2747,8 @@ const LEVEL_OBJECTIVES = {
 			return targetPlayer.objectiveAchieved ? 0 : 1;
 		  },
 		  failCheck: (ctx, objective) => {
+			const player = ctx?.gameState?.players?.[ctx?.playerId];
+			if (player?._mutualSabotageFailed) return true;
 			const targetPid = objective?.targetPlayerId;
 			if (!targetPid || targetPid === ctx?.playerId) return true;
 			const targetPlayer = ctx?.gameState?.players?.[targetPid];
@@ -2803,6 +2816,8 @@ const LEVEL_OBJECTIVES = {
 		  }},
 		{ id: 'deny_named_l3', name: 'Elite Sabotage', description: 'Zorg dat een gekozen speler zijn/haar doel niet haalt.', target: 1, points: 25, coins: 5, randomBonuses: 2, useContext: true, endOnly: true, dynamicType: 'deny_named_objective',
 		  check: (ctx, objective) => {
+			const player = ctx?.gameState?.players?.[ctx?.playerId];
+			if (player?._mutualSabotageFailed) return 0;
 			const targetPid = objective?.targetPlayerId;
 			if (!targetPid || targetPid === ctx?.playerId) return 0;
 			const targetPlayer = ctx?.gameState?.players?.[targetPid];
@@ -2810,6 +2825,8 @@ const LEVEL_OBJECTIVES = {
 			return targetPlayer.objectiveAchieved ? 0 : 1;
 		  },
 		  failCheck: (ctx, objective) => {
+			const player = ctx?.gameState?.players?.[ctx?.playerId];
+			if (player?._mutualSabotageFailed) return true;
 			const targetPid = objective?.targetPlayerId;
 			if (!targetPid || targetPid === ctx?.playerId) return true;
 			const targetPlayer = ctx?.gameState?.players?.[targetPid];
@@ -4052,6 +4069,25 @@ function checkGameEnd(gameState) {
 	});
 
 	if (!allEmpty) return false;
+
+	// Detect mutual sabotage pairs: if A blocks B and B blocks A, both fail
+	for (const pidA of gameState.playerOrder) {
+		const pA = gameState.players[pidA];
+		if (!pA?.chosenObjective || pA.objectiveAchieved) continue;
+		if (!isNamedSabotageObjective(pA.chosenObjective)) continue;
+		const targetA = pA.chosenObjective.targetPlayerId;
+		if (!targetA) continue;
+		const pB = gameState.players[targetA];
+		if (!pB?.chosenObjective || pB.objectiveAchieved) continue;
+		if (!isNamedSabotageObjective(pB.chosenObjective)) continue;
+		if (pB.chosenObjective.targetPlayerId === pidA) {
+			// Mutual block → both fail
+			pA.objectiveFailed = true;
+			pA._mutualSabotageFailed = true;
+			pB.objectiveFailed = true;
+			pB._mutualSabotageFailed = true;
+		}
+	}
 
 	// Level is klaar: herbereken ALLE spelers' scores definitief
 	const finalPlayerScores = calculatePlayerScores(gameState.boardState, gameState.playerOrder);

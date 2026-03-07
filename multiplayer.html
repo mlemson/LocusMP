@@ -48,7 +48,7 @@
 				<input type="text" id="player-name-input" placeholder="Vul hier je naam in..." maxlength="20" autocomplete="off" required />
 			</div>
 
-			<div class="mp-input-group">
+			<div class="mp-input-group" id="server-url-group" style="display:none;">
 				<label for="server-url-input">Externe server URL</label>
 				<input type="url" id="server-url-input" placeholder="https://jouw-server.onrender.com" autocomplete="off" />
 			</div>
@@ -97,7 +97,7 @@
 			</div>
 		</div>
 
-		<div class="mp-server-browser" id="server-browser">
+		<div class="mp-server-browser" id="server-browser" style="display:none;">
 			<button class="mp-btn mp-btn-secondary mp-server-browse-toggle" id="server-browse-toggle">
 				🌐 Open lobbys
 			</button>
@@ -1018,13 +1018,22 @@
 			if (hasSocketIO) {
 				// Normale server modus — toon server-only UI
 				document.getElementById('lobby-screen')?.classList.add('mp-server-mode');
+				const serverBrowser = document.getElementById('server-browser');
+				if (serverBrowser) serverBrowser.style.display = '';
 				mp = new LocusMultiplayer(_getEffectiveServerBaseUrl() || undefined);
 			} else {
 				// Geen server — verberg server-only knoppen, toon P2P opties
 				console.log('[Locus] Geen Socket.IO server — alleen P2P modus');
 			}
 
-			// Server browser knop altijd initialiseren (ook zonder Socket.IO)
+			// Server browser knop alleen tonen als er een server-URL geconfigureerd is
+			const hasServerCandidate = _getConfiguredServerCandidates().length > 0;
+			if (hasServerCandidate) {
+				const serverUrlGroup = document.getElementById('server-url-group');
+				if (serverUrlGroup) serverUrlGroup.style.display = '';
+				const serverBrowser = document.getElementById('server-browser');
+				if (serverBrowser) serverBrowser.style.display = '';
+			}
 			_initServerBrowseStandalone();
 
 			if (mp) {
