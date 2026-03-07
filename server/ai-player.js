@@ -118,34 +118,45 @@ function _tryPlacementsOnZone(card, zoneData, zoneName, rotations, mirrors, perk
 					// Score plaatsing: prioriteer cellen met flags
 					let score = 0;
 					let hasFlaggedCell = false;
+					// For blue zone, pre-compute reached bold rows
+					let blueReachedRows = null;
+					let blueBoldSet = null;
+					if (zoneName === 'blue') {
+						blueReachedRows = _getReachedBoldRows(zoneData);
+						blueBoldSet = new Set(zoneData.boldRows || []);
+					}
 					for (const c of cells) {
 						const cell = GameRules.getDataCell(zoneData, c.x, c.y);
-						if (cell?.flags?.includes('gold')) { score += 5; hasFlaggedCell = true; }
-						else if (cell?.flags?.includes('bonus')) { score += 4; hasFlaggedCell = true; }
-						else if (cell?.flags?.includes('pearl')) { score += 3; hasFlaggedCell = true; }
-						else if (cell?.flags?.includes('end')) { score += 3; hasFlaggedCell = true; }
-						else if (cell?.flags?.includes('bold')) { score += 2; hasFlaggedCell = true; }
+						if (cell?.flags?.includes('gold')) { score += 8; hasFlaggedCell = true; }
+						else if (cell?.flags?.includes('bonus')) { score += 7; hasFlaggedCell = true; }
+						else if (cell?.flags?.includes('pearl')) { score += 6; hasFlaggedCell = true; }
+						else if (cell?.flags?.includes('end')) { score += 5; hasFlaggedCell = true; }
+						else if (cell?.flags?.includes('bold')) {
+							// Blue zone bold: only value if this bold row is NOT yet reached
+							if (zoneName === 'blue' && blueBoldSet?.has(c.y) && blueReachedRows?.has(c.y)) {
+								score += 1; // Already scored row — treat as normal cell
+							} else {
+								score += 2; hasFlaggedCell = true;
+							}
+						}
 						else { score += 1; }
 					}
 					// Penalize pure empty placements that give no rewards
 					if (!hasFlaggedCell) score = Math.max(1, Math.floor(score * 0.4));
 
-					// Blue zone: only first cell on an unreached bold row matters
-					// Extra bold cells on the same row give no points in-game
+					// Blue zone: new tier bonus + favor going upward
 					if (zoneName === 'blue') {
-						const reachedRows = _getReachedBoldRows(zoneData);
-						const boldRowSet = new Set(zoneData.boldRows || []);
+						const counted = new Set();
 						let newTierCount = 0;
 						for (const c of cells) {
-							if (boldRowSet.has(c.y) && !reachedRows.has(c.y)) {
-								if (!reachedRows.has(c.y)) newTierCount++;
-								reachedRows.add(c.y); // count each row only once
+							if (blueBoldSet.has(c.y) && !blueReachedRows.has(c.y) && !counted.has(c.y)) {
+								newTierCount++;
+								counted.add(c.y);
 							}
 						}
-						// Reward new tiers significantly, favor going up
-						score += newTierCount * 8;
+						score += newTierCount * 10;
 						const minY = Math.min(...cells.map(c => c.y));
-						score += Math.max(0, Math.floor(((zoneData.rows || 20) - minY) / 4));
+						score += Math.max(0, Math.floor(((zoneData.rows || 20) - minY) / 3));
 					}
 
 					result.push({
@@ -474,14 +485,11 @@ function _evaluatePlacementImpact(gameState, playerId, card, placement) {
 		}
 	} else if (zoneName === 'blue') {
 		// Blue scores by bold row tiers — only first cell on an unreached bold row unlocks tier points
-		// Higher rows (lower Y) = higher tiers = more points (10,15,20,25,40)
 		const zoneData = board?.zones?.blue;
 		if (zoneData) {
 			const cells = _getPlacementCells(card, placement, zoneData);
 			const boldRowSet = new Set(zoneData.boldRows || []);
-			// Find which bold rows already have an active cell
 			const reachedBoldRows = _getReachedBoldRows(zoneData);
-			// Sort bold rows bottom-to-top (tier 0 = bottom = highest Y)
 			const sortedBoldYs = [...new Set(zoneData.boldRows || [])].sort((a, b) => b - a);
 			const newTiersUnlocked = new Set();
 			for (const c of cells) {
@@ -489,13 +497,18 @@ function _evaluatePlacementImpact(gameState, playerId, card, placement) {
 					newTiersUnlocked.add(c.y);
 				}
 			}
-			// Big bonus for each NEW tier unlocked
 			for (const boldY of newTiersUnlocked) {
 				const tierIdx = sortedBoldYs.indexOf(boldY);
 				const tierPoints = [10, 15, 20, 25, 40];
 				impactScore += tierPoints[Math.min(tierIdx, tierPoints.length - 1)] || 10;
 			}
-			// Favor placements that advance upward (lower Y = higher position)
+			// Extra reward for gold/bonus/pearl cells (these are valuable regardless of bold)
+			for (const c of cells) {
+				const cell = GameRules.getDataCell(zoneData, c.x, c.y);
+				if (cell?.flags?.includes('gold')) impactScore += 5;
+				else if (cell?.flags?.includes('bonus')) impactScore += 4;
+				else if (cell?.flags?.includes('pearl')) impactScore += 4;
+			}
 			const minY = Math.min(...cells.map(c => c.y));
 			impactScore += Math.max(0, Math.floor(((zoneData.rows || 20) - minY) / 3));
 		}

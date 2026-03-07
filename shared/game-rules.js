@@ -3692,6 +3692,58 @@ function playBonus(gameState, playerId, bonusColor, zoneName, baseX, baseY, subg
 		player.goldCoins = (player.goldCoins || 0) + goldAmount;
 	}
 
+	// Mine trigger check: als IEMAND een mijn op deze cellen had, verwijder de bonus plaatsing
+	let mineTriggered = null;
+	if (placementResult.cells && placementResult.cells.length > 0) {
+		for (const opId of gameState.playerOrder) {
+			const opPlayer = gameState.players[opId];
+			if (!opPlayer?.perks?.activeMines?.length) continue;
+			for (let mi = opPlayer.perks.activeMines.length - 1; mi >= 0; mi--) {
+				const mine = opPlayer.perks.activeMines[mi];
+				if (mine.zone !== zoneName) continue;
+				const hit = placementResult.cells.some(c => c.x === mine.x && c.y === mine.y);
+				if (hit) {
+					mineTriggered = { mineOwner: opId, mineOwnerName: opPlayer.name, zone: zoneName, x: mine.x, y: mine.y };
+					opPlayer.perks.activeMines.splice(mi, 1);
+
+					// Verwijder ALLE cellen van de bonus plaatsing
+					const mineZd = zoneName === 'red'
+						? (gameState.boardState.zones.red.subgrids?.find(sg => getDataCell(sg, placementResult.cells[0].x, placementResult.cells[0].y)?.active) || gameState.boardState.zones[zoneName])
+						: gameState.boardState.zones[zoneName];
+					for (const pc of placementResult.cells) {
+						const pcCell = getDataCell(mineZd, pc.x, pc.y);
+						if (pcCell) {
+							pcCell.active = false;
+							pcCell.playerId = null;
+							pcCell.color = null;
+							pcCell.isStone = false;
+							pcCell.placementOrder = 0;
+						}
+					}
+
+					// Undo bonussen die bij het plaatsen werden verzameld
+					if (placementResult.collectedBonuses) {
+						for (const bc of placementResult.collectedBonuses) {
+							const amount = (bc === 'any' && playerHasPerk(player, 'bonus_multi_double')) ? 2 : 1;
+							player.bonusInventory[bc] = Math.max(0, (player.bonusInventory[bc] || 0) - amount);
+						}
+					}
+
+					// Undo goudmunten die bij het plaatsen werden verzameld
+					if (placementResult.goldCollected > 0) {
+						const undoGold = playerHasPerk(player, 'flex_double_coins')
+							? placementResult.goldCollected * 2
+							: placementResult.goldCollected;
+						player.goldCoins = Math.max(0, (player.goldCoins || 0) - undoGold);
+					}
+
+					break;
+				}
+			}
+			if (mineTriggered) break;
+		}
+	}
+
 	// Track bonus move voor undo
 	if (gameState._turnUndoData && gameState._turnUndoData.playerId === playerId) {
 		gameState._turnUndoData.bonusMoves.push({
@@ -3715,7 +3767,8 @@ function playBonus(gameState, playerId, bonusColor, zoneName, baseX, baseY, subg
 	return {
 		success: true, scores: playerScores, gameEnded: false,
 		bonusesCollected: placementResult.collectedBonuses || [],
-		goldCollected: placementResult.goldCollected || 0
+		goldCollected: placementResult.goldCollected || 0,
+		mineTriggered: mineTriggered || null
 	};
 }
 

@@ -864,6 +864,44 @@ class LocusP2PHost {
 
 		// Laat AI reageren na state-updates
 		this._scheduleAI();
+
+		// Time bomb check: if a human's turn just started, AI bots can bomb immediately
+		this._checkAITimeBomb();
+	}
+
+	/** AI bots use time bombs at the very start of a human player's turn */
+	_checkAITimeBomb() {
+		if (!this.gameState || this.gameState.phase !== 'playing' || this.gameState.paused) return;
+		if (this.aiPlayerIds.size === 0) return;
+		if (this._timeBombPending) return; // Already queued
+
+		const currentPid = this.gameState.playerOrder?.[this.gameState.currentTurnIndex];
+		if (!currentPid || this.aiPlayerIds.has(currentPid)) return; // Only bomb humans
+
+		// Check if any AI bot has time bombs
+		for (const aiId of this.aiPlayerIds) {
+			const aiPlayer = this.gameState.players?.[aiId];
+			if (!aiPlayer || (aiPlayer.timeBombs || 0) <= 0) continue;
+			// 40% chance to use time bomb
+			if (Math.random() >= 0.4) continue;
+
+			// Fire after a very short delay so the player sees their turn start
+			this._timeBombPending = true;
+			setTimeout(() => {
+				this._timeBombPending = false;
+				if (!this.gameState || this.gameState.phase !== 'playing') return;
+				const stillCurrentPid = this.gameState.playerOrder?.[this.gameState.currentTurnIndex];
+				if (stillCurrentPid !== currentPid) return; // Turn already changed
+
+				const bombResult = this.Rules.useTimeBomb(this.gameState, aiId);
+				if (bombResult && !bombResult.error) {
+					console.log(`💣 Bot ${aiPlayer.name} used TIME BOMB on ${this.gameState.players?.[currentPid]?.name}!`);
+					this._broadcastEvent('timeBombUsed', { byPlayerId: aiId, targetPlayerId: currentPid });
+					this._broadcastState();
+				}
+			}, 500);
+			break; // Only one bomb per turn
+		}
 	}
 
 	_addAIPlayer(difficulty = 'normal') {
@@ -972,23 +1010,6 @@ class LocusP2PHost {
 				this._runAITurnAsync(currentPid);
 				// Don't set changed — the async queue handles broadcasting
 				return;
-			}
-			// Time bomb: AI bots can bomb the current (human) player
-			if (currentPid && !this.aiPlayerIds.has(currentPid)) {
-				for (const aiId of this.aiPlayerIds) {
-					const aiPlayer = this.gameState.players?.[aiId];
-					if (!aiPlayer || (aiPlayer.timeBombs || 0) <= 0) continue;
-					// 40% chance to use time bomb (don't always bomb)
-					if (Math.random() < 0.4) {
-						const bombResult = this.Rules.useTimeBomb(this.gameState, aiId);
-						if (bombResult && !bombResult.error) {
-							console.log(`💣 Bot ${aiPlayer.name} used TIME BOMB on ${this.gameState.players?.[currentPid]?.name}!`);
-							this._broadcastEvent('timeBombUsed', { byPlayerId: aiId, targetPlayerId: currentPid });
-							changed = true;
-							break; // Only one bomb per turn
-						}
-					}
-				}
 			}
 		}
 
@@ -1325,34 +1346,44 @@ class LocusP2PHost {
 								// Score this placement
 								let score = 0;
 								let hasFlaggedCell = false;
-								for (const c of cells) {
-									const cell = this.Rules.getDataCell(zoneData, c.x, c.y);
-									if (cell?.flags?.includes('gold')) { score += 5; hasFlaggedCell = true; }
-									else if (cell?.flags?.includes('bonus')) { score += 4; hasFlaggedCell = true; }
-									else if (cell?.flags?.includes('pearl')) { score += 3; hasFlaggedCell = true; }
-									else if (cell?.flags?.includes('end')) { score += 3; hasFlaggedCell = true; }
-									else if (cell?.flags?.includes('bold')) { score += 2; hasFlaggedCell = true; }
-									else { score += 1; }
-								}
-								if (!hasFlaggedCell) score = Math.max(1, Math.floor(score * 0.4));
-
-								// Blue zone: only first cell on an unreached bold row unlocks tier points
-								if (zoneName === 'blue') {
-									const reachedRows = this._getReachedBoldRows(zoneData);
-									const boldRowSet = new Set(zoneData.boldRows || []);
-									const counted = new Set();
-									let newTiers = 0;
-									for (const c of cells) {
-										if (boldRowSet.has(c.y) && !reachedRows.has(c.y) && !counted.has(c.y)) {
-											newTiers++;
-											counted.add(c.y);
+										// For blue zone, pre-compute reached bold rows so we can ignore already-scored bold cells
+										let blueReachedRows = null;
+										let blueBoldSet = null;
+										if (zoneName === 'blue') {
+											blueReachedRows = this._getReachedBoldRows(zoneData);
+											blueBoldSet = new Set(zoneData.boldRows || []);
 										}
-									}
-									score += newTiers * 8;
-									const minY = Math.min(...cells.map(c => c.y));
-									score += Math.max(0, Math.floor(((zoneData.rows || 20) - minY) / 4));
-								}
+										for (const c of cells) {
+											const cell = this.Rules.getDataCell(zoneData, c.x, c.y);
+											if (cell?.flags?.includes('gold')) { score += 8; hasFlaggedCell = true; }
+											else if (cell?.flags?.includes('bonus')) { score += 7; hasFlaggedCell = true; }
+											else if (cell?.flags?.includes('pearl')) { score += 6; hasFlaggedCell = true; }
+											else if (cell?.flags?.includes('end')) { score += 5; hasFlaggedCell = true; }
+											else if (cell?.flags?.includes('bold')) {
+												// Blue zone bold: only value if this bold row is NOT yet reached
+												if (zoneName === 'blue' && blueBoldSet?.has(c.y) && blueReachedRows?.has(c.y)) {
+													score += 1; // Already scored row — treat as normal cell
+												} else {
+													score += 2; hasFlaggedCell = true;
+												}
+											}
+											else { score += 1; }
+										}
+										if (!hasFlaggedCell) score = Math.max(1, Math.floor(score * 0.4));
 
+										// Blue zone: new tier bonus + favor going upward
+										if (zoneName === 'blue') {
+											const counted = new Set();
+											let newTiers = 0;
+											for (const c of cells) {
+												if (blueBoldSet.has(c.y) && !blueReachedRows.has(c.y) && !counted.has(c.y)) {
+													newTiers++;
+													counted.add(c.y);
+												}
+											}
+											score += newTiers * 10;
+											const minY = Math.min(...cells.map(c => c.y));
+											score += Math.max(0, Math.floor(((zoneData.rows || 20) - minY) / 3));
 								// Hard AI: zone-strategic impact scoring
 								if (isHard) {
 									score += this._hardZoneBonus(zoneName, zoneData, cells, subgridId, board);
@@ -1562,20 +1593,14 @@ class LocusP2PHost {
 				}
 			}
 		} else if (zoneName === 'blue') {
-			// Only value reaching NEW (unreached) bold rows — one cell is enough per row
-			const reachedRows = this._getReachedBoldRows(zoneData);
-			const boldRowSet = new Set(zoneData.boldRows || []);
-			const sortedBoldYs = [...new Set(zoneData.boldRows || [])].sort((a, b) => b - a);
-			const counted = new Set();
+			// Hard AI blue: reward gold/bonus/pearl cells extra
 			for (const c of cells) {
-				if (boldRowSet.has(c.y) && !reachedRows.has(c.y) && !counted.has(c.y)) {
-					const tierIdx = sortedBoldYs.indexOf(c.y);
-					const tierPoints = [10, 15, 20, 25, 40];
-					bonus += tierPoints[Math.min(tierIdx, tierPoints.length - 1)] || 10;
-					counted.add(c.y);
-				}
+				const cell = this.Rules.getDataCell(zoneData, c.x, c.y);
+				if (cell?.flags?.includes('gold')) bonus += 5;
+				else if (cell?.flags?.includes('bonus')) bonus += 4;
+				else if (cell?.flags?.includes('pearl')) bonus += 4;
 			}
-			// Favor going upward
+			// Favor going upward (already scored new tiers in base scoring)
 			const minY = Math.min(...cells.map(c => c.y));
 			bonus += Math.max(0, Math.floor(((zoneData.rows || 20) - minY) / 3));
 		} else if (zoneName === 'red' && subgridId) {
