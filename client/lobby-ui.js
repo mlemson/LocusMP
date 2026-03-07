@@ -4438,8 +4438,18 @@ class LocusLobbyUI {
 		if (!this._useMobileBoardLayout()) return null;
 		const board = this.elements['mp-board-container']?.querySelector('.mp-board');
 		if (!board) return null;
-		const width = Math.max(1, board.clientWidth || 1);
-		return Math.max(0, Math.round(board.scrollLeft / width));
+		const zones = Array.from(board.querySelectorAll('.mp-zone'));
+		if (!zones.length) return null;
+		let bestIdx = 0;
+		let bestDist = Number.POSITIVE_INFINITY;
+		for (let i = 0; i < zones.length; i++) {
+			const d = Math.abs((zones[i]?.offsetLeft || 0) - board.scrollLeft);
+			if (d < bestDist) {
+				bestDist = d;
+				bestIdx = i;
+			}
+		}
+		return bestIdx;
 	}
 
 	_scrollBlueZoneToBottom(zoneEl = null, settle = false) {
@@ -4524,23 +4534,42 @@ class LocusLobbyUI {
 		dotsEl.querySelectorAll('.mp-zone-dot').forEach((d, i) => d.classList.toggle('active', i === activeIdx));
 	}
 
+	_renderZoneOrFallback(zoneName, zoneData, label) {
+		if (zoneName === 'red') {
+			if (zoneData?.subgrids) return this._renderRedZone(zoneData);
+			return `
+				<div class="mp-zone mp-zone-red mp-zone-missing" data-zone="red">
+					<div class="mp-zone-label">Rood</div>
+					<div class="mp-zone-missing-text">Zone laden...</div>
+				</div>
+			`;
+		}
+		if (zoneData) return this._renderZone(zoneName, zoneData, label);
+		return `
+			<div class="mp-zone mp-zone-${zoneName} mp-zone-missing" data-zone="${zoneName}">
+				<div class="mp-zone-label">${this._escapeHtml(label)}</div>
+				<div class="mp-zone-missing-text">Zone laden...</div>
+			</div>
+		`;
+	}
+
 	_renderBoard(boardState) {
 		const container = this.elements['mp-board-container'];
 		if (!container || !boardState) return;
 		const prevMobileIdx = this._getCurrentMobileBoardIndex();
 
-		const zones = boardState.zones;
+		const zones = boardState.zones || {};
 		const isTouch = this._useMobileBoardLayout();
 		if (isTouch) {
 			const zoneOrder = ['yellow', 'green', 'blue', 'red', 'purple'];
 			const zoneColors = { yellow: '#cfba51', green: '#92c28c', blue: '#5689b0', red: '#b56069', purple: '#8f76b8' };
 			container.innerHTML = `
 				<div class="mp-board">
-					${this._renderZone('yellow', zones.yellow, 'Geel')}
-					${this._renderZone('green', zones.green, 'Groen')}
-					${this._renderZone('blue', zones.blue, 'Blauw')}
-					${this._renderRedZone(zones.red)}
-					${this._renderZone('purple', zones.purple, 'Paars')}
+					${this._renderZoneOrFallback('yellow', zones.yellow, 'Geel')}
+					${this._renderZoneOrFallback('green', zones.green, 'Groen')}
+					${this._renderZoneOrFallback('blue', zones.blue, 'Blauw')}
+					${this._renderZoneOrFallback('red', zones.red, 'Rood')}
+					${this._renderZoneOrFallback('purple', zones.purple, 'Paars')}
 				</div>
 				<div class="mp-zone-dots">${zoneOrder.map((z, i) => `<button class="mp-zone-dot${i === 0 ? ' active' : ''}" data-zone="${z}" style="--dot-color:${zoneColors[z]}"></button>`).join('')}</div>
 			`;
@@ -4559,8 +4588,17 @@ class LocusLobbyUI {
 					if (rafId) return;
 					rafId = requestAnimationFrame(() => {
 						rafId = null;
-						const width = Math.max(1, boardEl.clientWidth || 1);
-						const idx = Math.max(0, Math.round(boardEl.scrollLeft / width));
+						const zoneEls = Array.from(boardEl.querySelectorAll('.mp-zone'));
+						if (!zoneEls.length) return;
+						let idx = 0;
+						let dist = Number.POSITIVE_INFINITY;
+						for (let i = 0; i < zoneEls.length; i++) {
+							const d = Math.abs((zoneEls[i]?.offsetLeft || 0) - boardEl.scrollLeft);
+							if (d < dist) {
+								dist = d;
+								idx = i;
+							}
+						}
 						const prevIdx = this._lastMobileBoardIndex;
 						this._lastMobileBoardIndex = idx;
 						const zoneName = zoneOrder[idx] || null;

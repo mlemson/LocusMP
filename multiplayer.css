@@ -1195,6 +1195,22 @@ html, body {
 	display: none;
 }
 
+.mp-zone-missing {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	position: relative;
+}
+
+.mp-zone-missing-text {
+	font-size: 0.8rem;
+	opacity: 0.75;
+	padding: 8px 10px;
+	border-radius: 8px;
+	background: rgba(0, 0, 0, 0.18);
+	border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
 .mp-touch-drag-lock,
 .mp-touch-drag-lock .mp-board,
 .mp-board-container.mp-touch-drag-lock,
@@ -2973,10 +2989,11 @@ body.mp-loading .mp-btn {
 	}
 
 	.mp-zone {
-		flex: 0 0 100%;
-		min-width: 100%;
+		flex: 0 0 100% !important;
+		width: 100% !important;
+		min-width: 100% !important;
 		box-sizing: border-box;
-		scroll-snap-align: start;
+		scroll-snap-align: start !important;
 		scroll-snap-stop: always;
 		height: 100%;
 		min-height: 0;
