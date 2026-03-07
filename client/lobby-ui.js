@@ -1754,6 +1754,22 @@ class LocusLobbyUI {
 		this._renderMyObjective();
 		this._renderBonusBar();
 		this._renderOpponentPanels();
+
+		// Mobile: move end-turn + undo buttons into the hand row for compact layout
+		if (this._useMobileBoardLayout()) {
+			this._moveEndTurnToHandRow();
+		}
+	}
+
+	/** Move end-turn and undo buttons into .mp-hand-row on mobile */
+	_moveEndTurnToHandRow() {
+		const handRow = document.querySelector('.mp-hand-row');
+		const endTurnBtn = this.elements['mp-end-turn-btn'];
+		const undoBtn = this.elements['mp-undo-btn'];
+		if (!handRow || !endTurnBtn) return;
+		if (undoBtn && undoBtn.parentNode !== handRow) handRow.appendChild(undoBtn);
+		if (endTurnBtn.parentNode !== handRow) handRow.appendChild(endTurnBtn);
+		endTurnBtn.classList.add('mp-end-turn-mobile');
 	}
 
 	_onTurnChanged(currentPlayerId, turnCount) {
