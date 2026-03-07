@@ -1119,6 +1119,23 @@ class LocusP2PHost {
 								}
 								if (!hasFlaggedCell) score = Math.max(1, Math.floor(score * 0.4));
 
+								// Blue zone: only first cell on an unreached bold row unlocks tier points
+								if (zoneName === 'blue') {
+									const reachedRows = this._getReachedBoldRows(zoneData);
+									const boldRowSet = new Set(zoneData.boldRows || []);
+									const counted = new Set();
+									let newTiers = 0;
+									for (const c of cells) {
+										if (boldRowSet.has(c.y) && !reachedRows.has(c.y) && !counted.has(c.y)) {
+											newTiers++;
+											counted.add(c.y);
+										}
+									}
+									score += newTiers * 8;
+									const minY = Math.min(...cells.map(c => c.y));
+									score += Math.max(0, Math.floor(((zoneData.rows || 20) - minY) / 4));
+								}
+
 								// Hard AI: zone-strategic impact scoring
 								if (isHard) {
 									score += this._hardZoneBonus(zoneName, zoneData, cells, subgridId, board);
@@ -1297,10 +1314,22 @@ class LocusP2PHost {
 				}
 			}
 		} else if (zoneName === 'blue') {
-			const boldRows = new Set(zoneData.boldRows || []);
+			// Only value reaching NEW (unreached) bold rows — one cell is enough per row
+			const reachedRows = this._getReachedBoldRows(zoneData);
+			const boldRowSet = new Set(zoneData.boldRows || []);
+			const sortedBoldYs = [...new Set(zoneData.boldRows || [])].sort((a, b) => b - a);
+			const counted = new Set();
 			for (const c of cells) {
-				if (boldRows.has(c.y)) bonus += 5;
+				if (boldRowSet.has(c.y) && !reachedRows.has(c.y) && !counted.has(c.y)) {
+					const tierIdx = sortedBoldYs.indexOf(c.y);
+					const tierPoints = [10, 15, 20, 25, 40];
+					bonus += tierPoints[Math.min(tierIdx, tierPoints.length - 1)] || 10;
+					counted.add(c.y);
+				}
 			}
+			// Favor going upward
+			const minY = Math.min(...cells.map(c => c.y));
+			bonus += Math.max(0, Math.floor(((zoneData.rows || 20) - minY) / 3));
 		} else if (zoneName === 'red' && subgridId) {
 			const sg = board?.zones?.red?.subgrids?.find(s => s.id === subgridId);
 			if (sg) {
@@ -1332,6 +1361,21 @@ class LocusP2PHost {
 			this.Rules.getDataCell(zoneData, x, y + 1)
 		];
 		return neighbors.some(n => n && n.active && !n.isStone);
+	}
+
+	/** Returns a Set of bold row Y-values that already have at least one active bold cell */
+	_getReachedBoldRows(zoneData) {
+		const reached = new Set();
+		for (const boldY of (zoneData.boldRows || [])) {
+			for (let x = 0; x < (zoneData.cols || 0); x++) {
+				const cell = this.Rules.getDataCell(zoneData, x, boldY);
+				if (cell?.active && cell?.flags?.includes('bold')) {
+					reached.add(boldY);
+					break;
+				}
+			}
+		}
+		return reached;
 	}
 
 	_aiMaybeTaunt(playerId) {

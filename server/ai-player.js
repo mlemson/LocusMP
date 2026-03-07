@@ -601,21 +601,6 @@ function _countColumnCells(zoneData, colX) {
 	return { filled, total, ratio: total > 0 ? filled / total : 0 };
 }
 
-function _getBlueActiveTiers(zoneData) {
-	const boldRows = zoneData.boldRows || [];
-	let tiers = 0;
-	for (const rowY of boldRows) {
-		for (let x = 0; x < (zoneData.cols || 0); x++) {
-			const cell = GameRules.getDataCell(zoneData, x, rowY);
-			if (cell?.active && cell?.flags?.includes('bold')) {
-				tiers++;
-				break;
-			}
-		}
-	}
-	return tiers;
-}
-
 /** Returns a Set of bold row Y-values that already have at least one active bold cell */
 function _getReachedBoldRows(zoneData) {
 	const reached = new Set();
