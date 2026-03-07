@@ -1191,6 +1191,10 @@ html, body {
 	justify-content: center;
 }
 
+.mp-zone-dots {
+	display: none;
+}
+
 .mp-touch-drag-lock,
 .mp-touch-drag-lock .mp-board,
 .mp-board-container.mp-touch-drag-lock,
@@ -2983,6 +2987,29 @@ body.mp-loading .mp-btn {
 	.mp-zone {
 		padding: 6px;
 		padding-top: 20px;
+	}
+
+	.mp-zone-dots {
+		display: flex;
+		justify-content: center;
+		align-items: center;
+		gap: 10px;
+		padding: 6px 0 2px;
+	}
+	.mp-zone-dot {
+		width: 12px;
+		height: 12px;
+		border-radius: 50%;
+		background: var(--dot-color, #888);
+		opacity: 0.3;
+		border: 2px solid transparent;
+		padding: 0;
+		cursor: pointer;
+		transition: opacity 0.2s, box-shadow 0.2s;
+	}
+	.mp-zone-dot.active {
+		opacity: 1;
+		box-shadow: 0 0 6px 1px var(--dot-color, #888);
 	}
 
 	.mp-zone-label {

@@ -4500,6 +4500,7 @@ class LocusLobbyUI {
 			this._lastMobileBoardIndex = idx;
 			this._lastMobileZoneName = zoneName || null;
 			this._restoreMobileZoneVerticalScroll(zoneName, zoneEl, false);
+			this._updateZoneDots(idx);
 			return;
 		}
 		board.scrollTo({
@@ -4514,6 +4515,13 @@ class LocusLobbyUI {
 		}
 		if (idx >= 0) this._lastMobileBoardIndex = idx;
 		this._lastMobileZoneName = zoneName || null;
+		this._updateZoneDots(idx);
+	}
+
+	_updateZoneDots(activeIdx) {
+		const dotsEl = this.elements['mp-board-container']?.querySelector('.mp-zone-dots');
+		if (!dotsEl) return;
+		dotsEl.querySelectorAll('.mp-zone-dot').forEach((d, i) => d.classList.toggle('active', i === activeIdx));
 	}
 
 	_renderBoard(boardState) {
@@ -4562,9 +4570,7 @@ class LocusLobbyUI {
 						}
 						this._lastMobileZoneName = zoneName;
 						// Update zone dots
-						if (dotsEl) {
-							dotsEl.querySelectorAll('.mp-zone-dot').forEach((d, i) => d.classList.toggle('active', i === idx));
-						}
+						this._updateZoneDots(idx);
 					});
 				}, { passive: true });
 
@@ -4600,6 +4606,16 @@ class LocusLobbyUI {
 						setTimeout(() => this._scrollMobileBoardToZone(zoneOrder[lastIdx], true), 50);
 					}
 				}, { passive: true });
+
+				// Zone dot click navigation
+				if (dotsEl) {
+					dotsEl.querySelectorAll('.mp-zone-dot').forEach(dot => {
+						dot.addEventListener('click', () => {
+							const z = dot.dataset.zone;
+							if (z) this._scrollMobileBoardToZone(z, true);
+						});
+					});
+				}
 			}
 		} else {
 			container.innerHTML = `
@@ -4635,6 +4651,7 @@ class LocusLobbyUI {
 					this._restoreMobileZoneVerticalScroll(zoneName, target, true);
 					this._lastMobileZoneName = zoneName;
 				}
+				this._updateZoneDots(clamped);
 			}
 		}
 	}
