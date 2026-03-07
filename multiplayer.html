@@ -298,12 +298,16 @@
 		(function() {
 			var host = window.location.hostname || '';
 			var proto = window.location.protocol || '';
-			// Skip Socket.IO op file://, GitHub Pages, Netlify, Vercel, en andere static hosts
-			if (proto === 'file:') { window._locusSocketSkipReason = 'Geopend als lokaal bestand (file://). Start een webserver of gebruik de Node.js server.'; return; }
-			if (host.endsWith('.github.io')) { window._locusSocketSkipReason = 'GitHub Pages is een statische host zonder server-backend.'; return; }
-			if (host.endsWith('.netlify.app')) { window._locusSocketSkipReason = 'Netlify is een statische host zonder server-backend.'; return; }
-			if (host.endsWith('.vercel.app')) { window._locusSocketSkipReason = 'Vercel is een statische host zonder server-backend.'; return; }
-			if (host.endsWith('.pages.dev')) { window._locusSocketSkipReason = 'Cloudflare Pages is een statische host zonder server-backend.'; return; }
+			// Static hosts hebben geen ingebouwde backend, maar mogen wel een externe Locus server gebruiken.
+			if (proto === 'file:') {
+				window._locusSocketSkipReason = 'Geopend als lokaal bestand (file://). Gebruik een webserver of een externe Locus server.';
+				window._locusStaticHost = true;
+				return;
+			}
+			if (host.endsWith('.github.io')) { window._locusSocketSkipReason = 'GitHub Pages heeft geen ingebouwde backend; externe Locus server wordt gebruikt.'; window._locusStaticHost = true; return; }
+			if (host.endsWith('.netlify.app')) { window._locusSocketSkipReason = 'Netlify heeft geen ingebouwde backend; externe Locus server wordt gebruikt.'; window._locusStaticHost = true; return; }
+			if (host.endsWith('.vercel.app')) { window._locusSocketSkipReason = 'Vercel heeft geen ingebouwde backend; externe Locus server wordt gebruikt.'; window._locusStaticHost = true; return; }
+			if (host.endsWith('.pages.dev')) { window._locusSocketSkipReason = 'Cloudflare Pages heeft geen ingebouwde backend; externe Locus server wordt gebruikt.'; window._locusStaticHost = true; return; }
 			// Host komt in aanmerking voor server-modus
 			window._locusSocketEligible = true;
 		})();
@@ -481,6 +485,142 @@
 		const P2P_BROWSER_INSTANCE_KEY = 'locus_p2p_browser_instance';
 		const P2P_BROWSER_TTL_MS = 30000;
 		const P2P_BROWSER_REMOTE_KEY = 'locus_p2p_remote_lobbies';
+		const LOCUS_SERVER_URL_STORAGE_KEY = 'locus_server_url';
+		const DEFAULT_REMOTE_SERVER_URLS = [
+			'https://locus-multiplayer.onrender.com',
+			'https://locus-mp.onrender.com'
+		];
+
+		function _normalizeServerUrl(value) {
+			const raw = String(value || '').trim();
+			if (!raw) return '';
+			try {
+				const url = new URL(raw, window.location.href);
+				if (!/^https?:$/.test(url.protocol)) return '';
+				url.hash = '';
+				url.search = '';
+				return url.origin.replace(/\/$/, '');
+			} catch (_) {
+				return '';
+			}
+		}
+
+		function _readStoredServerUrl() {
+			try {
+				return _normalizeServerUrl(localStorage.getItem(LOCUS_SERVER_URL_STORAGE_KEY));
+			} catch (_) {
+				return '';
+			}
+		}
+
+		function _writeStoredServerUrl(url) {
+			const normalized = _normalizeServerUrl(url);
+			if (!normalized) return;
+			try { localStorage.setItem(LOCUS_SERVER_URL_STORAGE_KEY, normalized); } catch (_) {}
+		}
+
+		function _getConfiguredServerCandidates() {
+			const candidates = [];
+			const params = new URLSearchParams(window.location.search || '');
+			const queryServer = _normalizeServerUrl(params.get('server'));
+			const globalServer = _normalizeServerUrl(window.LOCUS_SERVER_URL || window._locusServerUrl || '');
+			const storedServer = _readStoredServerUrl();
+			if (queryServer) candidates.push(queryServer);
+			if (globalServer) candidates.push(globalServer);
+			if (storedServer) candidates.push(storedServer);
+			for (const url of DEFAULT_REMOTE_SERVER_URLS) {
+				const normalized = _normalizeServerUrl(url);
+				if (normalized) candidates.push(normalized);
+			}
+			return candidates;
+		}
+
+		function _getLocusServerCandidates() {
+			const seen = new Set();
+			const items = [];
+			const add = (url, label, timeoutMs) => {
+				const normalized = _normalizeServerUrl(url);
+				if (!normalized || seen.has(normalized)) return;
+				seen.add(normalized);
+				items.push({
+					url: normalized,
+					label: label || normalized,
+					timeoutMs: Math.max(2000, Number(timeoutMs) || 0)
+				});
+			};
+
+			const host = window.location.hostname || '';
+			const protocol = window.location.protocol || '';
+			if (protocol !== 'file:' && !window._locusStaticHost) {
+				add(window.location.origin, window.location.origin, 2500);
+			}
+			for (const url of _getConfiguredServerCandidates()) {
+				const isLocal = /localhost|127\.0\.0\.1/i.test(url);
+				add(url, url, isLocal ? 2500 : 12000);
+			}
+			if (host !== 'localhost' && host !== '127.0.0.1') {
+				add('http://localhost:3000', 'localhost:3000', 2500);
+			}
+			return items;
+		}
+
+		function _getEffectiveServerBaseUrl() {
+			return _normalizeServerUrl(window._locusServerUrl || window.LOCUS_SERVER_URL || _readStoredServerUrl() || '');
+		}
+
+		async function _loadSocketIOFromServer(baseUrl) {
+			if (typeof io !== 'undefined') return;
+			const scriptBase = _normalizeServerUrl(baseUrl);
+			if (!scriptBase) throw new Error('Geen geldige server URL voor Socket.IO.');
+			await new Promise((resolve, reject) => {
+				const existing = document.querySelector('script[data-locus-socket="' + scriptBase + '"]');
+				if (existing) {
+					existing.addEventListener('load', () => resolve(), { once: true });
+					existing.addEventListener('error', () => reject(new Error('Socket.IO script kon niet geladen worden')), { once: true });
+					return;
+				}
+				const s = document.createElement('script');
+				s.src = scriptBase + '/socket.io/socket.io.js';
+				s.dataset.locusSocket = scriptBase;
+				s.onload = resolve;
+				s.onerror = () => reject(new Error('Socket.IO script kon niet geladen worden'));
+				document.head.appendChild(s);
+			});
+		}
+
+		async function _probeLocusServer(options = {}) {
+			const candidates = Array.isArray(options.candidates) && options.candidates.length
+				? options.candidates
+				: _getLocusServerCandidates();
+			for (const candidate of candidates) {
+				const baseUrl = _normalizeServerUrl(candidate.url);
+				if (!baseUrl) continue;
+				try {
+					const response = await fetch(baseUrl + '/api/games', {
+						mode: 'cors',
+						cache: 'no-store',
+						signal: AbortSignal.timeout(Math.max(2000, Number(candidate.timeoutMs) || 0))
+					});
+					if (!response.ok) continue;
+					const data = await response.json();
+					window._locusServerUrl = baseUrl;
+					window.LOCUS_SERVER_URL = baseUrl;
+					window._locusHasSocketIO = true;
+					_writeStoredServerUrl(baseUrl);
+					if (options.loadSocketIO) {
+						await _loadSocketIOFromServer(baseUrl);
+					}
+					return {
+						baseUrl,
+						games: Array.isArray(data?.games) ? data.games : [],
+						candidate
+					};
+				} catch (_) {
+					// volgende kandidaat proberen
+				}
+			}
+			return null;
+		}
 
 		function _getP2PBrowserInstanceId() {
 			try {
@@ -513,13 +653,14 @@
 		}
 
 		function _getCurrentServerBaseUrl() {
-			if (window._locusServerUrl) return window._locusServerUrl;
+			const resolved = _getEffectiveServerBaseUrl();
+			if (resolved) return resolved;
 			const host = window.location.hostname || '';
 			const protocol = window.location.protocol || '';
 			if (protocol === 'file:' || host.endsWith('.github.io') || host.endsWith('.netlify.app') || host.endsWith('.vercel.app') || host.endsWith('.pages.dev')) {
 				return '';
 			}
-			return '';
+			return _normalizeServerUrl(window.location.origin);
 		}
 
 		function _setRemoteP2PLobbies(lobbies) {
@@ -717,6 +858,9 @@
 		window._clearRegisteredP2PLobby = _clearRegisteredP2PLobby;
 		window._startRegisteredP2PLobbyHeartbeat = _startRegisteredP2PLobbyHeartbeat;
 		window._stopRegisteredP2PLobbyHeartbeat = _stopRegisteredP2PLobbyHeartbeat;
+		window._getLocusServerCandidates = _getLocusServerCandidates;
+		window._probeLocusServer = _probeLocusServer;
+		window._loadSocketIOFromServer = _loadSocketIOFromServer;
 
 		window.addEventListener('pagehide', () => {
 			try {
@@ -758,67 +902,34 @@
 					return;
 				}
 
-				// Statische host → toon waarom
-				if (window._locusSocketSkipReason) {
-					list.innerHTML = '<div class="mp-server-browser-empty" style="color:#ff9b6b;">'
-						+ '<b>⚠️ Server niet beschikbaar</b><br>'
-						+ '<span style="font-size:12px;opacity:0.8;">' + window._locusSocketSkipReason + '</span><br>'
-						+ '<span style="font-size:11px;opacity:0.6;margin-top:4px;display:inline-block;">Gebruik P2P modus hieronder, of start de Node.js server (zie SERVER-SETUP.md)</span>'
-						+ '</div>';
-					return;
-				}
-
 				// Probeer server te bereiken
 				list.innerHTML = '<div class="mp-server-browser-loading">Server zoeken...</div>';
-
-				var urls = [
-					{ url: '', label: window.location.origin },
-					{ url: 'http://localhost:3000', label: 'localhost:3000' }
-				];
-
-				for (var i = 0; i < urls.length; i++) {
+				var candidates = window._getLocusServerCandidates ? window._getLocusServerCandidates() : [];
+				var probe = window._probeLocusServer ? await window._probeLocusServer({ candidates: candidates, loadSocketIO: true }) : null;
+				if (probe) {
+					console.log('[Locus] Server gevonden op:', probe.candidate?.label || probe.baseUrl);
 					try {
-						var res = await fetch(urls[i].url + '/api/games', { signal: AbortSignal.timeout(2000) });
-						if (res.ok) {
-							var data = await res.json();
-							var games = data.games || [];
-							window._locusServerUrl = urls[i].url || undefined;
-							console.log('[Locus] Server gevonden op:', urls[i].label);
-							try {
-								if (window._fetchServerP2PLobbies) {
-									await window._fetchServerP2PLobbies(urls[i].url || '');
-								}
-							} catch (_) {}
-
-							// Laad Socket.IO async
-							try {
-								await new Promise(function(resolve, reject) {
-									if (typeof io !== 'undefined') { resolve(); return; }
-									var s = document.createElement('script');
-									s.src = (urls[i].url || '') + '/socket.io/socket.io.js';
-									s.onload = resolve;
-									s.onerror = reject;
-									document.head.appendChild(s);
-								});
-							} catch (_) {}
-
-							// Activeer server-modus
-							if (typeof io !== 'undefined') {
-								document.getElementById('lobby-screen')?.classList.add('mp-server-mode');
-								if (!window._mp || window._mp.serverUrl === 'p2p') {
-									var mp = new LocusMultiplayer(urls[i].url || undefined);
-									var ui = new LocusLobbyUI(mp);
-									ui.init();
-									window._mp = mp;
-									window._ui = ui;
-								}
-								if (window._ui) window._ui._refreshServerBrowser();
-							}
-
-							window._renderOpenLobbyBrowserList?.(list, games);
-							return;
+						if (window._fetchServerP2PLobbies) {
+							await window._fetchServerP2PLobbies(probe.baseUrl);
 						}
-					} catch (_) { /* timeout of netwerk fout */ }
+					} catch (_) {}
+
+					document.getElementById('lobby-screen')?.classList.add('mp-server-mode');
+					if (typeof io !== 'undefined') {
+						if (!window._mp || window._mp.serverUrl === 'p2p') {
+							var mp = new LocusMultiplayer(probe.baseUrl || undefined);
+							var ui = new LocusLobbyUI(mp);
+							ui.init();
+							window._mp = mp;
+							window._ui = ui;
+						} else if (window._mp) {
+							window._mp.serverUrl = probe.baseUrl || window._mp.serverUrl;
+						}
+						if (window._ui) window._ui._refreshServerBrowser();
+					}
+
+					window._renderOpenLobbyBrowserList?.(list, probe.games || []);
+					return;
 				}
 
 				var p2pGames = window._getOpenP2PLobbies ? window._getOpenP2PLobbies() : [];
@@ -830,9 +941,9 @@
 				// Geen server gevonden — toon diagnostiek
 				list.innerHTML = '<div class="mp-server-browser-empty" style="color:#ff9b6b;">'
 					+ '<b>⚠️ Geen Locus server gevonden</b><br>'
-					+ '<span style="font-size:12px;opacity:0.8;">Gecontroleerd: ' + urls.map(function(u) { return u.label; }).join(', ') + '</span><br>'
+					+ '<span style="font-size:12px;opacity:0.8;">Gecontroleerd: ' + candidates.map(function(u) { return u.label; }).join(', ') + '</span><br>'
 					+ '<span style="font-size:11px;opacity:0.6;margin-top:4px;display:inline-block;">'
-					+ 'Start de server: <code style="background:rgba(255,255,255,0.1);padding:2px 6px;border-radius:3px;">npm start</code> in de server/ map<br>'
+					+ 'Start de server: <code style="background:rgba(255,255,255,0.1);padding:2px 6px;border-radius:3px;">npm start</code> in de server/ map, of open deze pagina met <code style="background:rgba(255,255,255,0.1);padding:2px 6px;border-radius:3px;">?server=https://jouw-server</code>.<br>'
 					+ 'Of gebruik P2P modus hieronder.'
 					+ '</span>'
 					+ '</div>';
@@ -849,7 +960,20 @@
 			await _setLobbyVersionBadge();
 
 			// Detecteer of Socket.IO server beschikbaar is
-			const hasSocketIO = typeof io !== 'undefined';
+			let hasSocketIO = typeof io !== 'undefined';
+			if (!hasSocketIO && window._probeLocusServer) {
+				const initialProbe = await window._probeLocusServer({ loadSocketIO: true });
+				if (initialProbe) {
+					hasSocketIO = typeof io !== 'undefined';
+					if (hasSocketIO) {
+						try {
+							if (window._fetchServerP2PLobbies) {
+								await window._fetchServerP2PLobbies(initialProbe.baseUrl);
+							}
+						} catch (_) {}
+					}
+				}
+			}
 			window._locusHasSocketIO = hasSocketIO;
 			const hasPeerJS = typeof Peer !== 'undefined';
 			let mp = null;
@@ -860,7 +984,7 @@
 			if (hasSocketIO) {
 				// Normale server modus — toon server-only UI
 				document.getElementById('lobby-screen')?.classList.add('mp-server-mode');
-				mp = new LocusMultiplayer(window._locusServerUrl || undefined);
+				mp = new LocusMultiplayer(_getEffectiveServerBaseUrl() || undefined);
 			} else {
 				// Geen server — verberg server-only knoppen, toon P2P opties
 				console.log('[Locus] Geen Socket.IO server — alleen P2P modus');
