@@ -30,6 +30,19 @@ Open `multiplayer.html` in een browser — lokaal of via elke static file host.
 
 ## 🖥️ Optie 2: Dedicated Server
 
+### GitHub Pages + externe server
+
+Als je frontend draait op `https://mlemson.github.io/LocusMP/multiplayer.html`, kan die nu verbinden met een aparte Locus server.
+
+- De pagina probeert automatisch bekende Locus server-URL's en onthoudt een werkende server lokaal.
+- Je kunt ook expliciet een server forceren via een querystring, bijvoorbeeld:
+
+```text
+https://mlemson.github.io/LocusMP/multiplayer.html?server=https://jouw-server.onrender.com
+```
+
+- De host kan daarna een lobby aanmaken; joiners zien die via **Open lobbys** of joinen direct met de spelcode.
+
 ### Lokaal draaien
 
 ```bash
