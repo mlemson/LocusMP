@@ -402,6 +402,19 @@ class LocusMultiplayer {
 		}
 	}
 
+	/** Verwijder een AI speler uit het spel */
+	async removeAIPlayer(playerId) {
+		try {
+			const result = await this._emitWithAck('removeAIPlayer', { playerId });
+			console.log('[Locus MP] AI player removed:', playerId);
+			return result;
+		} catch (error) {
+			console.error('[Locus MP] Remove AI player failed:', error);
+			if (this.onError) this.onError(error);
+			throw error;
+		}
+	}
+
 	async chooseStartingDeck(deckType) {
 		try {
 			return await this._emitWithAck('chooseStartingDeck', { deckType });

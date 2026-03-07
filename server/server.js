@@ -1041,6 +1041,44 @@ io.on('connection', (socket) => {
 		}
 	});
 
+	// ── REMOVE AI PLAYER ─────────────────────
+
+	socket.on('removeAIPlayer', (data, callback) => {
+		try {
+			const info = socketToPlayer.get(socket.id);
+			if (!info) return callback({ success: false, error: 'Niet in een spel.' });
+
+			const gameState = games.get(info.gameId);
+			if (!gameState) return callback({ success: false, error: 'Spel niet gevonden.' });
+
+			if (gameState.hostPlayerId !== info.playerId) {
+				return callback({ success: false, error: 'Alleen de host kan AI spelers verwijderen.' });
+			}
+
+			const aiPlayerId = String(data?.playerId || '');
+			const existingAIs = aiPlayers.get(info.gameId);
+			if (!existingAIs || !existingAIs.has(aiPlayerId)) {
+				return callback({ success: false, error: 'Geen AI speler met dit ID.' });
+			}
+
+			const result = GameRules.removePlayer(gameState, aiPlayerId);
+			if (result.error) return callback({ success: false, error: result.error });
+
+			existingAIs.delete(aiPlayerId);
+			const diffMap = aiDifficulty.get(info.gameId);
+			if (diffMap) diffMap.delete(aiPlayerId);
+
+			console.log(`[Locus] AI speler ${aiPlayerId} verwijderd uit game ${info.gameId}`);
+			callback({ success: true });
+
+			io.to(info.gameId).emit('playerLeft', { playerId: aiPlayerId });
+			broadcastGameState(io, info.gameId);
+		} catch (error) {
+			console.error('[Locus] removeAIPlayer error:', error);
+			callback({ success: false, error: error.message });
+		}
+	});
+
 	// ── CHOOSE GOAL ──────────────────────────
 
 	socket.on('chooseStartingDeck', (data, callback) => {

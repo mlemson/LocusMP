@@ -220,6 +220,17 @@ class LocusP2PHost {
 				break;
 			}
 
+			case 'removeAIPlayer': {
+				if (playerId !== this.hostPlayerId && playerId) {
+					conn.send({ type: 'result', action: 'removeAIPlayer', success: false, error: 'Alleen de host kan AI verwijderen.' });
+					return;
+				}
+				const rmResult = this._removeAIPlayer(msg.playerId);
+				conn.send({ type: 'result', action: 'removeAIPlayer', ...rmResult });
+				this._broadcastState();
+				break;
+			}
+
 			case 'joinGame': {
 				const name = String(msg.playerName || 'Speler').slice(0, 20);
 				const reconnectPlayerId = msg.reconnectPlayerId ? String(msg.reconnectPlayerId) : null;
@@ -598,6 +609,9 @@ class LocusP2PHost {
 			case 'addAIPlayer':
 				result = this._addAIPlayer(data.difficulty || 'normal');
 				break;
+			case 'removeAIPlayer':
+				result = this._removeAIPlayer(data.playerId);
+				break;
 			case 'startGame':
 				result = this.Rules.startGame(this.gameState);
 				break;
@@ -878,6 +892,20 @@ class LocusP2PHost {
 		return { success: true, playerId: aiId, name: aiName, isAI: true };
 	}
 
+	_removeAIPlayer(aiPlayerId) {
+		if (!this.gameState) return { success: false, error: 'Geen game state.' };
+		if (this.gameState.phase !== 'waiting') return { success: false, error: 'Kan alleen AI verwijderen in de wachtkamer.' };
+		if (!this.aiPlayerIds.has(aiPlayerId)) return { success: false, error: 'Geen AI speler met dit ID.' };
+
+		const result = this.Rules.removePlayer(this.gameState, aiPlayerId);
+		if (result?.error) return { success: false, error: result.error };
+
+		this.aiPlayerIds.delete(aiPlayerId);
+		if (this._aiDifficulty) this._aiDifficulty.delete(aiPlayerId);
+		if (this.onPlayerLeft) this.onPlayerLeft({ playerId: aiPlayerId });
+		return { success: true };
+	}
+
 	_scheduleAI() {
 		if (!this.gameState) return;
 		if (this.aiPlayerIds.size === 0) return;
@@ -1063,7 +1091,7 @@ class LocusP2PHost {
 									score += this._hardZoneBonus(zoneName, zoneData, cells, subgridId, board);
 									// Adjacency bonus
 									for (const c of cells) {
-										if (this.Rules.hasAdjacentActive(zoneData, c.x, c.y)) score += 1;
+										if (this._hasAdjacentActive(zoneData, c.x, c.y)) score += 1;
 									}
 									// Objective awareness
 									const obj = player.chosenObjective;
@@ -1254,12 +1282,23 @@ class LocusP2PHost {
 			}
 		} else if (zoneName === 'purple') {
 			for (const c of cells) {
-				if (this.Rules.hasAdjacentActive(zoneData, c.x, c.y)) bonus += 2;
+				if (this._hasAdjacentActive(zoneData, c.x, c.y)) bonus += 2;
 				const cell = this.Rules.getDataCell(zoneData, c.x, c.y);
 				if (cell?.flags?.includes('bold')) bonus += 3;
 			}
 		}
 		return bonus;
+	}
+
+	/** Check if any orthogonal neighbor of (x,y) is active in zoneData */
+	_hasAdjacentActive(zoneData, x, y) {
+		const neighbors = [
+			this.Rules.getDataCell(zoneData, x - 1, y),
+			this.Rules.getDataCell(zoneData, x + 1, y),
+			this.Rules.getDataCell(zoneData, x, y - 1),
+			this.Rules.getDataCell(zoneData, x, y + 1)
+		];
+		return neighbors.some(n => n && n.active && !n.isStone);
 	}
 
 	_aiMaybeTaunt(playerId) {

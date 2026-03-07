@@ -1486,6 +1486,7 @@
 
 				async startGame() { return host.hostAction('startGame'); },
 				async addAIPlayer(difficulty) { return host.hostAction('addAIPlayer', { difficulty: difficulty || 'normal' }); },
+				async removeAIPlayer(playerId) { return host.hostAction('removeAIPlayer', { playerId }); },
 				async chooseStartingDeck(dt) { return host.hostAction('chooseStartingDeck', { deckType: dt }); },
 				async chooseGoal(idx) { return host.hostAction('chooseGoal', { objectiveIndex: idx }); },
 
