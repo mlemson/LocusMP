@@ -973,6 +973,23 @@ class LocusP2PHost {
 				// Don't set changed — the async queue handles broadcasting
 				return;
 			}
+			// Time bomb: AI bots can bomb the current (human) player
+			if (currentPid && !this.aiPlayerIds.has(currentPid)) {
+				for (const aiId of this.aiPlayerIds) {
+					const aiPlayer = this.gameState.players?.[aiId];
+					if (!aiPlayer || (aiPlayer.timeBombs || 0) <= 0) continue;
+					// 40% chance to use time bomb (don't always bomb)
+					if (Math.random() < 0.4) {
+						const bombResult = this.Rules.useTimeBomb(this.gameState, aiId);
+						if (bombResult && !bombResult.error) {
+							console.log(`💣 Bot ${aiPlayer.name} used TIME BOMB on ${this.gameState.players?.[currentPid]?.name}!`);
+							this._broadcastEvent('timeBombUsed', { byPlayerId: aiId, targetPlayerId: currentPid });
+							changed = true;
+							break; // Only one bomb per turn
+						}
+					}
+				}
+			}
 		}
 
 		if (phase === 'levelComplete') {
@@ -1000,6 +1017,7 @@ class LocusP2PHost {
 						if (!chosenId) chosenId = available[0]?.id;
 						if (chosenId) {
 							this.Rules.choosePerk(this.gameState, aiId, chosenId);
+							console.log(`🛒 Bot ${p.name} chose perk: ${chosenId} (${isHard ? 'hard' : 'normal'} AI)`);
 							changed = true;
 						}
 					}
@@ -1024,6 +1042,7 @@ class LocusP2PHost {
 						}
 						const buyResult = this.Rules.buyShopItem(this.gameState, aiId, item.id, extra);
 						if (buyResult && !buyResult.error) {
+							console.log(`🛒 Bot ${p.name} bought: ${item.id} (cost: ${item.cost}) ${extra.bonusColor ? '→ ' + extra.bonusColor : ''}`);
 							remainingCoins -= item.cost;
 							changed = true;
 						}
@@ -1038,6 +1057,7 @@ class LocusP2PHost {
 						if (price <= remainingCoins) {
 							const buyResult = this.Rules.buyShopItem(this.gameState, aiId, `shop-card-${ci}`, {});
 							if (buyResult && !buyResult.error) {
+								console.log(`🛒 Bot ${p.name} bought card from shop (slot ${ci}, cost: ${price})`);
 								remainingCoins -= price;
 								changed = true;
 							}
@@ -1277,7 +1297,7 @@ class LocusP2PHost {
 	_aiFindBestMove(playerId, isHard = false) {
 		const player = this.gameState?.players?.[playerId];
 		const board = this.gameState?.boardState;
-		if (!player || !board) return false;
+		if (!player || !board) return null;
 
 		const hand = Array.isArray(player.hand) ? player.hand : [];
 		let bestMove = null;
