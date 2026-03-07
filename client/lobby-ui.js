@@ -4488,43 +4488,56 @@ class LocusLobbyUI {
 
 	_getMobileZoneIndex(zoneName) {
 		if (!this._useMobileBoardLayout()) return null;
-		if (!zoneName) return null;
+		const normalizedZone = this._normalizeZoneName(zoneName);
+		if (!normalizedZone) return null;
 		const board = this.elements['mp-board-container']?.querySelector('.mp-board');
 		if (!board) return null;
 		const zones = Array.from(board.querySelectorAll('.mp-zone'));
 		if (!zones.length) return null;
-		const idx = zones.findIndex(z => z.dataset.zone === zoneName);
+		const idx = zones.findIndex(z => z.dataset.zone === normalizedZone);
 		return idx >= 0 ? idx : null;
+	}
+
+	_normalizeZoneName(zoneName) {
+		if (!zoneName) return null;
+		const raw = String(zoneName).trim().toLowerCase();
+		const map = {
+			yellow: 'yellow', geel: 'yellow',
+			green: 'green', groen: 'green',
+			blue: 'blue', blauw: 'blue',
+			red: 'red', rood: 'red',
+			purple: 'purple', paars: 'purple'
+		};
+		return map[raw] || null;
 	}
 
 	_scrollMobileBoardToZone(zoneName, smooth = true) {
 		if (!this._useMobileBoardLayout()) return;
+		const normalizedZone = this._normalizeZoneName(zoneName);
+		if (!normalizedZone) return;
 		const board = this.elements['mp-board-container']?.querySelector('.mp-board');
 		if (!board) return;
-		const zoneEl = board.querySelector(`.mp-zone[data-zone="${zoneName}"]`);
+		const zoneEl = board.querySelector(`.mp-zone[data-zone="${normalizedZone}"]`);
 		if (!zoneEl) return;
 		const zones = Array.from(board.querySelectorAll('.mp-zone'));
 		const idx = zones.indexOf(zoneEl);
-		const currentIdx = this._getCurrentMobileBoardIndex();
-		if (Number.isFinite(idx) && Number.isFinite(currentIdx) && idx === currentIdx) {
-			this._lastMobileBoardIndex = idx;
-			this._lastMobileZoneName = zoneName || null;
-			this._restoreMobileZoneVerticalScroll(zoneName, zoneEl, false);
-			this._updateZoneDots(idx);
-			return;
-		}
+
 		board.scrollTo({
 			left: zoneEl.offsetLeft,
 			top: 0,
 			behavior: smooth ? 'smooth' : 'auto'
 		});
 		if (smooth) {
-			setTimeout(() => this._restoreMobileZoneVerticalScroll(zoneName, zoneEl, true), 220);
+			setTimeout(() => {
+				this._restoreMobileZoneVerticalScroll(normalizedZone, zoneEl, true);
+				// One extra settle step avoids theme/layout timing causing wrong snap target on mobile.
+				board.scrollTo({ left: zoneEl.offsetLeft, top: 0, behavior: 'auto' });
+			}, 220);
 		} else {
-			this._restoreMobileZoneVerticalScroll(zoneName, zoneEl, true);
+			this._restoreMobileZoneVerticalScroll(normalizedZone, zoneEl, true);
 		}
 		if (idx >= 0) this._lastMobileBoardIndex = idx;
-		this._lastMobileZoneName = zoneName || null;
+		this._lastMobileZoneName = normalizedZone;
 		this._updateZoneDots(idx);
 	}
 
@@ -4601,7 +4614,7 @@ class LocusLobbyUI {
 						}
 						const prevIdx = this._lastMobileBoardIndex;
 						this._lastMobileBoardIndex = idx;
-						const zoneName = zoneOrder[idx] || null;
+						const zoneName = zoneEls[idx]?.dataset?.zone || zoneOrder[idx] || null;
 						if (zoneName && prevIdx !== idx) {
 							const zoneEl = boardEl.querySelector(`.mp-zone[data-zone="${zoneName}"]`);
 							if (zoneEl) this._restoreMobileZoneVerticalScroll(zoneName, zoneEl, true);
