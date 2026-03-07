@@ -965,28 +965,13 @@ class LocusP2PHost {
 		if (phase === 'playing' && !this.gameState.paused) {
 			const currentPid = this.gameState.playerOrder?.[this.gameState.currentTurnIndex];
 			if (currentPid && this.aiPlayerIds.has(currentPid)) {
+				// Don't start if already processing an AI turn
+				if (this._aiTurnInProgress) return;
+				this._aiTurnInProgress = true;
 				this._clearTimer();
-				const isHard = this._aiDifficulty?.get(currentPid) === 'hard';
-				// Use perk if available (hard AI prefers aggressive perks)
-				this._aiUsePerkIfPossible(currentPid, isHard);
-				// Play card with scoring (hard AI uses impact eval)
-				this._aiPlayCardWithScoring(currentPid, isHard);
-				// Play bonuses if collected
-				this._aiPlayBonusesIfPossible(currentPid);
-				// End turn
-				const result = this.Rules.endTurn(this.gameState, currentPid, null);
-				changed = true;
-				// Maybe taunt
-				this._aiMaybeTaunt(currentPid);
-				if (result?.gameEnded) {
-					this._broadcastEvent('levelComplete', {
-						levelScores: this.gameState.levelScores,
-						levelWinner: this.gameState.levelWinner,
-						level: this.gameState.level
-					});
-				} else {
-					this._startTimerForCurrentPlayer(true);
-				}
+				this._runAITurnAsync(currentPid);
+				// Don't set changed — the async queue handles broadcasting
+				return;
 			}
 		}
 
@@ -1077,7 +1062,219 @@ class LocusP2PHost {
 		}
 	}
 
-	_aiPlayCardWithScoring(playerId, isHard = false) {
+	// ── ASYNC AI TURN — sequential actions with delays and preview ──
+
+	_runAITurnAsync(playerId) {
+		const player = this.gameState?.players?.[playerId];
+		if (!player) { this._aiTurnInProgress = false; return; }
+		const isHard = this._aiDifficulty?.get(playerId) === 'hard';
+		const playerName = player.name || 'Bot';
+		const ACTION_DELAY = 800;
+
+		// Build the action queue
+		const actions = [];
+
+		// 1. Choose perk if available
+		const perkId = this._aiPickPerk(playerId, isHard);
+		if (perkId) actions.push({ type: 'choosePerk', perkId });
+
+		// 2. Use mine if has perk and hasn't used it this level
+		if (this.Rules.playerHasPerk(player, 'agg_mine') &&
+			(player.perks?.minesPerRound || 0) > 0 &&
+			(player.perks?.minesUsedThisLevel || 0) < 1) {
+			const mineTarget = this._aiFindMineTarget(playerId);
+			if (mineTarget) actions.push({ type: 'useMine', ...mineTarget });
+		}
+
+		// 3. Steal card if has perk and hasn't used it this level
+		if (this.Rules.playerHasPerk(player, 'agg_steal') &&
+			(player.perks?.stealsPerRound || 0) > 0 &&
+			(player.perks?.stealsUsedThisLevel || 0) < (player.perks?.stealsPerRound || 0)) {
+			const stealTarget = this._aiFindStealTarget(playerId);
+			if (stealTarget) actions.push({ type: 'stealCard', ...stealTarget });
+		}
+
+		// 4. Play card (with preview)
+		const bestMove = this._aiFindBestMove(playerId, isHard);
+		if (bestMove) {
+			actions.push({ type: 'previewCard', move: bestMove });
+			actions.push({ type: 'playCard', move: bestMove });
+		}
+
+		// 5. Play bonuses
+		const bonusColors = ['yellow', 'red', 'green', 'purple', 'blue', 'any'];
+		for (const color of bonusColors) {
+			const charges = player.bonusInventory?.[color] || 0;
+			for (let i = 0; i < charges; i++) {
+				actions.push({ type: 'playBonus', bonusColor: color });
+			}
+		}
+
+		// 6. End turn
+		const discardCardId = !bestMove ? this._aiPickDiscardCard(playerId) : null;
+		actions.push({ type: 'endTurn', discardCardId });
+
+		// Process actions sequentially with delays
+		let idx = 0;
+		const processNext = () => {
+			if (!this.gameState || this.gameState.paused) {
+				this._aiTurnInProgress = false;
+				return;
+			}
+			if (idx >= actions.length) {
+				this._aiTurnInProgress = false;
+				this._aiMaybeTaunt(playerId);
+				return;
+			}
+
+			const action = actions[idx++];
+
+			switch (action.type) {
+				case 'choosePerk': {
+					const perkResult = this.Rules.choosePerk(this.gameState, playerId, action.perkId);
+					if (!perkResult?.error) {
+						console.log(`[AI ${playerName}] 🎯 Perk gekozen: ${perkResult?.perk?.name || action.perkId}`);
+						this._broadcastState();
+					}
+					setTimeout(processNext, ACTION_DELAY);
+					break;
+				}
+
+				case 'useMine': {
+					const mineResult = this.Rules.useMine(this.gameState, playerId, action.zoneName, action.cellX, action.cellY);
+					if (!mineResult?.error) {
+						console.log(`[AI ${playerName}] 💣 Mijn geplaatst op ${action.zoneName} (${action.cellX},${action.cellY})`);
+						this._broadcastState();
+					} else {
+						console.log(`[AI ${playerName}] Mijn mislukt: ${mineResult.error}`);
+					}
+					setTimeout(processNext, ACTION_DELAY);
+					break;
+				}
+
+				case 'stealCard': {
+					const stealResult = this.Rules.stealCard(this.gameState, playerId, action.targetPlayerId, action.cardId);
+					if (!stealResult?.error) {
+						console.log(`[AI ${playerName}] 🕵️ Kaart gestolen van ${stealResult.targetPlayerName}: ${stealResult.stolenCard?.shapeName}`);
+						this._broadcastState();
+					} else {
+						console.log(`[AI ${playerName}] Steal mislukt: ${stealResult.error}`);
+					}
+					setTimeout(processNext, ACTION_DELAY);
+					break;
+				}
+
+				case 'previewCard': {
+					const m = action.move;
+					// Broadcast opponent preview (ghost cells)
+					this._broadcastEvent('opponentInteraction', {
+						playerId,
+						playerName,
+						type: 'start',
+						mode: 'card',
+						cardName: m.card?.shapeName || ''
+					});
+					setTimeout(() => {
+						this._broadcastEvent('opponentInteraction', {
+							playerId,
+							playerName,
+							type: 'move',
+							mode: 'card',
+							zoneName: m.zoneName,
+							baseX: m.x,
+							baseY: m.y,
+							matrix: m.matrix,
+							subgridId: m.subgridId,
+							isValid: true
+						});
+						// After showing preview for 1 second, proceed to actual placement
+						setTimeout(processNext, 1000);
+					}, 300);
+					break;
+				}
+
+				case 'playCard': {
+					const m = action.move;
+					// Clear the preview
+					this._broadcastEvent('opponentInteraction', { playerId, playerName, type: 'end' });
+
+					const result = this.Rules.playMove(
+						this.gameState, playerId, m.card.id, m.zoneName,
+						m.x, m.y, m.rotation, false, m.subgridId
+					);
+					if (!result?.error) {
+						console.log(`[AI ${playerName}] 🃏 Kaart gespeeld: ${m.card.shapeName || m.card.id} op ${m.zoneName} (${m.x},${m.y})`);
+						this._broadcastEvent('movePlayed', {
+							playerId,
+							playerName,
+							zoneName: m.zoneName,
+							baseX: m.x,
+							baseY: m.y,
+							rotation: m.rotation,
+							mirrored: false,
+							subgridId: m.subgridId || null,
+							matrix: m.matrix,
+							goldCollected: result.goldCollected || 0,
+							bonusesCollected: result.bonusesCollected || [],
+							pearlsCollected: result.pearlsCollected || 0,
+							objectivesRevealed: this._shouldRevealObjectives(),
+							mineTriggered: result.mineTriggered || null
+						});
+						this._broadcastState();
+					} else {
+						console.log(`[AI ${playerName}] Kaart mislukt: ${result.error}`);
+					}
+					setTimeout(processNext, ACTION_DELAY);
+					break;
+				}
+
+				case 'playBonus': {
+					const bonusResult = this._aiPlayOneBonus(playerId, action.bonusColor);
+					if (bonusResult) {
+						console.log(`[AI ${playerName}] 🎁 Bonus gespeeld: ${action.bonusColor} op ${bonusResult.zoneName}`);
+						this._broadcastState();
+					}
+					setTimeout(processNext, ACTION_DELAY);
+					break;
+				}
+
+				case 'endTurn': {
+					// 1 second pause before ending turn so the placement is visible
+					setTimeout(() => {
+						if (!this.gameState) { this._aiTurnInProgress = false; return; }
+						const result = this.Rules.endTurn(this.gameState, playerId, action.discardCardId || null);
+						if (result?.error) {
+							console.log(`[AI ${playerName}] EndTurn mislukt: ${result.error}`);
+							this._aiTurnInProgress = false;
+							return;
+						}
+						console.log(`[AI ${playerName}] ✅ Beurt beëindigd`);
+						if (result?.gameEnded) {
+							this._broadcastEvent('levelComplete', {
+								levelScores: this.gameState.levelScores,
+								levelWinner: this.gameState.levelWinner,
+								level: this.gameState.level
+							});
+						} else {
+							this._startTimerForCurrentPlayer(true);
+						}
+						this._broadcastState();
+						this._aiTurnInProgress = false;
+						this._aiMaybeTaunt(playerId);
+					}, 1000);
+					break;
+				}
+
+				default:
+					setTimeout(processNext, ACTION_DELAY);
+			}
+		};
+
+		processNext();
+	}
+
+	/** Find the best card placement for AI */
+	_aiFindBestMove(playerId, isHard = false) {
 		const player = this.gameState?.players?.[playerId];
 		const board = this.gameState?.boardState;
 		if (!player || !board) return false;
@@ -1171,74 +1368,126 @@ class LocusP2PHost {
 			}
 		}
 
-		if (!bestMove) return false;
-
-		const result = this.Rules.playMove(
-			this.gameState, playerId, bestMove.card.id, bestMove.zoneName,
-			bestMove.x, bestMove.y, bestMove.rotation, false, bestMove.subgridId
-		);
-		if (!result?.error) {
-			this._broadcastEvent('movePlayed', {
-				playerId,
-				playerName: player.name,
-				zoneName: bestMove.zoneName,
-				baseX: bestMove.x,
-				baseY: bestMove.y,
-				rotation: bestMove.rotation,
-				mirrored: false,
-				subgridId: bestMove.subgridId || null,
-				matrix: bestMove.matrix,
-				goldCollected: result.goldCollected || 0,
-				bonusesCollected: result.bonusesCollected || [],
-				pearlsCollected: result.pearlsCollected || 0,
-				objectivesRevealed: this._shouldRevealObjectives(),
-				mineTriggered: result.mineTriggered || null
-			});
-			return true;
-		}
-		return false;
+		if (!bestMove) return null;
+		return bestMove;
 	}
 
-	_aiPlayBonusesIfPossible(playerId) {
+	/** Play a single bonus of the given color, returns {zoneName} or null */
+	_aiPlayOneBonus(playerId, bonusColor) {
 		const player = this.gameState?.players?.[playerId];
 		const board = this.gameState?.boardState;
-		if (!player || !board) return;
+		if (!player || !board) return null;
 
-		const bonusColors = ['orange', 'purple'];
-		for (const color of bonusColors) {
-			const count = player.collectedBonuses?.[color] || 0;
-			if (count <= 0) continue;
+		if (!player.bonusInventory?.[bonusColor] || player.bonusInventory[bonusColor] <= 0) return null;
 
-			const bonusMatrix = this.Rules.BONUS_MATRICES?.[color];
-			if (!bonusMatrix) continue;
+		const bonusMatrix = this.Rules.getBonusShapeForPlayer(bonusColor, player);
+		if (!bonusMatrix) return null;
 
-			// Find best bonus placement
-			let bestPlacement = null;
-			let bestScore = -Infinity;
-			const zones = board.zones || {};
-			for (const [zoneName, zoneData] of Object.entries(zones)) {
-				if (zoneName === 'red') {
-					const subgrids = zoneData.subgrids || [];
-					for (const sg of subgrids) {
-						this._scoreBonusPlacements(bonusMatrix, sg, zoneName, sg.id, color, (p) => {
-							if (p.score > bestScore) { bestScore = p.score; bestPlacement = p; }
-						});
-					}
-				} else {
-					this._scoreBonusPlacements(bonusMatrix, zoneData, zoneName, null, color, (p) => {
+		// Find best bonus placement
+		let bestPlacement = null;
+		let bestScore = -Infinity;
+		const targetZones = bonusColor === 'any'
+			? ['yellow', 'green', 'blue', 'red', 'purple']
+			: [bonusColor];
+
+		for (const zoneName of targetZones) {
+			if (zoneName === 'red') {
+				const subgrids = board.zones?.red?.subgrids || [];
+				for (const sg of subgrids) {
+					this._scoreBonusPlacements(bonusMatrix, sg, zoneName, sg.id, bonusColor, (p) => {
+						if (p.score > bestScore) { bestScore = p.score; bestPlacement = p; }
+					});
+				}
+			} else {
+				const zoneData = board.zones?.[zoneName];
+				if (zoneData) {
+					this._scoreBonusPlacements(bonusMatrix, zoneData, zoneName, null, bonusColor, (p) => {
 						if (p.score > bestScore) { bestScore = p.score; bestPlacement = p; }
 					});
 				}
 			}
+		}
 
-			if (bestPlacement) {
-				this.Rules.playBonus(
-					this.gameState, playerId, color,
-					bestPlacement.zoneName, bestPlacement.baseX, bestPlacement.baseY,
-					bestPlacement.subgridId, bestPlacement.rotation || 0
-				);
+		if (!bestPlacement) return null;
+
+		const result = this.Rules.playBonus(
+			this.gameState, playerId, bonusColor,
+			bestPlacement.zoneName, bestPlacement.baseX, bestPlacement.baseY,
+			bestPlacement.subgridId, bestPlacement.rotation || 0
+		);
+		if (result?.error) {
+			console.log(`[AI] Bonus ${bonusColor} mislukt: ${result.error}`);
+			return null;
+		}
+		return { zoneName: bestPlacement.zoneName };
+	}
+
+	/** Pick the card to discard when no valid placement found */
+	_aiPickDiscardCard(playerId) {
+		const player = this.gameState?.players?.[playerId];
+		if (!player) return null;
+		const regularCards = (player.hand || []).filter(c => !c.isGolden);
+		if (regularCards.length === 0) return null;
+		return regularCards[0].id;
+	}
+
+	/** Pick a perk for the AI (returns perkId or null) */
+	_aiPickPerk(playerId, isHard = false) {
+		const player = this.gameState?.players?.[playerId];
+		if (!player?.perks || (player.perks.perkPoints || 0) < 1) return null;
+		const available = this.Rules.getAvailablePerks(player) || [];
+		if (available.length === 0) return null;
+
+		const priority = isHard
+			? ['agg_timebomb', 'agg_mine', 'agg_steal', 'flex_wildcard', 'flex_double_coins', 'bonus_extra_cell', 'bonus_multi_double', 'bonus_red_upgrade']
+			: ['bonus_extra_cell', 'bonus_multi_double', 'bonus_red_upgrade', 'flex_double_coins', 'flex_wildcard', 'agg_mine', 'agg_timebomb', 'agg_steal'];
+		for (const pId of priority) {
+			if (available.find(p => p.id === pId)) return pId;
+		}
+		return available[0]?.id || null;
+	}
+
+	/** Find a good mine target (empty cell in opponent's likely zone) */
+	_aiFindMineTarget(playerId) {
+		const board = this.gameState?.boardState;
+		if (!board) return null;
+		const zoneNames = ['yellow', 'green', 'blue', 'purple'];
+		// Pick a random zone and find an empty cell with flags
+		for (const zoneName of zoneNames) {
+			const zoneData = board.zones?.[zoneName];
+			if (!zoneData) continue;
+			for (let y = 0; y < (zoneData.rows || 0); y++) {
+				for (let x = 0; x < (zoneData.cols || 0); x++) {
+					const cell = this.Rules.getDataCell(zoneData, x, y);
+					if (cell && !cell.active && cell.flags?.length > 0) {
+						return { zoneName, cellX: x, cellY: y };
+					}
+				}
 			}
 		}
+		return null;
+	}
+
+	/** Find a target to steal a card from */
+	_aiFindStealTarget(playerId) {
+		const players = this.gameState?.players || {};
+		for (const pid of Object.keys(players)) {
+			if (pid === playerId) continue;
+			const target = players[pid];
+			if (!target) continue;
+			const stealable = (target.hand || []).filter(c => !c.isGolden && !c.isStone);
+			if (stealable.length > 0) {
+				// Pick card with most cells (biggest shape)
+				let bestCard = stealable[0];
+				let bestCells = 0;
+				for (const card of stealable) {
+					const count = card.matrix ? card.matrix.flat().filter(v => v > 0).length : 0;
+					if (count > bestCells) { bestCells = count; bestCard = card; }
+				}
+				return { targetPlayerId: pid, cardId: bestCard.id };
+			}
+		}
+		return null;
 	}
 
 	_scoreBonusPlacements(bonusMatrix, zoneData, zoneName, subgridId, bonusColor, onFound) {
@@ -1262,27 +1511,6 @@ class LocusP2PHost {
 					onFound({ zoneName, baseX: x, baseY: y, rotation, subgridId, score, bonusColor });
 				}
 			}
-		}
-	}
-
-	_aiUsePerkIfPossible(playerId, isHard = false) {
-		const player = this.gameState?.players?.[playerId];
-		if (!player?.perks || (player.perks.perkPoints || 0) < 1) return;
-
-		const available = this.Rules.getAvailablePerks(player) || [];
-		if (available.length === 0) return;
-
-		// Hard AI: aggressive first; Normal: bonus first
-		const priority = isHard
-			? ['agg_timebomb', 'agg_mine', 'agg_steal', 'flex_wildcard', 'flex_double_coins', 'bonus_extra_cell', 'bonus_multi_double', 'bonus_red_upgrade']
-			: ['bonus_extra_cell', 'bonus_multi_double', 'bonus_red_upgrade', 'flex_double_coins', 'flex_wildcard', 'agg_mine', 'agg_timebomb', 'agg_steal'];
-		let chosenId = null;
-		for (const pId of priority) {
-			if (available.find(p => p.id === pId)) { chosenId = pId; break; }
-		}
-		if (!chosenId) chosenId = available[0]?.id;
-		if (chosenId) {
-			this.Rules.choosePerk(this.gameState, playerId, chosenId);
 		}
 	}
 
