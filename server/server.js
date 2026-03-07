@@ -595,7 +595,8 @@ function executeAITurn(gameId, aiPlayerId) {
 			);
 			if (moveResult.error) {
 				console.log(`[Locus AI] ${player.name} move mislukt: ${moveResult.error}`);
-				continue;
+				setTimeout(processNextAction, AIPlayer.AI_ACTION_DELAY_MS);
+				return;
 			}
 			console.log(`[Locus AI] ${player.name} speelde ${action.cardId} op ${action.zoneName} (${action.baseX},${action.baseY})`);
 
@@ -621,7 +622,7 @@ function executeAITurn(gameId, aiPlayerId) {
 		} else if (action.type === 'playBonus') {
 			// Herbereken bonus plaatsingen na eerdere acties
 			const bonusPlacements = AIPlayer.findValidBonusPlacements(gs, aiPlayerId, action.bonusColor);
-			if (bonusPlacements.length === 0) continue;
+			if (bonusPlacements.length === 0) { setTimeout(processNextAction, AIPlayer.AI_ACTION_DELAY_MS); return; }
 			bonusPlacements.sort((a, b) => b.score - a.score);
 			const best = bonusPlacements[0];
 			const bonusResult = GameRules.playBonus(
@@ -629,7 +630,8 @@ function executeAITurn(gameId, aiPlayerId) {
 			);
 			if (bonusResult.error) {
 				console.log(`[Locus AI] ${player.name} bonus mislukt: ${bonusResult.error}`);
-				continue;
+				setTimeout(processNextAction, AIPlayer.AI_ACTION_DELAY_MS);
+				return;
 			}
 			console.log(`[Locus AI] ${player.name} speelde ${action.bonusColor} bonus op ${best.zoneName}`);
 			setTimeout(processNextAction, AIPlayer.AI_ACTION_DELAY_MS);
@@ -637,7 +639,7 @@ function executeAITurn(gameId, aiPlayerId) {
 			const endResult = GameRules.endTurn(gs, aiPlayerId, action.discardCardId || null);
 			if (endResult.error) {
 				console.log(`[Locus AI] ${player.name} endTurn mislukt: ${endResult.error}`);
-				break;
+				return;
 			}
 			console.log(`[Locus AI] ${player.name} beëindigde beurt (gameEnded: ${endResult.gameEnded})`);
 
@@ -659,7 +661,6 @@ function executeAITurn(gameId, aiPlayerId) {
 
 	// Start processing the first action
 	processNextAction();
-}
 }
 
 // ──────────────────────────────────────────────
