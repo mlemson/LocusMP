@@ -3077,24 +3077,6 @@ body.mp-loading .mp-btn {
 		font-size: 0.78rem;
 	}
 
-	/* End-turn + undo live in hand-row on mobile */
-	.mp-hand-row #mp-end-turn-btn.mp-end-turn-mobile {
-		min-width: 0;
-		padding: 6px 10px;
-		font-size: 0.78rem;
-		border-radius: 8px;
-		flex-shrink: 0;
-		white-space: nowrap;
-	}
-
-	.mp-hand-row #mp-undo-btn {
-		min-width: 0;
-		padding: 6px 8px;
-		font-size: 0.74rem;
-		border-radius: 8px;
-		flex-shrink: 0;
-	}
-
 	.mp-bottom-actions {
 		padding: 2px 4px;
 		gap: 6px;
