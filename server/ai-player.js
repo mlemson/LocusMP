@@ -455,23 +455,31 @@ function _evaluatePlacementImpact(gameState, playerId, card, placement) {
 			}
 		}
 	} else if (zoneName === 'blue') {
-		// Blue scores by bold row progression — favor bold rows
+		// Blue scores by bold row tiers — only first cell on an unreached bold row unlocks tier points
+		// Higher rows (lower Y) = higher tiers = more points (10,15,20,25,40)
 		const zoneData = board?.zones?.blue;
 		if (zoneData) {
 			const cells = _getPlacementCells(card, placement, zoneData);
-			const boldRows = new Set(zoneData.boldRows || []);
-			let touchesBoldRow = false;
+			const boldRowSet = new Set(zoneData.boldRows || []);
+			// Find which bold rows already have an active cell
+			const reachedBoldRows = _getReachedBoldRows(zoneData);
+			// Sort bold rows bottom-to-top (tier 0 = bottom = highest Y)
+			const sortedBoldYs = [...new Set(zoneData.boldRows || [])].sort((a, b) => b - a);
+			const newTiersUnlocked = new Set();
 			for (const c of cells) {
-				if (boldRows.has(c.y)) {
-					impactScore += 5; // Bonus for placing on bold rows
-					touchesBoldRow = true;
+				if (boldRowSet.has(c.y) && !reachedBoldRows.has(c.y)) {
+					newTiersUnlocked.add(c.y);
 				}
 			}
-			// Extra bonus for reaching a new tier
-			if (touchesBoldRow) {
-				const currentTier = _getBlueActiveTiers(zoneData);
-				impactScore += (currentTier + 1) * 2;
+			// Big bonus for each NEW tier unlocked
+			for (const boldY of newTiersUnlocked) {
+				const tierIdx = sortedBoldYs.indexOf(boldY);
+				const tierPoints = [10, 15, 20, 25, 40];
+				impactScore += tierPoints[Math.min(tierIdx, tierPoints.length - 1)] || 10;
 			}
+			// Favor placements that advance upward (lower Y = higher position)
+			const minY = Math.min(...cells.map(c => c.y));
+			impactScore += Math.max(0, Math.floor(((zoneData.rows || 20) - minY) / 3));
 		}
 	} else if (zoneName === 'red') {
 		// Red scores by subgrid completion (80%+ threshold) — favor nearly-complete subgrids
@@ -588,6 +596,21 @@ function _getBlueActiveTiers(zoneData) {
 		}
 	}
 	return tiers;
+}
+
+/** Returns a Set of bold row Y-values that already have at least one active bold cell */
+function _getReachedBoldRows(zoneData) {
+	const reached = new Set();
+	for (const boldY of (zoneData.boldRows || [])) {
+		for (let x = 0; x < (zoneData.cols || 0); x++) {
+			const cell = GameRules.getDataCell(zoneData, x, boldY);
+			if (cell?.active && cell?.flags?.includes('bold')) {
+				reached.add(boldY);
+				break;
+			}
+		}
+	}
+	return reached;
 }
 
 function _getSubgridFillInfo(sg) {

@@ -999,16 +999,15 @@ class LocusP2PHost {
 			for (const aiId of this.aiPlayerIds) {
 				const p = this.gameState.players?.[aiId];
 				if (!p || p.shopReady) continue;
+				const isHard = this._aiDifficulty?.get(aiId) === 'hard';
 
 				// Perk kiezen als beschikbaar
 				if ((p.perks?.perkPoints || 0) > 0) {
 					const available = this.Rules.getAvailablePerks(p) || [];
 					if (available.length > 0) {
-						const priority = [
-							'bonus_extra_cell', 'bonus_multi_double', 'bonus_red_upgrade',
-							'flex_double_coins', 'flex_wildcard',
-							'agg_mine', 'agg_timebomb', 'agg_steal'
-						];
+						const priority = isHard
+							? ['agg_timebomb', 'agg_mine', 'agg_steal', 'flex_wildcard', 'flex_double_coins', 'bonus_extra_cell', 'bonus_multi_double', 'bonus_red_upgrade']
+							: ['bonus_extra_cell', 'bonus_multi_double', 'bonus_red_upgrade', 'flex_double_coins', 'flex_wildcard', 'agg_mine', 'agg_timebomb', 'agg_steal'];
 						let chosenId = null;
 						for (const pId of priority) {
 							if (available.find(pk => pk.id === pId)) { chosenId = pId; break; }
@@ -1021,10 +1020,44 @@ class LocusP2PHost {
 					}
 				}
 
-				// Koop goedkope waarde-items
-				if ((p.goldCoins || 0) >= 1) {
-					this.Rules.buyShopItem(this.gameState, aiId, 'random-card', {});
-					changed = true;
+				// Koop shop items met beschikbare coins
+				let remainingCoins = p.goldCoins || 0;
+				if (remainingCoins >= 1) {
+					const shopItems = this.Rules.getShopItems(this.gameState.level || 1, p) || [];
+					const affordable = shopItems.filter(item => item.cost <= remainingCoins && !item.unlockOnly);
+					// Hard AI: duurste eerst, normaal: goedkoopste eerst
+					affordable.sort((a, b) => isHard ? b.cost - a.cost : a.cost - b.cost);
+
+					for (const item of affordable) {
+						if (item.cost > remainingCoins) continue;
+						const extra = {};
+						if (item.id === 'extra-bonus') {
+							const inv = p.bonusInventory || {};
+							const colors = ['yellow', 'red', 'green', 'purple', 'blue'];
+							colors.sort((a, b) => (inv[a] || 0) - (inv[b] || 0));
+							extra.bonusColor = colors[0];
+						}
+						const buyResult = this.Rules.buyShopItem(this.gameState, aiId, item.id, extra);
+						if (buyResult && !buyResult.error) {
+							remainingCoins -= item.cost;
+							changed = true;
+						}
+					}
+
+					// Koop shop card offerings
+					const offerings = p.shopOfferings || [];
+					for (let ci = 0; ci < offerings.length; ci++) {
+						const card = offerings[ci];
+						if (!card) continue;
+						const price = card.shopPrice || this.Rules.getCardPrice?.(card) || 2;
+						if (price <= remainingCoins) {
+							const buyResult = this.Rules.buyShopItem(this.gameState, aiId, `shop-card-${ci}`, {});
+							if (buyResult && !buyResult.error) {
+								remainingCoins -= price;
+								changed = true;
+							}
+						}
+					}
 				}
 
 				const readyResult = this.Rules.shopReady(this.gameState, aiId);
