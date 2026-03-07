@@ -692,6 +692,21 @@ html, body {
 	color: white;
 }
 
+.mp-remove-ai-btn {
+	margin-left: auto;
+	background: rgba(255, 80, 80, 0.2);
+	color: #ff5050;
+	border: 1px solid rgba(255, 80, 80, 0.4);
+	border-radius: 4px;
+	padding: 2px 8px;
+	font-size: 0.8rem;
+	cursor: pointer;
+	line-height: 1;
+}
+.mp-remove-ai-btn:hover {
+	background: rgba(255, 80, 80, 0.4);
+}
+
 /* ── WAITING DOTS ── */
 .mp-waiting-dots {
 	display: flex;

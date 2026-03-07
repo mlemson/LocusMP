@@ -1066,6 +1066,18 @@ class LocusLobbyUI {
 		this._setLoading(false);
 	}
 
+	async _handleRemoveAI(aiPlayerId) {
+		if (!this.mp || typeof this.mp.removeAIPlayer !== 'function') return;
+		this._setLoading(true);
+		try {
+			await this.mp.removeAIPlayer(aiPlayerId);
+			this._showToast('🗑️ Bot verwijderd', 'success');
+		} catch (err) {
+			this._showToast('Kan bot niet verwijderen: ' + (err.message || err), 'error');
+		}
+		this._setLoading(false);
+	}
+
 	async _handlePass() {
 		if (!this.mp.isMyTurn()) return;
 		const gs = this.mp.gameState;
@@ -1345,6 +1357,9 @@ class LocusLobbyUI {
 		const list = this.elements['player-list'];
 		if (!list || !this.mp.gameState) return;
 
+		const isHost = this.mp.gameState.hostPlayerId === this.mp.userId;
+		const isWaiting = this.mp.gameState.phase === 'waiting';
+
 		const players = this.mp.gameState.playerOrder.map(pid => {
 			const p = this.mp.gameState.players[pid];
 			return p || { id: pid, name: '???' };
@@ -1357,8 +1372,19 @@ class LocusLobbyUI {
 				${p.id === this.mp.gameState.hostPlayerId ? '<span class="mp-host-badge">HOST</span>' : ''}
 				${p.id === this.mp.userId ? '<span class="mp-you-badge">JIJ</span>' : ''}
 				${p.isAI ? '<span class="mp-ai-badge">AI</span>' : ''}
+				${p.isAI && isHost && isWaiting ? `<button class="mp-remove-ai-btn" data-ai-id="${p.id}" title="Verwijder bot">✕</button>` : ''}
 			</div>
 		`).join('');
+
+		// Attach remove-AI listeners
+		if (isHost && isWaiting) {
+			list.querySelectorAll('.mp-remove-ai-btn').forEach(btn => {
+				btn.addEventListener('click', (e) => {
+					e.stopPropagation();
+					this._handleRemoveAI(btn.dataset.aiId);
+				});
+			});
+		}
 
 		const status = this.elements['waiting-status'];
 		if (status) {
