@@ -11,7 +11,54 @@
 const GameRules = require('../shared/game-rules');
 
 const AI_NAMES = ['Bot Alpha', 'Bot Beta', 'Bot Gamma', 'Bot Delta', 'Bot Epsilon', 'Bot Zeta'];
-const AI_THINK_DELAY_MS = 120; // Menselijke denktijd
+const AI_THINK_DELAY_MIN_MS = 2000;
+const AI_THINK_DELAY_MAX_MS = 4000;
+const AI_ACTION_DELAY_MS = 800; // Delay between individual actions within a turn
+
+function getAIThinkDelay() {
+	return AI_THINK_DELAY_MIN_MS + Math.floor(Math.random() * (AI_THINK_DELAY_MAX_MS - AI_THINK_DELAY_MIN_MS));
+}
+
+// ── AI TAUNT SYSTEM ──
+const AI_TAUNTS = [
+	'Nooo!', 'HAHA', 'Well played!', 'Oeps...', 'Kom op!',
+	'cheater', 'fuck off', 'your mum'
+];
+const AI_REACTIVE_TAUNTS = {
+	bigScore: ['HAHA', 'Nooo!', 'cheater', 'your mum'],
+	objectiveAchieved: ['Well played!', 'Nooo!', 'cheater'],
+	random: ['Oeps...', 'Kom op!', 'HAHA', 'fuck off', 'your mum']
+};
+
+/**
+ * Decide if the AI should taunt and pick a message.
+ * Returns { text } or null.
+ */
+function pickAITaunt(gameState, aiPlayerId, context) {
+	// context: { type: 'bigScore', playerId, points } or { type: 'objectiveAchieved', playerId }
+	if (!context) {
+		// Small random chance to taunt unprovoked (~8%)
+		if (Math.random() > 0.08) return null;
+		const pool = AI_REACTIVE_TAUNTS.random;
+		return { text: pool[Math.floor(Math.random() * pool.length)] };
+	}
+
+	if (context.type === 'bigScore' && context.points >= 25) {
+		// ~40% chance to react to big score
+		if (Math.random() > 0.40) return null;
+		const pool = AI_REACTIVE_TAUNTS.bigScore;
+		return { text: pool[Math.floor(Math.random() * pool.length)] };
+	}
+
+	if (context.type === 'objectiveAchieved') {
+		// ~30% chance to react to objective
+		if (Math.random() > 0.30) return null;
+		const pool = AI_REACTIVE_TAUNTS.objectiveAchieved;
+		return { text: pool[Math.floor(Math.random() * pool.length)] };
+	}
+
+	return null;
+}
 
 /**
  * Geeft alle geldige plaatsingen terug voor een kaart in een zone.
@@ -68,17 +115,20 @@ function _tryPlacementsOnZone(card, zoneData, zoneName, rotations, mirrors, perk
 					if (!cells || cells.length === 0) continue;
 					if (!GameRules.validatePlacement(zoneName, zoneData, cells, perkFlags)) continue;
 
-					// Beoordeel de plaatsing
-					let score = cells.length; // Basis: meer cellen = beter
-					// Bonus voor goud/bonus symbolen
+					// Score plaatsing: prioriteer cellen met flags
+					let score = 0;
+					let hasFlaggedCell = false;
 					for (const c of cells) {
 						const cell = GameRules.getDataCell(zoneData, c.x, c.y);
-						if (cell?.flags?.includes('gold')) score += 3;
-						if (cell?.flags?.includes('bonus')) score += 2;
-						if (cell?.flags?.includes('pearl')) score += 2;
-						if (cell?.flags?.includes('bold')) score += 1;
-						if (cell?.flags?.includes('end')) score += 2;
+						if (cell?.flags?.includes('gold')) { score += 5; hasFlaggedCell = true; }
+						else if (cell?.flags?.includes('bonus')) { score += 4; hasFlaggedCell = true; }
+						else if (cell?.flags?.includes('pearl')) { score += 3; hasFlaggedCell = true; }
+						else if (cell?.flags?.includes('end')) { score += 3; hasFlaggedCell = true; }
+						else if (cell?.flags?.includes('bold')) { score += 2; hasFlaggedCell = true; }
+						else { score += 1; }
 					}
+					// Penalize pure empty placements that give no rewards
+					if (!hasFlaggedCell) score = Math.max(1, Math.floor(score * 0.4));
 
 					result.push({
 						zoneName, baseX, baseY, rotation, mirrored, subgridId,
@@ -263,7 +313,13 @@ function planTurn(gameState, playerId) {
 		});
 	}
 
-	// 3. Bonussen spelen
+	// 3. Perk kiezen als perkPoints beschikbaar (during playing phase too)
+	const perkId = choosePerk(gameState, playerId);
+	if (perkId) {
+		actions.push({ type: 'choosePerk', perkId });
+	}
+
+	// 4. Bonussen spelen
 	const bonusColors = ['yellow', 'red', 'green', 'purple', 'blue', 'any'];
 	for (const color of bonusColors) {
 		const charges = player.bonusInventory?.[color] || 0;
@@ -272,7 +328,7 @@ function planTurn(gameState, playerId) {
 		}
 	}
 
-	// 4. Einde beurt
+	// 5. Einde beurt
 	if (!cardPlayed && regularCards.length > 0) {
 		// Geen geldige plaatsing gevonden, discard een kaart
 		actions.push({ type: 'endTurn', discardCardId: regularCards[0].id });
@@ -340,7 +396,12 @@ function planShop(gameState, playerId) {
 
 module.exports = {
 	AI_NAMES,
-	AI_THINK_DELAY_MS,
+	AI_THINK_DELAY_MIN_MS,
+	AI_THINK_DELAY_MAX_MS,
+	AI_ACTION_DELAY_MS,
+	getAIThinkDelay,
+	pickAITaunt,
+	AI_TAUNTS,
 	findValidPlacements,
 	findValidBonusPlacements,
 	chooseStartingDeck,
