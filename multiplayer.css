@@ -1204,6 +1204,13 @@ html, body {
 	overflow: hidden !important;
 }
 
+.mp-touch-drag-lock .mp-zone,
+.mp-board.mp-touch-drag-lock .mp-zone {
+	touch-action: none !important;
+	overflow: hidden !important;
+	overscroll-behavior: contain;
+}
+
 .mp-bottom-bar {
 	grid-area: bottom;
 	display: flex;

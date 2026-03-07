@@ -2706,7 +2706,7 @@ class LocusLobbyUI {
 
 		// Touch/coarse: spring direct naar de bijbehorende kleur-zone bij single-color kaarten
 		const allowedZones = Rules.getAllowedZones(card);
-		if (allowedZones.length >= 1 && (e.pointerType === 'touch' || e.pointerType === 'pen' || this._isTouchLikeDevice())) {
+		if (allowedZones.length === 1 && (e.pointerType === 'touch' || e.pointerType === 'pen' || this._isTouchLikeDevice())) {
 			this._scrollMobileBoardToZone(allowedZones[0], true);
 		}
 
@@ -4323,54 +4323,11 @@ class LocusLobbyUI {
 						this._lastBonusBaseY,
 						previewResult.subgridId || this._lastBonusSubgridId || null
 					);
-				} else {
-					const nearby = this._findNearbyValidBonusPlacement(
-						zoneName,
-						this._bonusMode.matrix,
-						this._lastBonusSubgridId || null,
-						[{ x: this._lastBonusBaseX, y: this._lastBonusBaseY }]
-					);
-					if (nearby) {
-						placed = true;
-						void this._attemptBonusPlacement(
-							zoneName,
-							nearby.x,
-							nearby.y,
-							nearby.subgridId || this._lastBonusSubgridId || null
-						);
-					}
 				}
 			}
 
-			// If touch drop failed: try harder with wider search around pointer position
-			if (!placed && this._bonusMode) {
-				const cellUnderFinger = document.elementFromPoint(e.clientX, e.clientY)?.closest?.('.mp-cell:not(.void)');
-				if (cellUnderFinger) {
-					const rawX = Number(cellUnderFinger.dataset.x);
-					const rawY = Number(cellUnderFinger.dataset.y);
-					const cellZone = cellUnderFinger.dataset.zone;
-					if (cellZone && this._isBonusZoneAllowed(cellZone) && Number.isFinite(rawX) && Number.isFinite(rawY)) {
-						const adj = this._adjustBaseForMatrix(rawX, rawY, this._bonusMode.matrix);
-						const wideSearch = this._findNearbyValidBonusPlacement(
-							cellZone,
-							this._bonusMode.matrix,
-							cellUnderFinger.dataset.subgrid || null,
-							[{ x: adj.x, y: adj.y }, { x: rawX, y: rawY }]
-						);
-						if (wideSearch) {
-							placed = true;
-							void this._attemptBonusPlacement(
-								cellZone,
-								wideSearch.x,
-								wideSearch.y,
-								wideSearch.subgridId || null
-							);
-						}
-					}
-				}
-			}
-
-			// If still not placed, release scroll lock so user can retry
+			// Don't auto-snap to nearby positions — let user rotate/mirror first
+			// Release scroll lock so user can swipe to another zone or reposition
 			if (!placed && this._bonusMode) {
 				this._setTouchDragScrollLock(false);
 			}
@@ -4643,15 +4600,15 @@ class LocusLobbyUI {
 					this._mobileSwipeStartX = null;
 					this._mobileSwipeStartY = null;
 
-					if (Math.abs(dx) < 40 || Math.abs(dx) <= Math.abs(dy)) return;
+					if (Math.abs(dx) < 25 || Math.abs(dx) <= Math.abs(dy) * 0.8) return;
 					const idx = Number.isFinite(this._lastMobileBoardIndex) ? this._lastMobileBoardIndex : this._getCurrentMobileBoardIndex();
 					if (!Number.isFinite(idx)) return;
 
 					const lastIdx = zoneOrder.length - 1;
 					if (idx === lastIdx && dx < 0) {
-						this._scrollMobileBoardToZone(zoneOrder[0], false);
+						setTimeout(() => this._scrollMobileBoardToZone(zoneOrder[0], true), 50);
 					} else if (idx === 0 && dx > 0) {
-						this._scrollMobileBoardToZone(zoneOrder[lastIdx], false);
+						setTimeout(() => this._scrollMobileBoardToZone(zoneOrder[lastIdx], true), 50);
 					}
 				}, { passive: true });
 			}
