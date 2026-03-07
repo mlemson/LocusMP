@@ -2948,8 +2948,8 @@ body.mp-loading .mp-btn {
 
 	.mp-board {
 		display: flex;
-		gap: 0;
-		padding: 0;
+		gap: 0 !important;
+		padding: 0 !important;
 		overflow-x: auto;
 		overflow-y: hidden;
 		scroll-snap-type: x mandatory;
@@ -2968,11 +2968,10 @@ body.mp-loading .mp-btn {
 
 	.mp-zone {
 		flex: 0 0 100%;
-		max-width: 100%;
-		width: 100%;
+		min-width: 100%;
 		box-sizing: border-box;
 		scroll-snap-align: start;
-		scroll-snap-stop: normal;
+		scroll-snap-stop: always;
 		height: 100%;
 		min-height: 0;
 		overflow-y: auto;
