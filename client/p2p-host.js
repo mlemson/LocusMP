@@ -963,8 +963,20 @@ class LocusP2PHost {
 				if ((p.perks?.perkPoints || 0) > 0) {
 					const available = this.Rules.getAvailablePerks(p) || [];
 					if (available.length > 0) {
-						this.Rules.choosePerk(this.gameState, aiId, available[0].id);
-						changed = true;
+						const priority = [
+							'bonus_extra_cell', 'bonus_multi_double', 'bonus_red_upgrade',
+							'flex_double_coins', 'flex_wildcard',
+							'agg_mine', 'agg_timebomb', 'agg_steal'
+						];
+						let chosenId = null;
+						for (const pId of priority) {
+							if (available.find(pk => pk.id === pId)) { chosenId = pId; break; }
+						}
+						if (!chosenId) chosenId = available[0]?.id;
+						if (chosenId) {
+							this.Rules.choosePerk(this.gameState, aiId, chosenId);
+							changed = true;
+						}
 					}
 				}
 
@@ -991,64 +1003,206 @@ class LocusP2PHost {
 		}
 	}
 
-	_aiPlayCardIfPossible(playerId) {
+	_aiPlayCardWithScoring(playerId) {
 		const player = this.gameState?.players?.[playerId];
 		const board = this.gameState?.boardState;
 		if (!player || !board) return false;
 
 		const hand = Array.isArray(player.hand) ? player.hand : [];
+		let bestMove = null;
+		let bestScore = -Infinity;
+		const perkFlags = {
+			greenGapAllowed: !!player.perks?.greenGapAllowed,
+			diagonalRotation: !!player.perks?.diagonalRotation
+		};
+
 		for (const card of hand) {
 			const allowedZones = this.Rules.getAllowedZones(card);
 			const rotations = [0, 1, 2, 3];
 			for (const zoneName of allowedZones) {
-				const tryOnZone = (zoneData, subgridId = null) => {
-					if (!zoneData) return false;
+				const scoreOnZone = (zoneData, subgridId = null) => {
+					if (!zoneData) return;
 					for (const rotation of rotations) {
 						let matrix = this.Rules.cloneMatrix(card.matrix);
 						matrix = this.Rules.rotateMatrixN(matrix, rotation);
 						for (let y = 0; y < zoneData.rows; y++) {
 							for (let x = 0; x < zoneData.cols; x++) {
 								const cells = this.Rules.collectPlacementCellsData(zoneData, x, y, matrix);
-								if (!cells) continue;
-								if (!this.Rules.validatePlacement(zoneName, zoneData, cells, {
-									greenGapAllowed: !!player.perks?.greenGapAllowed,
-									diagonalRotation: !!player.perks?.diagonalRotation
-								})) continue;
-								const result = this.Rules.playMove(this.gameState, playerId, card.id, zoneName, x, y, rotation, false, subgridId);
-								if (!result?.error) {
-									this._broadcastEvent('movePlayed', {
-										playerId,
-										playerName: player.name,
-										zoneName,
-										baseX: x,
-										baseY: y,
-										rotation,
-										mirrored: false,
-										subgridId: subgridId || null,
-										matrix,
-										objectivesRevealed: this._shouldRevealObjectives(),
-										mineTriggered: result.mineTriggered || null
-									});
-									return true;
+								if (!cells || cells.length === 0) continue;
+								if (!this.Rules.validatePlacement(zoneName, zoneData, cells, perkFlags)) continue;
+
+								// Score this placement
+								let score = 0;
+								let hasFlaggedCell = false;
+								for (const c of cells) {
+									const cell = this.Rules.getDataCell(zoneData, c.x, c.y);
+									if (cell?.flags?.includes('gold')) { score += 5; hasFlaggedCell = true; }
+									else if (cell?.flags?.includes('bonus')) { score += 4; hasFlaggedCell = true; }
+									else if (cell?.flags?.includes('pearl')) { score += 3; hasFlaggedCell = true; }
+									else if (cell?.flags?.includes('end')) { score += 3; hasFlaggedCell = true; }
+									else if (cell?.flags?.includes('bold')) { score += 2; hasFlaggedCell = true; }
+									else { score += 1; }
+								}
+								if (!hasFlaggedCell) score = Math.max(1, Math.floor(score * 0.4));
+
+								if (score > bestScore) {
+									bestScore = score;
+									bestMove = { card, zoneName, x, y, rotation, subgridId, matrix };
 								}
 							}
 						}
 					}
-					return false;
 				};
 
 				if (zoneName === 'red') {
 					const subgrids = board.zones?.red?.subgrids || [];
 					for (const sg of subgrids) {
-						if (tryOnZone(sg, sg.id)) return true;
+						scoreOnZone(sg, sg.id);
 					}
 				} else {
-					if (tryOnZone(board.zones?.[zoneName], null)) return true;
+					scoreOnZone(board.zones?.[zoneName], null);
 				}
 			}
 		}
 
+		if (!bestMove) return false;
+
+		const result = this.Rules.playMove(
+			this.gameState, playerId, bestMove.card.id, bestMove.zoneName,
+			bestMove.x, bestMove.y, bestMove.rotation, false, bestMove.subgridId
+		);
+		if (!result?.error) {
+			this._broadcastEvent('movePlayed', {
+				playerId,
+				playerName: player.name,
+				zoneName: bestMove.zoneName,
+				baseX: bestMove.x,
+				baseY: bestMove.y,
+				rotation: bestMove.rotation,
+				mirrored: false,
+				subgridId: bestMove.subgridId || null,
+				matrix: bestMove.matrix,
+				goldCollected: result.goldCollected || 0,
+				bonusesCollected: result.bonusesCollected || [],
+				pearlsCollected: result.pearlsCollected || 0,
+				objectivesRevealed: this._shouldRevealObjectives(),
+				mineTriggered: result.mineTriggered || null
+			});
+			return true;
+		}
 		return false;
+	}
+
+	_aiPlayBonusesIfPossible(playerId) {
+		const player = this.gameState?.players?.[playerId];
+		const board = this.gameState?.boardState;
+		if (!player || !board) return;
+
+		const bonusColors = ['orange', 'purple'];
+		for (const color of bonusColors) {
+			const count = player.collectedBonuses?.[color] || 0;
+			if (count <= 0) continue;
+
+			const bonusMatrix = this.Rules.BONUS_MATRICES?.[color];
+			if (!bonusMatrix) continue;
+
+			// Find best bonus placement
+			let bestPlacement = null;
+			let bestScore = -Infinity;
+			const zones = board.zones || {};
+			for (const [zoneName, zoneData] of Object.entries(zones)) {
+				if (zoneName === 'red') {
+					const subgrids = zoneData.subgrids || [];
+					for (const sg of subgrids) {
+						this._scoreBonusPlacements(bonusMatrix, sg, zoneName, sg.id, color, (p) => {
+							if (p.score > bestScore) { bestScore = p.score; bestPlacement = p; }
+						});
+					}
+				} else {
+					this._scoreBonusPlacements(bonusMatrix, zoneData, zoneName, null, color, (p) => {
+						if (p.score > bestScore) { bestScore = p.score; bestPlacement = p; }
+					});
+				}
+			}
+
+			if (bestPlacement) {
+				this.Rules.playBonus(
+					this.gameState, playerId, color,
+					bestPlacement.zoneName, bestPlacement.baseX, bestPlacement.baseY,
+					bestPlacement.subgridId, bestPlacement.rotation || 0
+				);
+			}
+		}
+	}
+
+	_scoreBonusPlacements(bonusMatrix, zoneData, zoneName, subgridId, bonusColor, onFound) {
+		if (!zoneData) return;
+		const rotations = [0, 1, 2, 3];
+		for (const rotation of rotations) {
+			let matrix = this.Rules.cloneMatrix(bonusMatrix);
+			matrix = this.Rules.rotateMatrixN(matrix, rotation);
+			for (let y = 0; y < (zoneData.rows || 0); y++) {
+				for (let x = 0; x < (zoneData.cols || 0); x++) {
+					const cells = this.Rules.collectPlacementCellsData(zoneData, x, y, matrix);
+					if (!cells || cells.length === 0) continue;
+					if (!this.Rules.validatePlacement(zoneName, zoneData, cells, {})) continue;
+					let score = cells.length;
+					for (const c of cells) {
+						const cell = this.Rules.getDataCell(zoneData, c.x, c.y);
+						if (cell?.flags?.includes('gold')) score += 3;
+						if (cell?.flags?.includes('bonus')) score += 2;
+						if (cell?.flags?.includes('bold')) score += 1;
+					}
+					onFound({ zoneName, baseX: x, baseY: y, rotation, subgridId, score, bonusColor });
+				}
+			}
+		}
+	}
+
+	_aiUsePerkIfPossible(playerId) {
+		const player = this.gameState?.players?.[playerId];
+		if (!player?.perks || (player.perks.perkPoints || 0) < 1) return;
+
+		const available = this.Rules.getAvailablePerks(player) || [];
+		if (available.length === 0) return;
+
+		// Prioritize useful perks
+		const priority = [
+			'bonus_extra_cell', 'bonus_multi_double', 'bonus_red_upgrade',
+			'flex_double_coins', 'flex_wildcard',
+			'agg_mine', 'agg_timebomb', 'agg_steal'
+		];
+		let chosenId = null;
+		for (const pId of priority) {
+			if (available.find(p => p.id === pId)) { chosenId = pId; break; }
+		}
+		if (!chosenId) chosenId = available[0]?.id;
+		if (chosenId) {
+			this.Rules.choosePerk(this.gameState, playerId, chosenId);
+		}
+	}
+
+	_aiMaybeTaunt(playerId) {
+		const player = this.gameState?.players?.[playerId];
+		if (!player) return;
+
+		// ~8% chance to taunt after a turn
+		if (Math.random() > 0.08) return;
+
+		const taunts = ['Nooo!', 'HAHA', 'Well played!', 'Oeps...', 'Kom op!', 'cheater', 'fuck off', 'your mum'];
+		const text = taunts[Math.floor(Math.random() * taunts.length)];
+
+		this._broadcastEvent('taunt', {
+			playerId,
+			playerName: player.name,
+			text,
+			timestamp: Date.now()
+		});
+	}
+
+	// Keep legacy method name as alias
+	_aiPlayCardIfPossible(playerId) {
+		return this._aiPlayCardWithScoring(playerId);
 	}
 
 	_getTransformedMoveMatrix(playerId, cardId, zoneName, rotation = 0, mirrored = false) {
