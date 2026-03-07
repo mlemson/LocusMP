@@ -885,11 +885,24 @@ class LocusLobbyUI {
 			if (typeof io === 'undefined') {
 				list.style.display = '';
 				toggleBtn.textContent = '🌐 Lobbys verbergen';
+				if (window._captureServerUrlPreference) {
+					window._captureServerUrlPreference();
+				}
 
 				// Probeer server te bereiken via fetch (sneller dan script laden)
 				list.innerHTML = `<div class="mp-server-browser-loading">Server zoeken...</div>`;
 
 				const candidates = window._getLocusServerCandidates ? window._getLocusServerCandidates() : [];
+				if (!candidates.length) {
+					list.innerHTML = `<div class="mp-server-browser-empty" style="color:#ff9b6b;">
+						⚠️ Vul eerst je server-URL in<br>
+						<span style="font-size:12px;opacity:0.8;">Bijvoorbeeld: https://jouw-server.onrender.com</span><br>
+						<span style="font-size:11px;opacity:0.6;margin-top:4px;display:inline-block;">
+							Of open met <code style="background:rgba(255,255,255,0.1);padding:2px 6px;border-radius:3px;">?server=https://jouw-server</code>
+						</span>
+					</div>`;
+					return;
+				}
 				const probe = window._probeLocusServer
 					? await window._probeLocusServer({ candidates, loadSocketIO: true })
 					: null;
