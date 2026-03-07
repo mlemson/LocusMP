@@ -61,7 +61,10 @@ const ALLOWED_TAUNTS = new Set([
 	'HAHA',
 	'Well played!',
 	'Oeps...',
-	'Kom op!'
+	'Kom op!',
+	'cheater',
+	'fuck off',
+	'your mum'
 ]);
 
 const TURN_TIMER_MS = 40000; // 40 seconden per beurt
@@ -386,7 +389,7 @@ function scheduleAIActions(gameId) {
 	const gameAIs = aiPlayers.get(gameId);
 	if (!gameAIs || gameAIs.size === 0) return;
 
-	const delay = AIPlayer.AI_THINK_DELAY_MS;
+	const delay = AIPlayer.getAIThinkDelay();
 
 	const timer = setTimeout(() => {
 		aiTimers.delete(gameId);
@@ -521,6 +524,23 @@ function executeAIActions(gameId) {
 	}
 }
 
+function _maybeAITaunt(gameId, aiPlayerId) {
+	const gs = games.get(gameId);
+	if (!gs) return;
+	const player = gs.players[aiPlayerId];
+	if (!player) return;
+
+	const taunt = AIPlayer.pickAITaunt(gs, aiPlayerId, null);
+	if (taunt) {
+		io.to(gameId).emit('taunt', {
+			playerId: aiPlayerId,
+			playerName: player.name,
+			text: taunt.text,
+			timestamp: Date.now()
+		});
+	}
+}
+
 function executeAITurn(gameId, aiPlayerId) {
 	const gameState = games.get(gameId);
 	if (!gameState || gameState.phase !== 'playing') return;
@@ -536,13 +556,31 @@ function executeAITurn(gameId, aiPlayerId) {
 
 	const actions = AIPlayer.planTurn(gameState, aiPlayerId);
 	let gameEnded = false;
+	let actionIndex = 0;
 
-	for (const action of actions) {
-		if (gameEnded) break;
+	function processNextAction() {
 		const gs = games.get(gameId);
-		if (!gs || gs.phase !== 'playing') break;
+		if (!gs || gs.phase !== 'playing' || gs.paused) return;
+		if (gameEnded || actionIndex >= actions.length) {
+			// All actions done — optionally taunt, then finalize
+			_maybeAITaunt(gameId, aiPlayerId);
+			if (!gameEnded) {
+				_startTimerForCurrentPlayer(gameId, true);
+				broadcastGameState(io, gameId);
+			}
+			return;
+		}
 
-		if (action.type === 'playCard') {
+		const action = actions[actionIndex++];
+
+		if (action.type === 'choosePerk') {
+			const perkResult = GameRules.choosePerk(gs, aiPlayerId, action.perkId);
+			if (!perkResult.error) {
+				console.log(`[Locus AI] ${player.name} koos perk "${perkResult.perk?.name}"`);
+				broadcastGameState(io, gameId);
+			}
+			setTimeout(processNextAction, AIPlayer.AI_ACTION_DELAY_MS);
+		} else if (action.type === 'playCard') {
 			const transformedMatrix = buildTransformedCardMatrix(
 				gs,
 				aiPlayerId,
@@ -579,6 +617,7 @@ function executeAITurn(gameId, aiPlayerId) {
 				objectivesRevealed: shouldRevealObjectives(gs),
 				mineTriggered: moveResult.mineTriggered || null
 			});
+			setTimeout(processNextAction, AIPlayer.AI_ACTION_DELAY_MS);
 		} else if (action.type === 'playBonus') {
 			// Herbereken bonus plaatsingen na eerdere acties
 			const bonusPlacements = AIPlayer.findValidBonusPlacements(gs, aiPlayerId, action.bonusColor);
@@ -593,6 +632,7 @@ function executeAITurn(gameId, aiPlayerId) {
 				continue;
 			}
 			console.log(`[Locus AI] ${player.name} speelde ${action.bonusColor} bonus op ${best.zoneName}`);
+			setTimeout(processNextAction, AIPlayer.AI_ACTION_DELAY_MS);
 		} else if (action.type === 'endTurn') {
 			const endResult = GameRules.endTurn(gs, aiPlayerId, action.discardCardId || null);
 			if (endResult.error) {
@@ -611,13 +651,15 @@ function executeAITurn(gameId, aiPlayerId) {
 				});
 				return;
 			}
+			setTimeout(processNextAction, AIPlayer.AI_ACTION_DELAY_MS);
+		} else {
+			setTimeout(processNextAction, AIPlayer.AI_ACTION_DELAY_MS);
 		}
 	}
 
-	if (!gameEnded) {
-		_startTimerForCurrentPlayer(gameId, true);
-		broadcastGameState(io, gameId);
-	}
+	// Start processing the first action
+	processNextAction();
+}
 }
 
 // ──────────────────────────────────────────────

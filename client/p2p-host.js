@@ -879,10 +879,11 @@ class LocusP2PHost {
 		if (!this.gameState) return;
 		if (this.aiPlayerIds.size === 0) return;
 		if (this._aiTimer) return;
+		const delay = 2000 + Math.floor(Math.random() * 2000); // 2-4 seconds
 		this._aiTimer = setTimeout(() => {
 			this._aiTimer = null;
 			this._runAI();
-		}, 1100);
+		}, delay);
 	}
 
 	_runAI() {
@@ -925,9 +926,17 @@ class LocusP2PHost {
 			const currentPid = this.gameState.playerOrder?.[this.gameState.currentTurnIndex];
 			if (currentPid && this.aiPlayerIds.has(currentPid)) {
 				this._clearTimer();
-				this._aiPlayCardIfPossible(currentPid);
+				// Use perk if available
+				this._aiUsePerkIfPossible(currentPid);
+				// Play card with scoring
+				const playResult = this._aiPlayCardWithScoring(currentPid);
+				// Play bonuses if collected
+				this._aiPlayBonusesIfPossible(currentPid);
+				// End turn
 				const result = this.Rules.endTurn(this.gameState, currentPid, null);
 				changed = true;
+				// Maybe taunt
+				this._aiMaybeTaunt(currentPid);
 				if (result?.gameEnded) {
 					this._broadcastEvent('levelComplete', {
 						levelScores: this.gameState.levelScores,
