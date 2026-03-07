@@ -2964,6 +2964,8 @@ body.mp-loading .mp-btn {
 		min-height: 0;
 		scroll-behavior: smooth;
 		will-change: scroll-position;
+		justify-content: flex-start !important;
+		align-items: stretch !important;
 	}
 
 	.mp-board::-webkit-scrollbar {
@@ -3105,8 +3107,10 @@ body.mp-loading .mp-btn {
 	}
 
 	.mp-bottom-actions {
-		padding: 2px 4px;
+		order: -1;
+		padding: 4px 8px;
 		gap: 6px;
+		justify-content: center;
 	}
 
 	.mp-bottom-actions .mp-btn-primary {
@@ -11879,32 +11883,6 @@ html.theme-reef .mp-deck-objective-card.achieved::before {
 		margin: 0 auto;
 	}
 
-	.mp-bottom-actions {
-		position: relative;
-		justify-content: flex-start;
-		padding-right: 96px;
-		min-height: 42px;
-	}
-
-	#mp-end-turn-btn {
-		position: absolute;
-		right: 4px;
-		top: 50%;
-		transform: translateY(-50%);
-		min-width: 84px;
-		padding: 7px 10px;
-		font-size: 0.74rem;
-		z-index: 2;
-	}
-}
-
-@media (max-width: 480px) {
-	#mp-end-turn-btn {
-		right: 2px;
-		min-width: 74px;
-		padding: 6px 8px;
-		font-size: 0.70rem;
-	}
 }
 
 html.theme-reef .mp-deck-obj-name {
