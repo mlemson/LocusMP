@@ -2842,18 +2842,49 @@ body.mp-loading .mp-btn {
 		font-size: 0.7rem;
 	}
 
+	.mp-cast-game-btn {
+		display: none !important;
+	}
+
 	.mp-objective-badge {
 		padding: 2px 8px;
-		gap: 4px;
+		gap: 2px 8px;
 		font-size: 0.68rem;
+		flex-wrap: nowrap;
+		align-items: center;
+		position: relative;
 	}
 
 	.mp-objective-title {
 		font-size: 0.68rem;
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		max-width: 30vw;
+		flex-shrink: 1;
+		min-width: 0;
 	}
 
 	.mp-objective-desc {
 		font-size: 0.6rem;
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		max-width: 28vw;
+		flex-shrink: 1;
+		min-width: 0;
+	}
+
+	.mp-objective-rewards {
+		display: none;
+	}
+
+	.mp-objective-progress {
+		font-size: 0.62rem;
+		width: auto;
+		margin-left: auto;
+		flex-shrink: 0;
+		white-space: nowrap;
 	}
 
 	.mp-taunt-feed {
@@ -3148,15 +3179,17 @@ body.mp-loading .mp-btn {
 
 	.mp-objective-badge {
 		padding: 2px 6px;
-		gap: 3px;
+		gap: 2px 6px;
 	}
 
 	.mp-objective-title {
 		font-size: 0.64rem;
+		max-width: 24vw;
 	}
 
 	.mp-objective-desc {
 		font-size: 0.58rem;
+		max-width: 22vw;
 	}
 
 	.mp-bottom-bar {
