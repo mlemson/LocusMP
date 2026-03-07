@@ -1346,44 +1346,46 @@ class LocusP2PHost {
 								// Score this placement
 								let score = 0;
 								let hasFlaggedCell = false;
-										// For blue zone, pre-compute reached bold rows so we can ignore already-scored bold cells
-										let blueReachedRows = null;
-										let blueBoldSet = null;
-										if (zoneName === 'blue') {
-											blueReachedRows = this._getReachedBoldRows(zoneData);
-											blueBoldSet = new Set(zoneData.boldRows || []);
+								// For blue zone, pre-compute reached bold rows so we can ignore already-scored bold cells
+								let blueReachedRows = null;
+								let blueBoldSet = null;
+								if (zoneName === 'blue') {
+									blueReachedRows = this._getReachedBoldRows(zoneData);
+									blueBoldSet = new Set(zoneData.boldRows || []);
+								}
+								for (const c of cells) {
+									const cell = this.Rules.getDataCell(zoneData, c.x, c.y);
+									if (cell?.flags?.includes('gold')) { score += 8; hasFlaggedCell = true; }
+									else if (cell?.flags?.includes('bonus')) { score += 7; hasFlaggedCell = true; }
+									else if (cell?.flags?.includes('pearl')) { score += 6; hasFlaggedCell = true; }
+									else if (cell?.flags?.includes('end')) { score += 5; hasFlaggedCell = true; }
+									else if (cell?.flags?.includes('bold')) {
+										// Blue zone bold: only value if this bold row is NOT yet reached
+										if (zoneName === 'blue' && blueBoldSet?.has(c.y) && blueReachedRows?.has(c.y)) {
+											score += 1; // Already scored row — treat as normal cell
+										} else {
+											score += 2; hasFlaggedCell = true;
 										}
-										for (const c of cells) {
-											const cell = this.Rules.getDataCell(zoneData, c.x, c.y);
-											if (cell?.flags?.includes('gold')) { score += 8; hasFlaggedCell = true; }
-											else if (cell?.flags?.includes('bonus')) { score += 7; hasFlaggedCell = true; }
-											else if (cell?.flags?.includes('pearl')) { score += 6; hasFlaggedCell = true; }
-											else if (cell?.flags?.includes('end')) { score += 5; hasFlaggedCell = true; }
-											else if (cell?.flags?.includes('bold')) {
-												// Blue zone bold: only value if this bold row is NOT yet reached
-												if (zoneName === 'blue' && blueBoldSet?.has(c.y) && blueReachedRows?.has(c.y)) {
-													score += 1; // Already scored row — treat as normal cell
-												} else {
-													score += 2; hasFlaggedCell = true;
-												}
-											}
-											else { score += 1; }
-										}
-										if (!hasFlaggedCell) score = Math.max(1, Math.floor(score * 0.4));
+									}
+									else { score += 1; }
+								}
+								if (!hasFlaggedCell) score = Math.max(1, Math.floor(score * 0.4));
 
-										// Blue zone: new tier bonus + favor going upward
-										if (zoneName === 'blue') {
-											const counted = new Set();
-											let newTiers = 0;
-											for (const c of cells) {
-												if (blueBoldSet.has(c.y) && !blueReachedRows.has(c.y) && !counted.has(c.y)) {
-													newTiers++;
-													counted.add(c.y);
-												}
-											}
-											score += newTiers * 10;
-											const minY = Math.min(...cells.map(c => c.y));
-											score += Math.max(0, Math.floor(((zoneData.rows || 20) - minY) / 3));
+								// Blue zone: new tier bonus + favor going upward
+								if (zoneName === 'blue') {
+									const counted = new Set();
+									let newTiers = 0;
+									for (const c of cells) {
+										if (blueBoldSet.has(c.y) && !blueReachedRows.has(c.y) && !counted.has(c.y)) {
+											newTiers++;
+											counted.add(c.y);
+										}
+									}
+									score += newTiers * 10;
+									const minY = Math.min(...cells.map(c => c.y));
+									score += Math.max(0, Math.floor(((zoneData.rows || 20) - minY) / 3));
+								}
+
 								// Hard AI: zone-strategic impact scoring
 								if (isHard) {
 									score += this._hardZoneBonus(zoneName, zoneData, cells, subgridId, board);
