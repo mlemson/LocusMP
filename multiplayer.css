@@ -522,6 +522,7 @@ html, body {
 
 .mp-server-join-btn {
 	flex-shrink: 0;
+	width: auto;
 	padding: 6px 14px !important;
 	font-size: 0.8rem !important;
 }

@@ -120,13 +120,6 @@
 					<div>
 						<div id="invite-code-display" class="mp-invite-code" title="Klik om te kopiëren">------</div>
 						<small>Klik om te kopiëren</small>
-								const params = new URLSearchParams(window.location.search || '');
-								const queryServer = _normalizeServerUrl(params.get('server'));
-								const globalServer = _normalizeServerUrl(window.LOCUS_SERVER_URL || window._locusServerUrl || '');
-								const storedServer = _readStoredServerUrl();
-								if (queryServer) candidates.push(queryServer);
-								if (globalServer) candidates.push(globalServer);
-								if (storedServer) candidates.push(storedServer);
 				<!-- Dynamisch gevuld -->
 			</div>
 
@@ -319,15 +312,10 @@
 
 	<!-- Multiplayer client (Socket.IO) -->
 	<script src="client/multiplayer-client.js?v=14"></script>
-					_syncServerUrlInput();
 
 	<!-- P2P Host/Guest module (WebRTC) -->
 	<script src="client/p2p-host.js?v=16"></script>
 
-					if (!hasSocketIO && window._captureServerUrlPreference) {
-						window._captureServerUrlPreference();
-					}
-					if (!hasSocketIO && window._probeLocusServer && _getConfiguredServerCandidates().length > 0) {
 	<script src="client/lobby-ui.js?v=19"></script>
 
 	<!-- App bootstrap -->
@@ -522,7 +510,7 @@
 		function _getConfiguredServerCandidates() {
 			const candidates = [];
 			const params = new URLSearchParams(window.location.search || '');
-			const queryServer = _normalizeServerUrl(params.get('server'));
+			const queryServer = _normalizeServerUrl(params.get('server') || params.get('s'));
 			const globalServer = _normalizeServerUrl(window.LOCUS_SERVER_URL || window._locusServerUrl || '');
 			const storedServer = _readStoredServerUrl();
 			if (queryServer) candidates.push(queryServer);
