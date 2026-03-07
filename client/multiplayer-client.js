@@ -390,9 +390,9 @@ class LocusMultiplayer {
 	}
 
 	/** Voeg een AI speler toe aan het spel */
-	async addAIPlayer() {
+	async addAIPlayer(difficulty = 'normal') {
 		try {
-			const result = await this._emitWithAck('addAIPlayer', {});
+			const result = await this._emitWithAck('addAIPlayer', { difficulty });
 			console.log('[Locus MP] AI player added:', result.playerId);
 			return result;
 		} catch (error) {

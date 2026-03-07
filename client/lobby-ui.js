@@ -202,7 +202,7 @@ class LocusLobbyUI {
 			'results-container', 'play-again-btn',
 			'shop-container', 'shop-ready-btn',
 			'tv-cast-btn', 'tv-cast-game-btn',
-			'add-ai-btn'
+			'add-ai-btn', 'ai-difficulty-select'
 		];
 		for (const id of ids) {
 			this.elements[id] = document.getElementById(id);
@@ -1059,8 +1059,9 @@ class LocusLobbyUI {
 			this._showToast('AI toevoegen werkt alleen in server-modus (niet in P2P).', 'warning');
 			return;
 		}
+		const difficulty = this.elements['ai-difficulty-select']?.value || 'normal';
 		this._setLoading(true);
-		try { await this.mp.addAIPlayer(); this._showToast('🤖 AI speler toegevoegd!', 'success'); }
+		try { await this.mp.addAIPlayer(difficulty); this._showToast(difficulty === 'hard' ? '🧠 Harde AI toegevoegd!' : '🤖 AI speler toegevoegd!', 'success'); }
 		catch (err) { this._showToast('Kan AI niet toevoegen: ' + (err.message || err), 'error'); }
 		this._setLoading(false);
 	}
@@ -1319,8 +1320,10 @@ class LocusLobbyUI {
 
 		// Show add-AI button for host
 		const addAiBtn = this.elements['add-ai-btn'];
+		const aiDiffSelect = this.elements['ai-difficulty-select'];
 		const canAddAI = !!(this.mp && typeof this.mp.addAIPlayer === 'function');
 		if (addAiBtn) addAiBtn.style.display = (isHost && canAddAI) ? 'block' : 'none';
+		if (aiDiffSelect) aiDiffSelect.style.display = (isHost && canAddAI) ? 'inline-block' : 'none';
 
 		// Show cast button for host (P2P only for now)
 		const castBtn = this.elements['tv-cast-btn'];

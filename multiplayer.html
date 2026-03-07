@@ -148,6 +148,10 @@
 			<button id="add-ai-btn" class="mp-btn mp-btn-secondary" style="display:none;">
 				🤖 AI Speler Toevoegen
 			</button>
+			<select id="ai-difficulty-select" class="mp-select" style="display:none;">
+				<option value="normal">🤖 Normaal</option>
+				<option value="hard">🧠 Hard (ML)</option>
+			</select>
 
 			<div class="mp-waiting-dots">
 				<span>Wachten op spelers</span>
@@ -179,6 +183,9 @@
 					<button class="mp-taunt-btn" data-taunt="Well played!">Well played!</button>
 					<button class="mp-taunt-btn" data-taunt="Oeps...">Oeps...</button>
 					<button class="mp-taunt-btn" data-taunt="Kom op!">Kom op!</button>
+					<button class="mp-taunt-btn" data-taunt="cheater">cheater</button>
+					<button class="mp-taunt-btn" data-taunt="fuck off">fuck off</button>
+					<button class="mp-taunt-btn" data-taunt="your mum">your mum</button>
 				</div>
 			</details>
 			<div id="mp-turn-indicator" class="mp-turn-indicator">
@@ -1478,7 +1485,7 @@
 				async joinGame() { /* host is already in */ },
 
 				async startGame() { return host.hostAction('startGame'); },
-				async addAIPlayer() { return host.hostAction('addAIPlayer'); },
+				async addAIPlayer(difficulty) { return host.hostAction('addAIPlayer', { difficulty: difficulty || 'normal' }); },
 				async chooseStartingDeck(dt) { return host.hostAction('chooseStartingDeck', { deckType: dt }); },
 				async chooseGoal(idx) { return host.hostAction('chooseGoal', { objectiveIndex: idx }); },
 

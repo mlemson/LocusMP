@@ -54,6 +54,8 @@ const tauntCooldowns = new Map();
 
 /** @type {Map<string, Set<string>>} gameId → set of AI player IDs */
 const aiPlayers = new Map();
+/** @type {Map<string, Map<string, string>>} gameId → Map<aiPlayerId, difficulty> */
+const aiDifficulty = new Map();
 
 const TAUNT_COOLDOWN_MS = 2000;
 const ALLOWED_TAUNTS = new Set([
@@ -389,7 +391,15 @@ function scheduleAIActions(gameId) {
 	const gameAIs = aiPlayers.get(gameId);
 	if (!gameAIs || gameAIs.size === 0) return;
 
-	const delay = AIPlayer.getAIThinkDelay();
+	// Use longer delay if any hard AI is active for the current action
+	const diffMap = aiDifficulty.get(gameId);
+	let hasHard = false;
+	if (diffMap) {
+		for (const aiId of gameAIs) {
+			if (diffMap.get(aiId) === 'hard') { hasHard = true; break; }
+		}
+	}
+	const delay = hasHard ? AIPlayer.getHardAIThinkDelay() : AIPlayer.getAIThinkDelay();
 
 	const timer = setTimeout(() => {
 		aiTimers.delete(gameId);
@@ -480,7 +490,10 @@ function executeAIActions(gameId) {
 			if (!player || player.shopReady) continue;
 
 			// Perk kiezen
-			const perkId = AIPlayer.choosePerk(gameState, aiId);
+			const aiDiff = aiDifficulty.get(gameId)?.get(aiId) || 'normal';
+			const perkId = aiDiff === 'hard'
+				? AIPlayer.chooseHardPerk(gameState, aiId)
+				: AIPlayer.choosePerk(gameState, aiId);
 			if (perkId) {
 				const perkResult = GameRules.choosePerk(gameState, aiId, perkId);
 				if (!perkResult.error) {
@@ -490,7 +503,9 @@ function executeAIActions(gameId) {
 			}
 
 			// Shop acties
-			const shopActions = AIPlayer.planShop(gameState, aiId);
+			const shopActions = aiDiff === 'hard'
+				? AIPlayer.planShopHard(gameState, aiId)
+				: AIPlayer.planShop(gameState, aiId);
 			for (const action of shopActions) {
 				if (action.type === 'buyShopItem') {
 					const buyResult = GameRules.buyShopItem(gameState, aiId, action.itemId, action.extra || {});
@@ -554,7 +569,10 @@ function executeAITurn(gameId, aiPlayerId) {
 
 	_clearTurnTimer(gameId);
 
-	const actions = AIPlayer.planTurn(gameState, aiPlayerId);
+	const difficulty = aiDifficulty.get(gameId)?.get(aiPlayerId) || 'normal';
+	const actions = difficulty === 'hard'
+		? AIPlayer.planTurnHard(gameState, aiPlayerId)
+		: AIPlayer.planTurn(gameState, aiPlayerId);
 	let gameEnded = false;
 	let actionIndex = 0;
 
@@ -972,13 +990,15 @@ io.on('connection', (socket) => {
 				return callback({ success: false, error: 'Kan alleen AI toevoegen in de wachtkamer.' });
 			}
 
-			// Bepaal AI naam
+			// Bepaal AI naam en difficulty
+			const difficulty = (data?.difficulty === 'hard') ? 'hard' : 'normal';
 			const existingAIs = aiPlayers.get(info.gameId) || new Set();
 			const aiIndex = existingAIs.size;
 			if (aiIndex >= AIPlayer.AI_NAMES.length) {
 				return callback({ success: false, error: 'Maximum aantal AI spelers bereikt.' });
 			}
-			const aiName = AIPlayer.AI_NAMES[aiIndex];
+			const baseName = AIPlayer.AI_NAMES[aiIndex];
+			const aiName = difficulty === 'hard' ? `${baseName} 🧠` : baseName;
 			const aiPlayerId = 'AI_' + generateId();
 
 			const addResult = GameRules.addPlayer(gameState, aiPlayerId, aiName);
@@ -994,7 +1014,11 @@ io.on('connection', (socket) => {
 			if (!aiPlayers.has(info.gameId)) aiPlayers.set(info.gameId, new Set());
 			aiPlayers.get(info.gameId).add(aiPlayerId);
 
-			console.log(`[Locus] AI speler "${aiName}" (${aiPlayerId}) toegevoegd aan game ${info.gameId}`);
+			// Track difficulty
+			if (!aiDifficulty.has(info.gameId)) aiDifficulty.set(info.gameId, new Map());
+			aiDifficulty.get(info.gameId).set(aiPlayerId, difficulty);
+
+			console.log(`[Locus] AI speler "${aiName}" (${aiPlayerId}, ${difficulty}) toegevoegd aan game ${info.gameId}`);
 
 			callback({
 				success: true,
@@ -1797,6 +1821,7 @@ io.on('connection', (socket) => {
 							if (stillAllGone) {
 								games.delete(info.gameId);
 								aiPlayers.delete(info.gameId);
+								aiDifficulty.delete(info.gameId);
 								const pendingAiTimer = aiTimers.get(info.gameId);
 								if (pendingAiTimer) { clearTimeout(pendingAiTimer); aiTimers.delete(info.gameId); }
 								if (current.inviteCode) inviteCodes.delete(current.inviteCode);

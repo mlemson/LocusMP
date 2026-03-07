@@ -214,7 +214,7 @@ class LocusP2PHost {
 					conn.send({ type: 'result', action: 'addAIPlayer', success: false, error: 'Alleen de host kan AI toevoegen.' });
 					return;
 				}
-				const result = this._addAIPlayer();
+				const result = this._addAIPlayer(msg.difficulty || 'normal');
 				conn.send({ type: 'result', action: 'addAIPlayer', ...result });
 				this._broadcastState();
 				break;
@@ -596,7 +596,7 @@ class LocusP2PHost {
 
 		switch (type) {
 			case 'addAIPlayer':
-				result = this._addAIPlayer();
+				result = this._addAIPlayer(data.difficulty || 'normal');
 				break;
 			case 'startGame':
 				result = this.Rules.startGame(this.gameState);
@@ -852,7 +852,7 @@ class LocusP2PHost {
 		this._scheduleAI();
 	}
 
-	_addAIPlayer() {
+	_addAIPlayer(difficulty = 'normal') {
 		if (!this.gameState) return { success: false, error: 'Geen game state.' };
 		if (this.gameState.phase !== 'waiting') return { success: false, error: 'Kan alleen AI toevoegen in de wachtkamer.' };
 
@@ -862,11 +862,14 @@ class LocusP2PHost {
 
 		const aiCount = this.aiPlayerIds.size + 1;
 		const aiId = 'AI_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
-		const aiName = `Bot ${aiCount}`;
+		const baseName = `Bot ${aiCount}`;
+		const aiName = difficulty === 'hard' ? `${baseName} \ud83e\udde0` : baseName;
 		const addResult = this.Rules.addPlayer(this.gameState, aiId, aiName);
 		if (addResult?.error) return { success: false, error: addResult.error };
 
 		this.aiPlayerIds.add(aiId);
+		if (!this._aiDifficulty) this._aiDifficulty = new Map();
+		this._aiDifficulty.set(aiId, difficulty);
 		if (this.gameState.players?.[aiId]) {
 			this.gameState.players[aiId].isAI = true;
 			this.gameState.players[aiId].connected = true;
@@ -879,7 +882,16 @@ class LocusP2PHost {
 		if (!this.gameState) return;
 		if (this.aiPlayerIds.size === 0) return;
 		if (this._aiTimer) return;
-		const delay = 2000 + Math.floor(Math.random() * 2000); // 2-4 seconds
+		// Use longer delay if any hard AI is present
+		let hasHard = false;
+		if (this._aiDifficulty) {
+			for (const aiId of this.aiPlayerIds) {
+				if (this._aiDifficulty.get(aiId) === 'hard') { hasHard = true; break; }
+			}
+		}
+		const delay = hasHard
+			? (3000 + Math.floor(Math.random() * 2000))  // 3-5s for hard
+			: (2000 + Math.floor(Math.random() * 2000)); // 2-4s for normal
 		this._aiTimer = setTimeout(() => {
 			this._aiTimer = null;
 			this._runAI();
@@ -926,10 +938,11 @@ class LocusP2PHost {
 			const currentPid = this.gameState.playerOrder?.[this.gameState.currentTurnIndex];
 			if (currentPid && this.aiPlayerIds.has(currentPid)) {
 				this._clearTimer();
-				// Use perk if available
-				this._aiUsePerkIfPossible(currentPid);
-				// Play card with scoring
-				const playResult = this._aiPlayCardWithScoring(currentPid);
+				const isHard = this._aiDifficulty?.get(currentPid) === 'hard';
+				// Use perk if available (hard AI prefers aggressive perks)
+				this._aiUsePerkIfPossible(currentPid, isHard);
+				// Play card with scoring (hard AI uses impact eval)
+				this._aiPlayCardWithScoring(currentPid, isHard);
 				// Play bonuses if collected
 				this._aiPlayBonusesIfPossible(currentPid);
 				// End turn
@@ -1003,7 +1016,7 @@ class LocusP2PHost {
 		}
 	}
 
-	_aiPlayCardWithScoring(playerId) {
+	_aiPlayCardWithScoring(playerId, isHard = false) {
 		const player = this.gameState?.players?.[playerId];
 		const board = this.gameState?.boardState;
 		if (!player || !board) return false;
@@ -1044,6 +1057,21 @@ class LocusP2PHost {
 									else { score += 1; }
 								}
 								if (!hasFlaggedCell) score = Math.max(1, Math.floor(score * 0.4));
+
+								// Hard AI: zone-strategic impact scoring
+								if (isHard) {
+									score += this._hardZoneBonus(zoneName, zoneData, cells, subgridId, board);
+									// Adjacency bonus
+									for (const c of cells) {
+										if (this.Rules.hasAdjacentActive(zoneData, c.x, c.y)) score += 1;
+									}
+									// Objective awareness
+									const obj = player.chosenObjective;
+									if (obj && !player.objectiveAchieved) {
+										if (obj.zone === zoneName) score += 5;
+										if (obj.type === 'density') score += cells.length * 2;
+									}
+								}
 
 								if (score > bestScore) {
 									bestScore = score;
@@ -1159,19 +1187,17 @@ class LocusP2PHost {
 		}
 	}
 
-	_aiUsePerkIfPossible(playerId) {
+	_aiUsePerkIfPossible(playerId, isHard = false) {
 		const player = this.gameState?.players?.[playerId];
 		if (!player?.perks || (player.perks.perkPoints || 0) < 1) return;
 
 		const available = this.Rules.getAvailablePerks(player) || [];
 		if (available.length === 0) return;
 
-		// Prioritize useful perks
-		const priority = [
-			'bonus_extra_cell', 'bonus_multi_double', 'bonus_red_upgrade',
-			'flex_double_coins', 'flex_wildcard',
-			'agg_mine', 'agg_timebomb', 'agg_steal'
-		];
+		// Hard AI: aggressive first; Normal: bonus first
+		const priority = isHard
+			? ['agg_timebomb', 'agg_mine', 'agg_steal', 'flex_wildcard', 'flex_double_coins', 'bonus_extra_cell', 'bonus_multi_double', 'bonus_red_upgrade']
+			: ['bonus_extra_cell', 'bonus_multi_double', 'bonus_red_upgrade', 'flex_double_coins', 'flex_wildcard', 'agg_mine', 'agg_timebomb', 'agg_steal'];
 		let chosenId = null;
 		for (const pId of priority) {
 			if (available.find(p => p.id === pId)) { chosenId = pId; break; }
@@ -1180,6 +1206,60 @@ class LocusP2PHost {
 		if (chosenId) {
 			this.Rules.choosePerk(this.gameState, playerId, chosenId);
 		}
+	}
+
+	_hardZoneBonus(zoneName, zoneData, cells, subgridId, board) {
+		let bonus = 0;
+		if (zoneName === 'yellow') {
+			// Favor column completion
+			const colXs = new Set(cells.map(c => c.x));
+			for (const colX of colXs) {
+				let filled = 0, total = 0;
+				for (let y = 0; y < (zoneData.rows || 0); y++) {
+					const cell = this.Rules.getDataCell(zoneData, colX, y);
+					if (cell) { total++; if (cell.active) filled++; }
+				}
+				const newFilled = filled + cells.filter(c => c.x === colX).length;
+				if (newFilled >= total) bonus += 8;
+				else if (filled / Math.max(total, 1) > 0.6) bonus += 3;
+			}
+		} else if (zoneName === 'green') {
+			for (const c of cells) {
+				const cell = this.Rules.getDataCell(zoneData, c.x, c.y);
+				if (cell?.flags?.includes('end')) bonus += 12;
+				// Proximity to end cells
+				const endCells = zoneData.endCells || [];
+				for (const ec of endCells) {
+					const dist = Math.abs(c.x - ec.x) + Math.abs(c.y - ec.y);
+					if (dist <= 2) bonus += 4;
+					else if (dist <= 4) bonus += 1;
+				}
+			}
+		} else if (zoneName === 'blue') {
+			const boldRows = new Set(zoneData.boldRows || []);
+			for (const c of cells) {
+				if (boldRows.has(c.y)) bonus += 5;
+			}
+		} else if (zoneName === 'red' && subgridId) {
+			const sg = board?.zones?.red?.subgrids?.find(s => s.id === subgridId);
+			if (sg) {
+				let filled = 0, total = 0;
+				const sgCells = sg.cells || {};
+				for (const key in sgCells) { total++; if (sgCells[key]?.active) filled++; }
+				const newRatio = (filled + (cells.length || 1)) / Math.max(total, 1);
+				const oldRatio = filled / Math.max(total, 1);
+				if (newRatio >= 0.8 && oldRatio < 0.8) bonus += 15;
+				else if (newRatio >= 1.0) bonus += 10;
+				else if (oldRatio >= 0.5) bonus += 4;
+			}
+		} else if (zoneName === 'purple') {
+			for (const c of cells) {
+				if (this.Rules.hasAdjacentActive(zoneData, c.x, c.y)) bonus += 2;
+				const cell = this.Rules.getDataCell(zoneData, c.x, c.y);
+				if (cell?.flags?.includes('bold')) bonus += 3;
+			}
+		}
+		return bonus;
 	}
 
 	_aiMaybeTaunt(playerId) {

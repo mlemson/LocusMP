@@ -349,6 +349,21 @@ html, body {
 	background: #444;
 }
 
+.mp-select {
+	padding: 8px 12px;
+	border-radius: 8px;
+	background: var(--mp-panel-light);
+	color: var(--mp-text);
+	border: 1px solid rgba(255,255,255,0.1);
+	font-size: 0.9em;
+	cursor: pointer;
+	vertical-align: middle;
+}
+
+.mp-select:hover {
+	background: #444;
+}
+
 .mp-btn-warning {
 	background: var(--mp-warning);
 	color: #1a1a1a;

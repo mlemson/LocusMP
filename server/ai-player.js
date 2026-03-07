@@ -394,12 +394,412 @@ function planShop(gameState, playerId) {
 	return actions;
 }
 
+// ══════════════════════════════════════════════
+//  HARD AI — Advanced heuristic (ML-style)
+// ══════════════════════════════════════════════
+
+const HARD_THINK_DELAY_MIN_MS = 3000;
+const HARD_THINK_DELAY_MAX_MS = 5000;
+
+function getHardAIThinkDelay() {
+	return HARD_THINK_DELAY_MIN_MS + Math.floor(Math.random() * (HARD_THINK_DELAY_MAX_MS - HARD_THINK_DELAY_MIN_MS));
+}
+
+/**
+ * Evaluates the actual scoring impact of a placement by simulating it.
+ * Returns a composite score considering zone scoring, objective progress, and board position.
+ */
+function _evaluatePlacementImpact(gameState, playerId, card, placement) {
+	const player = gameState.players[playerId];
+	if (!player) return placement.score;
+
+	let impactScore = placement.score; // Start from base cell-flag score
+
+	const board = gameState.boardState;
+	const zoneName = placement.zoneName;
+
+	// ── Zone-specific strategic bonuses ──
+	if (zoneName === 'yellow') {
+		// Yellow scores by completing column pairs — check if this placement fills column cells
+		const zoneData = board?.zones?.yellow;
+		if (zoneData) {
+			const cells = _getPlacementCells(card, placement, zoneData);
+			const columnsFilled = new Set(cells.map(c => c.x));
+			for (const colX of columnsFilled) {
+				const colCells = _countColumnCells(zoneData, colX);
+				// Bonus for nearly-complete columns (completing them is very valuable)
+				if (colCells.filled >= colCells.total - cells.filter(c => c.x === colX).length) {
+					impactScore += 8; // Big bonus for completing a column
+				} else if (colCells.ratio > 0.6) {
+					impactScore += 3; // Bonus for progressing a half-filled column
+				}
+			}
+		}
+	} else if (zoneName === 'green') {
+		// Green scores by distance to end cells — favor placements closer to end
+		const zoneData = board?.zones?.green;
+		if (zoneData) {
+			const cells = _getPlacementCells(card, placement, zoneData);
+			for (const c of cells) {
+				const cell = GameRules.getDataCell(zoneData, c.x, c.y);
+				if (cell?.flags?.includes('end')) {
+					impactScore += 12; // Huge bonus for reaching end cells
+				}
+				// Bonus for advancing towards end cells
+				const endCells = zoneData.endCells || [];
+				for (const ec of endCells) {
+					const dist = Math.abs(c.x - ec.x) + Math.abs(c.y - ec.y);
+					if (dist <= 2) impactScore += 4;
+					else if (dist <= 4) impactScore += 1;
+				}
+			}
+		}
+	} else if (zoneName === 'blue') {
+		// Blue scores by bold row progression — favor bold rows
+		const zoneData = board?.zones?.blue;
+		if (zoneData) {
+			const cells = _getPlacementCells(card, placement, zoneData);
+			const boldRows = new Set(zoneData.boldRows || []);
+			let touchesBoldRow = false;
+			for (const c of cells) {
+				if (boldRows.has(c.y)) {
+					impactScore += 5; // Bonus for placing on bold rows
+					touchesBoldRow = true;
+				}
+			}
+			// Extra bonus for reaching a new tier
+			if (touchesBoldRow) {
+				const currentTier = _getBlueActiveTiers(zoneData);
+				impactScore += (currentTier + 1) * 2;
+			}
+		}
+	} else if (zoneName === 'red') {
+		// Red scores by subgrid completion (80%+ threshold) — favor nearly-complete subgrids
+		const redZone = board?.zones?.red;
+		if (redZone?.subgrids && placement.subgridId) {
+			const sg = redZone.subgrids.find(s => s.id === placement.subgridId);
+			if (sg) {
+				const info = _getSubgridFillInfo(sg);
+				const cellsPlaced = placement.cellCount || 1;
+				const newRatio = (info.filled + cellsPlaced) / info.total;
+				if (newRatio >= 0.8 && info.ratio < 0.8) {
+					impactScore += 15; // Huge bonus for crossing the 80% threshold
+				} else if (newRatio >= 1.0) {
+					impactScore += 10; // Full subgrid completion
+				} else if (info.ratio >= 0.5) {
+					impactScore += 4; // Working on a half-filled subgrid
+				}
+			}
+		}
+	} else if (zoneName === 'purple') {
+		// Purple scores by connection clusters — favor extending existing clusters
+		const zoneData = board?.zones?.purple;
+		if (zoneData) {
+			const cells = _getPlacementCells(card, placement, zoneData);
+			let adjacentActive = 0;
+			for (const c of cells) {
+				if (GameRules.hasAdjacentActive(zoneData, c.x, c.y)) adjacentActive++;
+				const cell = GameRules.getDataCell(zoneData, c.x, c.y);
+				if (cell?.flags?.includes('bold')) impactScore += 3;
+			}
+			impactScore += adjacentActive * 2; // Bonus for connecting to existing placed cells
+		}
+	}
+
+	// ── Objective awareness ──
+	const objective = player.chosenObjective;
+	if (objective && !player.objectiveAchieved) {
+		// Boost score for placements in zones matching objective
+		if (objective.zone && objective.zone === zoneName) {
+			impactScore += 5;
+		}
+		// Density objective: more cells = better
+		if (objective.type === 'density') {
+			impactScore += (placement.cellCount || 1) * 2;
+		}
+		// Coverage objectives: value zone-matching placements higher
+		if (objective.type === 'coverage' && objective.zones?.includes(zoneName)) {
+			impactScore += 4;
+		}
+	}
+
+	// ── Opponent blocking (check if opponents are strong in this zone) ──
+	const opponents = Object.keys(gameState.players).filter(pid => pid !== playerId);
+	for (const oppId of opponents) {
+		const opp = gameState.players[oppId];
+		// If opponent has an objective targeting this zone, slightly boost priority
+		if (opp?.chosenObjective?.zone === zoneName) {
+			impactScore += 2; // Blocking value
+		}
+	}
+
+	// ── Adjacency quality bonus ──
+	const zoneData = _getZoneData(board, zoneName, placement.subgridId);
+	if (zoneData) {
+		const cells = _getPlacementCells(card, placement, zoneData);
+		let adjacentCount = 0;
+		for (const c of cells) {
+			if (GameRules.hasAdjacentActive(zoneData, c.x, c.y)) adjacentCount++;
+		}
+		impactScore += adjacentCount; // Favor placements that extend existing territory
+	}
+
+	return impactScore;
+}
+
+function _getPlacementCells(card, placement, zoneData) {
+	let matrix = GameRules.cloneMatrix(card.matrix);
+	matrix = GameRules.rotateMatrixN(matrix, placement.rotation || 0);
+	if (placement.mirrored) matrix = GameRules.mirrorMatrix(matrix);
+	return GameRules.collectPlacementCellsData(zoneData, placement.baseX, placement.baseY, matrix) || [];
+}
+
+function _getZoneData(board, zoneName, subgridId) {
+	if (zoneName === 'red') {
+		const sg = board?.zones?.red?.subgrids?.find(s => s.id === subgridId);
+		return sg || null;
+	}
+	return board?.zones?.[zoneName] || null;
+}
+
+function _countColumnCells(zoneData, colX) {
+	let filled = 0;
+	let total = 0;
+	for (let y = 0; y < (zoneData.rows || 0); y++) {
+		const cell = GameRules.getDataCell(zoneData, colX, y);
+		if (cell) {
+			total++;
+			if (cell.active) filled++;
+		}
+	}
+	return { filled, total, ratio: total > 0 ? filled / total : 0 };
+}
+
+function _getBlueActiveTiers(zoneData) {
+	const boldRows = zoneData.boldRows || [];
+	let tiers = 0;
+	for (const rowY of boldRows) {
+		for (let x = 0; x < (zoneData.cols || 0); x++) {
+			const cell = GameRules.getDataCell(zoneData, x, rowY);
+			if (cell?.active && cell?.flags?.includes('bold')) {
+				tiers++;
+				break;
+			}
+		}
+	}
+	return tiers;
+}
+
+function _getSubgridFillInfo(sg) {
+	let filled = 0;
+	let total = 0;
+	const cells = sg.cells || {};
+	for (const key in cells) {
+		total++;
+		if (cells[key]?.active) filled++;
+	}
+	return { filled, total, ratio: total > 0 ? filled / total : 0 };
+}
+
+/**
+ * Hard AI turn planning — uses impact scoring and strategic evaluation.
+ */
+function planTurnHard(gameState, playerId) {
+	const player = gameState.players[playerId];
+	if (!player) return [];
+
+	const actions = [];
+	const hand = player.hand || [];
+	const regularCards = hand.filter(c => !c.isGolden);
+	const goldenCards = hand.filter(c => c.isGolden);
+
+	// 1. Evaluate ALL placements across ALL cards and pick the globally best move
+	let allPlacements = [];
+	for (const card of regularCards) {
+		const placements = findValidPlacements(gameState, playerId, card);
+		for (const p of placements) {
+			p.impactScore = _evaluatePlacementImpact(gameState, playerId, card, p);
+			p._card = card;
+		}
+		allPlacements.push(...placements);
+	}
+
+	let cardPlayed = false;
+	if (allPlacements.length > 0) {
+		// Sort by impact score (ML-style composite evaluation)
+		allPlacements.sort((a, b) => b.impactScore - a.impactScore);
+
+		// Top-3 selection with slight randomization to avoid being perfectly predictable
+		const topN = Math.min(3, allPlacements.length);
+		const weights = [0.60, 0.25, 0.15]; // Probability of choosing 1st, 2nd, 3rd best
+		let r = Math.random();
+		let chosenIdx = 0;
+		for (let i = 0; i < topN; i++) {
+			r -= weights[i] || 0;
+			if (r <= 0) { chosenIdx = i; break; }
+		}
+
+		const best = allPlacements[chosenIdx];
+		actions.push({
+			type: 'playCard',
+			cardId: best.cardId,
+			zoneName: best.zoneName,
+			baseX: best.baseX,
+			baseY: best.baseY,
+			rotation: best.rotation,
+			mirrored: best.mirrored,
+			subgridId: best.subgridId
+		});
+		cardPlayed = true;
+	}
+
+	// 2. Golden cards — also use impact scoring
+	for (const card of goldenCards) {
+		const placements = findValidPlacements(gameState, playerId, card);
+		if (placements.length === 0) continue;
+		for (const p of placements) {
+			p.impactScore = _evaluatePlacementImpact(gameState, playerId, card, p);
+		}
+		placements.sort((a, b) => b.impactScore - a.impactScore);
+		const best = placements[0];
+		actions.push({
+			type: 'playCard',
+			cardId: card.id,
+			zoneName: best.zoneName,
+			baseX: best.baseX,
+			baseY: best.baseY,
+			rotation: best.rotation,
+			mirrored: best.mirrored,
+			subgridId: best.subgridId
+		});
+	}
+
+	// 3. Aggressive perk usage — hard AI prefers aggressive perks
+	const perkId = chooseHardPerk(gameState, playerId);
+	if (perkId) {
+		actions.push({ type: 'choosePerk', perkId });
+	}
+
+	// 4. Bonuses
+	const bonusColors = ['yellow', 'red', 'green', 'purple', 'blue', 'any'];
+	for (const color of bonusColors) {
+		const charges = player.bonusInventory?.[color] || 0;
+		for (let i = 0; i < charges; i++) {
+			actions.push({ type: 'playBonus', bonusColor: color });
+		}
+	}
+
+	// 5. End turn — smart discard (discard lowest-scoring card)
+	if (!cardPlayed && regularCards.length > 0) {
+		// Discard the card with fewest valid placements (worst card)
+		let worstCard = regularCards[0];
+		let worstPlacements = Infinity;
+		for (const card of regularCards) {
+			const count = findValidPlacements(gameState, playerId, card).length;
+			if (count < worstPlacements) {
+				worstPlacements = count;
+				worstCard = card;
+			}
+		}
+		actions.push({ type: 'endTurn', discardCardId: worstCard.id });
+	} else {
+		actions.push({ type: 'endTurn' });
+	}
+
+	return actions;
+}
+
+/**
+ * Hard AI perk selection — more aggressive priority.
+ */
+function chooseHardPerk(gameState, playerId) {
+	const player = gameState.players[playerId];
+	if (!player?.perks || (player.perks.perkPoints || 0) < 1) return null;
+
+	const available = GameRules.getAvailablePerks(player);
+	if (!available || available.length === 0) return null;
+
+	// Hard AI: aggressive first, then flexibility, then bonus
+	const perkPriority = [
+		'agg_timebomb', 'agg_mine', 'agg_steal',
+		'flex_wildcard', 'flex_double_coins',
+		'bonus_extra_cell', 'bonus_multi_double', 'bonus_red_upgrade'
+	];
+
+	for (const pId of perkPriority) {
+		const match = available.find(p => p.id === pId);
+		if (match) return match.id;
+	}
+
+	return available[0]?.id || null;
+}
+
+/**
+ * Hard AI shop strategy — smarter purchases.
+ */
+function planShopHard(gameState, playerId) {
+	const player = gameState.players[playerId];
+	if (!player) return [];
+
+	const actions = [];
+	const coins = player.goldCoins || 0;
+	if (coins <= 0) return [{ type: 'shopReady' }];
+
+	const shopItems = GameRules.getShopItems(gameState.level || 1, player);
+	const affordableItems = shopItems.filter(item => item.cost <= coins && !item.unlockOnly);
+
+	// Hard AI: prioritize high-value items (most expensive first — they give more advantage)
+	affordableItems.sort((a, b) => b.cost - a.cost);
+
+	let remainingCoins = coins;
+	for (const item of affordableItems) {
+		if (item.cost > remainingCoins) continue;
+		const extra = {};
+		if (item.id === 'extra-bonus') {
+			// Pick the color matching our weakest zone for balance bonus
+			const scores = player.scoreBreakdown || {};
+			const colors = ['yellow', 'red', 'green', 'purple', 'blue'];
+			colors.sort((a, b) => (scores[a] || 0) - (scores[b] || 0));
+			extra.bonusColor = colors[0];
+		}
+		actions.push({ type: 'buyShopItem', itemId: item.id, extra });
+		remainingCoins -= item.cost;
+	}
+
+	// Shop card offerings — buy cards with most cells (bigger shapes = better)
+	const offerings = player.shopOfferings || [];
+	const cardScores = offerings.map((card, i) => {
+		if (!card) return { idx: i, score: -1, price: Infinity };
+		const price = card.shopPrice || GameRules.getCardPrice(card);
+		const cellCount = card.matrix ? card.matrix.flat().filter(v => v > 0).length : 0;
+		return { idx: i, score: cellCount, price };
+	});
+	cardScores.sort((a, b) => b.score - a.score);
+
+	for (const cs of cardScores) {
+		if (cs.score <= 0 || cs.price > remainingCoins) continue;
+		actions.push({ type: 'buyShopItem', itemId: `shop-card-${cs.idx}` });
+		remainingCoins -= cs.price;
+	}
+
+	const perkId = chooseHardPerk(gameState, playerId);
+	if (perkId) {
+		actions.push({ type: 'choosePerk', perkId });
+	}
+
+	actions.push({ type: 'shopReady' });
+	return actions;
+}
+
 module.exports = {
 	AI_NAMES,
 	AI_THINK_DELAY_MIN_MS,
 	AI_THINK_DELAY_MAX_MS,
 	AI_ACTION_DELAY_MS,
+	HARD_THINK_DELAY_MIN_MS,
+	HARD_THINK_DELAY_MAX_MS,
 	getAIThinkDelay,
+	getHardAIThinkDelay,
 	pickAITaunt,
 	AI_TAUNTS,
 	findValidPlacements,
@@ -407,6 +807,9 @@ module.exports = {
 	chooseStartingDeck,
 	chooseObjective,
 	choosePerk,
+	chooseHardPerk,
 	planTurn,
-	planShop
+	planTurnHard,
+	planShop,
+	planShopHard
 };
