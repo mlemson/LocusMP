@@ -130,6 +130,24 @@ function _tryPlacementsOnZone(card, zoneData, zoneName, rotations, mirrors, perk
 					// Penalize pure empty placements that give no rewards
 					if (!hasFlaggedCell) score = Math.max(1, Math.floor(score * 0.4));
 
+					// Blue zone: only first cell on an unreached bold row matters
+					// Extra bold cells on the same row give no points in-game
+					if (zoneName === 'blue') {
+						const reachedRows = _getReachedBoldRows(zoneData);
+						const boldRowSet = new Set(zoneData.boldRows || []);
+						let newTierCount = 0;
+						for (const c of cells) {
+							if (boldRowSet.has(c.y) && !reachedRows.has(c.y)) {
+								if (!reachedRows.has(c.y)) newTierCount++;
+								reachedRows.add(c.y); // count each row only once
+							}
+						}
+						// Reward new tiers significantly, favor going up
+						score += newTierCount * 8;
+						const minY = Math.min(...cells.map(c => c.y));
+						score += Math.max(0, Math.floor(((zoneData.rows || 20) - minY) / 4));
+					}
+
 					result.push({
 						zoneName, baseX, baseY, rotation, mirrored, subgridId,
 						cellCount: cells.length, score, cardId: card.id
