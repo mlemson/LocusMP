@@ -4524,6 +4524,8 @@ class LocusLobbyUI {
 		const zones = boardState.zones;
 		const isTouch = this._useMobileBoardLayout();
 		if (isTouch) {
+			const zoneOrder = ['yellow', 'green', 'blue', 'red', 'purple'];
+			const zoneColors = { yellow: '#cfba51', green: '#92c28c', blue: '#5689b0', red: '#b56069', purple: '#8f76b8' };
 			container.innerHTML = `
 				<div class="mp-board">
 					${this._renderZone('yellow', zones.yellow, 'Geel')}
@@ -4532,10 +4534,11 @@ class LocusLobbyUI {
 					${this._renderRedZone(zones.red)}
 					${this._renderZone('purple', zones.purple, 'Paars')}
 				</div>
+				<div class="mp-zone-dots">${zoneOrder.map((z, i) => `<button class="mp-zone-dot${i === 0 ? ' active' : ''}" data-zone="${z}" style="--dot-color:${zoneColors[z]}"></button>`).join('')}</div>
 			`;
 			const boardEl = container.querySelector('.mp-board');
+			const dotsEl = container.querySelector('.mp-zone-dots');
 			if (boardEl) {
-				const zoneOrder = ['yellow', 'green', 'blue', 'red', 'purple'];
 				boardEl.querySelectorAll('.mp-zone').forEach(zoneEl => {
 					const zoneName = zoneEl.dataset.zone || null;
 					if (!zoneName) return;
@@ -4558,6 +4561,10 @@ class LocusLobbyUI {
 							if (zoneEl) this._restoreMobileZoneVerticalScroll(zoneName, zoneEl, true);
 						}
 						this._lastMobileZoneName = zoneName;
+						// Update zone dots
+						if (dotsEl) {
+							dotsEl.querySelectorAll('.mp-zone-dot').forEach((d, i) => d.classList.toggle('active', i === idx));
+						}
 					});
 				}, { passive: true });
 
