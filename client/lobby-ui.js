@@ -2689,7 +2689,8 @@ class LocusLobbyUI {
 		// Touch/coarse: spring direct naar de bijbehorende kleur-zone bij single-color kaarten
 		const allowedZones = Rules.getAllowedZones(card);
 		if (allowedZones.length === 1 && (e.pointerType === 'touch' || e.pointerType === 'pen' || this._isTouchLikeDevice())) {
-			this._scrollMobileBoardToZone(allowedZones[0], true);
+			const targetZone = this._normalizeZoneName(allowedZones[0]);
+			if (targetZone) this._scrollMobileBoardToZone(targetZone, true);
 		}
 
 		// Ghost volgt muis (click-move-click: geen knop ingedrukt houden)
@@ -3831,14 +3832,7 @@ class LocusLobbyUI {
 
 		// Mobiel/touch: ga direct naar de juiste kleurzone
 		if (this._isTouchLikeDevice() || startPointerEvent?.pointerType === 'touch' || startPointerEvent?.pointerType === 'pen') {
-			const bonusColorToZone = {
-				yellow: 'yellow',
-				green: 'green',
-				blue: 'blue',
-				red: 'red',
-				purple: 'purple'
-			};
-			const targetZone = bonusColorToZone[bonusColor] || null;
+			const targetZone = this._normalizeZoneName(bonusColor);
 			if (targetZone) {
 				const targetIdx = this._getMobileZoneIndex(targetZone);
 				if (Number.isFinite(targetIdx)) {
