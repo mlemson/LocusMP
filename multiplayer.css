@@ -11873,20 +11873,28 @@ html.theme-reef .mp-deck-objective-card.achieved::before {
 	.mp-bottom-actions {
 		position: relative;
 		justify-content: flex-start;
-		padding-right: 10px;
-		min-height: 0;
+		padding-right: 96px;
+		min-height: 42px;
 	}
 
-	/* end-turn lives in hand-row on mobile, hide from bottom-actions */
-	.mp-bottom-actions #mp-end-turn-btn {
-		display: none !important;
+	#mp-end-turn-btn {
+		position: absolute;
+		right: 4px;
+		top: 50%;
+		transform: translateY(-50%);
+		min-width: 84px;
+		padding: 7px 10px;
+		font-size: 0.74rem;
+		z-index: 2;
 	}
 }
 
 @media (max-width: 480px) {
-	.mp-hand-row #mp-end-turn-btn.mp-end-turn-mobile {
-		padding: 5px 8px;
-		font-size: 0.72rem;
+	#mp-end-turn-btn {
+		right: 2px;
+		min-width: 74px;
+		padding: 6px 8px;
+		font-size: 0.70rem;
 	}
 }
 
