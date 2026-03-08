@@ -739,6 +739,7 @@ class LocusMultiplayer {
 		const player = this.gameState.players?.[this.userId];
 		const perkFlags = {
 			greenGapAllowed: !!player?.perks?.greenGapAllowed,
+			redGapAllowed: !!player?.perks?.redGapAllowed,
 			diagonalRotation: !!player?.perks?.diagonalRotation
 		};
 
@@ -750,7 +751,8 @@ class LocusMultiplayer {
 			enhancedMatrix = Rules.rotateMatrixN(enhancedMatrix, ((Number(rotation) || 0) + 4) % 4);
 			if (mirrored) enhancedMatrix = Rules.mirrorMatrix(enhancedMatrix);
 		} else {
-			enhancedMatrix = Rules.getEnhancedMatrix(matrix, zoneName, perkFlags);
+			// Bonus mode: matrix is already correct from getBonusShapeForPlayer, skip enhancement
+			enhancedMatrix = matrix;
 		}
 
 		let zoneData;

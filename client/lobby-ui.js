@@ -2663,6 +2663,7 @@ class LocusLobbyUI {
 		const myId = this.mp.userId;
 		const opponents = (gs.playerOrder || []).filter(pid => pid !== myId);
 		if (opponents.length === 0) return '';
+		const objectivesRevealed = gs._objectivesRevealed || false;
 
 		const items = opponents.map(pid => {
 			const p = gs.players[pid];
@@ -2678,13 +2679,24 @@ class LocusLobbyUI {
 			}
 			const achieved = p.objectiveAchieved || false;
 			const failed = !!p.objectiveFailed;
+
+			// Hide objective details until revealed or achieved
+			if (!objectivesRevealed && !achieved && obj.hidden) {
+				return `<div class="mp-deck-opponent-goal">
+					<span class="mp-deck-zone-dot" style="background:${color};"></span>
+					<strong>${name}</strong>: 🎯 <em style="color:var(--mp-text-dim);">Geheim doel</em>
+				</div>`;
+			}
+
 			const status = achieved ? '✅' : (failed ? '❌' : '🎯');
 			const progress = p.objectiveProgress;
 			const progressText = progress ? ` (${progress.current}/${progress.target})` : '';
+			// Only show rewards when objectives are revealed or achieved
+			const showRewards = objectivesRevealed || achieved;
 			return `<div class="mp-deck-opponent-goal">
 				<span class="mp-deck-zone-dot" style="background:${color};"></span>
 				<strong>${name}</strong>: ${status} ${this._escapeHtml(obj.name)}${progressText}
-				${this._renderObjectiveRewardBadges(progress || obj, { wrapperClass: 'mp-objective-rewards' })}
+				${showRewards ? this._renderObjectiveRewardBadges(progress || obj, { wrapperClass: 'mp-objective-rewards' }) : ''}
 			</div>`;
 		}).filter(Boolean);
 
@@ -5241,6 +5253,10 @@ class LocusLobbyUI {
 		const winsTarget = Math.max(1, Number(this.mp.gameState?.winsToEnd) || 4);
 		const levelHistory = this.mp.gameState?.levelScoresHistory || [];
 
+		// Hide the static play-again button (we create our own)
+		const staticBtn = this.elements['play-again-btn'];
+		if (staticBtn) staticBtn.style.display = 'none';
+
 		const players = this.mp.gameState.playerOrder.map(pid => ({
 			id: pid,
 			name: this.mp.gameState.players[pid]?.name || '???',
@@ -5289,42 +5305,47 @@ class LocusLobbyUI {
 		` : '';
 
 		container.innerHTML = `
-			<h2 class="mp-results-title">🏆 Spel Afgelopen!</h2>
-			<div class="mp-results-winner">
-				Winnaar: <strong>${this._escapeHtml(sorted[0].name)}</strong>
-				met ${sorted[0].matchWins || 0}/${winsTarget} wins!
+			<div class="mp-results-winner-banner">
+				<h2 class="mp-results-title">🏆 Spel Afgelopen!</h2>
+				<div class="mp-results-winner">
+					Winnaar: <strong>${this._escapeHtml(sorted[0].name)}</strong>
+					met ${sorted[0].matchWins || 0}/${winsTarget} wins!
+				</div>
 			</div>
-			<div class="mp-results-table">
-				${sorted.map((p, rank) => `
-					<div class="mp-result-row ${p.id === this.mp.userId ? 'is-me' : ''} ${rank === 0 ? 'winner' : ''}">
-						<span class="mp-result-rank">${rank === 0 ? '🥇' : rank === 1 ? '🥈' : rank === 2 ? '🥉' : rank + 1}</span>
-						<span class="mp-result-name">${this._escapeHtml(p.name)} ${p.id === this.mp.userId ? '(jij)' : ''}</span>
-						<div class="mp-result-breakdown">
-							<span style="color:#f5d76e">🏅:${p.matchWins || 0}</span>
-							<span style="color:#cfba51">G:${p.yellow || 0}</span>
-							<span style="color:#92c28c">Gr:${p.green || 0}</span>
-							<span style="color:#5689b0">B:${p.blue || 0}</span>
-							<span style="color:#b56069">R:${p.red || 0}</span>
-							<span style="color:#8f76b8">P:${p.purple || 0}</span>
-							${p.bonus ? `<span style="color:#4caf50">⚖:${p.bonus}</span>` : ''}
-							${p.gold ? `<span style="color:#f5d76e">⬤:${p.gold}</span>` : ''}
-							${p.objectiveBonus ? `<span style="color:#f5d76e">🎯:+${p.objectiveBonus}</span>` : ''}
+			<div class="mp-results-stats">
+				<div class="mp-results-table">
+					${sorted.map((p, rank) => `
+						<div class="mp-result-row ${p.id === this.mp.userId ? 'is-me' : ''} ${rank === 0 ? 'winner' : ''}">
+							<span class="mp-result-rank">${rank === 0 ? '🥇' : rank === 1 ? '🥈' : rank === 2 ? '🥉' : rank + 1}</span>
+							<span class="mp-result-name">${this._escapeHtml(p.name)} ${p.id === this.mp.userId ? '(jij)' : ''}</span>
+							<div class="mp-result-breakdown">
+								<span style="color:#f5d76e">🏅:${p.matchWins || 0}</span>
+								<span style="color:#cfba51">G:${p.yellow || 0}</span>
+								<span style="color:#92c28c">Gr:${p.green || 0}</span>
+								<span style="color:#5689b0">B:${p.blue || 0}</span>
+								<span style="color:#b56069">R:${p.red || 0}</span>
+								<span style="color:#8f76b8">P:${p.purple || 0}</span>
+								${p.bonus ? `<span style="color:#4caf50">⚖:${p.bonus}</span>` : ''}
+								${p.gold ? `<span style="color:#f5d76e">⬤:${p.gold}</span>` : ''}
+								${p.objectiveBonus ? `<span style="color:#f5d76e">🎯:+${p.objectiveBonus}</span>` : ''}
+							</div>
+							<span class="mp-result-total">${p.finalTotal} pt</span>
 						</div>
-						<span class="mp-result-total">${p.finalTotal} pt</span>
-					</div>
-				`).join('')}
+					`).join('')}
+				</div>
+				${historyHtml}
 			</div>
-			${historyHtml}
 			<div class="mp-results-actions">
-				<button class="mp-btn mp-btn-primary" id="mp-new-game-btn">🔄 Nieuw Spel</button>
+				<button class="mp-btn mp-btn-primary" id="mp-back-to-start-btn">🏠 Terug naar Start</button>
 			</div>
 		`;
 
-		// Bind new game button
-		const newGameBtn = container.querySelector('#mp-new-game-btn');
-		if (newGameBtn) {
-			newGameBtn.addEventListener('click', () => {
-				this._showScreen('lobby-screen');
+		// Bind back button — disconnect and reload for clean state
+		const backBtn = container.querySelector('#mp-back-to-start-btn');
+		if (backBtn) {
+			backBtn.addEventListener('click', () => {
+				try { this.mp.disconnect(); } catch (_) {}
+				window.location.reload();
 			});
 		}
 	}

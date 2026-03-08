@@ -185,7 +185,10 @@ function _tryBonusPlacements(bonusMatrix, zoneData, zoneName, rotations, subgrid
 				for (const c of cells) {
 					const cell = GameRules.getDataCell(zoneData, c.x, c.y);
 					if (cell?.flags?.includes('gold')) score += 8;
-					if (cell?.flags?.includes('bonus')) score += 12;
+					if (cell?.flags?.includes('bonus')) {
+						// Heavily reward bonus chaining: picking up a same-color bonus with a bonus = free extra placement
+						score += 25;
+					}
 					if (cell?.flags?.includes('pearl')) score += 6;
 					if (cell?.flags?.includes('bold')) score += 3;
 					if (cell?.flags?.includes('end')) score += 5;
@@ -522,6 +525,7 @@ function planTurn(gameState, playerId) {
 /**
  * AI kiest items in de shop.
  * Koopt de meest waardevolle items die het kan betalen.
+ * Prioriteert permanente kaarten (shop card offerings) boven eenmalige items.
  */
 function planShop(gameState, playerId) {
 	const player = gameState.players[playerId];
@@ -532,17 +536,33 @@ function planShop(gameState, playerId) {
 
 	if (coins <= 0) return [{ type: 'shopReady' }];
 
-	// Koop beschikbare shop items (goedkoopste eerst)
+	let remainingCoins = coins;
+
+	// 1. Shop card offerings FIRST (permanent cards — high strategic value)
+	const offerings = player.shopOfferings || [];
+	const cardScores = offerings.map((card, i) => {
+		if (!card) return { idx: i, score: -1, price: Infinity };
+		const price = card.shopPrice || GameRules.getCardPrice(card);
+		const cellCount = card.matrix ? card.matrix.flat().filter(v => v > 0).length : 0;
+		return { idx: i, score: cellCount, price };
+	});
+	cardScores.sort((a, b) => b.score - a.score);
+
+	for (const cs of cardScores) {
+		if (cs.score <= 0 || cs.price > remainingCoins) continue;
+		actions.push({ type: 'buyShopItem', itemId: `shop-card-${cs.idx}` });
+		remainingCoins -= cs.price;
+	}
+
+	// 2. Dan eenmalige shop items
 	const shopItems = GameRules.getShopItems(gameState.level || 1, player);
-	const affordableItems = shopItems.filter(item => item.cost <= coins && !item.unlockOnly);
+	const affordableItems = shopItems.filter(item => item.cost <= remainingCoins && !item.unlockOnly);
 	affordableItems.sort((a, b) => a.cost - b.cost);
 
-	let remainingCoins = coins;
 	for (const item of affordableItems) {
 		if (item.cost > remainingCoins) continue;
 		const extra = {};
 		if (item.id === 'extra-bonus') {
-			// Kies de kleur met de minste bonussen
 			const inv = player.bonusInventory || {};
 			const colors = ['yellow', 'red', 'green', 'purple', 'blue'];
 			colors.sort((a, b) => (inv[a] || 0) - (inv[b] || 0));
@@ -552,15 +572,19 @@ function planShop(gameState, playerId) {
 		remainingCoins -= item.cost;
 	}
 
-	// Koop eventueel shop card offerings
-	const offerings = player.shopOfferings || [];
-	for (let i = 0; i < offerings.length; i++) {
-		const card = offerings[i];
-		if (!card) continue;
-		const price = card.shopPrice || GameRules.getCardPrice(card);
-		if (price <= remainingCoins) {
-			actions.push({ type: 'buyShopItem', itemId: `shop-card-${i}` });
-			remainingCoins -= price;
+	// 3. Als we nog niets gekocht hebben en er IS iets betaalbaar, koop het goedkoopste
+	if (actions.length === 0 && coins > 0) {
+		const allBuyable = [
+			...shopItems.filter(item => item.cost <= coins && !item.unlockOnly).map(item => ({ id: item.id, cost: item.cost, extra: {} })),
+			...offerings.map((card, i) => {
+				if (!card) return null;
+				const price = card.shopPrice || GameRules.getCardPrice(card);
+				return price <= coins ? { id: `shop-card-${i}`, cost: price, extra: {} } : null;
+			}).filter(Boolean)
+		];
+		if (allBuyable.length > 0) {
+			allBuyable.sort((a, b) => a.cost - b.cost);
+			actions.push({ type: 'buyShopItem', itemId: allBuyable[0].id, extra: allBuyable[0].extra });
 		}
 	}
 
@@ -758,10 +782,15 @@ function _scoreBlueImpact(zoneData, placedCells) {
 		const cell = GameRules.getDataCell(zoneData, c.x, c.y);
 		if (cell?.flags?.includes('bold')) {
 			const tierIdx = boldYs.indexOf(c.y);
-			if (tierIdx >= 0 && !reachedBoldRows.has(c.y)) {
-				// This placement unlocks a new tier!
-				const pts = tierPoints[Math.min(tierIdx, tierPoints.length - 1)] || 10;
-				impact += pts * 2;
+			if (tierIdx >= 0) {
+				if (!reachedBoldRows.has(c.y)) {
+					// This placement unlocks a new tier!
+					const pts = tierPoints[Math.min(tierIdx, tierPoints.length - 1)] || 10;
+					impact += pts * 2;
+				} else {
+					// Bold row already scored — penalize wasting placement here
+					impact -= 8;
+				}
 			}
 		}
 	}
@@ -769,6 +798,11 @@ function _scoreBlueImpact(zoneData, placedCells) {
 	// Favor building upward — higher cells are worth more
 	const minY = Math.min(...placedCells.map(c => c.y));
 	impact += Math.max(0, Math.floor(((zoneData.rows || 20) - minY) / 2));
+
+	// Strongly prefer vertical placements (span multiple rows = reach bold rows faster)
+	const ys = new Set(placedCells.map(c => c.y));
+	const verticalSpan = ys.size;
+	if (verticalSpan >= 2) impact += verticalSpan * 5;
 
 	// Favor placements adjacent to existing cells (build connected paths upward)
 	let adjacent = 0;
@@ -1097,7 +1131,7 @@ function chooseHardPerk(gameState, playerId) {
 }
 
 /**
- * Hard AI shop strategy — smarter purchases.
+ * Hard AI shop strategy — smarter purchases, permanent cards first.
  */
 function planShopHard(gameState, playerId) {
 	const player = gameState.players[playerId];
@@ -1107,28 +1141,9 @@ function planShopHard(gameState, playerId) {
 	const coins = player.goldCoins || 0;
 	if (coins <= 0) return [{ type: 'shopReady' }];
 
-	const shopItems = GameRules.getShopItems(gameState.level || 1, player);
-	const affordableItems = shopItems.filter(item => item.cost <= coins && !item.unlockOnly);
-
-	// Hard AI: prioritize high-value items (most expensive first — they give more advantage)
-	affordableItems.sort((a, b) => b.cost - a.cost);
-
 	let remainingCoins = coins;
-	for (const item of affordableItems) {
-		if (item.cost > remainingCoins) continue;
-		const extra = {};
-		if (item.id === 'extra-bonus') {
-			// Pick the color matching our weakest zone for balance bonus
-			const scores = player.scoreBreakdown || {};
-			const colors = ['yellow', 'red', 'green', 'purple', 'blue'];
-			colors.sort((a, b) => (scores[a] || 0) - (scores[b] || 0));
-			extra.bonusColor = colors[0];
-		}
-		actions.push({ type: 'buyShopItem', itemId: item.id, extra });
-		remainingCoins -= item.cost;
-	}
 
-	// Shop card offerings — buy cards with most cells (bigger shapes = better)
+	// 1. Shop card offerings FIRST — permanent cards with most cells
 	const offerings = player.shopOfferings || [];
 	const cardScores = offerings.map((card, i) => {
 		if (!card) return { idx: i, score: -1, price: Infinity };
@@ -1142,6 +1157,40 @@ function planShopHard(gameState, playerId) {
 		if (cs.score <= 0 || cs.price > remainingCoins) continue;
 		actions.push({ type: 'buyShopItem', itemId: `shop-card-${cs.idx}` });
 		remainingCoins -= cs.price;
+	}
+
+	// 2. Then shop items (most expensive = most value)
+	const shopItems = GameRules.getShopItems(gameState.level || 1, player);
+	const affordableItems = shopItems.filter(item => item.cost <= remainingCoins && !item.unlockOnly);
+	affordableItems.sort((a, b) => b.cost - a.cost);
+
+	for (const item of affordableItems) {
+		if (item.cost > remainingCoins) continue;
+		const extra = {};
+		if (item.id === 'extra-bonus') {
+			const scores = player.scoreBreakdown || {};
+			const colors = ['yellow', 'red', 'green', 'purple', 'blue'];
+			colors.sort((a, b) => (scores[a] || 0) - (scores[b] || 0));
+			extra.bonusColor = colors[0];
+		}
+		actions.push({ type: 'buyShopItem', itemId: item.id, extra });
+		remainingCoins -= item.cost;
+	}
+
+	// 3. Always buy something if possible
+	if (actions.length === 0 && coins > 0) {
+		const allBuyable = [
+			...shopItems.filter(item => item.cost <= coins && !item.unlockOnly).map(item => ({ id: item.id, cost: item.cost, extra: {} })),
+			...offerings.map((card, i) => {
+				if (!card) return null;
+				const price = card.shopPrice || GameRules.getCardPrice(card);
+				return price <= coins ? { id: `shop-card-${i}`, cost: price, extra: {} } : null;
+			}).filter(Boolean)
+		];
+		if (allBuyable.length > 0) {
+			allBuyable.sort((a, b) => b.cost - a.cost);
+			actions.push({ type: 'buyShopItem', itemId: allBuyable[0].id, extra: allBuyable[0].extra });
+		}
 	}
 
 	const perkId = chooseHardPerk(gameState, playerId);

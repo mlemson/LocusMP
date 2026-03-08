@@ -133,8 +133,9 @@ const PERK_BRANCHES = {
 		sequential: false,
 		perks: [
 			{ id: 'flex_gap', name: 'Brugbouwer', icon: '🌉', description: 'Groen: 1 cel van je kaart wordt optioneel (transparant) — mag overgeslagen worden', cost: 1, tier: 1 },
-			{ id: 'flex_gap_red', name: 'Rode Brugbouwer', icon: '🔴🌉', description: 'Rood: 1 cel van je kaart wordt optioneel (transparant) — mag overgeslagen worden', cost: 1, tier: 1 },
-			{ id: 'flex_rotate', name: 'Vrije Rotatie', icon: '🔄', description: 'Paars: voeg 1 extra optionele cel toe aan je kaart (transparant)', cost: 1, tier: 1 },
+			{ id: 'flex_gap_red', name: 'Rode Flex', icon: '🔴🌉', description: 'Rood: 1 cel van je kaart wordt optioneel (transparant) — mag overgeslagen worden', cost: 1, tier: 1,
+				requiresAnyOf: ['flex_gap', 'flex_rotate'] },
+			{ id: 'flex_rotate', name: 'Verbinder', icon: '🔄', description: 'Paars: voeg 1 extra optionele cel toe aan je kaart (transparant)', cost: 1, tier: 1 },
 			{ id: 'flex_wildcard', name: 'Wildcardkleur', icon: '🎨', description: 'Eén kaart per ronde op elke zone plaatsen, ongeacht kleur', cost: 1, tier: 2,
 				requiresAnyOf: ['flex_gap', 'flex_gap_red', 'flex_rotate'] },
 			{ id: 'flex_double_coins', name: 'Bankier', icon: '🏦', description: 'Goudmunten zijn dubbel zoveel waard', cost: 1, tier: 2,

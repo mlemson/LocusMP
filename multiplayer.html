@@ -1595,7 +1595,8 @@
 						enhancedMatrix = Rules.rotateMatrixN(enhancedMatrix, ((Number(rotation) || 0) + 4) % 4);
 						if (mirrored) enhancedMatrix = Rules.mirrorMatrix(enhancedMatrix);
 					} else {
-						enhancedMatrix = Rules.getEnhancedMatrix(matrix, zoneName, perkFlags);
+						// Bonus mode: matrix is already correct from getBonusShapeForPlayer, skip enhancement
+						enhancedMatrix = matrix;
 					}
 
 					let zoneData;

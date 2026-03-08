@@ -724,6 +724,8 @@ function executeAITurn(gameId, aiPlayerId) {
 			setTimeout(() => {
 				const gs2 = games.get(gameId);
 				if (!gs2 || gs2.phase !== 'playing' || gs2.paused) return;
+				// Snapshot bonus inventory before placement to detect chaining
+				const invBefore = { ...(gs2.players[aiPlayerId]?.bonusInventory || {}) };
 				const bonusResult = GameRules.playBonus(
 					gs2, aiPlayerId, action.bonusColor, best.zoneName, best.baseX, best.baseY, best.subgridId, best.rotation || 0
 				);
@@ -731,6 +733,15 @@ function executeAITurn(gameId, aiPlayerId) {
 					console.log(`[Locus AI] ${player.name} bonus mislukt: ${bonusResult.error}`);
 				} else {
 					console.log(`[Locus AI] ${player.name} speelde ${action.bonusColor} bonus op ${best.zoneName}`);
+					// Check for bonus chaining: if placement earned new bonus charges, queue them
+					const invAfter = gs2.players[aiPlayerId]?.bonusInventory || {};
+					const colors = ['yellow', 'red', 'green', 'purple', 'blue', 'any'];
+					for (const col of colors) {
+						const gained = (invAfter[col] || 0) - (invBefore[col] || 0) + (col === action.bonusColor ? 1 : 0);
+						for (let g = 0; g < gained; g++) {
+							actions.splice(actionIndex, 0, { type: 'playBonus', bonusColor: col });
+						}
+					}
 				}
 				broadcastGameState(io, gameId);
 				setTimeout(processNextAction, AIPlayer.AI_ACTION_DELAY_MS);
