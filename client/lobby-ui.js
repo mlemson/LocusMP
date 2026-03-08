@@ -224,6 +224,11 @@ class LocusLobbyUI {
 		const overlay = this.elements['level-complete-overlay'];
 		if (overlay && screenId !== 'game-screen') overlay.style.display = 'none';
 
+		const themeSwitcher = document.getElementById('mp-theme-switcher');
+		if (themeSwitcher) {
+			themeSwitcher.style.display = (screenId === 'lobby-screen' || screenId === 'waiting-screen') ? 'flex' : 'none';
+		}
+
 		// Init lobby particles for lobby screen
 		if (screenId === 'lobby-screen') {
 			try { this._initLobbyParticles(); } catch (_) {}
@@ -441,7 +446,7 @@ class LocusLobbyUI {
 					this._tvConnected = true;
 					console.log('[Locus TV] TV display verbonden via BroadcastChannel');
 					// TV just became ready — resend theme + full state
-					const theme = localStorage.getItem('locus-theme') || 'classic';
+					const theme = localStorage.getItem('locus-theme') || 'reef';
 					this._tvPostMessage({ type: 'theme', theme });
 					this._broadcastTVState();
 				}
@@ -461,7 +466,7 @@ class LocusLobbyUI {
 		this._tvCastActive = true;
 
 		// Send current theme
-		const theme = localStorage.getItem('locus-theme') || 'classic';
+		const theme = localStorage.getItem('locus-theme') || 'reef';
 
 		// Determine the absolute URL for tv.html
 		const tvUrl = new URL('tv.html', window.location.href).href;
@@ -517,7 +522,7 @@ class LocusLobbyUI {
 								this._tvConnected = true;
 								console.log('[Locus TV] TV display klaar via Presentation');
 								// TV just became ready — send current theme + full state
-								this._tvPostMessage({ type: 'theme', theme: localStorage.getItem('locus-theme') || 'classic' });
+								this._tvPostMessage({ type: 'theme', theme: localStorage.getItem('locus-theme') || 'reef' });
 								this._broadcastTVState();
 							}
 						} catch (_) {}
@@ -2802,7 +2807,7 @@ class LocusLobbyUI {
 		if (isTouchInput) {
 			if (allowedZones.length === 1) {
 				const targetZone = this._normalizeZoneName(allowedZones[0]);
-				if (targetZone) this._scrollMobileBoardToZone(targetZone, true);
+				if (targetZone) this._scrollMobileBoardToZone(targetZone, false);
 			} else if (allowedZones.length > 1) {
 				const currentZone = this._lastMobileZoneName || allowedZones[0];
 				if (currentZone) this._scrollMobileBoardToZone(currentZone, false);
@@ -3298,9 +3303,6 @@ class LocusLobbyUI {
 
 			this._cancelDrag();
 			if (result.success) {
-				if (this._useMobileBoardLayout()) {
-					this._scrollMobileBoardToZone(zoneName, false);
-				}
 				// Mine getriggerd: toon explosie-effect aan de plaatser
 				if (result.mineTriggered) {
 					this._onMineTriggered(result.mineTriggered, this.mp.userId);
@@ -4311,9 +4313,6 @@ class LocusLobbyUI {
 			const result = await this.mp.playBonus(this._bonusMode.color, zoneName, baseX, baseY, subgridId, this._bonusMode.rotation || 0);
 			if (result?.error) throw new Error(result.error);
 			if (result?.success) {
-				if (this._useMobileBoardLayout()) {
-					this._scrollMobileBoardToZone(zoneName, false);
-				}
 				this._playPlaceSound();
 				this._cancelBonusMode();
 			}
@@ -6832,7 +6831,6 @@ class LocusLobbyUI {
 	/** Show bonus placement preview when a bot is about to place a bonus */
 	_onBonusPreview(data) {
 		if (!data || !data.matrix || data.playerId === this.mp.userId) return;
-		const zoneLabels = { yellow: 'Geel', green: 'Groen', blue: 'Blauw', red: 'Rood', purple: 'Paars', any: 'Multi' };
 		this._showMoveNotification(data.playerName || 'Bot', data.zoneName);
 		this._scrollMobileBoardToZone(data.zoneName, true);
 		this._showBotPlacementHover(data);

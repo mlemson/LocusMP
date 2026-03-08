@@ -1667,6 +1667,26 @@ class LocusP2PHost {
 										if (obj.zone === zoneName) score += 5;
 										if (obj.type === 'density') score += cells.length * 2;
 									}
+									const shouldSimulatePlan = hasBonuses || hasFlaggedCell || score >= 10;
+									if (shouldSimulatePlan) {
+										const followUpBonusScore = this._estimateHardMoveBonusPlan(playerId, {
+											card,
+											zoneName,
+											x,
+											y,
+											rotation,
+											mirrored,
+											subgridId,
+											matrix
+										});
+										if (followUpBonusScore > 0) {
+											score += Math.round(followUpBonusScore * 0.6);
+										} else if (hasBonuses && !hasFlaggedCell) {
+											score -= 12;
+										}
+									} else if (hasBonuses && !hasFlaggedCell) {
+										score -= 6;
+									}
 								}
 
 								// Blue zone: penalize horizontal-only placements without valuable flags
@@ -1702,6 +1722,96 @@ class LocusP2PHost {
 
 		if (!bestMove) return null;
 		return bestMove;
+	}
+
+	_estimateHardMoveBonusPlan(playerId, move) {
+		if (!move?.card?.id || !this.gameState) return 0;
+		const simState = JSON.parse(JSON.stringify(this.gameState));
+		const result = this.Rules.playMove(
+			simState,
+			playerId,
+			move.card.id,
+			move.zoneName,
+			move.x,
+			move.y,
+			move.rotation,
+			!!move.mirrored,
+			move.subgridId || null
+		);
+		if (result?.error) return 0;
+		return this._estimateBonusChainValue(simState, playerId, 3);
+	}
+
+	_estimateBonusChainValue(state, playerId, maxSteps = 2) {
+		if (!state?.players?.[playerId] || maxSteps <= 0) return 0;
+		let total = 0;
+		for (let step = 0; step < maxSteps; step++) {
+			const bestPlacement = this._findBestBonusPlacementForState(state, playerId);
+			if (!bestPlacement) break;
+			const stepWeight = step === 0 ? 1 : (step === 1 ? 0.8 : 0.65);
+			total += Math.round(bestPlacement.score * stepWeight);
+			const result = this.Rules.playBonus(
+				state,
+				playerId,
+				bestPlacement.bonusColor,
+				bestPlacement.zoneName,
+				bestPlacement.baseX,
+				bestPlacement.baseY,
+				bestPlacement.subgridId || null,
+				bestPlacement.rotation || 0
+			);
+			if (result?.error) break;
+		}
+		return total;
+	}
+
+	_findBestBonusPlacementForState(state, playerId) {
+		const player = state?.players?.[playerId];
+		const board = state?.boardState;
+		if (!player || !board) return null;
+		const colors = ['yellow', 'red', 'green', 'purple', 'blue', 'any'];
+		let bestPlacement = null;
+		let bestScore = -Infinity;
+		for (const bonusColor of colors) {
+			if (!player.bonusInventory?.[bonusColor] || player.bonusInventory[bonusColor] <= 0) continue;
+			const bonusMatrix = this.Rules.getBonusShapeForPlayer(bonusColor, player);
+			if (!bonusMatrix) continue;
+			const targetZones = bonusColor === 'any'
+				? ['yellow', 'green', 'blue', 'red', 'purple']
+				: [bonusColor];
+			for (const zoneName of targetZones) {
+				if (zoneName === 'red') {
+					for (const sg of (board.zones?.red?.subgrids || [])) {
+						this._scoreBonusPlacements(bonusMatrix, sg, zoneName, sg.id, bonusColor, (placement) => {
+							const totalScore = placement.score + this._bonusObjectiveWeight(player, placement.zoneName);
+							if (totalScore > bestScore) {
+								bestScore = totalScore;
+								bestPlacement = { ...placement, score: totalScore };
+							}
+						});
+					}
+				} else {
+					const zoneData = board.zones?.[zoneName];
+					if (!zoneData) continue;
+					this._scoreBonusPlacements(bonusMatrix, zoneData, zoneName, null, bonusColor, (placement) => {
+						const totalScore = placement.score + this._bonusObjectiveWeight(player, placement.zoneName);
+						if (totalScore > bestScore) {
+							bestScore = totalScore;
+							bestPlacement = { ...placement, score: totalScore };
+						}
+					});
+				}
+			}
+		}
+		return bestPlacement;
+	}
+
+	_bonusObjectiveWeight(player, zoneName) {
+		const obj = player?.chosenObjective;
+		if (!obj || player?.objectiveAchieved) return 0;
+		if (obj.zone && obj.zone === zoneName) return 8;
+		if (obj.type === 'density') return zoneName === 'purple' || zoneName === 'red' ? 3 : 1;
+		return 0;
 	}
 
 	/** Play a single bonus of the given color, returns {zoneName} or null */
