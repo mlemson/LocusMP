@@ -319,7 +319,7 @@ class LocusP2PHost {
 				if (!playerId) return;
 				const result = this.Rules.chooseObjective(this.gameState, playerId, msg.objectiveIndex);
 				conn.send({ type: 'result', action: 'chooseGoal', ...result });
-				if (result.allChosen) this._startTimerForCurrentPlayer(true);
+				if (result.startedPlaying) this._startTimerForCurrentPlayer(true);
 				this._broadcastState();
 				break;
 			}
@@ -452,6 +452,7 @@ class LocusP2PHost {
 				if (!playerId) return;
 				const result = this.Rules.choosePerk(this.gameState, playerId, msg.perkId);
 				conn.send({ type: 'result', action: 'choosePerk', ...result });
+				if (result.startedPlaying) this._startTimerForCurrentPlayer(true);
 				this._broadcastState();
 				break;
 			}
@@ -659,7 +660,7 @@ class LocusP2PHost {
 				break;
 			case 'chooseGoal':
 				result = this.Rules.chooseObjective(this.gameState, playerId, data.objectiveIndex);
-				if (result.allChosen) this._startTimerForCurrentPlayer(true);
+				if (result.startedPlaying) this._startTimerForCurrentPlayer(true);
 				break;
 			case 'playMove': {
 				const transformedMatrix = this._getTransformedMoveMatrix(
@@ -737,6 +738,7 @@ class LocusP2PHost {
 				break;
 			case 'choosePerk':
 				result = this.Rules.choosePerk(this.gameState, playerId, data.perkId);
+				if (result.startedPlaying) this._startTimerForCurrentPlayer(true);
 				break;
 			case 'shopReady':
 				result = this.Rules.shopReady(this.gameState, playerId);
@@ -1141,8 +1143,24 @@ class LocusP2PHost {
 				const result = this.Rules.chooseObjective(this.gameState, aiId, bestIdx);
 				if (!result?.error) {
 					changed = true;
-					if (result.allChosen) this._startTimerForCurrentPlayer(true);
+					if (result.startedPlaying) this._startTimerForCurrentPlayer(true);
 				}
+			}
+
+			for (const aiId of this.aiPlayerIds) {
+				const p = this.gameState.players?.[aiId];
+				if (!p || !p.chosenObjective) continue;
+				const chosenId = this._aiPickPerk(aiId, this._aiDifficulty?.get(aiId) === 'hard');
+				if (!chosenId) continue;
+				const perkRes = this.Rules.choosePerk(this.gameState, aiId, chosenId);
+				if (perkRes?.error) continue;
+				changed = true;
+				this._broadcastEvent('botActivity', {
+					playerId: aiId,
+					playerName: p.name,
+					text: `${perkRes?.perk?.icon || '🎯'} Perk: ${perkRes?.perk?.name || chosenId}`
+				});
+				if (perkRes.startedPlaying) this._startTimerForCurrentPlayer(true);
 			}
 		}
 

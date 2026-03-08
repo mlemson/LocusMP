@@ -510,7 +510,22 @@ function executeAIActions(gameId) {
 			if (!result.error) {
 				console.log(`[Locus AI] ${player.name} koos objective ${idx}`);
 				changed = true;
-				if (result.allChosen) {
+				if (result.startedPlaying) {
+					_startTimerForCurrentPlayer(gameId, true);
+				}
+			}
+		}
+		for (const aiId of gameAIs) {
+			const player = gameState.players[aiId];
+			if (!player || !player.chosenObjective) continue;
+			const aiPers = aiPersonality.get(gameId)?.get(aiId) || 'normal';
+			const perkId = AIPlayer.choosePerk(gameState, aiId, aiPers);
+			if (!perkId) continue;
+			const perkResult = GameRules.choosePerk(gameState, aiId, perkId);
+			if (!perkResult.error) {
+				console.log(`[Locus AI] ${player.name} koos perk "${perkResult.perk?.name}" tijdens doelstellingsfase`);
+				changed = true;
+				if (perkResult.startedPlaying) {
 					_startTimerForCurrentPlayer(gameId, true);
 				}
 			}
@@ -1265,7 +1280,7 @@ io.on('connection', (socket) => {
 			callback({ success: true, allChosen: chooseResult.allChosen });
 
 			// Start timer voor de eerste speler als het spel begint
-			if (chooseResult.allChosen) {
+			if (chooseResult.startedPlaying) {
 				_startTimerForCurrentPlayer(info.gameId, true);
 			}
 			broadcastGameState(io, info.gameId);
@@ -1641,6 +1656,9 @@ io.on('connection', (socket) => {
 			console.log(`[Locus] Speler ${info.playerId} ontgrendelde perk: ${result.perk?.name}`);
 
 			callback({ success: true, perk: result.perk });
+			if (result.startedPlaying) {
+				_startTimerForCurrentPlayer(info.gameId, true);
+			}
 
 			// Broadcast perk unlock aan alle spelers
 			io.to(info.gameId).emit('perkUnlocked', {

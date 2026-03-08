@@ -219,7 +219,7 @@ function getAvailablePerks(player) {
  * Ontgrendel een perk voor een speler.
  */
 function choosePerk(gameState, playerId, perkId) {
-	if (gameState.phase !== 'choosingGoals') return { error: 'Perks kunnen alleen vóór de doelstelling gekozen worden' };
+	if (gameState.phase !== 'choosingGoals') return { error: 'Perks kunnen alleen tijdens de doelstellingsfase gekozen worden' };
 	const player = gameState.players[playerId];
 	if (!player) return { error: 'Speler niet gevonden' };
 	if (!player.perks) return { error: 'Perk data niet geïnitialiseerd' };
@@ -278,7 +278,42 @@ function choosePerk(gameState, playerId, perkId) {
 	}
 
 	gameState.updatedAt = Date.now();
-	return { success: true, perk: { id: perkId, name: perk.name, icon: perk.icon, cost: perk.cost } };
+	const startedPlaying = maybeStartPlayingAfterGoalPhase(gameState);
+	return { success: true, perk: { id: perkId, name: perk.name, icon: perk.icon, cost: perk.cost }, startedPlaying };
+}
+
+function allObjectivesChosen(gameState) {
+	return (gameState.playerOrder || []).every(pid => {
+		if (gameState.players[pid]?.connected === false) return true;
+		return gameState.players[pid]?.chosenObjective != null;
+	});
+}
+
+function hasPendingGoalPerks(gameState) {
+	for (const pid of (gameState.playerOrder || [])) {
+		const player = gameState.players?.[pid];
+		if (!player || player.connected === false) continue;
+		if (!player.chosenObjective) return true;
+		if (!player.perks || (player.perks.perkPoints || 0) < 1) continue;
+		const available = getAvailablePerks(player);
+		if (Array.isArray(available) && available.length > 0) return true;
+	}
+	return false;
+}
+
+function maybeStartPlayingAfterGoalPhase(gameState) {
+	if (gameState.phase !== 'choosingGoals') return false;
+	if (!allObjectivesChosen(gameState)) return false;
+	if (hasPendingGoalPerks(gameState)) return false;
+	for (const pid of gameState.playerOrder) {
+		drawHand(gameState, pid);
+	}
+	gameState.phase = 'playing';
+	gameState.currentTurnIndex = 0;
+	gameState.turnCount = 1;
+	delete gameState._roundFiveBonusBurstDone;
+	gameState._turnTimerStart = Date.now();
+	return true;
 }
 
 // ──────────────────────────────────────────────
@@ -3362,23 +3397,10 @@ function chooseObjective(gameState, playerId, objectiveIndex) {
 	refreshSabotageObjectivesForTarget(gameState, playerId);
 	gameState.updatedAt = Date.now();
 
-	const allChosen = gameState.playerOrder.every(pid => {
-		if (gameState.players[pid]?.connected === false) return true;
-		return gameState.players[pid]?.chosenObjective != null;
-	});
+	const allChosen = allObjectivesChosen(gameState);
+	const startedPlaying = maybeStartPlayingAfterGoalPhase(gameState);
 
-	if (allChosen) {
-		for (const pid of gameState.playerOrder) {
-			drawHand(gameState, pid);
-		}
-		gameState.phase = 'playing';
-		gameState.currentTurnIndex = 0;
-		gameState.turnCount = 1;
-		delete gameState._roundFiveBonusBurstDone;
-		gameState._turnTimerStart = Date.now();
-	}
-
-	return { success: true, allChosen };
+	return { success: true, allChosen, startedPlaying };
 }
 
 function drawHand(gameState, playerId) {
