@@ -1151,15 +1151,23 @@ class LocusP2PHost {
 				const p = this.gameState.players?.[aiId];
 				if (!p || !p.chosenObjective) continue;
 				const chosenId = this._aiPickPerk(aiId, this._aiDifficulty?.get(aiId) === 'hard');
-				if (!chosenId) continue;
-				const perkRes = this.Rules.choosePerk(this.gameState, aiId, chosenId);
+				const perkChoice = chosenId || '__skip__';
+				const perkRes = this.Rules.choosePerk(this.gameState, aiId, perkChoice);
 				if (perkRes?.error) continue;
 				changed = true;
-				this._broadcastEvent('botActivity', {
-					playerId: aiId,
-					playerName: p.name,
-					text: `${perkRes?.perk?.icon || '🎯'} Perk: ${perkRes?.perk?.name || chosenId}`
-				});
+				if (perkChoice === '__skip__') {
+					this._broadcastEvent('botActivity', {
+						playerId: aiId,
+						playerName: p.name,
+						text: '🎯 Klaar met perks'
+					});
+				} else {
+					this._broadcastEvent('botActivity', {
+						playerId: aiId,
+						playerName: p.name,
+						text: `${perkRes?.perk?.icon || '🎯'} Perk: ${perkRes?.perk?.name || chosenId}`
+					});
+				}
 				if (perkRes.startedPlaying) this._startTimerForCurrentPlayer(true);
 			}
 		}
@@ -2197,42 +2205,61 @@ class LocusP2PHost {
 	_aiFindMineTarget(playerId) {
 		const board = this.gameState?.boardState;
 		if (!board) return null;
-		const zoneNames = ['yellow', 'green', 'blue', 'purple'];
-		// Pick a random zone and find an empty cell with flags
-		for (const zoneName of zoneNames) {
-			const zoneData = board.zones?.[zoneName];
-			if (!zoneData) continue;
+		const candidates = [];
+		const pushCandidate = (zoneName, zoneData) => {
+			if (!zoneData) return;
 			for (let y = 0; y < (zoneData.rows || 0); y++) {
 				for (let x = 0; x < (zoneData.cols || 0); x++) {
 					const cell = this.Rules.getDataCell(zoneData, x, y);
-					if (cell && !cell.active && cell.flags?.length > 0) {
-						return { zoneName, cellX: x, cellY: y };
-					}
+					if (!cell || cell.active) continue;
+					if (cell.flags?.includes('void')) continue;
+					let score = 1;
+					if (cell.flags?.includes('bonus')) score += 18;
+					if (cell.flags?.includes('gold')) score += 12;
+					if (cell.flags?.includes('bold')) score += 9;
+					if (cell.flags?.includes('end')) score += 8;
+					if (cell.flags?.includes('portal')) score += 6;
+					if (this._hasAdjacentActive(zoneData, x, y)) score += 5;
+					score += Math.random() * 3;
+					candidates.push({ zoneName, cellX: x, cellY: y, score });
 				}
 			}
+		};
+		for (const zoneName of ['yellow', 'green', 'blue', 'purple']) {
+			pushCandidate(zoneName, board.zones?.[zoneName]);
 		}
+		for (const sg of (board.zones?.red?.subgrids || [])) {
+			pushCandidate('red', sg);
+		}
+		if (candidates.length === 0) return null;
+		candidates.sort((a, b) => b.score - a.score);
+		const top = candidates.slice(0, Math.min(14, candidates.length));
+		const picked = top[Math.floor(Math.random() * top.length)];
+		if (picked) return { zoneName: picked.zoneName, cellX: picked.cellX, cellY: picked.cellY };
 		return null;
 	}
 
 	/** Find a target to steal a card from */
 	_aiFindStealTarget(playerId) {
 		const players = this.gameState?.players || {};
+		const candidates = [];
 		for (const pid of Object.keys(players)) {
 			if (pid === playerId) continue;
 			const target = players[pid];
 			if (!target) continue;
 			const stealable = (target.hand || []).filter(c => !c.isGolden && !c.isStone);
 			if (stealable.length > 0) {
-				// Pick card with most cells (biggest shape)
-				let bestCard = stealable[0];
-				let bestCells = 0;
 				for (const card of stealable) {
 					const count = card.matrix ? card.matrix.flat().filter(v => v > 0).length : 0;
-					if (count > bestCells) { bestCells = count; bestCard = card; }
+					const score = (count * 3) + Math.random() * 4;
+					candidates.push({ targetPlayerId: pid, cardId: card.id, score });
 				}
-				return { targetPlayerId: pid, cardId: bestCard.id };
 			}
 		}
+		if (candidates.length === 0) return null;
+		candidates.sort((a, b) => b.score - a.score);
+		const top = candidates.slice(0, Math.min(8, candidates.length));
+		return top[Math.floor(Math.random() * top.length)] || null;
 		return null;
 	}
 
