@@ -47,6 +47,7 @@ class LocusMultiplayer {
 		this.onOpponentInteraction = null; // ({ playerId, playerName, type, mode, ... }) => {}
 		this.onTaunt = null;               // ({ playerId, playerName, text, timestamp }) => {}
 		this.onPauseChanged = null;        // ({ paused, playerId, playerName, remainingMs }) => {}
+		this.onBotActivity = null;         // ({ playerId, playerName, text }) => {}
 	}
 
 	// ──────────────────────────────────────────
