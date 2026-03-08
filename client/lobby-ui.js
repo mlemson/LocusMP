@@ -5867,7 +5867,25 @@ class LocusLobbyUI {
 		// Continue/close button
 		const continueBtn = overlay.querySelector('#mp-perk-popup-continue');
 		if (continueBtn) {
-			continueBtn.addEventListener('click', closePopup);
+			continueBtn.addEventListener('click', async () => {
+				if (!isChoosingGoals) {
+					closePopup();
+					return;
+				}
+				continueBtn.disabled = true;
+				try {
+					const result = await this.mp.choosePerk('__skip__');
+					if (!result?.success) {
+						this._showToast(result?.error || 'Kon perks niet afronden', 'error');
+						continueBtn.disabled = false;
+						return;
+					}
+					closePopup();
+				} catch (err) {
+					this._showToast('Kon perks niet afronden', 'error');
+					continueBtn.disabled = false;
+				}
+			});
 		}
 
 		// Bind perk unlock buttons
