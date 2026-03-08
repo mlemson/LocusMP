@@ -1318,9 +1318,20 @@ class LocusP2PHost {
 					if (previewData) {
 						this._broadcastEvent('bonusPreview', previewData);
 						setTimeout(() => {
+							// Snapshot bonus inventory before placement to detect chaining
+							const invBefore = { ...(this.gameState.players[playerId]?.bonusInventory || {}) };
 							const bonusResult = this._aiPlayOneBonus(playerId, action.bonusColor);
 							if (bonusResult) {
 								console.log(`[AI ${playerName}] 🎁 Bonus gespeeld: ${action.bonusColor} op ${bonusResult.zoneName}`);
+								// Check for bonus chaining: if placement earned new bonus charges, queue them
+								const invAfter = this.gameState.players[playerId]?.bonusInventory || {};
+								const colors = ['yellow', 'red', 'green', 'purple', 'blue', 'any'];
+								for (const col of colors) {
+									const gained = (invAfter[col] || 0) - (invBefore[col] || 0) + (col === action.bonusColor ? 1 : 0);
+									for (let g = 0; g < gained; g++) {
+										actions.splice(idx, 0, { type: 'playBonus', bonusColor: col });
+									}
+								}
 								this._broadcastState();
 							}
 							setTimeout(processNext, ACTION_DELAY);
@@ -1658,12 +1669,18 @@ class LocusP2PHost {
 					if (!cells || cells.length === 0) continue;
 					if (!this.Rules.validatePlacement(zoneName, zoneData, cells, {})) continue;
 					let score = cells.length;
+					let bonusCount = 0;
 					for (const c of cells) {
 						const cell = this.Rules.getDataCell(zoneData, c.x, c.y);
-						if (cell?.flags?.includes('gold')) score += 3;
-						if (cell?.flags?.includes('bonus')) score += 2;
-						if (cell?.flags?.includes('bold')) score += 1;
+						if (cell?.flags?.includes('gold')) score += 8;
+						if (cell?.flags?.includes('bonus')) { bonusCount++; score += 25; }
+						if (cell?.flags?.includes('bold')) score += 3;
+						if (cell?.flags?.includes('pearl')) score += 6;
+						if (cell?.flags?.includes('end')) score += 5;
 					}
+					// Extra scaling for multi-bonus grabs
+					if (bonusCount >= 2) score += bonusCount * 15;
+					if (bonusCount >= 3) score += 25;
 					onFound({ zoneName, baseX: x, baseY: y, rotation, subgridId, score, bonusColor });
 				}
 			}
