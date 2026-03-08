@@ -529,6 +529,29 @@ class LocusP2PHost {
 				if (!playerId) return;
 				const playerName = this.gameState.players[playerId]?.name || 'Speler';
 				this._broadcastEvent('taunt', { playerId, playerName, text: msg.text, timestamp: Date.now() });
+
+				// Bot auto-reply: 60% chance a random bot responds after 1-3s
+				const aiPlayers = (this.gameState.playerOrder || []).filter(pid =>
+					pid !== playerId && this.gameState.players[pid]?.isAI
+				);
+				if (aiPlayers.length > 0 && Math.random() <= 0.60) {
+					const botId = aiPlayers[Math.floor(Math.random() * aiPlayers.length)];
+					const taunts = ['Nooo!', 'HAHA', 'Well played!', 'Oeps...', 'Kom op!', 'cheater', 'fuck off', 'your mum'];
+					const replyText = taunts[Math.floor(Math.random() * taunts.length)];
+					const replyDelay = 1000 + Math.floor(Math.random() * 2000);
+					setTimeout(() => {
+						if (!this.gameState || this.gameState.phase !== 'playing') return;
+						const botPlayer = this.gameState.players[botId];
+						if (!botPlayer) return;
+						this._broadcastEvent('taunt', {
+							playerId: botId,
+							playerName: botPlayer.name,
+							text: replyText,
+							timestamp: Date.now()
+						});
+					}, replyDelay);
+				}
+
 				conn.send({ type: 'result', action: 'sendTaunt', success: true });
 				break;
 			}
@@ -905,7 +928,12 @@ class LocusP2PHost {
 				const bombResult = this.Rules.useTimeBomb(this.gameState, aiId);
 				if (bombResult && !bombResult.error) {
 					console.log(`💣 Bot ${aiPlayer.name} used TIME BOMB on ${this.gameState.players?.[currentPid]?.name}!`);
-					this._broadcastEvent('timeBombUsed', { byPlayerId: aiId, targetPlayerId: currentPid });
+					this._broadcastEvent('timeBombUsed', {
+						bomberPlayerId: bombResult.bomberPlayerId,
+						bomberPlayerName: bombResult.bomberPlayerName,
+						bombedPlayerId: bombResult.bombedPlayerId,
+						bombedPlayerName: bombResult.bombedPlayerName
+					});
 					this._broadcastState();
 				}
 			}, 500);

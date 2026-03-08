@@ -1930,6 +1930,24 @@ io.on('connection', (socket) => {
 				timestamp: now
 			});
 
+			// Bot auto-reply: 60% chance a random bot responds after 1-3s
+			const reply = AIPlayer.pickAIReplyToTaunt(gameState, info.playerId);
+			if (reply) {
+				const replyDelay = 1000 + Math.floor(Math.random() * 2000);
+				setTimeout(() => {
+					const gs = games.get(info.gameId);
+					if (!gs || gs.phase !== 'playing') return;
+					const botPlayer = gs.players[reply.aiPlayerId];
+					if (!botPlayer) return;
+					io.to(info.gameId).emit('taunt', {
+						playerId: reply.aiPlayerId,
+						playerName: botPlayer.name,
+						text: reply.text,
+						timestamp: Date.now()
+					});
+				}, replyDelay);
+			}
+
 			callback({ success: true });
 		} catch (error) {
 			console.error('[Locus] sendTaunt error:', error);

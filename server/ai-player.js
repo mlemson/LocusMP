@@ -61,6 +61,27 @@ function pickAITaunt(gameState, aiPlayerId, context) {
 }
 
 /**
+ * Pick a reply taunt from a random AI bot when a human sends a taunt.
+ * 60% chance any bot responds. Returns { aiPlayerId, text } or null.
+ */
+function pickAIReplyToTaunt(gameState, humanPlayerId) {
+	if (Math.random() > 0.60) return null;
+
+	// Find AI players in the game
+	const aiPlayers = (gameState.playerOrder || []).filter(pid =>
+		pid !== humanPlayerId && gameState.players[pid]?.isAI
+	);
+	if (aiPlayers.length === 0) return null;
+
+	// Pick a random bot to reply
+	const aiId = aiPlayers[Math.floor(Math.random() * aiPlayers.length)];
+	const pool = AI_REACTIVE_TAUNTS.random;
+	const text = pool[Math.floor(Math.random() * pool.length)];
+
+	return { aiPlayerId: aiId, text };
+}
+
+/**
  * Geeft alle geldige plaatsingen terug voor een kaart in een zone.
  * Returns array van { zoneName, baseX, baseY, rotation, mirrored, subgridId, score }
  */
@@ -182,17 +203,22 @@ function _tryBonusPlacements(bonusMatrix, zoneData, zoneName, rotations, subgrid
 				if (!GameRules.validatePlacement(zoneName, zoneData, cells, {})) continue;
 
 				let score = cells.length;
+				let bonusCount = 0;
 				for (const c of cells) {
 					const cell = GameRules.getDataCell(zoneData, c.x, c.y);
 					if (cell?.flags?.includes('gold')) score += 8;
 					if (cell?.flags?.includes('bonus')) {
 						// Heavily reward bonus chaining: picking up a same-color bonus with a bonus = free extra placement
+						bonusCount++;
 						score += 25;
 					}
 					if (cell?.flags?.includes('pearl')) score += 6;
 					if (cell?.flags?.includes('bold')) score += 3;
 					if (cell?.flags?.includes('end')) score += 5;
 				}
+				// Extra scaling for multi-bonus grabs (3 bonuses >> 3x one bonus)
+				if (bonusCount >= 2) score += bonusCount * 15;
+				if (bonusCount >= 3) score += 25;
 
 				// Zone-specific bonus impact (lighter than full card impact)
 				if (zoneName === 'yellow') score += _scoreYellowImpact(zoneData, cells);
@@ -221,6 +247,17 @@ function _tryBonusPlacements(bonusMatrix, zoneData, zoneName, rotations, subgrid
 			}
 		}
 	}
+}
+
+/**
+ * Evaluate the best bonus placement for a given color without placing it.
+ * Returns { score } or null if no valid placement exists.
+ */
+function _evaluateBestBonus(gameState, playerId, bonusColor) {
+	const placements = findValidBonusPlacements(gameState, playerId, bonusColor);
+	if (placements.length === 0) return null;
+	placements.sort((a, b) => b.score - a.score);
+	return placements[0];
 }
 
 /**
@@ -627,11 +664,24 @@ function _evaluatePlacementImpact(gameState, playerId, card, placement) {
 	if (!cells || cells.length === 0) return placement.score;
 
 	// ── Collect valuable cell resources ──
+	let bonusFlagsCollected = 0;
 	for (const c of cells) {
 		const cell = GameRules.getDataCell(zoneData, c.x, c.y);
 		if (cell?.flags?.includes('gold')) impactScore += 10;
-		if (cell?.flags?.includes('bonus')) impactScore += 15;
+		if (cell?.flags?.includes('bonus')) {
+			bonusFlagsCollected++;
+			impactScore += 15;
+		}
 		if (cell?.flags?.includes('pearl')) impactScore += 8;
+	}
+
+	// ── 2-step lookahead: bonus cells captured → future bonus placements ──
+	// Multiple bonuses from one card = exponential value (3 bonuses >> 1 bonus)
+	if (bonusFlagsCollected >= 2) {
+		impactScore += bonusFlagsCollected * 20; // Extra scaling for multi-bonus
+	}
+	if (bonusFlagsCollected >= 3) {
+		impactScore += 30; // Big bonus for 3+ in one placement
 	}
 
 	// ── Zone-specific scoring simulation ──
@@ -1065,11 +1115,22 @@ function planTurnHard(gameState, playerId) {
 	}
 
 	// 4. Bonuses — prioritize objective-relevant zones
+	//    Hard AI: only play bonuses that yield immediate value (bonus chains, gold, objectives)
+	//    Save others for later when they might be more useful
 	const bonusOrder = _getBonusPlayOrder(player);
 	for (const color of bonusOrder) {
 		const charges = player.bonusInventory?.[color] || 0;
 		for (let i = 0; i < charges; i++) {
-			actions.push({ type: 'playBonus', bonusColor: color });
+			// Evaluate the best bonus placement to decide if it's worth playing now
+			const bestBonus = _evaluateBestBonus(gameState, playerId, color);
+			if (bestBonus && bestBonus.score >= 10) {
+				// Good placement available — play it
+				actions.push({ type: 'playBonus', bonusColor: color });
+			} else if (bestBonus && bestBonus.score >= 5) {
+				// Mediocre placement — play it but lower priority (still in queue)
+				actions.push({ type: 'playBonus', bonusColor: color });
+			}
+			// If score < 5: skip (save bonus for later)
 		}
 	}
 
@@ -1212,6 +1273,7 @@ module.exports = {
 	getAIThinkDelay,
 	getHardAIThinkDelay,
 	pickAITaunt,
+	pickAIReplyToTaunt,
 	AI_TAUNTS,
 	findValidPlacements,
 	findValidBonusPlacements,
