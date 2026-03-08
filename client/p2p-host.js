@@ -1150,6 +1150,7 @@ class LocusP2PHost {
 			for (const aiId of this.aiPlayerIds) {
 				const p = this.gameState.players?.[aiId];
 				if (!p || !p.chosenObjective) continue;
+				if (p.goalPerksDone) continue;
 				const chosenId = this._aiPickPerk(aiId, this._aiDifficulty?.get(aiId) === 'hard');
 				const perkChoice = chosenId || '__skip__';
 				const perkRes = this.Rules.choosePerk(this.gameState, aiId, perkChoice);

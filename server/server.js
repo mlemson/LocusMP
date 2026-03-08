@@ -1653,19 +1653,25 @@ io.on('connection', (socket) => {
 			if (result.error) return callback({ success: false, error: result.error });
 
 			const playerData = gameState.players[info.playerId];
-			console.log(`[Locus] Speler ${info.playerId} ontgrendelde perk: ${result.perk?.name}`);
+			if (result.skipped) {
+				console.log(`[Locus] Speler ${info.playerId} sloeg perks over en is klaar`);
+			} else {
+				console.log(`[Locus] Speler ${info.playerId} ontgrendelde perk: ${result.perk?.name}`);
+			}
 
-			callback({ success: true, perk: result.perk });
+			callback({ success: true, perk: result.perk, skipped: !!result.skipped });
 			if (result.startedPlaying) {
 				_startTimerForCurrentPlayer(info.gameId, true);
 			}
 
-			// Broadcast perk unlock aan alle spelers
-			io.to(info.gameId).emit('perkUnlocked', {
-				playerId: info.playerId,
-				playerName: playerData?.name || '???',
-				perk: result.perk
-			});
+			// Broadcast perk unlock aan alle spelers (niet bij skip)
+			if (!result.skipped) {
+				io.to(info.gameId).emit('perkUnlocked', {
+					playerId: info.playerId,
+					playerName: playerData?.name || '???',
+					perk: result.perk
+				});
+			}
 
 			broadcastGameState(io, info.gameId);
 
