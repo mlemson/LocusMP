@@ -1258,9 +1258,16 @@ class LocusP2PHost {
 			}
 		}
 
-		// 6. End turn
-		const discardCardId = !bestMove ? this._aiPickDiscardCard(playerId) : null;
-		actions.push({ type: 'endTurn', discardCardId });
+		// 6. If the bot cannot play a card and has no bonuses, explicitly pass
+		// (discard a non-golden card, or forfeit if only golden cards remain)
+		const hasBonusTurns = actions.some(a => a.type === 'playBonus');
+		if (!bestMove && !hasBonusTurns) {
+			const discardCardId = this._aiPickDiscardCard(playerId);
+			actions.push({ type: 'pass', discardCardId });
+		} else {
+			// 7. Normal end turn (card was played or bonuses played)
+			actions.push({ type: 'endTurn', discardCardId: null });
+		}
 
 		// Process actions sequentially with delays
 		let idx = 0;
@@ -1427,7 +1434,7 @@ class LocusP2PHost {
 					// 1 second pause before ending turn so the placement is visible
 					setTimeout(() => {
 						if (!this.gameState) { this._aiTurnInProgress = false; return; }
-						const result = this.Rules.endTurn(this.gameState, playerId, action.discardCardId || null);
+						const result = this.Rules.endTurn(this.gameState, playerId, null);
 						if (result?.error) {
 							console.log(`[AI ${playerName}] EndTurn mislukt: ${result.error}`);
 							this._aiTurnInProgress = false;
@@ -1447,6 +1454,45 @@ class LocusP2PHost {
 						this._aiTurnInProgress = false;
 						this._aiMaybeTaunt(playerId);
 					}, 1000);
+					break;
+				}
+
+				case 'pass': {
+					// Bot can't play a card and has no bonuses — pass by discarding a card
+					setTimeout(() => {
+						if (!this.gameState) { this._aiTurnInProgress = false; return; }
+						const result = this.Rules.passMove(this.gameState, playerId, action.discardCardId || null);
+						if (result?.error) {
+							// passMove failed — fall back to endTurn which always succeeds
+							console.log(`[AI ${playerName}] Pass mislukt (${result.error}), val terug op endTurn`);
+							const endResult = this.Rules.endTurn(this.gameState, playerId, null);
+							if (!endResult?.error) {
+								console.log(`[AI ${playerName}] ✅ Beurt beëindigd (fallback)`);
+								if (endResult?.gameEnded) {
+									this._broadcastEvent('levelComplete', {
+										levelScores: this.gameState.levelScores,
+										levelWinner: this.gameState.levelWinner,
+										level: this.gameState.level
+									});
+								} else {
+									this._startTimerForCurrentPlayer(true);
+								}
+							}
+						} else {
+							console.log(`[AI ${playerName}] ↩️ Gepast (kaart weggegooid)`);
+							if (result?.gameEnded) {
+								this._broadcastEvent('levelComplete', {
+									levelScores: this.gameState.levelScores,
+									levelWinner: this.gameState.levelWinner,
+									level: this.gameState.level
+								});
+							} else {
+								this._startTimerForCurrentPlayer(true);
+							}
+						}
+						this._broadcastState();
+						this._aiTurnInProgress = false;
+					}, 800);
 					break;
 				}
 
