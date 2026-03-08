@@ -202,7 +202,7 @@ class LocusLobbyUI {
 			'results-container', 'play-again-btn',
 			'shop-container', 'shop-ready-btn',
 			'tv-cast-btn', 'tv-cast-game-btn',
-			'add-ai-btn', 'ai-difficulty-select'
+			'add-ai-btn', 'ai-difficulty-select', 'ai-controls'
 		];
 		for (const id of ids) {
 			this.elements[id] = document.getElementById(id);
@@ -393,6 +393,7 @@ class LocusLobbyUI {
 		this.mp.onMovePlayed = (data) => this._onMovePlayed(data);
 		this.mp.onObjectivesRevealed = () => this._onObjectivesRevealed();
 		this.mp.onTimeBombed = (data) => this._onTimeBombed(data);
+		this.mp.onCardStolen = (data) => this._onCardStolen(data);
 		this.mp.onOpponentInteraction = (data) => this._onOpponentInteraction(data);
 		this.mp.onTaunt = (data) => this._onTaunt(data);
 		this.mp.onPauseChanged = (data) => this._onPauseChanged(data);
@@ -1330,12 +1331,10 @@ class LocusLobbyUI {
 		const startBtn = this.elements['start-game-btn'];
 		if (startBtn) startBtn.style.display = isHost ? 'block' : 'none';
 
-		// Show add-AI button for host
-		const addAiBtn = this.elements['add-ai-btn'];
-		const aiDiffSelect = this.elements['ai-difficulty-select'];
+		// Show add-AI controls for host
+		const aiControls = this.elements['ai-controls'];
 		const canAddAI = !!(this.mp && typeof this.mp.addAIPlayer === 'function');
-		if (addAiBtn) addAiBtn.style.display = (isHost && canAddAI) ? 'block' : 'none';
-		if (aiDiffSelect) aiDiffSelect.style.display = (isHost && canAddAI) ? 'inline-block' : 'none';
+		if (aiControls) aiControls.style.display = (isHost && canAddAI) ? 'flex' : 'none';
 
 		// Show cast button for host (P2P only for now)
 		const castBtn = this.elements['tv-cast-btn'];
@@ -2223,6 +2222,37 @@ class LocusLobbyUI {
 		}
 	}
 
+	_onCardStolen(data) {
+		const { thiefId, thiefName, targetId, targetName, cardName } = data;
+		const isVictim = targetId === this.mp.userId;
+		const isThief = thiefId === this.mp.userId;
+
+		// Visible signal: overlay similar to bomb
+		if (isVictim) {
+			const overlay = document.createElement('div');
+			overlay.className = 'mp-bomb-overlay';
+			overlay.innerHTML = `
+				<div class="mp-bomb-emoji">🃏😈</div>
+				<div class="mp-bomb-text">
+					${this._escapeHtml(thiefName)} stal je kaart!<br>
+					<small>"${this._escapeHtml(cardName)}" is tijdelijk gestolen</small>
+				</div>
+			`;
+			document.body.appendChild(overlay);
+			requestAnimationFrame(() => overlay.classList.add('active'));
+			setTimeout(() => {
+				overlay.classList.remove('active');
+				overlay.classList.add('fade-out');
+				setTimeout(() => overlay.remove(), 500);
+			}, 2500);
+			this._playBombSound();
+			this._showToast(`🃏 ${this._escapeHtml(thiefName)} stal je "${this._escapeHtml(cardName)}"!`, 'warning');
+			this._renderHand();
+		} else if (!isThief) {
+			this._showToast(`🃏 ${this._escapeHtml(thiefName)} stal een kaart van ${this._escapeHtml(targetName)}!`, 'info');
+		}
+	}
+
 	_onMineTriggered(mineData, triggerPlayerId) {
 		const isMe = triggerPlayerId === this.mp.userId;
 		const mineOwnerName = mineData.mineOwnerName || 'Iemand';
@@ -2375,6 +2405,7 @@ class LocusLobbyUI {
 				if (zoneName) {
 					const perkFlags = {
 						greenGapAllowed: !!myPlayer.perks.greenGapAllowed,
+						redGapAllowed: !!myPlayer.perks.redGapAllowed,
 						diagonalRotation: !!myPlayer.perks.diagonalRotation
 					};
 					baseMatrix = Rules.getEnhancedMatrix(baseMatrix, zoneName, perkFlags);
@@ -2526,6 +2557,7 @@ class LocusLobbyUI {
 
 					<h4 class="mp-deck-section-title" style="margin-top: 16px;">📊 Zone Scores</h4>
 					${this._renderDeckZoneScores()}
+					${this._renderOpponentGoals()}
 				</div>
 			`;
 		}
@@ -2623,6 +2655,43 @@ class LocusLobbyUI {
 		</div>`;
 	}
 
+	/** Render opponents' objectives in the deck overview */
+	_renderOpponentGoals() {
+		const gs = this.mp.gameState;
+		if (!gs) return '';
+		const myId = this.mp.userId;
+		const opponents = (gs.playerOrder || []).filter(pid => pid !== myId);
+		if (opponents.length === 0) return '';
+
+		const items = opponents.map(pid => {
+			const p = gs.players[pid];
+			if (!p) return '';
+			const obj = p.chosenObjective;
+			const name = this._escapeHtml(p.name || 'Speler');
+			const color = p.color?.code || '#888';
+			if (!obj) {
+				return `<div class="mp-deck-opponent-goal">
+					<span class="mp-deck-zone-dot" style="background:${color};"></span>
+					<strong>${name}</strong>: <em style="color:var(--mp-text-dim);">nog niet gekozen</em>
+				</div>`;
+			}
+			const achieved = p.objectiveAchieved || false;
+			const failed = !!p.objectiveFailed;
+			const status = achieved ? '✅' : (failed ? '❌' : '🎯');
+			const progress = p.objectiveProgress;
+			const progressText = progress ? ` (${progress.current}/${progress.target})` : '';
+			return `<div class="mp-deck-opponent-goal">
+				<span class="mp-deck-zone-dot" style="background:${color};"></span>
+				<strong>${name}</strong>: ${status} ${this._escapeHtml(obj.name)}${progressText}
+				${this._renderObjectiveRewardBadges(progress || obj, { wrapperClass: 'mp-objective-rewards' })}
+			</div>`;
+		}).filter(Boolean);
+
+		if (items.length === 0) return '';
+		return `<h4 class="mp-deck-section-title" style="margin-top: 16px;">👥 Doelen van andere spelers</h4>
+			<div class="mp-deck-opponent-goals">${items.join('')}</div>`;
+	}
+
 	// ──────────────────────────────────────────
 	//  DRAG AND DROP
 	// ──────────────────────────────────────────
@@ -2688,9 +2757,15 @@ class LocusLobbyUI {
 
 		// Touch/coarse: spring direct naar de bijbehorende kleur-zone bij single-color kaarten
 		const allowedZones = Rules.getAllowedZones(card);
-		if (allowedZones.length === 1 && (e.pointerType === 'touch' || e.pointerType === 'pen' || this._isTouchLikeDevice())) {
-			const targetZone = this._normalizeZoneName(allowedZones[0]);
-			if (targetZone) this._scrollMobileBoardToZone(targetZone, true);
+		if ((e.pointerType === 'touch' || e.pointerType === 'pen' || this._isTouchLikeDevice())) {
+			if (allowedZones.length === 1) {
+				const targetZone = this._normalizeZoneName(allowedZones[0]);
+				if (targetZone) this._scrollMobileBoardToZone(targetZone, true);
+			} else if (allowedZones.length > 1) {
+				// Multicolor/stone: stay on current zone (or go to first zone if none selected)
+				const currentZone = this._lastMobileZoneName || allowedZones[0];
+				if (currentZone) this._scrollMobileBoardToZone(currentZone, false);
+			}
 		}
 
 		// Ghost volgt muis (click-move-click: geen knop ingedrukt houden)
@@ -3280,6 +3355,7 @@ class LocusLobbyUI {
 				const myPlayer = this.mp?.getMyPlayer ? this.mp.getMyPlayer() : null;
 				const perkFlags = {
 					greenGapAllowed: !!myPlayer?.perks?.greenGapAllowed,
+					redGapAllowed: !!myPlayer?.perks?.redGapAllowed,
 					diagonalRotation: !!myPlayer?.perks?.diagonalRotation
 				};
 				matrix = Rules.getEnhancedMatrix(matrix, allowedZones[0], perkFlags);
@@ -3503,7 +3579,7 @@ class LocusLobbyUI {
 		`;
 
 		if (isMyTurn) {
-			container.querySelectorAll('.mp-bonus-btn:not(.disabled):not(.mp-bomb-btn)').forEach(btn => {
+			container.querySelectorAll('.mp-bonus-btn:not(.disabled):not(.mp-bomb-btn):not(.mp-mine-btn):not(.mp-steal-btn)').forEach(btn => {
 				btn.addEventListener('click', () => {
 					if (Date.now() < (this._ignoreNextBonusClickUntil || 0)) return;
 					this._activateBonusMode(btn.dataset.bonusColor);
@@ -3530,7 +3606,10 @@ class LocusLobbyUI {
 		if (hasMines && isMyTurn) {
 			const mineBtn = document.getElementById('mp-mine-btn');
 			if (mineBtn) {
-				mineBtn.addEventListener('click', () => this._activateMineMode());
+				mineBtn.addEventListener('click', (e) => {
+					e.stopPropagation();
+					this._activateMineMode();
+				});
 			}
 		}
 
@@ -3538,7 +3617,10 @@ class LocusLobbyUI {
 		if (hasSteals && isMyTurn) {
 			const stealBtn = document.getElementById('mp-steal-btn');
 			if (stealBtn) {
-				stealBtn.addEventListener('click', () => this._openStealPopup());
+				stealBtn.addEventListener('click', (e) => {
+					e.stopPropagation();
+					this._openStealPopup();
+				});
 			}
 		}
 	}
@@ -3592,8 +3674,11 @@ class LocusLobbyUI {
 
 		this._mineClickHandler = async (e) => {
 			if (!this._mineMode) return;
+			// Support both click and touch
 			const cell = e.target.closest('.mp-cell:not(.void)');
 			if (!cell) return;
+			e.preventDefault();
+			e.stopPropagation();
 			const zoneName = cell.dataset.zone;
 			const x = parseInt(cell.dataset.x);
 			const y = parseInt(cell.dataset.y);
@@ -3607,7 +3692,7 @@ class LocusLobbyUI {
 
 			await this._placeMine(zoneName, x, y);
 		};
-		container.addEventListener('click', this._mineClickHandler);
+		container.addEventListener('pointerup', this._mineClickHandler);
 	}
 
 	_cancelMineMode() {
@@ -3617,7 +3702,7 @@ class LocusLobbyUI {
 		const board = document.querySelector('.mp-board');
 		if (board) board.classList.remove('placement-mode');
 		if (this._mineClickHandler) {
-			this.elements['mp-board-container']?.removeEventListener('click', this._mineClickHandler);
+			this.elements['mp-board-container']?.removeEventListener('pointerup', this._mineClickHandler);
 			this._mineClickHandler = null;
 		}
 	}
@@ -3832,7 +3917,10 @@ class LocusLobbyUI {
 
 		// Mobiel/touch: ga direct naar de juiste kleurzone
 		if (this._isTouchLikeDevice() || startPointerEvent?.pointerType === 'touch' || startPointerEvent?.pointerType === 'pen') {
-			const targetZone = this._normalizeZoneName(bonusColor);
+			// For 'any' bonus or stone: stay on current zone
+			const targetZone = bonusColor === 'any'
+				? (this._lastMobileZoneName || 'yellow')
+				: this._normalizeZoneName(bonusColor);
 			if (targetZone) {
 				const targetIdx = this._getMobileZoneIndex(targetZone);
 				if (Number.isFinite(targetIdx)) {

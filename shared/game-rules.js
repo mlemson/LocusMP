@@ -109,7 +109,7 @@ const PERK_BRANCHES = {
 			{ id: 'bonus_purple', name: 'Paarse Meesterschap', icon: '🟣', description: 'Upgrade paarse bonus naar 3 cellen (1 optioneel)', cost: 1, color: 'purple', tier: 1 },
 			{ id: 'bonus_blue', name: 'Blauwe Meesterschap', icon: '🔵', description: 'Upgrade blauwe bonus naar 3 cellen (1 optioneel)', cost: 1, color: 'blue', tier: 1 },
 			{ id: 'bonus_multi_double', name: 'Dubbele Multikleur', icon: '🌈', description: 'Multikleur bonus geeft 2 charges i.p.v. 1', cost: 1, tier: 2,
-				requiresAnyCount: { from: ['bonus_yellow','bonus_red','bonus_green','bonus_purple','bonus_blue'], min: 3 } }
+				requiresAnyCount: { from: ['bonus_yellow','bonus_red','bonus_green','bonus_purple','bonus_blue'], min: 2 } }
 		]
 	},
 	aggressive: {
@@ -133,11 +133,12 @@ const PERK_BRANCHES = {
 		sequential: false,
 		perks: [
 			{ id: 'flex_gap', name: 'Brugbouwer', icon: '🌉', description: 'Groen: 1 cel van je kaart wordt optioneel (transparant) — mag overgeslagen worden', cost: 1, tier: 1 },
+			{ id: 'flex_gap_red', name: 'Rode Brugbouwer', icon: '🔴🌉', description: 'Rood: 1 cel van je kaart wordt optioneel (transparant) — mag overgeslagen worden', cost: 1, tier: 1 },
 			{ id: 'flex_rotate', name: 'Vrije Rotatie', icon: '🔄', description: 'Paars: voeg 1 extra optionele cel toe aan je kaart (transparant)', cost: 1, tier: 1 },
 			{ id: 'flex_wildcard', name: 'Wildcardkleur', icon: '🎨', description: 'Eén kaart per ronde op elke zone plaatsen, ongeacht kleur', cost: 1, tier: 2,
-				requiresAnyOf: ['flex_gap', 'flex_rotate'] },
+				requiresAnyOf: ['flex_gap', 'flex_gap_red', 'flex_rotate'] },
 			{ id: 'flex_double_coins', name: 'Bankier', icon: '🏦', description: 'Goudmunten zijn dubbel zoveel waard', cost: 1, tier: 2,
-				requiresAnyOf: ['flex_gap', 'flex_rotate'] }
+				requiresAnyOf: ['flex_gap', 'flex_gap_red', 'flex_rotate'] }
 		]
 	}
 };
@@ -261,6 +262,9 @@ function choosePerk(gameState, playerId, perkId) {
 	// Flexible branch perk awards
 	if (perkId === 'flex_gap') {
 		player.perks.greenGapAllowed = true;
+	}
+	if (perkId === 'flex_gap_red') {
+		player.perks.redGapAllowed = true;
 	}
 	if (perkId === 'flex_rotate') {
 		player.perks.diagonalRotation = true;
@@ -1371,6 +1375,9 @@ function addExtraOptionalCell(matrix) {
 function getEnhancedMatrix(matrix, zoneName, perkFlags) {
 	if (!matrix || !zoneName || !perkFlags) return matrix;
 	if (zoneName === 'green' && perkFlags.greenGapAllowed) {
+		return makeOneCellOptional(matrix);
+	}
+	if (zoneName === 'red' && perkFlags.redGapAllowed) {
 		return makeOneCellOptional(matrix);
 	}
 	if (zoneName === 'purple' && perkFlags.diagonalRotation) {
@@ -3428,6 +3435,7 @@ function playMove(gameState, playerId, cardId, zoneName, baseX, baseY, rotation,
 	// Bouw perk flags voor plaatsingsvalidatie
 	const perkFlags = {
 		greenGapAllowed: !!player.perks?.greenGapAllowed,
+		redGapAllowed: !!player.perks?.redGapAllowed,
 		diagonalRotation: !!player.perks?.diagonalRotation
 	};
 
@@ -3654,6 +3662,7 @@ function playBonus(gameState, playerId, bonusColor, zoneName, baseX, baseY, subg
 	const bonusColorObj = COLORS.find(c => c.zone === bonusColor) || COLORS[0];
 	const perkFlags = {
 		greenGapAllowed: !!player.perks?.greenGapAllowed,
+		redGapAllowed: !!player.perks?.redGapAllowed,
 		diagonalRotation: !!player.perks?.diagonalRotation
 	};
 

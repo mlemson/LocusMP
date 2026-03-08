@@ -504,6 +504,15 @@ class LocusP2PHost {
 				const result = this.Rules.stealCard(this.gameState, playerId, msg.targetPlayerId, msg.cardId);
 				conn.send({ type: 'result', action: 'stealCard', ...result });
 				if (result.success) {
+					const thiefName = (this.gameState.players[playerId] || {}).name || 'Speler';
+					const victimName = (this.gameState.players[msg.targetPlayerId] || {}).name || 'Speler';
+					this._broadcastEvent('cardStolen', {
+						thiefId: playerId,
+						thiefName,
+						victimId: msg.targetPlayerId,
+						victimName,
+						cardId: msg.cardId
+					});
 					this._broadcastState();
 				}
 				break;
@@ -1197,6 +1206,13 @@ class LocusP2PHost {
 					const stealResult = this.Rules.stealCard(this.gameState, playerId, action.targetPlayerId, action.cardId);
 					if (!stealResult?.error) {
 						console.log(`[AI ${playerName}] 🕵️ Kaart gestolen van ${stealResult.targetPlayerName}: ${stealResult.stolenCard?.shapeName}`);
+						this._broadcastEvent('cardStolen', {
+							thiefId: playerId,
+							thiefName: playerName,
+							targetId: action.targetPlayerId,
+							targetName: stealResult.targetPlayerName,
+							cardName: stealResult.stolenCard?.shapeName || '???'
+						});
 						this._broadcastState();
 					} else {
 						console.log(`[AI ${playerName}] Steal mislukt: ${stealResult.error}`);
@@ -1325,6 +1341,7 @@ class LocusP2PHost {
 		let bestScore = -Infinity;
 		const perkFlags = {
 			greenGapAllowed: !!player.perks?.greenGapAllowed,
+			redGapAllowed: !!player.perks?.redGapAllowed,
 			diagonalRotation: !!player.perks?.diagonalRotation
 		};
 
@@ -2079,6 +2096,7 @@ class LocusP2PGuest {
 		const player = this.gameState.players[this.userId || this.hostPlayerId];
 		const perkFlags = {
 			greenGapAllowed: !!player?.perks?.greenGapAllowed,
+			redGapAllowed: !!player?.perks?.redGapAllowed,
 			diagonalRotation: !!player?.perks?.diagonalRotation
 		};
 

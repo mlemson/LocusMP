@@ -707,6 +707,22 @@ html, body {
 	background: rgba(255, 80, 80, 0.4);
 }
 
+/* ── AI CONTROLS ── */
+.mp-ai-controls {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	justify-content: center;
+	margin-top: 4px;
+}
+.mp-ai-controls .mp-btn-secondary {
+	flex: 1;
+	max-width: 240px;
+}
+.mp-ai-controls .mp-select {
+	min-width: 120px;
+}
+
 /* ── WAITING DOTS ── */
 .mp-waiting-dots {
 	display: flex;
@@ -11718,6 +11734,22 @@ html.theme-reef .mp-objective-reveal-sub {
 		padding-left: 0;
 		padding-top: 16px;
 	}
+	.mp-deck-card {
+		width: 120px;
+	}
+	.mp-deck-group-cards {
+		gap: 8px;
+	}
+}
+
+@media (max-width: 480px) {
+	.mp-deck-overlay {
+		padding: 12px;
+	}
+	.mp-deck-card {
+		width: calc(50% - 6px);
+		min-width: 90px;
+	}
 }
 
 /* Objective card in deck overlay */
@@ -11801,6 +11833,25 @@ html.theme-reef .mp-objective-reveal-sub {
 .mp-deck-zone-pts {
 	font-weight: 800;
 	color: var(--mp-gold);
+}
+
+/* Opponent goals in deck overview */
+.mp-deck-opponent-goals {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+}
+
+.mp-deck-opponent-goal {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 6px;
+	padding: 6px 10px;
+	background: rgba(255,255,255,0.03);
+	border-radius: 8px;
+	font-size: 0.85rem;
+	color: var(--mp-text);
 }
 
 /* ═══════════════════════════════════════════════════════════════

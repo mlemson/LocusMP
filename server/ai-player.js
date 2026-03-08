@@ -71,6 +71,7 @@ function findValidPlacements(gameState, playerId, card) {
 	const allowedZones = GameRules.getAllowedZones(card);
 	const perkFlags = {
 		greenGapAllowed: !!player.perks?.greenGapAllowed,
+		redGapAllowed: !!player.perks?.redGapAllowed,
 		diagonalRotation: !!player.perks?.diagonalRotation
 	};
 
@@ -128,7 +129,7 @@ function _tryPlacementsOnZone(card, zoneData, zoneName, rotations, mirrors, perk
 					for (const c of cells) {
 						const cell = GameRules.getDataCell(zoneData, c.x, c.y);
 						if (cell?.flags?.includes('gold')) { score += 8; hasFlaggedCell = true; }
-						else if (cell?.flags?.includes('bonus')) { score += 7; hasFlaggedCell = true; }
+						else if (cell?.flags?.includes('bonus')) { score += 12; hasFlaggedCell = true; }
 						else if (cell?.flags?.includes('pearl')) { score += 6; hasFlaggedCell = true; }
 						else if (cell?.flags?.includes('end')) { score += 5; hasFlaggedCell = true; }
 						else if (cell?.flags?.includes('bold')) {
@@ -230,6 +231,95 @@ function _tryBonusPlacements(bonusMatrix, zoneData, zoneName, rotations, subgrid
 }
 
 /**
+ * AI kiest een mijn-doelwit: een lege cel dicht bij actieve cellen van tegenstanders.
+ */
+function _chooseMineTarget(gameState, playerId) {
+	const board = gameState.boardState;
+	if (!board) return null;
+
+	const opponents = (gameState.playerOrder || []).filter(pid => pid !== playerId);
+	if (opponents.length === 0) return null;
+
+	// Zoek cellen die dichtbij actieve tegenstander-cellen liggen maar nog leeg zijn
+	const candidates = [];
+	const zoneNames = ['yellow', 'green', 'blue', 'red', 'purple'];
+
+	for (const zoneName of zoneNames) {
+		const zoneData = board.zones?.[zoneName];
+		if (!zoneData) continue;
+
+		if (zoneName === 'red' && zoneData.subgrids) {
+			for (const sg of zoneData.subgrids) {
+				_findMineCandidates(sg, zoneName, candidates);
+			}
+		} else {
+			_findMineCandidates(zoneData, zoneName, candidates);
+		}
+	}
+
+	if (candidates.length === 0) return null;
+
+	// Sorteer op score (hogere score = betere plek voor mijn)
+	candidates.sort((a, b) => b.score - a.score);
+	const best = candidates[Math.floor(Math.random() * Math.min(3, candidates.length))];
+	return { type: 'useMine', zoneName: best.zoneName, cellX: best.x, cellY: best.y };
+}
+
+function _findMineCandidates(zoneData, zoneName, result) {
+	const rows = zoneData.rows || 0;
+	const cols = zoneData.cols || 0;
+	for (let y = 0; y < rows; y++) {
+		for (let x = 0; x < cols; x++) {
+			const cell = GameRules.getDataCell(zoneData, x, y);
+			if (!cell || cell.active) continue; // Skip void or already active cells
+			// Score based on adjacent active cells (good mine spot = near active territory)
+			let score = 0;
+			if (cell.flags?.includes('bonus')) score += 5;
+			if (cell.flags?.includes('gold')) score += 3;
+			if (cell.flags?.includes('bold')) score += 2;
+			if (GameRules.hasAdjacentActive(zoneData, x, y)) score += 4;
+			if (score > 0) {
+				result.push({ zoneName, x, y, score });
+			}
+		}
+	}
+}
+
+/**
+ * AI kiest een steal-doelwit: de tegenstander met de beste kaarten.
+ */
+function _chooseStealTarget(gameState, playerId) {
+	const opponents = (gameState.playerOrder || []).filter(pid => pid !== playerId);
+	if (opponents.length === 0) return null;
+
+	// Kies tegenstander met de meeste kaarten in hand
+	let bestTarget = null;
+	let bestHandSize = 0;
+	for (const oppId of opponents) {
+		const opp = gameState.players[oppId];
+		if (!opp) continue;
+		const stealable = (opp.hand || []).filter(c => !c.isGolden && !c.isStone);
+		if (stealable.length > bestHandSize) {
+			bestHandSize = stealable.length;
+			bestTarget = oppId;
+		}
+	}
+
+	if (!bestTarget || bestHandSize === 0) return null;
+
+	// Kies de kaart met de meeste cellen (grootste shape)
+	const target = gameState.players[bestTarget];
+	const stealable = (target.hand || []).filter(c => !c.isGolden && !c.isStone);
+	stealable.sort((a, b) => {
+		const aCells = a.matrix ? a.matrix.flat().filter(v => v > 0).length : 0;
+		const bCells = b.matrix ? b.matrix.flat().filter(v => v > 0).length : 0;
+		return bCells - aCells;
+	});
+	const chosenCard = stealable[0];
+	return { type: 'stealCard', targetPlayerId: bestTarget, cardId: chosenCard.id };
+}
+
+/**
  * AI kiest een startdeck type.
  */
 function chooseStartingDeck() {
@@ -273,7 +363,7 @@ function choosePerk(gameState, playerId) {
 	// Prioriteer nuttige perks
 	const perkPriority = [
 		'bonus_extra_cell', 'bonus_multi_double', 'bonus_red_upgrade',
-		'flex_double_coins', 'flex_wildcard',
+		'flex_double_coins', 'flex_wildcard', 'flex_gap', 'flex_gap_red',
 		'agg_mine', 'agg_timebomb', 'agg_steal'
 	];
 
@@ -357,7 +447,19 @@ function planTurn(gameState, playerId) {
 		}
 	}
 
-	// 5. Einde beurt
+	// 5. Mijn plaatsen als perk beschikbaar
+	if (GameRules.playerHasPerk(player, 'agg_mine') && (player.perks.minesUsedThisLevel || 0) < 1) {
+		const mineAction = _chooseMineTarget(gameState, playerId);
+		if (mineAction) actions.push(mineAction);
+	}
+
+	// 6. Kaart stelen als perk beschikbaar
+	if (GameRules.playerHasPerk(player, 'agg_steal') && (player.perks.stealsUsedThisLevel || 0) < (player.perks.stealsPerRound || 0)) {
+		const stealAction = _chooseStealTarget(gameState, playerId);
+		if (stealAction) actions.push(stealAction);
+	}
+
+	// 7. Einde beurt
 	if (!cardPlayed && regularCards.length > 0) {
 		// Geen geldige plaatsing gevonden, discard een kaart
 		actions.push({ type: 'endTurn', discardCardId: regularCards[0].id });
@@ -583,6 +685,16 @@ function _evaluatePlacementImpact(gameState, playerId, card, placement) {
 		impactScore += adjacentCount; // Favor placements that extend existing territory
 	}
 
+	// ── Bonus cell chaining: strongly favor placements that pick up bonus cells ──
+	const zd = _getZoneData(board, zoneName, placement.subgridId);
+	if (zd) {
+		const placementCells = _getPlacementCells(card, placement, zd);
+		for (const c of placementCells) {
+			const cell = GameRules.getDataCell(zd, c.x, c.y);
+			if (cell?.flags?.includes('bonus')) impactScore += 8;
+		}
+	}
+
 	return impactScore;
 }
 
@@ -728,7 +840,19 @@ function planTurnHard(gameState, playerId) {
 		}
 	}
 
-	// 5. End turn — smart discard (discard lowest-scoring card)
+	// 5. Mijn plaatsen als perk beschikbaar (hard AI places strategically)
+	if (GameRules.playerHasPerk(player, 'agg_mine') && (player.perks.minesUsedThisLevel || 0) < 1) {
+		const mineAction = _chooseMineTarget(gameState, playerId);
+		if (mineAction) actions.push(mineAction);
+	}
+
+	// 6. Kaart stelen als perk beschikbaar
+	if (GameRules.playerHasPerk(player, 'agg_steal') && (player.perks.stealsUsedThisLevel || 0) < (player.perks.stealsPerRound || 0)) {
+		const stealAction = _chooseStealTarget(gameState, playerId);
+		if (stealAction) actions.push(stealAction);
+	}
+
+	// 7. End turn — smart discard (discard lowest-scoring card)
 	if (!cardPlayed && regularCards.length > 0) {
 		// Discard the card with fewest valid placements (worst card)
 		let worstCard = regularCards[0];
@@ -761,7 +885,7 @@ function chooseHardPerk(gameState, playerId) {
 	// Hard AI: aggressive first, then flexibility, then bonus
 	const perkPriority = [
 		'agg_timebomb', 'agg_mine', 'agg_steal',
-		'flex_wildcard', 'flex_double_coins',
+		'flex_wildcard', 'flex_double_coins', 'flex_gap', 'flex_gap_red',
 		'bonus_extra_cell', 'bonus_multi_double', 'bonus_red_upgrade'
 	];
 

@@ -653,6 +653,32 @@ function executeAITurn(gameId, aiPlayerId) {
 			}
 			console.log(`[Locus AI] ${player.name} speelde ${action.bonusColor} bonus op ${best.zoneName}`);
 			setTimeout(processNextAction, AIPlayer.AI_ACTION_DELAY_MS);
+		} else if (action.type === 'useMine') {
+			const mineResult = GameRules.useMine(gs, aiPlayerId, action.zoneName, action.cellX, action.cellY);
+			if (mineResult.error) {
+				console.log(`[Locus AI] ${player.name} mijn mislukt: ${mineResult.error}`);
+			} else {
+				console.log(`[Locus AI] ${player.name} plaatste een mijn op ${action.zoneName} (${action.cellX},${action.cellY})`);
+				broadcastGameState(io, gameId);
+			}
+			setTimeout(processNextAction, AIPlayer.AI_ACTION_DELAY_MS);
+		} else if (action.type === 'stealCard') {
+			const stealResult = GameRules.stealCard(gs, aiPlayerId, action.targetPlayerId, action.cardId);
+			if (stealResult.error) {
+				console.log(`[Locus AI] ${player.name} steal mislukt: ${stealResult.error}`);
+			} else {
+				console.log(`[Locus AI] ${player.name} stal een kaart van ${stealResult.targetPlayerName}`);
+				// Emit cardStolen event to notify the target player
+				io.to(gameId).emit('cardStolen', {
+					thiefId: aiPlayerId,
+					thiefName: player.name,
+					targetId: action.targetPlayerId,
+					targetName: stealResult.targetPlayerName,
+					cardName: stealResult.stolenCard?.shapeName || '???'
+				});
+				broadcastGameState(io, gameId);
+			}
+			setTimeout(processNextAction, AIPlayer.AI_ACTION_DELAY_MS);
 		} else if (action.type === 'endTurn') {
 			const endResult = GameRules.endTurn(gs, aiPlayerId, action.discardCardId || null);
 			if (endResult.error) {
@@ -1680,6 +1706,14 @@ io.on('connection', (socket) => {
 
 			console.log(`[Locus] Speler ${info.playerId} stal een kaart van ${result.targetPlayerName}`);
 			callback({ success: true, stolenCard: result.stolenCard, targetPlayerName: result.targetPlayerName });
+			// Notify all players about the steal
+			io.to(info.gameId).emit('cardStolen', {
+				thiefId: info.playerId,
+				thiefName: gameState.players[info.playerId]?.name || '???',
+				targetId: targetPlayerId,
+				targetName: result.targetPlayerName,
+				cardName: result.stolenCard?.shapeName || '???'
+			});
 			broadcastGameState(io, info.gameId);
 
 		} catch (error) {

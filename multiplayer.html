@@ -145,13 +145,15 @@
 				🚀 Start Spel
 			</button>
 
-			<button id="add-ai-btn" class="mp-btn mp-btn-secondary" style="display:none;">
-				🤖 AI Speler Toevoegen
-			</button>
-			<select id="ai-difficulty-select" class="mp-select" style="display:none;">
-				<option value="normal">🤖 Normaal</option>
-				<option value="hard">🧠 Hard (ML)</option>
-			</select>
+			<div class="mp-ai-controls" id="ai-controls" style="display:none;">
+				<button id="add-ai-btn" class="mp-btn mp-btn-secondary">
+					🤖 AI Speler Toevoegen
+				</button>
+				<select id="ai-difficulty-select" class="mp-select">
+					<option value="normal">🤖 Normaal</option>
+					<option value="hard">🧠 Hard (ML)</option>
+				</select>
+			</div>
 
 			<div class="mp-waiting-dots">
 				<span>Wachten op spelers</span>
@@ -1580,6 +1582,7 @@
 					const player = this.gameState.players?.[host.hostPlayerId];
 					const perkFlags = {
 						greenGapAllowed: !!player?.perks?.greenGapAllowed,
+						redGapAllowed: !!player?.perks?.redGapAllowed,
 						diagonalRotation: !!player?.perks?.diagonalRotation
 					};
 
