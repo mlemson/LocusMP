@@ -1458,37 +1458,30 @@ class LocusP2PHost {
 				}
 
 				case 'pass': {
-					// Bot can't play a card and has no bonuses — pass by discarding a card
+					// Bot can't play a card and has no bonuses — pass by discarding a non-golden card
 					setTimeout(() => {
 						if (!this.gameState) { this._aiTurnInProgress = false; return; }
-						const result = this.Rules.passMove(this.gameState, playerId, action.discardCardId || null);
+						// Only call passMove if we have a non-golden card to discard
+						// (passMove with null cardId would discard index 0, risking a golden card)
+						const canPass = !!action.discardCardId;
+						const result = canPass
+							? this.Rules.passMove(this.gameState, playerId, action.discardCardId)
+							: this.Rules.endTurn(this.gameState, playerId, null);
 						if (result?.error) {
-							// passMove failed — fall back to endTurn which always succeeds
-							console.log(`[AI ${playerName}] Pass mislukt (${result.error}), val terug op endTurn`);
-							const endResult = this.Rules.endTurn(this.gameState, playerId, null);
-							if (!endResult?.error) {
-								console.log(`[AI ${playerName}] ✅ Beurt beëindigd (fallback)`);
-								if (endResult?.gameEnded) {
-									this._broadcastEvent('levelComplete', {
-										levelScores: this.gameState.levelScores,
-										levelWinner: this.gameState.levelWinner,
-										level: this.gameState.level
-									});
-								} else {
-									this._startTimerForCurrentPlayer(true);
-								}
-							}
+							console.log(`[AI ${playerName}] Pas mislukt (${result.error})`);
+							this._aiTurnInProgress = false;
+							this._broadcastState();
+							return;
+						}
+						console.log(`[AI ${playerName}] ↩️ Gepast (kaart weggegooid)`);
+						if (result?.gameEnded) {
+							this._broadcastEvent('levelComplete', {
+								levelScores: this.gameState.levelScores,
+								levelWinner: this.gameState.levelWinner,
+								level: this.gameState.level
+							});
 						} else {
-							console.log(`[AI ${playerName}] ↩️ Gepast (kaart weggegooid)`);
-							if (result?.gameEnded) {
-								this._broadcastEvent('levelComplete', {
-									levelScores: this.gameState.levelScores,
-									levelWinner: this.gameState.levelWinner,
-									level: this.gameState.level
-								});
-							} else {
-								this._startTimerForCurrentPlayer(true);
-							}
+							this._startTimerForCurrentPlayer(true);
 						}
 						this._broadcastState();
 						this._aiTurnInProgress = false;
