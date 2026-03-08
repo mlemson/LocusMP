@@ -1497,7 +1497,19 @@ class LocusLobbyUI {
 		this._showScreen('goal-screen');
 		const container = this.elements['goal-choices-container'];
 		if (container) {
-			container.innerHTML = '<h2 class="mp-section-title">Doelstelling gekozen!</h2><p class="mp-section-subtitle">Wachten op andere spelers...</p>';
+			const isChoosingGoals = this.mp?.gameState?.phase === 'choosingGoals';
+			const perkPoints = this.mp?.getMyPlayer?.()?.perks?.perkPoints || 0;
+			const canStillChoosePerks = isChoosingGoals && perkPoints > 0;
+			container.innerHTML = `
+				<h2 class="mp-section-title">Doelstelling gekozen!</h2>
+				<p class="mp-section-subtitle">Wachten op andere spelers...</p>
+				${canStillChoosePerks ? '<button class="mp-btn mp-btn-secondary" id="mp-open-perks-again" style="margin-top:10px;">🎯 Open perks opnieuw</button>' : ''}
+			`;
+			if (canStillChoosePerks) {
+				container.querySelector('#mp-open-perks-again')?.addEventListener('click', () => {
+					this._openPerkPopup(() => this._showChosenGoalWaitingState());
+				});
+			}
 		}
 	}
 
@@ -5811,6 +5823,9 @@ class LocusLobbyUI {
 		const myPlayer = this.mp.getMyPlayer();
 		const perkPoints = myPlayer?.perks?.perkPoints || 0;
 		const isChoosingGoals = this.mp.gameState?.phase === 'choosingGoals';
+		const continueLabel = isChoosingGoals
+			? (perkPoints > 0 ? '⏭ Klaar met perks — wacht verder' : '✅ Verder')
+			: '✅ Sluiten';
 
 		// Remove existing popup
 		document.getElementById('mp-perk-popup-overlay')?.remove();
@@ -5828,9 +5843,9 @@ class LocusLobbyUI {
 					? 'Je doel is gekozen. Besteed nu eventueel je perkpunten voordat het level start.'
 					: 'Ontgrendel perks om je strategie te versterken.'}</p>
 				${this._renderPerkSectionHTML()}
-				${isChoosingGoals ? `<button class="mp-btn mp-btn-primary" id="mp-perk-popup-continue" style="margin-top:12px;width:100%;">
-					${perkPoints > 0 ? '⏭ Klaar met perks — wacht verder' : '✅ Verder'}
-				</button>` : ''}
+				<button class="mp-btn mp-btn-primary" id="mp-perk-popup-continue" style="margin-top:12px;width:100%;">
+					${continueLabel}
+				</button>
 			</div>
 		`;
 
@@ -5849,7 +5864,7 @@ class LocusLobbyUI {
 			});
 		}
 
-		// Continue button (only during choosingGoals)
+		// Continue/close button
 		const continueBtn = overlay.querySelector('#mp-perk-popup-continue');
 		if (continueBtn) {
 			continueBtn.addEventListener('click', closePopup);
