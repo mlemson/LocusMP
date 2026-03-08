@@ -1340,7 +1340,7 @@ class LocusP2PHost {
 
 					const result = this.Rules.playMove(
 						this.gameState, playerId, m.card.id, m.zoneName,
-						m.x, m.y, m.rotation, false, m.subgridId
+						m.x, m.y, m.rotation, !!m.mirrored, m.subgridId
 					);
 					if (!result?.error) {
 						console.log(`[AI ${playerName}] 🃏 Kaart gespeeld: ${m.card.shapeName || m.card.id} op ${m.zoneName} (${m.x},${m.y})`);
@@ -1351,7 +1351,7 @@ class LocusP2PHost {
 							baseX: m.x,
 							baseY: m.y,
 							rotation: m.rotation,
-							mirrored: false,
+							mirrored: !!m.mirrored,
 							subgridId: m.subgridId || null,
 							matrix: m.matrix,
 							goldCollected: result.goldCollected || 0,
@@ -1524,11 +1524,22 @@ class LocusP2PHost {
 									}
 								}
 
+								// Blue zone: penalize horizontal-only placements without valuable flags
+								if (zoneName === 'blue') {
+									const blueYs = new Set(cells.map(c => c.y));
+									const blueXs = new Set(cells.map(c => c.x));
+									if (blueYs.size === 1 && blueXs.size >= 3 && !hasFlaggedCell) {
+										score -= 15; // Strong penalty for horizontal waste
+									}
+									if (blueYs.size >= 2) score += blueYs.size * 5; // Reward vertical span
+								}
+
 								if (score > bestScore) {
 									bestScore = score;
-									bestMove = { card, zoneName, x, y, rotation, subgridId, matrix };
+									bestMove = { card, zoneName, x, y, rotation, mirrored, subgridId, matrix };
 								}
 							}
+						}
 						}
 					}
 				};
