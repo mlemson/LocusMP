@@ -9961,25 +9961,6 @@ html.theme-reef .mp-drag-ghost .mp-mini-cell.filled {
 }
 
 /* ── Cards — seaweed sway hover ── */
-html.theme-reef .mp-card.playable:hover {
-	animation: reef-card-sway 2.5s ease-in-out infinite;
-	box-shadow: 0 8px 24px rgba(255,126,179,0.22), 0 0 16px rgba(255,140,105,0.12);
-	border-color: rgba(255,126,179,0.40);
-}
-
-html.theme-reef .mp-card {
-	background: rgba(45, 18, 60, 0.88);
-	border: 1px solid rgba(255,126,179,0.15);
-	border-radius: 14px;
-	transition: all 0.25s ease;
-}
-
-html.theme-reef .mp-card.golden {
-	background: linear-gradient(160deg, rgba(255,215,92,0.15) 0%, rgba(45,18,60,0.88) 40%);
-	border-color: rgba(255,215,92,0.35);
-	box-shadow: 0 0 18px rgba(255,215,92,0.10);
-}
-
 html.theme-reef .mp-card.card-spent {
 	opacity: 0.3;
 	filter: grayscale(0.6);
@@ -10102,39 +10083,6 @@ html.theme-reef .mp-ctrl-cancel {
 }
 
 /* ── Opponent panels ── */
-html.theme-reef .mp-opponent-panel {
-	background: linear-gradient(160deg, rgba(45,18,60,0.60) 0%, rgba(65,25,75,0.40) 100%);
-	border: 1px solid rgba(255,126,179,0.10);
-	border-radius: 12px;
-	box-shadow: 0 2px 8px rgba(20,0,30,0.22);
-}
-
-html.theme-reef .mp-opponent-panel.is-active {
-	border-color: rgba(255,126,179,0.45);
-	background: linear-gradient(160deg, rgba(255,126,179,0.10) 0%, rgba(255,126,179,0.04) 100%);
-	box-shadow: 0 0 16px rgba(255,126,179,0.15), 0 2px 8px rgba(20,0,30,0.22);
-}
-
-/* ── Opponent card details ── */
-html.theme-reef .mp-opp-card-detail {
-	background: rgba(255,126,179,0.04);
-	border: 1px solid rgba(255,126,179,0.10);
-	border-radius: 12px;
-	transition: all 0.2s ease;
-}
-
-html.theme-reef .mp-opp-card-detail.is-selected-by-player {
-	border-color: rgba(255,126,179,0.65) !important;
-	box-shadow: 0 0 14px rgba(255,126,179,0.35);
-	background: rgba(255,126,179,0.10);
-}
-
-html.theme-reef .mp-opp-card-detail:hover {
-	background: rgba(255,126,179,0.08);
-	border-color: rgba(255,126,179,0.25);
-	transform: translateY(-1px);
-}
-
 /* ── Toasts — vibrant tropical ── */
 html.theme-reef .mp-toast-info {
 	background: linear-gradient(135deg, #ff7eb3, #ff8c69);

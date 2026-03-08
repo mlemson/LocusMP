@@ -1043,6 +1043,9 @@ class LocusP2PHost {
 
 				const pers = this._aiPersonality?.get(aiId) || 'normal';
 				const isAggressive = pers === 'aggressive';
+				const playerOrder = Array.isArray(this.gameState.playerOrder) ? this.gameState.playerOrder : [];
+				const myOrderIndex = playerOrder.indexOf(aiId);
+				const nextPlayerId = myOrderIndex >= 0 ? playerOrder[(myOrderIndex + 1) % Math.max(1, playerOrder.length)] : null;
 
 				// Analyze hand card colors
 				const hand = p.hand || [];
@@ -1058,6 +1061,19 @@ class LocusP2PHost {
 				for (const [zone, count] of Object.entries(colorCounts)) {
 					if (count > maxCount) { maxCount = count; dominant = zone; }
 				}
+				const distinctColors = Object.values(colorCounts).filter(count => count > 0).length;
+				const totalCards = Object.values(colorCounts).reduce((sum, count) => sum + count, 0);
+				const getPlayerZoneCounts = (playerId) => {
+					const player = this.gameState.players?.[playerId];
+					const counts = { yellow: 0, green: 0, blue: 0, red: 0, purple: 0 };
+					for (const card of (player?.hand || [])) {
+						const zones = this.Rules.getAllowedZones(card);
+						for (const zone of zones) {
+							if (counts[zone] !== undefined) counts[zone]++;
+						}
+					}
+					return counts;
+				};
 
 				let bestIdx = 0;
 				let bestScore = -Infinity;
@@ -1078,6 +1094,47 @@ class LocusP2PHost {
 					else if (objId.includes('blue')) score += (colorCounts.blue || 0) * 5 + (dominant === 'blue' ? 10 : 0);
 					else if (objId.includes('red')) score += (colorCounts.red || 0) * 5 + (dominant === 'red' ? 10 : 0);
 					else if (objId.includes('purple')) score += (colorCounts.purple || 0) * 5 + (dominant === 'purple' ? 10 : 0);
+
+					if (objId.includes('balance_')) {
+						const averageCoverage = totalCards > 0 ? totalCards / 5 : 0;
+						const spreadPenalty = Object.values(colorCounts).reduce((sum, count) => sum + Math.abs(count - averageCoverage), 0);
+						score += distinctColors * 12;
+						score -= spreadPenalty * 2.5;
+						if (distinctColors >= 4) score += 16;
+					}
+
+					if (objId.includes('combo_')) {
+						const comboZones = ['yellow', 'green', 'blue', 'red', 'purple'].filter(zone => objId.includes(zone));
+						score += comboZones.reduce((sum, zone) => sum + ((colorCounts[zone] || 0) * 4), 0);
+						if (comboZones.every(zone => (colorCounts[zone] || 0) > 0)) score += 12;
+					}
+
+					if (objId === 'deny_adjacent_green' && nextPlayerId) {
+						const nextCounts = getPlayerZoneCounts(nextPlayerId);
+						score += Math.max(0, 18 - ((nextCounts.green || 0) * 6));
+					}
+
+					if (objId === 'deny_blue_top_anyone') {
+						let totalBluePressure = 0;
+						for (const pid of playerOrder) totalBluePressure += getPlayerZoneCounts(pid).blue || 0;
+						score += Math.max(-18, 24 - (totalBluePressure * 3));
+					}
+
+					if (c.dynamicType === 'deny_named_objective') {
+						const targetPid = c.targetPlayerId;
+						const targetObjectiveId = String(c.targetObjectiveId || '').toLowerCase();
+						const targetCounts = targetPid ? getPlayerZoneCounts(targetPid) : null;
+						if (targetCounts) {
+							for (const zone of ['yellow', 'green', 'blue', 'red', 'purple']) {
+								if (!targetObjectiveId.includes(zone)) continue;
+								score += Math.max(0, 12 - ((targetCounts[zone] || 0) * 3));
+								score += (colorCounts[zone] || 0) * 2;
+							}
+							if (targetObjectiveId.includes('balance_')) {
+								score += distinctColors >= 4 ? 6 : -6;
+							}
+						}
+					}
 
 					if (score > bestScore) { bestScore = score; bestIdx = i; }
 				}
@@ -1794,7 +1851,25 @@ class LocusP2PHost {
 			}
 		}
 
-		if ((objectiveId.includes('blue') || objectiveId.includes('deny_blue_top_anyone')) && zoneName === 'blue') {
+		if (objectiveId.includes('deny_blue_top_anyone') && zoneName === 'blue') {
+			const highestAdvance = Math.max(...cells.map(cell => Math.max(0, (zoneData?.rows || 0) - cell.y)), 0);
+			score -= 6 + (highestAdvance * 0.7);
+		}
+
+		if (objectiveId.includes('deny_adjacent_green') && zoneName === 'green') {
+			for (const cell of cells) {
+				if (cell.flags?.includes('end')) score += 16;
+				const neighbors = [
+					this.Rules.getDataCell(zoneData, cell.x - 1, cell.y),
+					this.Rules.getDataCell(zoneData, cell.x + 1, cell.y),
+					this.Rules.getDataCell(zoneData, cell.x, cell.y - 1),
+					this.Rules.getDataCell(zoneData, cell.x, cell.y + 1)
+				];
+				if (neighbors.some(neighbor => neighbor?.flags?.includes('end'))) score += 6;
+			}
+		}
+
+		if (objectiveId.includes('blue') && !objectiveId.includes('deny_blue_top_anyone') && zoneName === 'blue') {
 			score += 8;
 			const highestAdvance = Math.max(...cells.map(cell => Math.max(0, (zoneData?.rows || 0) - cell.y)), 0);
 			score += highestAdvance * 0.6;
@@ -1829,6 +1904,7 @@ class LocusP2PHost {
 		}
 
 		if (objectiveId.includes('balance_')) {
+			const targetScore = objectiveId.includes('15') ? 15 : 10;
 			const scoreBreakdown = player.scoreBreakdown || {};
 			const zones = ['yellow', 'green', 'blue', 'red', 'purple'];
 			let weakestZone = zones[0];
@@ -1840,7 +1916,24 @@ class LocusP2PHost {
 					weakestZone = candidateZone;
 				}
 			}
-			if (zoneName === weakestZone) score += 10;
+			const zoneValue = Number(scoreBreakdown[zoneName]) || 0;
+			if (zoneName === weakestZone) score += 12;
+			if (zoneValue < targetScore) score += Math.max(0, (targetScore - zoneValue) * 1.2);
+			else score -= Math.min(10, (zoneValue - targetScore) * 0.7);
+		}
+
+		if (objectiveId.includes('deny_named')) {
+			const targetObjectiveId = String(objective.targetObjectiveId || '').toLowerCase();
+			if (targetObjectiveId.includes(zoneName)) score += 8;
+			if (targetObjectiveId.includes('gold') && hasFlaggedCell) {
+				score += cells.filter(cell => cell.flags?.includes('gold')).length * 10;
+			}
+			if (targetObjectiveId.includes('green') && zoneName === 'green') {
+				score += cells.filter(cell => cell.flags?.includes('end')).length * 10;
+			}
+			if (targetObjectiveId.includes('purple') && zoneName === 'purple') {
+				score += cells.filter(cell => cell.flags?.includes('bold')).length * 8;
+			}
 		}
 
 		if (objectiveId.includes('combo_')) score += cellCount * 1.5;

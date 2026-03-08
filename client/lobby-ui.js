@@ -70,6 +70,7 @@ class LocusLobbyUI {
 		this._touchDragScrollLocked = false;
 		this._ignoreNextBonusClickUntil = 0;
 		this._cardTransforms = {};
+		this._goalPerkPromptShown = false;
 
 		// TV Cast / BroadcastChannel + Presentation API
 		this._tvChannel = null;
@@ -1471,7 +1472,6 @@ class LocusLobbyUI {
 			}
 
 			const player = this.mp.getMyPlayer();
-			const perkPoints = player?.perks?.perkPoints || 0;
 
 			const showGoals = () => {
 				// ── Toon de kaarten die de speler heeft gekregen ──
@@ -1487,23 +1487,38 @@ class LocusLobbyUI {
 				}
 			};
 
-			// Als de speler perk punten heeft, toon eerst de perk popup
-			if (perkPoints > 0) {
-				this._showScreen('goal-screen');
-				const container = this.elements['goal-choices-container'];
-				if (container) container.innerHTML = '<h2 class="mp-section-title">Kies eerst je perks...</h2>';
-				setTimeout(() => {
-					this._openPerkPopup(() => {
-						// Na sluiten perk popup, toon doelstellingen
-						showGoals();
-					});
-				}, 300);
-			} else {
-				showGoals();
-			}
+			showGoals();
 		} catch (err) {
 			console.error('[Locus UI] _onGoalPhase ERROR:', err);
 		}
+	}
+
+	_showChosenGoalWaitingState() {
+		this._showScreen('goal-screen');
+		const container = this.elements['goal-choices-container'];
+		if (container) {
+			container.innerHTML = '<h2 class="mp-section-title">Doelstelling gekozen!</h2><p class="mp-section-subtitle">Wachten op andere spelers...</p>';
+		}
+	}
+
+	_promptPerksAfterGoalChoice() {
+		const myPlayer = this.mp.getMyPlayer?.();
+		const perkPoints = myPlayer?.perks?.perkPoints || 0;
+		if (perkPoints <= 0) {
+			this._showChosenGoalWaitingState();
+			return;
+		}
+		this._goalPerkPromptShown = true;
+		this._showScreen('goal-screen');
+		const container = this.elements['goal-choices-container'];
+		if (container) {
+			container.innerHTML = '<h2 class="mp-section-title">Doelstelling gekozen!</h2><p class="mp-section-subtitle">Kies nu eventueel nog perks voordat het level start.</p>';
+		}
+		setTimeout(() => {
+			if (!document.getElementById('mp-perk-popup-overlay')) {
+				this._openPerkPopup(() => this._showChosenGoalWaitingState());
+			}
+		}, 50);
 	}
 
 	/**
@@ -1630,7 +1645,8 @@ class LocusLobbyUI {
 
 				try {
 					await this.mp.chooseGoal(index);
-					this._showToast('Doelstelling gekozen! Wachten op andere spelers...', 'success');
+					this._showToast('Doelstelling gekozen!', 'success');
+					this._promptPerksAfterGoalChoice();
 				} catch (err) {
 					this._showToast('Fout bij kiezen: ' + err.message, 'error');
 					container.querySelectorAll('.mp-goal-card').forEach(b => b.disabled = false);
@@ -1672,7 +1688,8 @@ class LocusLobbyUI {
 
 				try {
 					await this.mp.chooseGoal(index);
-					this._showToast('Doelstelling gekozen! Wachten op andere spelers...', 'success');
+					this._showToast('Doelstelling gekozen!', 'success');
+					this._promptPerksAfterGoalChoice();
 				} catch (err) {
 					this._showToast('Fout bij kiezen: ' + err.message, 'error');
 					container.querySelectorAll('.mp-goal-card').forEach(b => b.disabled = false);
@@ -5808,11 +5825,11 @@ class LocusLobbyUI {
 					<button class="mp-perk-popup-close" id="mp-perk-popup-close">✕</button>
 				</div>
 				<p class="mp-perk-popup-desc">${isChoosingGoals && perkPoints > 0
-					? 'Kies je perks voordat je een doelstelling kiest!'
+					? 'Je doel is gekozen. Besteed nu eventueel je perkpunten voordat het level start.'
 					: 'Ontgrendel perks om je strategie te versterken.'}</p>
 				${this._renderPerkSectionHTML()}
 				${isChoosingGoals ? `<button class="mp-btn mp-btn-primary" id="mp-perk-popup-continue" style="margin-top:12px;width:100%;">
-					${perkPoints > 0 ? '⏭ Overslaan — Ga naar doelstellingen' : '✅ Ga naar doelstellingen'}
+					${perkPoints > 0 ? '⏭ Klaar met perks — wacht verder' : '✅ Verder'}
 				</button>` : ''}
 			</div>
 		`;
@@ -6264,13 +6281,16 @@ class LocusLobbyUI {
 			// Haal objective keuzes uit de state en toon ze
 			const myChoices = state.objectiveChoices?.[this.mp.userId];
 			const myPlayer = state.players?.[this.mp.userId];
+			const myPerkPoints = myPlayer?.perks?.perkPoints || 0;
 			if (myPlayer?.chosenObjective) {
-				// Al gekozen, wacht op andere spelers
-				console.log('[Locus UI] Goal al gekozen, wacht op anderen');
-				this._showScreen('goal-screen');
-				const container = this.elements['goal-choices-container'];
-				if (container) container.innerHTML = '<h2 class="mp-section-title">Doelstelling gekozen!</h2><p class="mp-section-subtitle">Wachten op andere spelers...</p>';
+				console.log('[Locus UI] Goal al gekozen');
+				if (myPerkPoints > 0 && !this._goalPerkPromptShown) {
+					this._promptPerksAfterGoalChoice();
+				} else {
+					this._showChosenGoalWaitingState();
+				}
 			} else if (myChoices && myChoices.length > 0) {
+				this._goalPerkPromptShown = false;
 				this._onGoalPhase(myChoices);
 			} else {
 				console.warn('[Locus UI] choosingGoals maar GEEN choices gevonden voor userId:', this.mp.userId,
@@ -6281,6 +6301,9 @@ class LocusLobbyUI {
 				const container = this.elements['goal-choices-container'];
 				if (container) container.innerHTML = '<h2 class="mp-section-title">Wachten op doelstellingen...</h2>';
 			}
+		}
+		if (state.phase !== 'choosingGoals') {
+			this._goalPerkPromptShown = false;
 		}
 		if (state.phase === 'playing') {
 			if (prevState?.phase !== 'playing') {
