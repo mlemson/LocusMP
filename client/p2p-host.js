@@ -1286,12 +1286,20 @@ class LocusP2PHost {
 				}
 
 				case 'playBonus': {
-					const bonusResult = this._aiPlayOneBonus(playerId, action.bonusColor);
-					if (bonusResult) {
-						console.log(`[AI ${playerName}] 🎁 Bonus gespeeld: ${action.bonusColor} op ${bonusResult.zoneName}`);
-						this._broadcastState();
+					const previewData = this._aiBonusPreview(playerId, action.bonusColor);
+					if (previewData) {
+						this._broadcastEvent('bonusPreview', previewData);
+						setTimeout(() => {
+							const bonusResult = this._aiPlayOneBonus(playerId, action.bonusColor);
+							if (bonusResult) {
+								console.log(`[AI ${playerName}] 🎁 Bonus gespeeld: ${action.bonusColor} op ${bonusResult.zoneName}`);
+								this._broadcastState();
+							}
+							setTimeout(processNext, ACTION_DELAY);
+						}, 1200);
+					} else {
+						setTimeout(processNext, ACTION_DELAY);
 					}
-					setTimeout(processNext, ACTION_DELAY);
 					break;
 				}
 
@@ -1490,6 +1498,56 @@ class LocusP2PHost {
 			return null;
 		}
 		return { zoneName: bestPlacement.zoneName };
+	}
+
+	/** Returns preview data for the best bonus placement without executing it */
+	_aiBonusPreview(playerId, bonusColor) {
+		const player = this.gameState?.players?.[playerId];
+		const board = this.gameState?.boardState;
+		if (!player || !board) return null;
+		if (!player.bonusInventory?.[bonusColor] || player.bonusInventory[bonusColor] <= 0) return null;
+
+		const bonusMatrix = this.Rules.getBonusShapeForPlayer(bonusColor, player);
+		if (!bonusMatrix) return null;
+
+		let bestPlacement = null;
+		let bestScore = -Infinity;
+		const targetZones = bonusColor === 'any'
+			? ['yellow', 'green', 'blue', 'red', 'purple']
+			: [bonusColor];
+
+		for (const zoneName of targetZones) {
+			if (zoneName === 'red') {
+				for (const sg of (board.zones?.red?.subgrids || [])) {
+					this._scoreBonusPlacements(bonusMatrix, sg, zoneName, sg.id, bonusColor, (p) => {
+						if (p.score > bestScore) { bestScore = p.score; bestPlacement = p; }
+					});
+				}
+			} else {
+				const zoneData = board.zones?.[zoneName];
+				if (zoneData) {
+					this._scoreBonusPlacements(bonusMatrix, zoneData, zoneName, null, bonusColor, (p) => {
+						if (p.score > bestScore) { bestScore = p.score; bestPlacement = p; }
+					});
+				}
+			}
+		}
+
+		if (!bestPlacement) return null;
+
+		let matrix = this.Rules.cloneMatrix(bonusMatrix);
+		if (bestPlacement.rotation) matrix = this.Rules.rotateMatrixN(matrix, bestPlacement.rotation);
+
+		return {
+			playerId,
+			playerName: player.name,
+			bonusColor,
+			zoneName: bestPlacement.zoneName,
+			baseX: bestPlacement.baseX,
+			baseY: bestPlacement.baseY,
+			subgridId: bestPlacement.subgridId || null,
+			matrix
+		};
 	}
 
 	/** Pick the card to discard when no valid placement found */
@@ -1862,6 +1920,7 @@ class LocusP2PGuest {
 		this.onNextLevel = null;
 		this.onObjectivesRevealed = null;
 		this.onTimeBombed = null;
+		this.onBonusPreview = null;
 		this.onOpponentInteraction = null;
 		this.onTaunt = null;
 		this.onPauseChanged = null;
@@ -1976,6 +2035,7 @@ class LocusP2PGuest {
 			case 'nextLevelStarted': if (this.onNextLevel) this.onNextLevel(data.level); break;
 			case 'gameEnded': if (this.onGameEnded) this.onGameEnded(data); break;
 			case 'timeBombUsed': if (this.onTimeBombed) this.onTimeBombed(data); break;
+			case 'bonusPreview': if (this.onBonusPreview) this.onBonusPreview(data); break;
 			case 'opponentInteraction': if (this.onOpponentInteraction) this.onOpponentInteraction(data); break;
 			case 'taunt': if (this.onTaunt) this.onTaunt(data); break;
 			case 'pauseChanged': if (this.onPauseChanged) this.onPauseChanged(data); break;

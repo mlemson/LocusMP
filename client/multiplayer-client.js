@@ -43,6 +43,7 @@ class LocusMultiplayer {
 		this.onObjectivesRevealed = null;  // () => {} — wanneer geheime doelstellingen onthuld worden
 		this.onTimeBombed = null;          // ({ bomberPlayerId, bomberPlayerName, bombedPlayerId, bombedPlayerName }) => {}
 		this.onCardStolen = null;          // ({ thiefId, thiefName, targetId, targetName, cardName }) => {}
+		this.onBonusPreview = null;        // ({ playerId, playerName, bonusColor, zoneName, baseX, baseY, subgridId, matrix }) => {}
 		this.onOpponentInteraction = null; // ({ playerId, playerName, type, mode, ... }) => {}
 		this.onTaunt = null;               // ({ playerId, playerName, text, timestamp }) => {}
 		this.onPauseChanged = null;        // ({ paused, playerId, playerName, remainingMs }) => {}
@@ -235,6 +236,13 @@ class LocusMultiplayer {
 		this.socket.on('cardStolen', (data) => {
 			if (this.onCardStolen) {
 				this.onCardStolen(data);
+			}
+		});
+
+		// Bonus preview event (bot shows where bonus will be placed)
+		this.socket.on('bonusPreview', (data) => {
+			if (this.onBonusPreview) {
+				this.onBonusPreview(data);
 			}
 		});
 

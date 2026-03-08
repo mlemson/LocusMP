@@ -1198,6 +1198,7 @@
 							case 'nextLevelStarted': if (p2pMp.onNextLevel) p2pMp.onNextLevel(data.level); break;
 							case 'gameEnded': if (p2pMp.onGameEnded) p2pMp.onGameEnded(data); break;
 							case 'timeBombUsed': if (p2pMp.onTimeBombed) p2pMp.onTimeBombed(data); break;
+							case 'bonusPreview': if (p2pMp.onBonusPreview) p2pMp.onBonusPreview(data); break;
 							case 'opponentInteraction': if (p2pMp.onOpponentInteraction) p2pMp.onOpponentInteraction(data); break;
 							case 'taunt': if (p2pMp.onTaunt) p2pMp.onTaunt(data); break;
 							case 'pauseChanged': if (p2pMp.onPauseChanged) p2pMp.onPauseChanged(data); break;
@@ -1344,6 +1345,7 @@
 							case 'nextLevelStarted': if (p2pMp.onNextLevel) p2pMp.onNextLevel(data.level); break;
 							case 'gameEnded': if (p2pMp.onGameEnded) p2pMp.onGameEnded(data); break;
 							case 'timeBombUsed': if (p2pMp.onTimeBombed) p2pMp.onTimeBombed(data); break;
+							case 'bonusPreview': if (p2pMp.onBonusPreview) p2pMp.onBonusPreview(data); break;
 							case 'opponentInteraction': if (p2pMp.onOpponentInteraction) p2pMp.onOpponentInteraction(data); break;
 							case 'taunt': if (p2pMp.onTaunt) p2pMp.onTaunt(data); break;
 							case 'pauseChanged': if (p2pMp.onPauseChanged) p2pMp.onPauseChanged(data); break;
@@ -1474,6 +1476,7 @@
 				onNextLevel: null,
 				onObjectivesRevealed: null,
 				onTimeBombed: null,
+				onBonusPreview: null,
 				onOpponentInteraction: null,
 				onTaunt: null,
 				onPauseChanged: null,

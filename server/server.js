@@ -368,6 +368,66 @@ function broadcastGameState(io, gameId) {
 
 	// Na elke broadcast: check of AI actie nodig is
 	scheduleAIActions(gameId);
+
+	// Check of een AI bot een time bomb wil gebruiken op de huidige menselijke speler
+	_checkAITimeBomb(gameId);
+}
+
+/** AI bots use time bombs at the start of a human player's turn (40% chance) */
+const _timeBombPending = new Set(); // gameId set to prevent double-firing
+function _checkAITimeBomb(gameId) {
+	const gameState = games.get(gameId);
+	if (!gameState || gameState.phase !== 'playing' || gameState.paused) return;
+	if (_timeBombPending.has(gameId)) return;
+
+	const gameAIs = aiPlayers.get(gameId);
+	if (!gameAIs || gameAIs.size === 0) return;
+
+	const currentPid = gameState.playerOrder?.[gameState.currentTurnIndex];
+	if (!currentPid || isAIPlayer(gameId, currentPid)) return; // Only bomb humans
+
+	for (const aiId of gameAIs) {
+		const aiPlayer = gameState.players?.[aiId];
+		if (!aiPlayer || (aiPlayer.timeBombs || 0) <= 0) continue;
+		// 40% chance to use time bomb (can save for later turns)
+		if (Math.random() >= 0.4) continue;
+
+		_timeBombPending.add(gameId);
+		setTimeout(() => {
+			_timeBombPending.delete(gameId);
+			const gs = games.get(gameId);
+			if (!gs || gs.phase !== 'playing' || gs.paused) return;
+			const stillCurrentPid = gs.playerOrder?.[gs.currentTurnIndex];
+			if (stillCurrentPid !== currentPid) return; // Turn already changed
+
+			_clearTurnTimer(gameId);
+
+			const bombResult = GameRules.useTimeBomb(gs, aiId);
+			if (bombResult && !bombResult.error) {
+				console.log(`[Locus AI] 💣 ${aiPlayer.name} used TIME BOMB on ${gs.players?.[currentPid]?.name}`);
+
+				io.to(gameId).emit('timeBombUsed', {
+					bomberPlayerId: bombResult.bomberPlayerId,
+					bomberPlayerName: bombResult.bomberPlayerName,
+					bombedPlayerId: bombResult.bombedPlayerId,
+					bombedPlayerName: bombResult.bombedPlayerName
+				});
+
+				if (bombResult.gameEnded) {
+					broadcastGameState(io, gameId);
+					io.to(gameId).emit('levelComplete', {
+						levelScores: gs.levelScores,
+						levelWinner: gs.levelWinner,
+						level: gs.level
+					});
+				} else {
+					_startTimerForCurrentPlayer(gameId, true);
+					broadcastGameState(io, gameId);
+				}
+			}
+		}, 500);
+		break; // Only one bomb per turn start
+	}
 }
 
 // ──────────────────────────────────────────────
@@ -643,16 +703,38 @@ function executeAITurn(gameId, aiPlayerId) {
 			if (bonusPlacements.length === 0) { setTimeout(processNextAction, AIPlayer.AI_ACTION_DELAY_MS); return; }
 			bonusPlacements.sort((a, b) => b.score - a.score);
 			const best = bonusPlacements[0];
-			const bonusResult = GameRules.playBonus(
-				gs, aiPlayerId, action.bonusColor, best.zoneName, best.baseX, best.baseY, best.subgridId, best.rotation || 0
-			);
-			if (bonusResult.error) {
-				console.log(`[Locus AI] ${player.name} bonus mislukt: ${bonusResult.error}`);
+
+			// Build the bonus matrix for preview
+			let bonusMatrix = GameRules.getBonusShapeForPlayer(action.bonusColor, player);
+			if (bonusMatrix && best.rotation) bonusMatrix = GameRules.rotateMatrixN(GameRules.cloneMatrix(bonusMatrix), best.rotation);
+
+			// Emit preview so clients can show the hover before actual placement
+			io.to(gameId).emit('bonusPreview', {
+				playerId: aiPlayerId,
+				playerName: player.name,
+				bonusColor: action.bonusColor,
+				zoneName: best.zoneName,
+				baseX: best.baseX,
+				baseY: best.baseY,
+				subgridId: best.subgridId || null,
+				matrix: bonusMatrix
+			});
+
+			// Delay before actually placing the bonus (gives time to see the preview)
+			setTimeout(() => {
+				const gs2 = games.get(gameId);
+				if (!gs2 || gs2.phase !== 'playing' || gs2.paused) return;
+				const bonusResult = GameRules.playBonus(
+					gs2, aiPlayerId, action.bonusColor, best.zoneName, best.baseX, best.baseY, best.subgridId, best.rotation || 0
+				);
+				if (bonusResult.error) {
+					console.log(`[Locus AI] ${player.name} bonus mislukt: ${bonusResult.error}`);
+				} else {
+					console.log(`[Locus AI] ${player.name} speelde ${action.bonusColor} bonus op ${best.zoneName}`);
+				}
+				broadcastGameState(io, gameId);
 				setTimeout(processNextAction, AIPlayer.AI_ACTION_DELAY_MS);
-				return;
-			}
-			console.log(`[Locus AI] ${player.name} speelde ${action.bonusColor} bonus op ${best.zoneName}`);
-			setTimeout(processNextAction, AIPlayer.AI_ACTION_DELAY_MS);
+			}, 1200);
 		} else if (action.type === 'useMine') {
 			const mineResult = GameRules.useMine(gs, aiPlayerId, action.zoneName, action.cellX, action.cellY);
 			if (mineResult.error) {

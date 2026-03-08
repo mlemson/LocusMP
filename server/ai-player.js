@@ -107,57 +107,22 @@ function _tryPlacementsOnZone(card, zoneData, zoneName, rotations, mirrors, perk
 			matrix = GameRules.rotateMatrixN(matrix, rotation);
 			if (mirrored) matrix = GameRules.mirrorMatrix(matrix);
 
-			const matH = matrix.length;
-			const matW = Math.max(...matrix.map(r => r.length));
-
 			for (let baseY = -1; baseY < rows + 1; baseY++) {
 				for (let baseX = -1; baseX < cols + 1; baseX++) {
 					const cells = GameRules.collectPlacementCellsData(zoneData, baseX, baseY, matrix);
 					if (!cells || cells.length === 0) continue;
 					if (!GameRules.validatePlacement(zoneName, zoneData, cells, perkFlags)) continue;
 
-					// Score plaatsing: prioriteer cellen met flags
+					// Base score: simple flag-based (used as tiebreaker)
 					let score = 0;
-					let hasFlaggedCell = false;
-					// For blue zone, pre-compute reached bold rows
-					let blueReachedRows = null;
-					let blueBoldSet = null;
-					if (zoneName === 'blue') {
-						blueReachedRows = _getReachedBoldRows(zoneData);
-						blueBoldSet = new Set(zoneData.boldRows || []);
-					}
 					for (const c of cells) {
 						const cell = GameRules.getDataCell(zoneData, c.x, c.y);
-						if (cell?.flags?.includes('gold')) { score += 8; hasFlaggedCell = true; }
-						else if (cell?.flags?.includes('bonus')) { score += 12; hasFlaggedCell = true; }
-						else if (cell?.flags?.includes('pearl')) { score += 6; hasFlaggedCell = true; }
-						else if (cell?.flags?.includes('end')) { score += 5; hasFlaggedCell = true; }
-						else if (cell?.flags?.includes('bold')) {
-							// Blue zone bold: only value if this bold row is NOT yet reached
-							if (zoneName === 'blue' && blueBoldSet?.has(c.y) && blueReachedRows?.has(c.y)) {
-								score += 1; // Already scored row — treat as normal cell
-							} else {
-								score += 2; hasFlaggedCell = true;
-							}
-						}
-						else { score += 1; }
-					}
-					// Penalize pure empty placements that give no rewards
-					if (!hasFlaggedCell) score = Math.max(1, Math.floor(score * 0.4));
-
-					// Blue zone: new tier bonus + favor going upward
-					if (zoneName === 'blue') {
-						const counted = new Set();
-						let newTierCount = 0;
-						for (const c of cells) {
-							if (blueBoldSet.has(c.y) && !blueReachedRows.has(c.y) && !counted.has(c.y)) {
-								newTierCount++;
-								counted.add(c.y);
-							}
-						}
-						score += newTierCount * 10;
-						const minY = Math.min(...cells.map(c => c.y));
-						score += Math.max(0, Math.floor(((zoneData.rows || 20) - minY) / 3));
+						if (cell?.flags?.includes('gold')) score += 8;
+						else if (cell?.flags?.includes('bonus')) score += 12;
+						else if (cell?.flags?.includes('pearl')) score += 6;
+						else if (cell?.flags?.includes('end')) score += 5;
+						else if (cell?.flags?.includes('bold')) score += 3;
+						else score += 1;
 					}
 
 					result.push({
@@ -219,15 +184,75 @@ function _tryBonusPlacements(bonusMatrix, zoneData, zoneName, rotations, subgrid
 				let score = cells.length;
 				for (const c of cells) {
 					const cell = GameRules.getDataCell(zoneData, c.x, c.y);
-					if (cell?.flags?.includes('gold')) score += 3;
-					if (cell?.flags?.includes('bonus')) score += 2;
-					if (cell?.flags?.includes('bold')) score += 1;
+					if (cell?.flags?.includes('gold')) score += 8;
+					if (cell?.flags?.includes('bonus')) score += 12;
+					if (cell?.flags?.includes('pearl')) score += 6;
+					if (cell?.flags?.includes('bold')) score += 3;
+					if (cell?.flags?.includes('end')) score += 5;
 				}
+
+				// Zone-specific bonus impact (lighter than full card impact)
+				if (zoneName === 'yellow') score += _scoreYellowImpact(zoneData, cells);
+				else if (zoneName === 'green') score += _scoreGreenImpact(zoneData, cells);
+				else if (zoneName === 'blue') score += _scoreBlueImpact(zoneData, cells);
+				else if (zoneName === 'red') {
+					// Simplified red scoring using subgrid fill info
+					const info = _getSubgridFillInfo(zoneData);
+					const newFilled = info.filled + cells.length;
+					const newRatio = info.total > 0 ? newFilled / info.total : 0;
+					if (newRatio >= 0.8 && info.ratio < 0.8) score += 20;
+					if (newRatio >= 1.0 && info.ratio < 1.0) score += 15;
+					if (info.ratio >= 0.5) score += 8;
+					else if (info.ratio >= 0.3) score += 4;
+				}
+				else if (zoneName === 'purple') score += _scorePurpleImpact(zoneData, cells);
+
+				// Adjacency — prefer extending existing territory
+				let adjacentCount = 0;
+				for (const c of cells) {
+					if (GameRules.hasAdjacentActive(zoneData, c.x, c.y)) adjacentCount++;
+				}
+				score += adjacentCount * 2;
 
 				result.push({ zoneName, baseX, baseY, rotation, subgridId, score, bonusColor });
 			}
 		}
 	}
+}
+
+/**
+ * Order bonus colors by strategic priority: objective zone first, weakest zone second.
+ */
+function _getBonusPlayOrder(player) {
+	const colors = ['yellow', 'red', 'green', 'purple', 'blue'];
+	const objective = player.chosenObjective;
+	const scores = player.scoreBreakdown || {};
+
+	// Sort by: objective-relevant first, then weakest zone
+	colors.sort((a, b) => {
+		const aObj = _isObjectiveZone(objective, a) ? -100 : 0;
+		const bObj = _isObjectiveZone(objective, b) ? -100 : 0;
+		const aScore = scores[a] || 0;
+		const bScore = scores[b] || 0;
+		return (aObj - bObj) || (aScore - bScore);
+	});
+
+	// Always add 'any' at end
+	colors.push('any');
+	return colors;
+}
+
+function _isObjectiveZone(objective, zoneName) {
+	if (!objective) return false;
+	const objId = objective.id || '';
+	if (objId === 'fill_yellow_cols' && zoneName === 'yellow') return true;
+	if (objId === 'reach_green_ends' && zoneName === 'green') return true;
+	if (objId === 'complete_blue_rows' && zoneName === 'blue') return true;
+	if (objId === 'fill_red_grids' && zoneName === 'red') return true;
+	if (objId === 'purple_cluster' && zoneName === 'purple') return true;
+	if (objective.zone === zoneName) return true;
+	if (objective.zones?.includes(zoneName)) return true;
+	return false;
 }
 
 /**
@@ -329,7 +354,7 @@ function chooseStartingDeck() {
 
 /**
  * AI kiest een objective (index 0-2).
- * Kiest de objective met de meeste reward punten.
+ * Weighs reward vs difficulty: high-reward + achievable zone targets preferred.
  */
 function chooseObjective(choices) {
 	if (!choices || choices.length === 0) return 0;
@@ -341,7 +366,19 @@ function chooseObjective(choices) {
 		const points = obj.points || 0;
 		const coins = obj.coins || 0;
 		const bonuses = obj.randomBonuses || 0;
-		const score = points + coins * 2 + bonuses * 3;
+		let score = points + coins * 2 + bonuses * 4;
+
+		// Prefer zone-specific objectives (AI now understands scoring well)
+		const objId = obj.id || '';
+		if (objId === 'fill_yellow_cols') score += 8;   // Column completion is straightforward
+		else if (objId === 'reach_green_ends') score += 6;
+		else if (objId === 'complete_blue_rows') score += 7;
+		else if (objId === 'fill_red_grids') score += 5;
+		else if (objId === 'purple_cluster') score += 9;  // Purple clusters scale well
+
+		// Higher reward objectives are worth chasing
+		if (points >= 30) score += 5;
+
 		if (score > bestScore) {
 			bestScore = score;
 			bestIdx = i;
@@ -386,23 +423,33 @@ function planTurn(gameState, playerId) {
 
 	const actions = [];
 
-	// 1. Probeer een reguliere kaart te spelen
+	// 1. Evaluate ALL placements across ALL cards (like hard AI, but deterministic pick)
 	const hand = player.hand || [];
 	const regularCards = hand.filter(c => !c.isGolden);
 	const goldenCards = hand.filter(c => c.isGolden);
 
-	// Probeer eerst een reguliere kaart
-	let cardPlayed = false;
+	let allPlacements = [];
 	for (const card of regularCards) {
 		const placements = findValidPlacements(gameState, playerId, card);
-		if (placements.length === 0) continue;
+		for (const p of placements) {
+			p.impactScore = _evaluatePlacementImpact(gameState, playerId, card, p);
+			p._card = card;
+		}
+		allPlacements.push(...placements);
+	}
 
-		// Kies de beste plaatsing
-		placements.sort((a, b) => b.score - a.score);
-		const best = placements[0];
+	let cardPlayed = false;
+	if (allPlacements.length > 0) {
+		allPlacements.sort((a, b) => b.impactScore - a.impactScore);
+
+		// Normal AI: slight randomization among top-5
+		const topN = Math.min(5, allPlacements.length);
+		const chosenIdx = Math.floor(Math.random() * Math.min(3, topN));
+
+		const best = allPlacements[chosenIdx];
 		actions.push({
 			type: 'playCard',
-			cardId: card.id,
+			cardId: best.cardId,
 			zoneName: best.zoneName,
 			baseX: best.baseX,
 			baseY: best.baseY,
@@ -411,14 +458,16 @@ function planTurn(gameState, playerId) {
 			subgridId: best.subgridId
 		});
 		cardPlayed = true;
-		break;
 	}
 
-	// 2. Probeer gouden kaarten als extra
+	// 2. Probeer gouden kaarten als extra (also impact-scored)
 	for (const card of goldenCards) {
 		const placements = findValidPlacements(gameState, playerId, card);
 		if (placements.length === 0) continue;
-		placements.sort((a, b) => b.score - a.score);
+		for (const p of placements) {
+			p.impactScore = _evaluatePlacementImpact(gameState, playerId, card, p);
+		}
+		placements.sort((a, b) => b.impactScore - a.impactScore);
 		const best = placements[0];
 		actions.push({
 			type: 'playCard',
@@ -432,15 +481,15 @@ function planTurn(gameState, playerId) {
 		});
 	}
 
-	// 3. Perk kiezen als perkPoints beschikbaar (during playing phase too)
+	// 3. Perk kiezen als perkPoints beschikbaar
 	const perkId = choosePerk(gameState, playerId);
 	if (perkId) {
 		actions.push({ type: 'choosePerk', perkId });
 	}
 
-	// 4. Bonussen spelen
-	const bonusColors = ['yellow', 'red', 'green', 'purple', 'blue', 'any'];
-	for (const color of bonusColors) {
+	// 4. Bonussen spelen — prioritize objective-relevant zones
+	const bonusOrder = _getBonusPlayOrder(player);
+	for (const color of bonusOrder) {
 		const charges = player.bonusInventory?.[color] || 0;
 		for (let i = 0; i < charges; i++) {
 			actions.push({ type: 'playBonus', bonusColor: color });
@@ -537,165 +586,315 @@ function getHardAIThinkDelay() {
 }
 
 /**
- * Evaluates the actual scoring impact of a placement by simulating it.
- * Returns a composite score considering zone scoring, objective progress, and board position.
+ * Evaluates the actual scoring impact of a placement by simulating its effect.
+ * Uses zone-specific scoring rules to predict real point gains.
  */
 function _evaluatePlacementImpact(gameState, playerId, card, placement) {
 	const player = gameState.players[playerId];
 	if (!player) return placement.score;
 
-	let impactScore = placement.score; // Start from base cell-flag score
-
+	let impactScore = 0;
 	const board = gameState.boardState;
 	const zoneName = placement.zoneName;
+	const zoneData = _getZoneData(board, zoneName, placement.subgridId);
+	if (!zoneData) return placement.score;
 
-	// ── Zone-specific strategic bonuses ──
-	if (zoneName === 'yellow') {
-		// Yellow scores by completing column pairs — check if this placement fills column cells
-		const zoneData = board?.zones?.yellow;
-		if (zoneData) {
-			const cells = _getPlacementCells(card, placement, zoneData);
-			const columnsFilled = new Set(cells.map(c => c.x));
-			for (const colX of columnsFilled) {
-				const colCells = _countColumnCells(zoneData, colX);
-				// Bonus for nearly-complete columns (completing them is very valuable)
-				if (colCells.filled >= colCells.total - cells.filter(c => c.x === colX).length) {
-					impactScore += 8; // Big bonus for completing a column
-				} else if (colCells.ratio > 0.6) {
-					impactScore += 3; // Bonus for progressing a half-filled column
-				}
-			}
-		}
-	} else if (zoneName === 'green') {
-		// Green scores by distance to end cells — favor placements closer to end
-		const zoneData = board?.zones?.green;
-		if (zoneData) {
-			const cells = _getPlacementCells(card, placement, zoneData);
-			for (const c of cells) {
-				const cell = GameRules.getDataCell(zoneData, c.x, c.y);
-				if (cell?.flags?.includes('end')) {
-					impactScore += 12; // Huge bonus for reaching end cells
-				}
-				// Bonus for advancing towards end cells
-				const endCells = zoneData.endCells || [];
-				for (const ec of endCells) {
-					const dist = Math.abs(c.x - ec.x) + Math.abs(c.y - ec.y);
-					if (dist <= 2) impactScore += 4;
-					else if (dist <= 4) impactScore += 1;
-				}
-			}
-		}
-	} else if (zoneName === 'blue') {
-		// Blue scores by bold row tiers — only first cell on an unreached bold row unlocks tier points
-		const zoneData = board?.zones?.blue;
-		if (zoneData) {
-			const cells = _getPlacementCells(card, placement, zoneData);
-			const boldRowSet = new Set(zoneData.boldRows || []);
-			const reachedBoldRows = _getReachedBoldRows(zoneData);
-			const sortedBoldYs = [...new Set(zoneData.boldRows || [])].sort((a, b) => b - a);
-			const newTiersUnlocked = new Set();
-			for (const c of cells) {
-				if (boldRowSet.has(c.y) && !reachedBoldRows.has(c.y)) {
-					newTiersUnlocked.add(c.y);
-				}
-			}
-			for (const boldY of newTiersUnlocked) {
-				const tierIdx = sortedBoldYs.indexOf(boldY);
-				const tierPoints = [10, 15, 20, 25, 40];
-				impactScore += tierPoints[Math.min(tierIdx, tierPoints.length - 1)] || 10;
-			}
-			// Extra reward for gold/bonus/pearl cells (these are valuable regardless of bold)
-			for (const c of cells) {
-				const cell = GameRules.getDataCell(zoneData, c.x, c.y);
-				if (cell?.flags?.includes('gold')) impactScore += 5;
-				else if (cell?.flags?.includes('bonus')) impactScore += 4;
-				else if (cell?.flags?.includes('pearl')) impactScore += 4;
-			}
-			const minY = Math.min(...cells.map(c => c.y));
-			impactScore += Math.max(0, Math.floor(((zoneData.rows || 20) - minY) / 3));
-		}
-	} else if (zoneName === 'red') {
-		// Red scores by subgrid completion (80%+ threshold) — favor nearly-complete subgrids
-		const redZone = board?.zones?.red;
-		if (redZone?.subgrids && placement.subgridId) {
-			const sg = redZone.subgrids.find(s => s.id === placement.subgridId);
-			if (sg) {
-				const info = _getSubgridFillInfo(sg);
-				const cellsPlaced = placement.cellCount || 1;
-				const newRatio = (info.filled + cellsPlaced) / info.total;
-				if (newRatio >= 0.8 && info.ratio < 0.8) {
-					impactScore += 15; // Huge bonus for crossing the 80% threshold
-				} else if (newRatio >= 1.0) {
-					impactScore += 10; // Full subgrid completion
-				} else if (info.ratio >= 0.5) {
-					impactScore += 4; // Working on a half-filled subgrid
-				}
-			}
-		}
-	} else if (zoneName === 'purple') {
-		// Purple scores by connection clusters — favor extending existing clusters
-		const zoneData = board?.zones?.purple;
-		if (zoneData) {
-			const cells = _getPlacementCells(card, placement, zoneData);
-			let adjacentActive = 0;
-			for (const c of cells) {
-				if (GameRules.hasAdjacentActive(zoneData, c.x, c.y)) adjacentActive++;
-				const cell = GameRules.getDataCell(zoneData, c.x, c.y);
-				if (cell?.flags?.includes('bold')) impactScore += 3;
-			}
-			impactScore += adjacentActive * 2; // Bonus for connecting to existing placed cells
-		}
+	const cells = _getPlacementCells(card, placement, zoneData);
+	if (!cells || cells.length === 0) return placement.score;
+
+	// ── Collect valuable cell resources ──
+	for (const c of cells) {
+		const cell = GameRules.getDataCell(zoneData, c.x, c.y);
+		if (cell?.flags?.includes('gold')) impactScore += 10;
+		if (cell?.flags?.includes('bonus')) impactScore += 15;
+		if (cell?.flags?.includes('pearl')) impactScore += 8;
 	}
 
-	// ── Objective awareness ──
+	// ── Zone-specific scoring simulation ──
+	if (zoneName === 'yellow') {
+		impactScore += _scoreYellowImpact(zoneData, cells);
+	} else if (zoneName === 'green') {
+		impactScore += _scoreGreenImpact(zoneData, cells);
+	} else if (zoneName === 'blue') {
+		impactScore += _scoreBlueImpact(zoneData, cells);
+	} else if (zoneName === 'red') {
+		impactScore += _scoreRedImpact(board, placement, cells);
+	} else if (zoneName === 'purple') {
+		impactScore += _scorePurpleImpact(zoneData, cells);
+	}
+
+	// ── Objective awareness — HEAVY weighting ──
 	const objective = player.chosenObjective;
 	if (objective && !player.objectiveAchieved) {
-		// Boost score for placements in zones matching objective
-		if (objective.zone && objective.zone === zoneName) {
-			impactScore += 5;
-		}
-		// Density objective: more cells = better
-		if (objective.type === 'density') {
-			impactScore += (placement.cellCount || 1) * 2;
-		}
-		// Coverage objectives: value zone-matching placements higher
-		if (objective.type === 'coverage' && objective.zones?.includes(zoneName)) {
-			impactScore += 4;
-		}
+		impactScore += _scoreObjectiveImpact(objective, zoneName, cells, board, placement);
 	}
 
-	// ── Opponent blocking (check if opponents are strong in this zone) ──
-	const opponents = Object.keys(gameState.players).filter(pid => pid !== playerId);
-	for (const oppId of opponents) {
-		const opp = gameState.players[oppId];
-		// If opponent has an objective targeting this zone, slightly boost priority
-		if (opp?.chosenObjective?.zone === zoneName) {
-			impactScore += 2; // Blocking value
-		}
+	// ── Balance bonus awareness ──
+	const scoreBreakdown = player.scoreBreakdown || {};
+	const zoneScores = {
+		yellow: scoreBreakdown.yellow || 0,
+		green: scoreBreakdown.green || 0,
+		blue: scoreBreakdown.blue || 0,
+		red: scoreBreakdown.red || 0,
+		purple: scoreBreakdown.purple || 0
+	};
+	const currentMin = Math.min(...Object.values(zoneScores));
+	if (zoneScores[zoneName] === currentMin && currentMin < 15) {
+		impactScore += 8; // Boost weakest zone for balance bonus
 	}
 
-	// ── Adjacency quality bonus ──
-	const zoneData = _getZoneData(board, zoneName, placement.subgridId);
-	if (zoneData) {
-		const cells = _getPlacementCells(card, placement, zoneData);
-		let adjacentCount = 0;
-		for (const c of cells) {
-			if (GameRules.hasAdjacentActive(zoneData, c.x, c.y)) adjacentCount++;
-		}
-		impactScore += adjacentCount; // Favor placements that extend existing territory
+	// ── Adjacency — prefer extending existing territory ──
+	let adjacentCount = 0;
+	for (const c of cells) {
+		if (GameRules.hasAdjacentActive(zoneData, c.x, c.y)) adjacentCount++;
 	}
+	impactScore += adjacentCount * 2;
 
-	// ── Bonus cell chaining: strongly favor placements that pick up bonus cells ──
-	const zd = _getZoneData(board, zoneName, placement.subgridId);
-	if (zd) {
-		const placementCells = _getPlacementCells(card, placement, zd);
-		for (const c of placementCells) {
-			const cell = GameRules.getDataCell(zd, c.x, c.y);
-			if (cell?.flags?.includes('bonus')) impactScore += 8;
-		}
-	}
+	// ── Cell count bonus — bigger placements are inherently better ──
+	impactScore += cells.length * 2;
 
 	return impactScore;
+}
+
+/** Yellow: simulate column completion. Complete columns = 10/14/20/28/38 per pair slot. */
+function _scoreYellowImpact(zoneData, placedCells) {
+	let impact = 0;
+	const columnsAffected = new Set(placedCells.map(c => c.x));
+
+	for (const colX of columnsAffected) {
+		let emptyCount = 0;
+		let totalCells = 0;
+		const placedInCol = placedCells.filter(c => c.x === colX).length;
+
+		for (let y = 0; y < (zoneData.rows || 0); y++) {
+			const cell = GameRules.getDataCell(zoneData, colX, y);
+			if (!cell) continue;
+			totalCells++;
+			if (!cell.active) emptyCount++;
+		}
+
+		// After placement, remaining empty = emptyCount - placedInCol
+		const remainingEmpty = Math.max(0, emptyCount - placedInCol);
+
+		if (remainingEmpty === 0 && totalCells > 0) {
+			// Column will be complete! Award the actual column pair points.
+			const pairIndex = Math.min(Math.floor(colX / 2), 4);
+			const pairPoints = [10, 14, 20, 28, 38];
+			impact += pairPoints[pairIndex] * 2; // Double because scoring is huge
+		} else if (remainingEmpty <= 2) {
+			// Nearly complete — high value
+			impact += 12;
+		} else if (remainingEmpty <= 4) {
+			impact += 4;
+		}
+	}
+
+	return impact;
+}
+
+/** Green: simulate reaching end cells (5-25 pts each) and path advancement. */
+function _scoreGreenImpact(zoneData, placedCells) {
+	let impact = 0;
+	const startX = Number.isFinite(zoneData.startX) ? zoneData.startX : Math.floor((zoneData.cols || 1) / 2);
+	const startY = Number.isFinite(zoneData.startY) ? zoneData.startY : Math.floor((zoneData.rows || 1) / 2);
+
+	for (const c of placedCells) {
+		const cell = GameRules.getDataCell(zoneData, c.x, c.y);
+		if (cell?.flags?.includes('end')) {
+			// Reaching an end cell gives 5-25 points based on distance
+			const dist = Math.abs(c.x - startX) + Math.abs(c.y - startY);
+			let maxDist = 1;
+			for (const k in zoneData.cells) {
+				const ec = zoneData.cells[k];
+				if (ec?.flags?.includes('end')) {
+					const d = Math.abs((ec.x || 0) - startX) + Math.abs((ec.y || 0) - startY);
+					if (d > maxDist) maxDist = d;
+				}
+			}
+			const ratio = Math.min(1, dist / maxDist);
+			impact += Math.round(5 + ratio * 20) * 2;
+		}
+	}
+
+	// Proximity to nearest unreached end cell
+	const unreachedEnds = [];
+	for (const k in zoneData.cells) {
+		const ec = zoneData.cells[k];
+		if (ec?.flags?.includes('end') && !ec.active) {
+			unreachedEnds.push(ec);
+		}
+	}
+	if (unreachedEnds.length > 0) {
+		for (const c of placedCells) {
+			let minDist = Infinity;
+			for (const ec of unreachedEnds) {
+				const d = Math.abs(c.x - (ec.x || 0)) + Math.abs(c.y - (ec.y || 0));
+				if (d < minDist) minDist = d;
+			}
+			if (minDist <= 1) impact += 10;
+			else if (minDist <= 3) impact += 5;
+			else if (minDist <= 5) impact += 2;
+		}
+	}
+
+	// Adjacency to start/existing active cells (path building)
+	let adjacentActive = 0;
+	for (const c of placedCells) {
+		if (GameRules.hasAdjacentActive(zoneData, c.x, c.y)) adjacentActive++;
+	}
+	impact += adjacentActive * 3;
+
+	return impact;
+}
+
+/** Blue: simulate bold row tier unlocking (10/15/20/25/40 pts). */
+function _scoreBlueImpact(zoneData, placedCells) {
+	let impact = 0;
+	const boldYs = [...new Set(zoneData.boldRows || [])].sort((a, b) => b - a);
+	const reachedBoldRows = _getReachedBoldRows(zoneData);
+	const tierPoints = [10, 15, 20, 25, 40];
+
+	for (const c of placedCells) {
+		const cell = GameRules.getDataCell(zoneData, c.x, c.y);
+		if (cell?.flags?.includes('bold')) {
+			const tierIdx = boldYs.indexOf(c.y);
+			if (tierIdx >= 0 && !reachedBoldRows.has(c.y)) {
+				// This placement unlocks a new tier!
+				const pts = tierPoints[Math.min(tierIdx, tierPoints.length - 1)] || 10;
+				impact += pts * 2;
+			}
+		}
+	}
+
+	// Favor building upward — higher cells are worth more
+	const minY = Math.min(...placedCells.map(c => c.y));
+	impact += Math.max(0, Math.floor(((zoneData.rows || 20) - minY) / 2));
+
+	// Favor placements adjacent to existing cells (build connected paths upward)
+	let adjacent = 0;
+	for (const c of placedCells) {
+		if (GameRules.hasAdjacentActive(zoneData, c.x, c.y)) adjacent++;
+	}
+	impact += adjacent * 3;
+
+	return impact;
+}
+
+/** Red: simulate subgrid completion toward 80% threshold. */
+function _scoreRedImpact(board, placement, placedCells) {
+	const redZone = board?.zones?.red;
+	if (!redZone?.subgrids || !placement.subgridId) return 0;
+	const sg = redZone.subgrids.find(s => s.id === placement.subgridId);
+	if (!sg) return 0;
+
+	let impact = 0;
+	const info = _getSubgridFillInfo(sg);
+	const cellsPlaced = placedCells.length;
+	const newFilled = info.filled + cellsPlaced;
+	const newRatio = info.total > 0 ? newFilled / info.total : 0;
+
+	if (newRatio >= 0.8 && info.ratio < 0.8) {
+		// Crossing the 80% threshold earns base points!
+		const rawBase = sg.targetPoints || (info.total * 2);
+		const basePoints = Math.max(4, Math.round(rawBase * 0.5));
+		impact += basePoints * 2;
+	}
+	if (newRatio >= 1.0 && info.ratio < 1.0) {
+		// Full completion earns bonus points!
+		impact += 20;
+	}
+
+	// Prefer subgrids with higher fill ratio (focus on completing one at a time)
+	if (info.ratio >= 0.5) impact += 10;
+	else if (info.ratio >= 0.3) impact += 5;
+
+	// Penalize spreading across empty subgrids
+	if (info.filled === 0 && info.ratio === 0) impact -= 3;
+
+	return impact;
+}
+
+/** Purple: simulate cluster connection scoring (6n multiplicative). */
+function _scorePurpleImpact(zoneData, placedCells) {
+	let impact = 0;
+
+	// Count current bold cells in neighbors' clusters
+	let adjacentBold = 0;
+	let adjacentActive = 0;
+	for (const c of placedCells) {
+		if (GameRules.hasAdjacentActive(zoneData, c.x, c.y)) adjacentActive++;
+		const cell = GameRules.getDataCell(zoneData, c.x, c.y);
+		if (cell?.flags?.includes('bold')) {
+			// Bold cells are key to purple scoring
+			impact += 10;
+		}
+		// Check if neighbor cells are bold and active
+		const neighbors = [
+			{ x: c.x - 1, y: c.y }, { x: c.x + 1, y: c.y },
+			{ x: c.x, y: c.y - 1 }, { x: c.x, y: c.y + 1 }
+		];
+		for (const n of neighbors) {
+			const nc = GameRules.getDataCell(zoneData, n.x, n.y);
+			if (nc?.active && nc.flags?.includes('bold')) adjacentBold++;
+		}
+	}
+
+	// Connecting to active cells with bold cells is extremely valuable
+	impact += adjacentBold * 12;
+	impact += adjacentActive * 4;
+
+	// Simulate potential connections: count distinct neighboring active clusters
+	const neighborRoots = new Set();
+	for (const c of placedCells) {
+		const neighbors = [
+			{ x: c.x - 1, y: c.y }, { x: c.x + 1, y: c.y },
+			{ x: c.x, y: c.y - 1 }, { x: c.x, y: c.y + 1 }
+		];
+		for (const n of neighbors) {
+			const nc = GameRules.getDataCell(zoneData, n.x, n.y);
+			if (nc?.active && !nc.isStone) {
+				neighborRoots.add(`${n.x},${n.y}`);
+			}
+		}
+	}
+	// Merging multiple clusters is very valuable (connections are multiplicative)
+	if (neighborRoots.size >= 2) impact += 15;
+
+	return impact;
+}
+
+/** Evaluate how a placement helps achieve the player's objective. */
+function _scoreObjectiveImpact(objective, zoneName, cells, board, placement) {
+	let impact = 0;
+	const objId = objective.id || '';
+
+	// Zone-specific objective matching
+	if (objId === 'fill_yellow_cols' && zoneName === 'yellow') impact += 15;
+	else if (objId === 'reach_green_ends' && zoneName === 'green') impact += 15;
+	else if (objId === 'complete_blue_rows' && zoneName === 'blue') impact += 15;
+	else if (objId === 'fill_red_grids' && zoneName === 'red') impact += 15;
+	else if (objId === 'purple_cluster' && zoneName === 'purple') impact += 15;
+
+	// General zone matching from objective
+	if (objective.zone && objective.zone === zoneName) impact += 10;
+	if (objective.type === 'coverage' && objective.zones?.includes(zoneName)) impact += 8;
+	if (objective.type === 'density') impact += (cells.length || 1) * 3;
+
+	// Specific objective progress boosting
+	if (objId.includes('sabotage') && objective.targetPlayerId) {
+		// Sabotage: don't boost
+	} else if (objId.includes('collect_gold')) {
+		// Gold collection: boost cells with gold flags
+		for (const c of cells) {
+			const zd = _getZoneData(board, zoneName, placement.subgridId);
+			if (zd) {
+				const cell = GameRules.getDataCell(zd, c.x, c.y);
+				if (cell?.flags?.includes('gold')) impact += 10;
+			}
+		}
+	}
+
+	return impact;
 }
 
 function _getPlacementCells(card, placement, zoneData) {
@@ -831,9 +1030,9 @@ function planTurnHard(gameState, playerId) {
 		actions.push({ type: 'choosePerk', perkId });
 	}
 
-	// 4. Bonuses
-	const bonusColors = ['yellow', 'red', 'green', 'purple', 'blue', 'any'];
-	for (const color of bonusColors) {
+	// 4. Bonuses — prioritize objective-relevant zones
+	const bonusOrder = _getBonusPlayOrder(player);
+	for (const color of bonusOrder) {
 		const charges = player.bonusInventory?.[color] || 0;
 		for (let i = 0; i < charges; i++) {
 			actions.push({ type: 'playBonus', bonusColor: color });

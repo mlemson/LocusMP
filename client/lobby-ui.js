@@ -394,6 +394,7 @@ class LocusLobbyUI {
 		this.mp.onObjectivesRevealed = () => this._onObjectivesRevealed();
 		this.mp.onTimeBombed = (data) => this._onTimeBombed(data);
 		this.mp.onCardStolen = (data) => this._onCardStolen(data);
+		this.mp.onBonusPreview = (data) => this._onBonusPreview(data);
 		this.mp.onOpponentInteraction = (data) => this._onOpponentInteraction(data);
 		this.mp.onTaunt = (data) => this._onTaunt(data);
 		this.mp.onPauseChanged = (data) => this._onPauseChanged(data);
@@ -6771,6 +6772,13 @@ class LocusLobbyUI {
 			}
 		}
 		setTimeout(() => this._clearOpponentPreview(), 900);
+	}
+
+	/** Show bonus placement preview when a bot is about to place a bonus */
+	_onBonusPreview(data) {
+		if (!data || !data.matrix || data.playerId === this.mp.userId) return;
+		this._scrollMobileBoardToZone(data.zoneName, true);
+		this._showBotPlacementHover(data);
 	}
 
 	/** Toon een notificatie wanneer een andere speler een kaart speelt */
