@@ -1130,8 +1130,14 @@ class LocusP2PHost {
 						}
 						if (!chosenId) chosenId = available[0]?.id;
 						if (chosenId) {
-							this.Rules.choosePerk(this.gameState, aiId, chosenId);
+							const perkRes = this.Rules.choosePerk(this.gameState, aiId, chosenId);
+							const perkLabel = perkRes?.perk?.name || chosenId;
+							const perkIcon = perkRes?.perk?.icon || '🎯';
 							console.log(`🛒 Bot ${p.name} chose perk: ${chosenId} (${isHard ? 'hard' : 'normal'} AI)`);
+							this._broadcastEvent('botActivity', {
+								playerId: aiId, playerName: p.name,
+								text: `${perkIcon} Perk: ${perkLabel}`
+							});
 							changed = true;
 						}
 					}
@@ -1157,6 +1163,10 @@ class LocusP2PHost {
 						const buyResult = this.Rules.buyShopItem(this.gameState, aiId, item.id, extra);
 						if (buyResult && !buyResult.error) {
 							console.log(`🛒 Bot ${p.name} bought: ${item.id} (cost: ${item.cost}) ${extra.bonusColor ? '→ ' + extra.bonusColor : ''}`);
+							this._broadcastEvent('botActivity', {
+								playerId: aiId, playerName: p.name,
+								text: `🛒 Kocht: ${item.name || item.id} (${item.cost} 💰)`
+							});
 							remainingCoins -= item.cost;
 							changed = true;
 						}
@@ -1172,6 +1182,10 @@ class LocusP2PHost {
 							const buyResult = this.Rules.buyShopItem(this.gameState, aiId, `shop-card-${ci}`, {});
 							if (buyResult && !buyResult.error) {
 								console.log(`🛒 Bot ${p.name} bought card from shop (slot ${ci}, cost: ${price})`);
+								this._broadcastEvent('botActivity', {
+									playerId: aiId, playerName: p.name,
+									text: `🃏 Kocht kaart: ${card.shapeName || 'kaart'} (${price} 💰)`
+								});
 								remainingCoins -= price;
 								changed = true;
 							}
@@ -1267,7 +1281,13 @@ class LocusP2PHost {
 				case 'choosePerk': {
 					const perkResult = this.Rules.choosePerk(this.gameState, playerId, action.perkId);
 					if (!perkResult?.error) {
-						console.log(`[AI ${playerName}] 🎯 Perk gekozen: ${perkResult?.perk?.name || action.perkId}`);
+						const perkName = perkResult?.perk?.name || action.perkId;
+						const perkIcon = perkResult?.perk?.icon || '🎯';
+						console.log(`[AI ${playerName}] 🎯 Perk gekozen: ${perkName}`);
+						this._broadcastEvent('botActivity', {
+							playerId, playerName,
+							text: `${perkIcon} Perk: ${perkName}`
+						});
 						this._broadcastState();
 					}
 					setTimeout(processNext, ACTION_DELAY);
@@ -1378,7 +1398,12 @@ class LocusP2PHost {
 							const invBefore = { ...(this.gameState.players[playerId]?.bonusInventory || {}) };
 							const bonusResult = this._aiPlayOneBonus(playerId, action.bonusColor);
 							if (bonusResult) {
+								const zl = {yellow:'Geel',green:'Groen',blue:'Blauw',red:'Rood',purple:'Paars',any:'Multi'};
 								console.log(`[AI ${playerName}] 🎁 Bonus gespeeld: ${action.bonusColor} op ${bonusResult.zoneName}`);
+								this._broadcastEvent('botActivity', {
+									playerId, playerName,
+									text: `🎁 Bonus ${zl[action.bonusColor]||action.bonusColor} → ${zl[bonusResult.zoneName]||bonusResult.zoneName}`
+								});
 								// Check for bonus chaining: if placement earned new bonus charges, queue them
 								const invAfter = this.gameState.players[playerId]?.bonusInventory || {};
 								const colors = ['yellow', 'red', 'green', 'purple', 'blue', 'any'];
@@ -1447,6 +1472,10 @@ class LocusP2PHost {
 			redGapAllowed: !!player.perks?.redGapAllowed,
 			diagonalRotation: !!player.perks?.diagonalRotation
 		};
+		// Check if the player has any bonus charges — if so, empty cell placements are even worse
+		const inv = player.bonusInventory || {};
+		const totalBonuses = Object.values(inv).reduce((s, v) => s + (v || 0), 0);
+		const hasBonuses = totalBonuses > 0;
 
 		for (const card of hand) {
 			const allowedZones = this.Rules.getAllowedZones(card);
@@ -1564,9 +1593,9 @@ class LocusP2PHost {
 									}
 
 									if (hasStrategicValue) {
-										score = Math.max(1, Math.floor(score * 0.5)); // Moderate penalty — on track
+										score = Math.max(1, Math.floor(score * (hasBonuses ? 0.3 : 0.5))); // Moderate penalty — on track; stronger when bonuses available
 									} else {
-										score = Math.max(1, Math.floor(score * 0.15)); // Heavy penalty — wasted cells
+										score = Math.max(1, Math.floor(score * (hasBonuses ? 0.05 : 0.15))); // Heavy penalty — wasted cells; near-zero when bonuses available
 									}
 								}
 

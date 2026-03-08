@@ -399,6 +399,7 @@ class LocusLobbyUI {
 		this.mp.onTaunt = (data) => this._onTaunt(data);
 		this.mp.onPauseChanged = (data) => this._onPauseChanged(data);
 		this.mp.onPerkUnlocked = (data) => this._onPerkUnlocked(data);
+		this.mp.onBotActivity = (data) => this._onBotActivity(data);
 	}
 
 	async _handlePauseToggle() {
@@ -2356,6 +2357,31 @@ class LocusLobbyUI {
 		}, 2400);
 	}
 
+	_onBotActivity(data) {
+		if (!data?.text) return;
+		const name = data.playerName || 'Bot';
+		let feed = document.getElementById('mp-bot-feed');
+		if (!feed) {
+			feed = document.createElement('div');
+			feed.id = 'mp-bot-feed';
+			feed.className = 'mp-bot-feed';
+			document.body.appendChild(feed);
+		}
+		const entry = document.createElement('div');
+		entry.className = 'mp-bot-entry';
+		entry.innerHTML = `<span class="mp-bot-entry-name">${this._escapeHtml(name)}</span> ${this._escapeHtml(data.text)}`;
+		feed.prepend(entry);
+		// Max 6 entries
+		const entries = feed.querySelectorAll('.mp-bot-entry');
+		if (entries.length > 6) entries[entries.length - 1].remove();
+		requestAnimationFrame(() => entry.classList.add('visible'));
+		setTimeout(() => {
+			entry.classList.remove('visible');
+			entry.classList.add('leaving');
+			setTimeout(() => entry.remove(), 260);
+		}, 4000);
+	}
+
 	// ──────────────────────────────────────────
 	//  HAND (kaarten) — met DRAG en DROP
 	// ──────────────────────────────────────────
@@ -2744,7 +2770,6 @@ class LocusLobbyUI {
 			originEl: cardEl
 		};
 		this._isDragging = true;
-		this._setTouchDragScrollLock(e.pointerType === 'touch' || e.pointerType === 'pen' || this._isTouchLikeDevice());
 
 		// Verberg cursor tijdens plaatsing
 		document.body.classList.add('mp-placing');
@@ -2771,17 +2796,21 @@ class LocusLobbyUI {
 		if (board) board.classList.add('placement-mode');
 
 		// Touch/coarse: spring direct naar de bijbehorende kleur-zone bij single-color kaarten
+		// IMPORTANT: scroll BEFORE locking, otherwise overflow:hidden blocks scrollTo
+		const isTouchInput = e.pointerType === 'touch' || e.pointerType === 'pen' || this._isTouchLikeDevice();
 		const allowedZones = Rules.getAllowedZones(card);
-		if ((e.pointerType === 'touch' || e.pointerType === 'pen' || this._isTouchLikeDevice())) {
+		if (isTouchInput) {
 			if (allowedZones.length === 1) {
 				const targetZone = this._normalizeZoneName(allowedZones[0]);
 				if (targetZone) this._scrollMobileBoardToZone(targetZone, true);
 			} else if (allowedZones.length > 1) {
-				// Multicolor/stone: stay on current zone (or go to first zone if none selected)
 				const currentZone = this._lastMobileZoneName || allowedZones[0];
 				if (currentZone) this._scrollMobileBoardToZone(currentZone, false);
 			}
 		}
+
+		// Lock scroll AFTER zone navigation so scrollTo isn't blocked by overflow:hidden
+		this._setTouchDragScrollLock(isTouchInput);
 
 		// Ghost volgt muis (click-move-click: geen knop ingedrukt houden)
 		document.addEventListener('pointermove', this._onPointerMove);
@@ -3881,7 +3910,6 @@ class LocusLobbyUI {
 		const matrix = Rules.getBonusShapeForPlayer(bonusColor, player);
 
 		this._bonusMode = { color: bonusColor, matrix, rotation: 0, baseRotation: 0, ghostEl: null };
-		this._setTouchDragScrollLock(this._isTouchLikeDevice());
 		this._sendInteraction('start', {
 			mode: 'bonus',
 			cardName: `${bonusColor} bonus`,
@@ -3931,8 +3959,9 @@ class LocusLobbyUI {
 		if (board) board.classList.add('placement-mode');
 
 		// Mobiel/touch: ga direct naar de juiste kleurzone
-		if (this._isTouchLikeDevice() || startPointerEvent?.pointerType === 'touch' || startPointerEvent?.pointerType === 'pen') {
-			// For 'any' bonus or stone: stay on current zone
+		// IMPORTANT: scroll BEFORE locking, otherwise overflow:hidden blocks scrollTo
+		const isTouchBonus = this._isTouchLikeDevice() || startPointerEvent?.pointerType === 'touch' || startPointerEvent?.pointerType === 'pen';
+		if (isTouchBonus) {
 			const targetZone = bonusColor === 'any'
 				? (this._lastMobileZoneName || 'yellow')
 				: this._normalizeZoneName(bonusColor);
@@ -3945,6 +3974,9 @@ class LocusLobbyUI {
 				this._scrollMobileBoardToZone(targetZone, false);
 			}
 		}
+
+		// Lock scroll AFTER zone navigation so scrollTo isn't blocked by overflow:hidden
+		this._setTouchDragScrollLock(isTouchBonus);
 
 		// Ghost volgt muis + preview (centered, like card ghosts)
 		this._bonusMoveHandler = (e) => {
@@ -6794,12 +6826,14 @@ class LocusLobbyUI {
 				this._oppPreviewCells.push(el);
 			}
 		}
-		setTimeout(() => this._clearOpponentPreview(), 900);
+		setTimeout(() => this._clearOpponentPreview(), 1400);
 	}
 
 	/** Show bonus placement preview when a bot is about to place a bonus */
 	_onBonusPreview(data) {
 		if (!data || !data.matrix || data.playerId === this.mp.userId) return;
+		const zoneLabels = { yellow: 'Geel', green: 'Groen', blue: 'Blauw', red: 'Rood', purple: 'Paars', any: 'Multi' };
+		this._showMoveNotification(data.playerName || 'Bot', data.zoneName);
 		this._scrollMobileBoardToZone(data.zoneName, true);
 		this._showBotPlacementHover(data);
 	}

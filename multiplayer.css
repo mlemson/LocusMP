@@ -4827,6 +4827,53 @@ body.mp-placing * {
 	color: var(--mp-success);
 }
 
+/* ── Bot activity feed ── */
+.mp-bot-feed {
+	position: fixed;
+	right: 14px;
+	top: 108px;
+	display: flex;
+	flex-direction: column;
+	gap: 5px;
+	z-index: 5200;
+	pointer-events: none;
+	max-width: min(320px, 60vw);
+}
+
+.mp-bot-entry {
+	opacity: 0;
+	transform: translateX(20px);
+	background: rgba(22, 27, 39, 0.88);
+	border: 1px solid rgba(255,255,255,0.10);
+	border-radius: 8px;
+	padding: 5px 10px;
+	font-size: 0.78rem;
+	color: rgba(255,255,255,0.82);
+	box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+	transition: opacity 0.2s ease, transform 0.2s ease;
+	-webkit-backdrop-filter: blur(2px);
+	backdrop-filter: blur(2px);
+}
+
+.mp-bot-entry.visible {
+	opacity: 1;
+	transform: translateX(0);
+}
+
+.mp-bot-entry.leaving {
+	opacity: 0;
+	transform: translateX(14px);
+}
+
+.mp-bot-entry-name {
+	font-weight: 700;
+	font-size: 0.68rem;
+	color: var(--mp-accent);
+	margin-right: 5px;
+	text-transform: uppercase;
+	letter-spacing: 0.2px;
+}
+
 /* ══════════════════════════════════════════════
    DISCARD PICKER
    ══════════════════════════════════════════════ */

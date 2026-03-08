@@ -1202,6 +1202,7 @@
 							case 'opponentInteraction': if (p2pMp.onOpponentInteraction) p2pMp.onOpponentInteraction(data); break;
 							case 'taunt': if (p2pMp.onTaunt) p2pMp.onTaunt(data); break;
 							case 'pauseChanged': if (p2pMp.onPauseChanged) p2pMp.onPauseChanged(data); break;
+							case 'botActivity': if (p2pMp.onBotActivity) p2pMp.onBotActivity(data); break;
 						}
 					};
 
@@ -1349,6 +1350,7 @@
 							case 'opponentInteraction': if (p2pMp.onOpponentInteraction) p2pMp.onOpponentInteraction(data); break;
 							case 'taunt': if (p2pMp.onTaunt) p2pMp.onTaunt(data); break;
 							case 'pauseChanged': if (p2pMp.onPauseChanged) p2pMp.onPauseChanged(data); break;
+							case 'botActivity': if (p2pMp.onBotActivity) p2pMp.onBotActivity(data); break;
 						}
 					};
 
@@ -1480,6 +1482,7 @@
 				onOpponentInteraction: null,
 				onTaunt: null,
 				onPauseChanged: null,
+				onBotActivity: null,
 
 				async init() { return { userId: host.hostPlayerId }; },
 
