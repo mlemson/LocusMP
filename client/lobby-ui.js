@@ -2693,9 +2693,11 @@ class LocusLobbyUI {
 			const progressText = progress ? ` (${progress.current}/${progress.target})` : '';
 			// Only show rewards when objectives are revealed or achieved
 			const showRewards = objectivesRevealed || achieved;
+			const desc = obj.description ? this._escapeHtml(this._stripObjectiveRewardText(obj.description)) : '';
 			return `<div class="mp-deck-opponent-goal">
 				<span class="mp-deck-zone-dot" style="background:${color};"></span>
 				<strong>${name}</strong>: ${status} ${this._escapeHtml(obj.name)}${progressText}
+				${showRewards && desc ? `<div class="mp-deck-obj-desc" style="margin-left:18px;margin-top:2px;">${desc}</div>` : ''}
 				${showRewards ? this._renderObjectiveRewardBadges(progress || obj, { wrapperClass: 'mp-objective-rewards' }) : ''}
 			</div>`;
 		}).filter(Boolean);

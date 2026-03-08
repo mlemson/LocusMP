@@ -817,6 +817,16 @@ function _evaluatePlacementImpact(gameState, playerId, card, placement) {
 	}
 	impactScore += adjacentCount * 2;
 
+	// ── Penalize pure empty-cell placements with no strategic value ──
+	// If no valuable flags were hit and no adjacency, this is a wasted placement
+	const hasAnyFlag = cells.some(c => {
+		const cell = GameRules.getDataCell(zoneData, c.x, c.y);
+		return cell?.flags?.some(f => ['gold', 'bonus', 'pearl', 'end', 'bold'].includes(f));
+	});
+	if (!hasAnyFlag && adjacentCount === 0) {
+		impactScore -= 10; // Penalty for isolated empty placements
+	}
+
 	// ── Cell count bonus — bigger placements are inherently better ──
 	impactScore += cells.length * 2;
 

@@ -1493,7 +1493,82 @@ class LocusP2PHost {
 									}
 									else { score += 1; }
 								}
-								if (!hasFlaggedCell) score = Math.max(1, Math.floor(score * 0.4));
+
+								// Penalize placements on empty/plain cells unless strategically valuable
+								if (!hasFlaggedCell) {
+									let hasStrategicValue = false;
+
+									// Adjacency to existing territory = building/connecting
+									for (const c of cells) {
+										if (this._hasAdjacentActive(zoneData, c.x, c.y)) {
+											hasStrategicValue = true;
+											break;
+										}
+									}
+
+									// Zone-specific strategic checks when no adjacency
+									if (!hasStrategicValue) {
+										if (zoneName === 'blue') {
+											// Near unscored bold rows = progressing upward
+											const minY = Math.min(...cells.map(c => c.y));
+											const nextBold = (zoneData.boldRows || []).filter(by => !blueReachedRows.has(by) && by >= minY - 2 && by <= minY + 2);
+											if (nextBold.length > 0) hasStrategicValue = true;
+										} else if (zoneName === 'green') {
+											// Near unreached end cells
+											for (const c of cells) {
+												for (const k in zoneData.cells) {
+													const ec = zoneData.cells[k];
+													if (ec?.flags?.includes('end') && !ec.active) {
+														const dist = Math.abs(c.x - (ec.x || 0)) + Math.abs(c.y - (ec.y || 0));
+														if (dist <= 3) { hasStrategicValue = true; break; }
+													}
+												}
+												if (hasStrategicValue) break;
+											}
+										} else if (zoneName === 'yellow') {
+											// In columns already partially filled (>30%)
+											const colXs = new Set(cells.map(c => c.x));
+											for (const cx of colXs) {
+												let filled = 0, total = 0;
+												for (let cy = 0; cy < (zoneData.rows || 0); cy++) {
+													const cc = this.Rules.getDataCell(zoneData, cx, cy);
+													if (cc) { total++; if (cc.active) filled++; }
+												}
+												if (total > 0 && filled / total >= 0.3) { hasStrategicValue = true; break; }
+											}
+										} else if (zoneName === 'purple') {
+											// Near bold cells (even inactive ones — heading toward them)
+											for (const c of cells) {
+												const neighbors = [
+													this.Rules.getDataCell(zoneData, c.x - 1, c.y),
+													this.Rules.getDataCell(zoneData, c.x + 1, c.y),
+													this.Rules.getDataCell(zoneData, c.x, c.y - 1),
+													this.Rules.getDataCell(zoneData, c.x, c.y + 1)
+												];
+												for (const n of neighbors) {
+													if (n?.flags?.includes('bold')) { hasStrategicValue = true; break; }
+												}
+												if (hasStrategicValue) break;
+											}
+										} else if (zoneName === 'red') {
+											// In a subgrid already partially filled (>30%)
+											if (subgridId) {
+												const sg = board?.zones?.red?.subgrids?.find(s => s.id === subgridId);
+												if (sg) {
+													let filled = 0, total = 0;
+													for (const k in sg.cells) { total++; if (sg.cells[k]?.active) filled++; }
+													if (total > 0 && filled / total >= 0.3) hasStrategicValue = true;
+												}
+											}
+										}
+									}
+
+									if (hasStrategicValue) {
+										score = Math.max(1, Math.floor(score * 0.5)); // Moderate penalty — on track
+									} else {
+										score = Math.max(1, Math.floor(score * 0.15)); // Heavy penalty — wasted cells
+									}
+								}
 
 								// Blue zone: new tier bonus + favor going upward
 								if (zoneName === 'blue') {
@@ -1510,13 +1585,14 @@ class LocusP2PHost {
 									score += Math.max(0, Math.floor(((zoneData.rows || 20) - minY) / 3));
 								}
 
+								// Adjacency bonus — both bots prefer extending territory
+								for (const c of cells) {
+									if (this._hasAdjacentActive(zoneData, c.x, c.y)) score += isHard ? 2 : 1;
+								}
+
 								// Hard AI: zone-strategic impact scoring
 								if (isHard) {
 									score += this._hardZoneBonus(zoneName, zoneData, cells, subgridId, board);
-									// Adjacency bonus
-									for (const c of cells) {
-										if (this._hasAdjacentActive(zoneData, c.x, c.y)) score += 1;
-									}
 									// Objective awareness
 									const obj = player.chosenObjective;
 									if (obj && !player.objectiveAchieved) {
@@ -2319,6 +2395,13 @@ class LocusP2PGuest {
 		this.gameState = null;
 		this.userId = null;
 		this.connected = false;
+		try {
+			sessionStorage.removeItem('locus_p2p_role');
+			sessionStorage.removeItem('locus_p2p_roomCode');
+			sessionStorage.removeItem('locus_p2p_playerId');
+			sessionStorage.removeItem('locus_p2p_userName');
+			sessionStorage.removeItem('locus_p2p_state');
+		} catch (_) {}
 	}
 }
 

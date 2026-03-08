@@ -1621,9 +1621,26 @@
 				},
 
 				disconnect() {
+					try {
+						if (window._locusP2PBrowserHeartbeat) {
+							clearInterval(window._locusP2PBrowserHeartbeat);
+							window._locusP2PBrowserHeartbeat = null;
+						}
+						if (window._p2pHost?.roomCode) {
+							_clearRegisteredP2PLobby(window._p2pHost.roomCode);
+						}
+					} catch (_) {}
 					host.destroy();
+					window._p2pHost = null;
 					this.gameState = null;
 					this.connected = false;
+					try {
+						sessionStorage.removeItem('locus_p2p_role');
+						sessionStorage.removeItem('locus_p2p_roomCode');
+						sessionStorage.removeItem('locus_p2p_playerId');
+						sessionStorage.removeItem('locus_p2p_userName');
+						sessionStorage.removeItem('locus_p2p_state');
+					} catch (_) {}
 				}
 			};
 		}
