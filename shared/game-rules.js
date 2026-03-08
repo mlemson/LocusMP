@@ -223,6 +223,13 @@ function choosePerk(gameState, playerId, perkId) {
 	const player = gameState.players[playerId];
 	if (!player) return { error: 'Speler niet gevonden' };
 	if (!player.perks) return { error: 'Perk data niet geïnitialiseerd' };
+	
+	if (perkId === '__skip__') {
+		player.goalPerksDone = true;
+		gameState.updatedAt = Date.now();
+		const startedPlaying = maybeStartPlayingAfterGoalPhase(gameState);
+		return { success: true, skipped: true, startedPlaying };
+	}
 
 	const perkPoints = player.perks.perkPoints || 0;
 	const available = getAvailablePerks(player);
@@ -276,6 +283,7 @@ function choosePerk(gameState, playerId, perkId) {
 	if (perkId === 'flex_double_coins') {
 		player.perks.doubleCoins = true;
 	}
+	player.goalPerksDone = isGoalPerkDone(gameState, playerId);
 
 	gameState.updatedAt = Date.now();
 	const startedPlaying = maybeStartPlayingAfterGoalPhase(gameState);
@@ -289,14 +297,19 @@ function allObjectivesChosen(gameState) {
 	});
 }
 
+function isGoalPerkDone(gameState, playerId) {
+	const player = gameState.players?.[playerId];
+	if (!player || player.connected === false) return true;
+	if (!player.chosenObjective) return false;
+	if (player.goalPerksDone) return true;
+	if (!player.perks || (player.perks.perkPoints || 0) < 1) return true;
+	const available = getAvailablePerks(player);
+	return !Array.isArray(available) || available.length === 0;
+}
+
 function hasPendingGoalPerks(gameState) {
 	for (const pid of (gameState.playerOrder || [])) {
-		const player = gameState.players?.[pid];
-		if (!player || player.connected === false) continue;
-		if (!player.chosenObjective) return true;
-		if (!player.perks || (player.perks.perkPoints || 0) < 1) continue;
-		const available = getAvailablePerks(player);
-		if (Array.isArray(available) && available.length > 0) return true;
+		if (!isGoalPerkDone(gameState, pid)) return true;
 	}
 	return false;
 }
@@ -311,6 +324,9 @@ function maybeStartPlayingAfterGoalPhase(gameState) {
 	gameState.phase = 'playing';
 	gameState.currentTurnIndex = 0;
 	gameState.turnCount = 1;
+	for (const pid of gameState.playerOrder) {
+		if (gameState.players?.[pid]) gameState.players[pid].goalPerksDone = false;
+	}
 	delete gameState._roundFiveBonusBurstDone;
 	gameState._turnTimerStart = Date.now();
 	return true;
@@ -3391,6 +3407,7 @@ function chooseObjective(gameState, playerId, objectiveIndex) {
 	if (player.chosenObjective) return { error: 'Al een objective gekozen' };
 
 	player.chosenObjective = { ...choices[objectiveIndex] };
+	player.goalPerksDone = isGoalPerkDone(gameState, playerId);
 	if (isNamedSabotageObjective(player.chosenObjective)) {
 		syncSabotageObjectiveTarget(gameState, playerId, player.chosenObjective);
 	}
