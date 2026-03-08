@@ -32,6 +32,8 @@ class LocusP2PHost {
 		this._turnTimerDuration = 40000;
 		this.aiPlayerIds = new Set();
 		this._aiTimer = null;
+		this._aiDifficulty = new Map();
+		this._aiPersonality = new Map();
 
 		// Callbacks voor de host-UI
 		this.onStateChanged = null; // (sanitizedState) => {}
@@ -126,6 +128,9 @@ class LocusP2PHost {
 					this.gameState.inviteCode = this.roomCode;
 				}
 
+				// Rebuild runtime AI indexes/maps from restored state after refresh.
+				this._rehydrateAIRuntimeState();
+
 				// Herstel timer-consistentie na host (auto-)reconnect.
 				// De oude setTimeout bestaat niet meer na refresh; zonder herstart blijft de beurt hangen op 0s.
 				if (this.gameState?.phase === 'playing') {
@@ -139,6 +144,9 @@ class LocusP2PHost {
 						this.gameState._turnTimerStart = 0;
 					}
 				}
+
+				// Ensure bots resume thinking immediately after a host refresh/reconnect.
+				this._scheduleAI();
 
 				resolve({ roomCode: this.roomCode, hostPlayerId: this.hostPlayerId });
 			});
@@ -981,9 +989,34 @@ class LocusP2PHost {
 		if (this.gameState.players?.[aiId]) {
 			this.gameState.players[aiId].isAI = true;
 			this.gameState.players[aiId].connected = true;
+			this.gameState.players[aiId].aiDifficulty = difficulty;
+			this.gameState.players[aiId].aiPersonality = personality;
 		}
 		if (this.onPlayerJoined) this.onPlayerJoined({ playerId: aiId, name: aiName, isAI: true });
 		return { success: true, playerId: aiId, name: aiName, isAI: true };
+	}
+
+	_rehydrateAIRuntimeState() {
+		this.aiPlayerIds = new Set();
+		this._aiDifficulty = new Map();
+		this._aiPersonality = new Map();
+		const players = this.gameState?.players || {};
+		for (const [pid, p] of Object.entries(players)) {
+			if (!p?.isAI) continue;
+			this.aiPlayerIds.add(pid);
+			const savedDifficulty = String(p.aiDifficulty || '').toLowerCase();
+			const inferredHard = /\b(hard|\ud83e\udde0)\b/i.test(String(p.name || ''));
+			const difficulty = (savedDifficulty === 'hard' || savedDifficulty === 'normal')
+				? savedDifficulty
+				: (inferredHard ? 'hard' : 'normal');
+			this._aiDifficulty.set(pid, difficulty);
+			const savedPersonality = String(p.aiPersonality || '').toLowerCase();
+			const personality = savedPersonality === 'aggressive' ? 'aggressive' : 'normal';
+			this._aiPersonality.set(pid, personality);
+			p.aiDifficulty = difficulty;
+			p.aiPersonality = personality;
+			p.connected = true;
+		}
 	}
 
 	_removeAIPlayer(aiPlayerId) {
