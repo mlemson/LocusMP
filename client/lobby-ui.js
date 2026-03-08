@@ -151,8 +151,17 @@ class LocusLobbyUI {
 				break;
 			case 'choosingGoals': {
 				const choices = state.objectiveChoices?.[this.mp.userId] || [];
-				if (choices.length > 0) this._onGoalPhase(choices);
-				else this._showToast('Wachten op andere spelers...', 'info');
+				const myPlayer = state.players?.[this.mp.userId];
+				if (myPlayer?.chosenObjective) {
+					const myPerkPoints = myPlayer?.perks?.perkPoints || 0;
+					if (myPerkPoints > 0 && !this._goalPerkPromptShown) this._promptPerksAfterGoalChoice();
+					else this._showChosenGoalWaitingState();
+				} else if (choices.length > 0) {
+					this._onGoalPhase(choices);
+				} else {
+					this._showScreen('goal-screen');
+					this._showToast('Wachten op andere spelers...', 'info');
+				}
 				break;
 			}
 			case 'playing':
@@ -1498,13 +1507,33 @@ class LocusLobbyUI {
 		const container = this.elements['goal-choices-container'];
 		if (container) {
 			const isChoosingGoals = this.mp?.gameState?.phase === 'choosingGoals';
+			const hasChosenObjective = !!this.mp?.getMyPlayer?.()?.chosenObjective;
 			const perkPoints = this.mp?.getMyPlayer?.()?.perks?.perkPoints || 0;
 			const canStillChoosePerks = isChoosingGoals && perkPoints > 0;
+			const canFinalizeGoalPhase = isChoosingGoals && hasChosenObjective;
 			container.innerHTML = `
 				<h2 class="mp-section-title">Doelstelling gekozen!</h2>
 				<p class="mp-section-subtitle">Wachten op andere spelers...</p>
+				${canFinalizeGoalPhase ? '<button class="mp-btn mp-btn-primary" id="mp-goal-phase-continue" style="margin-top:10px;">✅ Klaar — ga verder</button>' : ''}
 				${canStillChoosePerks ? '<button class="mp-btn mp-btn-secondary" id="mp-open-perks-again" style="margin-top:10px;">🎯 Open perks opnieuw</button>' : ''}
 			`;
+			if (canFinalizeGoalPhase) {
+				container.querySelector('#mp-goal-phase-continue')?.addEventListener('click', async (e) => {
+					const btn = e.currentTarget;
+					if (!btn) return;
+					btn.disabled = true;
+					try {
+						const result = await this.mp.choosePerk('__skip__');
+						if (!result?.success) {
+							btn.disabled = false;
+							this._showToast(result?.error || 'Kon niet doorgaan', 'error');
+						}
+					} catch (err) {
+						btn.disabled = false;
+						this._showToast('Kon niet doorgaan', 'error');
+					}
+				});
+			}
 			if (canStillChoosePerks) {
 				container.querySelector('#mp-open-perks-again')?.addEventListener('click', () => {
 					this._openPerkPopup(() => this._showChosenGoalWaitingState());

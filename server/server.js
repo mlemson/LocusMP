@@ -518,12 +518,19 @@ function executeAIActions(gameId) {
 		for (const aiId of gameAIs) {
 			const player = gameState.players[aiId];
 			if (!player || !player.chosenObjective) continue;
+			if (player.goalPerksDone) continue;
 			const aiPers = aiPersonality.get(gameId)?.get(aiId) || 'normal';
 			const perkId = AIPlayer.choosePerk(gameState, aiId, aiPers);
-			if (!perkId) continue;
-			const perkResult = GameRules.choosePerk(gameState, aiId, perkId);
+			const perkChoice = perkId || '__skip__';
+			const perkResult = GameRules.choosePerk(gameState, aiId, perkChoice);
 			if (!perkResult.error) {
-				console.log(`[Locus AI] ${player.name} koos perk "${perkResult.perk?.name}" tijdens doelstellingsfase`);
+				if (perkChoice === '__skip__') {
+					console.log(`[Locus AI] ${player.name} sloeg perks over tijdens doelstellingsfase`);
+					_emitBotActivity(gameId, aiId, '🎯 Klaar met perks');
+				} else {
+					console.log(`[Locus AI] ${player.name} koos perk "${perkResult.perk?.name}" tijdens doelstellingsfase`);
+					_emitBotActivity(gameId, aiId, `${perkResult.perk?.icon || '🎯'} Perk: ${perkResult.perk?.name || perkChoice}`);
+				}
 				changed = true;
 				if (perkResult.startedPlaying) {
 					_startTimerForCurrentPlayer(gameId, true);
@@ -636,6 +643,16 @@ function _maybeAITaunt(gameId, aiPlayerId) {
 	}
 }
 
+function _emitBotActivity(gameId, playerId, text) {
+	const gs = games.get(gameId);
+	if (!gs) return;
+	io.to(gameId).emit('botActivity', {
+		playerId,
+		playerName: gs.players?.[playerId]?.name || 'Bot',
+		text: String(text || '')
+	});
+}
+
 function executeAITurn(gameId, aiPlayerId) {
 	const gameState = games.get(gameId);
 	if (!gameState || gameState.phase !== 'playing') return;
@@ -676,6 +693,7 @@ function executeAITurn(gameId, aiPlayerId) {
 			const perkResult = GameRules.choosePerk(gs, aiPlayerId, action.perkId);
 			if (!perkResult.error) {
 				console.log(`[Locus AI] ${player.name} koos perk "${perkResult.perk?.name}"`);
+				_emitBotActivity(gameId, aiPlayerId, `${perkResult.perk?.icon || '🎯'} Perk: ${perkResult.perk?.name || action.perkId}`);
 				broadcastGameState(io, gameId);
 			}
 			setTimeout(processNextAction, AIPlayer.AI_ACTION_DELAY_MS);
@@ -773,6 +791,7 @@ function executeAITurn(gameId, aiPlayerId) {
 				console.log(`[Locus AI] ${player.name} mijn mislukt: ${mineResult.error}`);
 			} else {
 				console.log(`[Locus AI] ${player.name} plaatste een mijn op ${action.zoneName} (${action.cellX},${action.cellY})`);
+				_emitBotActivity(gameId, aiPlayerId, `💣 Mijn geplaatst in ${action.zoneName}`);
 				broadcastGameState(io, gameId);
 			}
 			setTimeout(processNextAction, AIPlayer.AI_ACTION_DELAY_MS);
@@ -782,6 +801,7 @@ function executeAITurn(gameId, aiPlayerId) {
 				console.log(`[Locus AI] ${player.name} steal mislukt: ${stealResult.error}`);
 			} else {
 				console.log(`[Locus AI] ${player.name} stal een kaart van ${stealResult.targetPlayerName}`);
+				_emitBotActivity(gameId, aiPlayerId, `🕵️ Steel van ${stealResult.targetPlayerName}`);
 				// Emit cardStolen event to notify the target player
 				io.to(gameId).emit('cardStolen', {
 					thiefId: aiPlayerId,

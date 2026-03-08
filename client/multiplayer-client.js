@@ -267,6 +267,12 @@ class LocusMultiplayer {
 			}
 		});
 
+		this.socket.on('botActivity', (data) => {
+			if (this.onBotActivity) {
+				this.onBotActivity(data);
+			}
+		});
+
 		this.socket.on('pauseChanged', (data) => {
 			if (this.onPauseChanged) {
 				this.onPauseChanged(data);
