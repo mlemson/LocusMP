@@ -1661,12 +1661,7 @@ class LocusP2PHost {
 								// Hard AI: zone-strategic impact scoring
 								if (isHard) {
 									score += this._hardZoneBonus(zoneName, zoneData, cells, subgridId, board);
-									// Objective awareness
-									const obj = player.chosenObjective;
-									if (obj && !player.objectiveAchieved) {
-										if (obj.zone === zoneName) score += 5;
-										if (obj.type === 'density') score += cells.length * 2;
-									}
+									score += this._objectiveMoveWeight(playerId, zoneName, zoneData, cells, subgridId, hasFlaggedCell);
 									const shouldSimulatePlan = hasBonuses || hasFlaggedCell || score >= 10;
 									if (shouldSimulatePlan) {
 										const followUpBonusScore = this._estimateHardMoveBonusPlan(playerId, {
@@ -1724,8 +1719,138 @@ class LocusP2PHost {
 		return bestMove;
 	}
 
+	_evaluateObjectiveState(state, playerId) {
+		const player = state?.players?.[playerId];
+		const objective = player?.chosenObjective;
+		if (!player || !objective || player.objectiveAchieved) {
+			return { score: 0, achieved: false, current: 0, target: 0, objective: null };
+		}
+		const result = this.Rules.checkObjective(state, playerId, objective);
+		if (!result || objective.endOnly) {
+			return {
+				score: 0,
+				achieved: !!result?.achieved,
+				current: Number(result?.current) || 0,
+				target: Number(result?.target) || 0,
+				objective
+			};
+		}
+		const current = Math.max(0, Number(result.current) || 0);
+		const target = Math.max(1, Number(result.target) || 1);
+		let score = (Math.min(current, target) / target) * 24;
+		score += Math.min(current, target) * 7;
+		if (result.achieved) {
+			score += 45;
+			score += Math.max(0, Number(result.points) || 0) * 0.6;
+			score += Math.max(0, Number(result.coins) || 0) * 3;
+			score += Math.max(0, Number(result.randomBonuses) || 0) * 5;
+		}
+		if (result.failed) score -= 25;
+		return { score, achieved: !!result.achieved, current, target, objective };
+	}
+
+	_estimateObjectiveProgressGain(beforeState, afterState, playerId) {
+		const before = this._evaluateObjectiveState(beforeState, playerId);
+		const after = this._evaluateObjectiveState(afterState, playerId);
+		return (after.score || 0) - (before.score || 0);
+	}
+
+	_objectiveMoveWeight(playerId, zoneName, zoneData, cells, subgridId, hasFlaggedCell) {
+		const player = this.gameState?.players?.[playerId];
+		const objective = player?.chosenObjective;
+		if (!player || !objective || player.objectiveAchieved) return 0;
+
+		const objectiveId = String(objective.id || '').toLowerCase();
+		let score = 0;
+		const cellCount = Array.isArray(cells) ? cells.length : 0;
+
+		if (objectiveId.includes('yellow') && zoneName === 'yellow') {
+			score += 8;
+			const touchedColumns = new Set(cells.map(cell => cell.x));
+			for (const column of touchedColumns) {
+				let filled = 0;
+				let total = 0;
+				for (let y = 0; y < (zoneData?.rows || 0); y++) {
+					const cell = this.Rules.getDataCell(zoneData, column, y);
+					if (!cell) continue;
+					total++;
+					if (cell.active) filled++;
+				}
+				if (total > 0) score += (filled / total) * 7;
+			}
+		}
+
+		if (objectiveId.includes('green') && zoneName === 'green') {
+			score += 8;
+			for (const cell of cells) {
+				if (cell.flags?.includes('end')) score += 12;
+				const neighbors = [
+					this.Rules.getDataCell(zoneData, cell.x - 1, cell.y),
+					this.Rules.getDataCell(zoneData, cell.x + 1, cell.y),
+					this.Rules.getDataCell(zoneData, cell.x, cell.y - 1),
+					this.Rules.getDataCell(zoneData, cell.x, cell.y + 1)
+				];
+				if (neighbors.some(neighbor => neighbor?.flags?.includes('end'))) score += 4;
+			}
+		}
+
+		if ((objectiveId.includes('blue') || objectiveId.includes('deny_blue_top_anyone')) && zoneName === 'blue') {
+			score += 8;
+			const highestAdvance = Math.max(...cells.map(cell => Math.max(0, (zoneData?.rows || 0) - cell.y)), 0);
+			score += highestAdvance * 0.6;
+		}
+
+		if (objectiveId.includes('red') && zoneName === 'red') {
+			score += 8;
+			const subgrid = this.gameState?.boardState?.zones?.red?.subgrids?.find(grid => grid.id === subgridId);
+			if (subgrid) {
+				const subgridCells = Object.values(subgrid.cells || {});
+				const filled = subgridCells.filter(cell => cell?.active).length;
+				if (subgridCells.length > 0) score += (filled / subgridCells.length) * 8;
+			}
+		}
+
+		if (objectiveId.includes('purple') && zoneName === 'purple') {
+			score += 8;
+			for (const cell of cells) {
+				if (cell.flags?.includes('bold')) score += 10;
+				const neighbors = [
+					this.Rules.getDataCell(zoneData, cell.x - 1, cell.y),
+					this.Rules.getDataCell(zoneData, cell.x + 1, cell.y),
+					this.Rules.getDataCell(zoneData, cell.x, cell.y - 1),
+					this.Rules.getDataCell(zoneData, cell.x, cell.y + 1)
+				];
+				score += neighbors.filter(neighbor => neighbor?.flags?.includes('bold')).length * 3;
+			}
+		}
+
+		if (objectiveId.includes('gold') && hasFlaggedCell) {
+			score += cells.filter(cell => cell.flags?.includes('gold')).length * 12;
+		}
+
+		if (objectiveId.includes('balance_')) {
+			const scoreBreakdown = player.scoreBreakdown || {};
+			const zones = ['yellow', 'green', 'blue', 'red', 'purple'];
+			let weakestZone = zones[0];
+			let weakestValue = Number(scoreBreakdown[weakestZone]) || 0;
+			for (const candidateZone of zones.slice(1)) {
+				const candidateValue = Number(scoreBreakdown[candidateZone]) || 0;
+				if (candidateValue < weakestValue) {
+					weakestValue = candidateValue;
+					weakestZone = candidateZone;
+				}
+			}
+			if (zoneName === weakestZone) score += 10;
+		}
+
+		if (objectiveId.includes('combo_')) score += cellCount * 1.5;
+		if (objective.zone && objective.zone === zoneName) score += 6;
+		return score;
+	}
+
 	_estimateHardMoveBonusPlan(playerId, move) {
 		if (!move?.card?.id || !this.gameState) return 0;
+		const beforeState = this.gameState;
 		const simState = JSON.parse(JSON.stringify(this.gameState));
 		const result = this.Rules.playMove(
 			simState,
@@ -1739,7 +1864,8 @@ class LocusP2PHost {
 			move.subgridId || null
 		);
 		if (result?.error) return 0;
-		return this._estimateBonusChainValue(simState, playerId, 3);
+		const objectiveGain = this._estimateObjectiveProgressGain(beforeState, simState, playerId);
+		return objectiveGain + this._estimateBonusChainValue(simState, playerId, 3);
 	}
 
 	_estimateBonusChainValue(state, playerId, maxSteps = 2) {
@@ -1783,7 +1909,7 @@ class LocusP2PHost {
 				if (zoneName === 'red') {
 					for (const sg of (board.zones?.red?.subgrids || [])) {
 						this._scoreBonusPlacements(bonusMatrix, sg, zoneName, sg.id, bonusColor, (placement) => {
-							const totalScore = placement.score + this._bonusObjectiveWeight(player, placement.zoneName);
+							const totalScore = placement.score + this._bonusObjectiveWeight(state, playerId, player, placement);
 							if (totalScore > bestScore) {
 								bestScore = totalScore;
 								bestPlacement = { ...placement, score: totalScore };
@@ -1794,7 +1920,7 @@ class LocusP2PHost {
 					const zoneData = board.zones?.[zoneName];
 					if (!zoneData) continue;
 					this._scoreBonusPlacements(bonusMatrix, zoneData, zoneName, null, bonusColor, (placement) => {
-						const totalScore = placement.score + this._bonusObjectiveWeight(player, placement.zoneName);
+						const totalScore = placement.score + this._bonusObjectiveWeight(state, playerId, player, placement);
 						if (totalScore > bestScore) {
 							bestScore = totalScore;
 							bestPlacement = { ...placement, score: totalScore };
@@ -1806,12 +1932,27 @@ class LocusP2PHost {
 		return bestPlacement;
 	}
 
-	_bonusObjectiveWeight(player, zoneName) {
+	_bonusObjectiveWeight(state, playerId, player, placement) {
 		const obj = player?.chosenObjective;
-		if (!obj || player?.objectiveAchieved) return 0;
-		if (obj.zone && obj.zone === zoneName) return 8;
-		if (obj.type === 'density') return zoneName === 'purple' || zoneName === 'red' ? 3 : 1;
-		return 0;
+		if (!obj || player?.objectiveAchieved || !placement) return 0;
+		let score = 0;
+		if (obj.zone && obj.zone === placement.zoneName) score += 8;
+		if (obj.type === 'density') score += placement.zoneName === 'purple' || placement.zoneName === 'red' ? 4 : 1;
+		const simState = JSON.parse(JSON.stringify(state));
+		const result = this.Rules.playBonus(
+			simState,
+			playerId,
+			placement.bonusColor,
+			placement.zoneName,
+			placement.baseX,
+			placement.baseY,
+			placement.subgridId || null,
+			placement.rotation || 0
+		);
+		if (!result?.error) {
+			score += this._estimateObjectiveProgressGain(state, simState, playerId);
+		}
+		return score;
 	}
 
 	/** Play a single bonus of the given color, returns {zoneName} or null */
@@ -1837,14 +1978,16 @@ class LocusP2PHost {
 				const subgrids = board.zones?.red?.subgrids || [];
 				for (const sg of subgrids) {
 					this._scoreBonusPlacements(bonusMatrix, sg, zoneName, sg.id, bonusColor, (p) => {
-						if (p.score > bestScore) { bestScore = p.score; bestPlacement = p; }
+						const totalScore = p.score + this._bonusObjectiveWeight(this.gameState, playerId, player, p);
+						if (totalScore > bestScore) { bestScore = totalScore; bestPlacement = { ...p, score: totalScore }; }
 					});
 				}
 			} else {
 				const zoneData = board.zones?.[zoneName];
 				if (zoneData) {
 					this._scoreBonusPlacements(bonusMatrix, zoneData, zoneName, null, bonusColor, (p) => {
-						if (p.score > bestScore) { bestScore = p.score; bestPlacement = p; }
+						const totalScore = p.score + this._bonusObjectiveWeight(this.gameState, playerId, player, p);
+						if (totalScore > bestScore) { bestScore = totalScore; bestPlacement = { ...p, score: totalScore }; }
 					});
 				}
 			}

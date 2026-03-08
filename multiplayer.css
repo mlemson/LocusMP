@@ -9985,18 +9985,6 @@ html.theme-reef .mp-card.card-spent {
 	filter: grayscale(0.6);
 }
 
-/* ── Scoreboard ── */
-html.theme-reef .mp-score-row {
-	background: rgba(255,126,179,0.06);
-	border: 1px solid rgba(255,126,179,0.10);
-	border-radius: 10px;
-}
-
-html.theme-reef .mp-score-row.me {
-	border-color: rgba(255,126,179,0.30);
-	background: rgba(255,126,179,0.12);
-}
-
 /* ── Score Zones ── */
 html.theme-reef .mp-sz {
 	background: rgba(255,126,179,0.07);
@@ -10601,17 +10589,6 @@ html.theme-reef .mp-bomb-overlay {
 	background: rgba(30, 13, 46, 0.92);
 }
 
-/* ── Top bar / sidebar ── */
-html.theme-reef .mp-sidebar {
-	background: rgba(45, 18, 60, 0.82);
-	border-color: rgba(255,126,179,0.10);
-}
-
-html.theme-reef .mp-bottom-bar {
-	background: rgba(45, 18, 60, 0.92);
-	border-color: rgba(255,126,179,0.10);
-}
-
 
 /* ═══════════════════════════════════════════════════════════════════
    REEF "TROPICAL PARADISE" — ENHANCED VISUALS
@@ -11134,8 +11111,7 @@ html.theme-reef .mp-score-row.is-active {
 	box-shadow: 0 0 12px rgba(255,126,179,0.10);
 }
 
-html.theme-reef .mp-score-row.is-me,
-html.theme-reef .mp-score-row.me {
+html.theme-reef .mp-score-row.is-me {
 	border-color: rgba(255,126,179,0.35);
 	background: linear-gradient(135deg, rgba(255,126,179,0.12) 0%, rgba(255,140,105,0.06) 100%);
 	box-shadow: 0 0 12px rgba(255,126,179,0.08);
