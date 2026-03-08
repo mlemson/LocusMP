@@ -534,7 +534,8 @@ class LocusP2PHost {
 				const aiPlayers = (this.gameState.playerOrder || []).filter(pid =>
 					pid !== playerId && this.gameState.players[pid]?.isAI
 				);
-				const aggroTaunts = ['fuck off', 'your mum', 'cheater', 'HAHA', 'Nooo!'];\n\t\t\t\tconst normalTaunts = ['Nooo!', 'HAHA', 'Well played!', 'Oeps...', 'Kom op!', 'cheater', 'fuck off', 'your mum'];
+				const aggroTaunts = ['fuck off', 'your mum', 'cheater', 'HAHA', 'Nooo!'];
+				const normalTaunts = ['Nooo!', 'HAHA', 'Well played!', 'Oeps...', 'Kom op!', 'cheater', 'fuck off', 'your mum'];
 				let replyCount = 0;
 				for (const botId of aiPlayers) {
 					if (replyCount >= 2) break; // Max 2 replies
