@@ -56,6 +56,8 @@ const tauntCooldowns = new Map();
 const aiPlayers = new Map();
 /** @type {Map<string, Map<string, string>>} gameId → Map<aiPlayerId, difficulty> */
 const aiDifficulty = new Map();
+/** @type {Map<string, Map<string, string>>} gameId → Map<aiPlayerId, personality> */
+const aiPersonality = new Map();
 
 const TAUNT_COOLDOWN_MS = 2000;
 const ALLOWED_TAUNTS = new Set([
@@ -502,7 +504,8 @@ function executeAIActions(gameId) {
 			if (!player || player.chosenObjective) continue;
 			const choices = gameState.objectiveChoices?.[aiId] || [];
 			if (choices.length === 0) continue;
-			const idx = AIPlayer.chooseObjective(choices);
+			const pers = aiPersonality.get(gameId)?.get(aiId) || 'normal';
+			const idx = AIPlayer.chooseObjective(choices, gameState, aiId, pers);
 			const result = GameRules.chooseObjective(gameState, aiId, idx);
 			if (!result.error) {
 				console.log(`[Locus AI] ${player.name} koos objective ${idx}`);
@@ -551,9 +554,10 @@ function executeAIActions(gameId) {
 
 			// Perk kiezen
 			const aiDiff = aiDifficulty.get(gameId)?.get(aiId) || 'normal';
+			const aiPers = aiPersonality.get(gameId)?.get(aiId) || 'normal';
 			const perkId = aiDiff === 'hard'
 				? AIPlayer.chooseHardPerk(gameState, aiId)
-				: AIPlayer.choosePerk(gameState, aiId);
+				: AIPlayer.choosePerk(gameState, aiId, aiPers);
 			if (perkId) {
 				const perkResult = GameRules.choosePerk(gameState, aiId, perkId);
 				if (!perkResult.error) {
@@ -605,7 +609,8 @@ function _maybeAITaunt(gameId, aiPlayerId) {
 	const player = gs.players[aiPlayerId];
 	if (!player) return;
 
-	const taunt = AIPlayer.pickAITaunt(gs, aiPlayerId, null);
+	const pers = aiPersonality.get(gameId)?.get(aiPlayerId) || 'normal';
+	const taunt = AIPlayer.pickAITaunt(gs, aiPlayerId, null, pers);
 	if (taunt) {
 		io.to(gameId).emit('taunt', {
 			playerId: aiPlayerId,
@@ -630,9 +635,10 @@ function executeAITurn(gameId, aiPlayerId) {
 	_clearTurnTimer(gameId);
 
 	const difficulty = aiDifficulty.get(gameId)?.get(aiPlayerId) || 'normal';
+	const personality = aiPersonality.get(gameId)?.get(aiPlayerId) || 'normal';
 	const actions = difficulty === 'hard'
 		? AIPlayer.planTurnHard(gameState, aiPlayerId)
-		: AIPlayer.planTurn(gameState, aiPlayerId);
+		: AIPlayer.planTurn(gameState, aiPlayerId, personality);
 	let gameEnded = false;
 	let actionIndex = 0;
 
@@ -1137,7 +1143,15 @@ io.on('connection', (socket) => {
 			if (!aiDifficulty.has(info.gameId)) aiDifficulty.set(info.gameId, new Map());
 			aiDifficulty.get(info.gameId).set(aiPlayerId, difficulty);
 
-			console.log(`[Locus] AI speler "${aiName}" (${aiPlayerId}, ${difficulty}) toegevoegd aan game ${info.gameId}`);
+			// Track personality (25% chance of aggressive)
+			if (!aiPersonality.has(info.gameId)) aiPersonality.set(info.gameId, new Map());
+			const personality = AIPlayer.pickAIPersonality();
+			aiPersonality.get(info.gameId).set(aiPlayerId, personality);
+			if (personality === 'aggressive') {
+				gameState.players[aiPlayerId].name = (gameState.players[aiPlayerId].name || aiName) + ' 💢';
+			}
+
+			console.log(`[Locus] AI speler "${gameState.players[aiPlayerId].name}" (${aiPlayerId}, ${difficulty}, ${personality}) toegevoegd aan game ${info.gameId}`);
 
 			callback({
 				success: true,
@@ -1148,7 +1162,7 @@ io.on('connection', (socket) => {
 			// Broadcast de update
 			io.to(info.gameId).emit('playerJoined', {
 				playerId: aiPlayerId,
-				name: aiName,
+				name: gameState.players[aiPlayerId].name,
 				isAI: true
 			});
 
@@ -1186,6 +1200,8 @@ io.on('connection', (socket) => {
 			existingAIs.delete(aiPlayerId);
 			const diffMap = aiDifficulty.get(info.gameId);
 			if (diffMap) diffMap.delete(aiPlayerId);
+			const persMap = aiPersonality.get(info.gameId);
+			if (persMap) persMap.delete(aiPlayerId);
 
 			console.log(`[Locus] AI speler ${aiPlayerId} verwijderd uit game ${info.gameId}`);
 			callback({ success: true });
@@ -1930,10 +1946,10 @@ io.on('connection', (socket) => {
 				timestamp: now
 			});
 
-			// Bot auto-reply: 60% chance a random bot responds after 1-3s
-			const reply = AIPlayer.pickAIReplyToTaunt(gameState, info.playerId);
-			if (reply) {
-				const replyDelay = 1000 + Math.floor(Math.random() * 2000);
+			// Bot auto-reply: each bot has independent 60% chance (aggressive: 85%) to respond 1-3s later
+			const persMap = aiPersonality.get(info.gameId);
+			const replies = AIPlayer.pickAIReplyToTaunt(gameState, info.playerId, persMap);
+			for (const reply of replies) {
 				setTimeout(() => {
 					const gs = games.get(info.gameId);
 					if (!gs || gs.phase !== 'playing') return;
@@ -1945,7 +1961,7 @@ io.on('connection', (socket) => {
 						text: reply.text,
 						timestamp: Date.now()
 					});
-				}, replyDelay);
+				}, reply.delay);
 			}
 
 			callback({ success: true });
@@ -2005,6 +2021,7 @@ io.on('connection', (socket) => {
 								games.delete(info.gameId);
 								aiPlayers.delete(info.gameId);
 								aiDifficulty.delete(info.gameId);
+								aiPersonality.delete(info.gameId);
 								const pendingAiTimer = aiTimers.get(info.gameId);
 								if (pendingAiTimer) { clearTimeout(pendingAiTimer); aiTimers.delete(info.gameId); }
 								if (current.inviteCode) inviteCodes.delete(current.inviteCode);

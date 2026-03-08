@@ -530,15 +530,21 @@ class LocusP2PHost {
 				const playerName = this.gameState.players[playerId]?.name || 'Speler';
 				this._broadcastEvent('taunt', { playerId, playerName, text: msg.text, timestamp: Date.now() });
 
-				// Bot auto-reply: 60% chance a random bot responds after 1-3s
+				// Bot auto-reply: each bot has independent chance to respond (aggressive 85%, normal 60%)
 				const aiPlayers = (this.gameState.playerOrder || []).filter(pid =>
 					pid !== playerId && this.gameState.players[pid]?.isAI
 				);
-				if (aiPlayers.length > 0 && Math.random() <= 0.60) {
-					const botId = aiPlayers[Math.floor(Math.random() * aiPlayers.length)];
-					const taunts = ['Nooo!', 'HAHA', 'Well played!', 'Oeps...', 'Kom op!', 'cheater', 'fuck off', 'your mum'];
-					const replyText = taunts[Math.floor(Math.random() * taunts.length)];
+				const aggroTaunts = ['fuck off', 'your mum', 'cheater', 'HAHA', 'Nooo!'];\n\t\t\t\tconst normalTaunts = ['Nooo!', 'HAHA', 'Well played!', 'Oeps...', 'Kom op!', 'cheater', 'fuck off', 'your mum'];
+				let replyCount = 0;
+				for (const botId of aiPlayers) {
+					if (replyCount >= 2) break; // Max 2 replies
+					const botPers = this._aiPersonality?.get(botId) || 'normal';
+					const chance = botPers === 'aggressive' ? 0.85 : 0.60;
+					if (Math.random() > chance) continue;
+					const pool = botPers === 'aggressive' ? aggroTaunts : normalTaunts;
+					const replyText = pool[Math.floor(Math.random() * pool.length)];
 					const replyDelay = 1000 + Math.floor(Math.random() * 2000);
+					replyCount++;
 					setTimeout(() => {
 						if (!this.gameState || this.gameState.phase !== 'playing') return;
 						const botPlayer = this.gameState.players[botId];
@@ -959,6 +965,16 @@ class LocusP2PHost {
 		this.aiPlayerIds.add(aiId);
 		if (!this._aiDifficulty) this._aiDifficulty = new Map();
 		this._aiDifficulty.set(aiId, difficulty);
+		// Assign personality (25% aggressive)
+		if (!this._aiPersonality) this._aiPersonality = new Map();
+		const personalities = ['normal', 'normal', 'normal', 'aggressive'];
+		const personality = personalities[Math.floor(Math.random() * personalities.length)];
+		this._aiPersonality.set(aiId, personality);
+		if (personality === 'aggressive') {
+			const aggroName = aiName + ' \ud83d\udca2';
+			if (addResult?.player) addResult.player.name = aggroName;
+			if (this.gameState.players?.[aiId]) this.gameState.players[aiId].name = aggroName;
+		}
 		if (this.gameState.players?.[aiId]) {
 			this.gameState.players[aiId].isAI = true;
 			this.gameState.players[aiId].connected = true;
@@ -977,6 +993,7 @@ class LocusP2PHost {
 
 		this.aiPlayerIds.delete(aiPlayerId);
 		if (this._aiDifficulty) this._aiDifficulty.delete(aiPlayerId);
+		if (this._aiPersonality) this._aiPersonality.delete(aiPlayerId);
 		if (this.onPlayerLeft) this.onPlayerLeft({ playerId: aiPlayerId });
 		return { success: true };
 	}
@@ -1022,11 +1039,45 @@ class LocusP2PHost {
 				if (!p || p.chosenObjective) continue;
 				const choices = this.gameState.objectiveChoices?.[aiId] || [];
 				if (!choices.length) continue;
+
+				const pers = this._aiPersonality?.get(aiId) || 'normal';
+				const isAggressive = pers === 'aggressive';
+
+				// Analyze hand card colors
+				const hand = p.hand || [];
+				const colorCounts = { yellow: 0, green: 0, blue: 0, red: 0, purple: 0 };
+				for (const card of hand) {
+					const zones = this.Rules.getAllowedZones(card);
+					for (const z of zones) {
+						if (colorCounts[z] !== undefined) colorCounts[z]++;
+					}
+				}
+				let dominant = 'yellow';
+				let maxCount = 0;
+				for (const [zone, count] of Object.entries(colorCounts)) {
+					if (count > maxCount) { maxCount = count; dominant = zone; }
+				}
+
 				let bestIdx = 0;
 				let bestScore = -Infinity;
 				for (let i = 0; i < choices.length; i++) {
 					const c = choices[i] || {};
-					const score = (c.points || 0) + ((c.coins || 0) * 2) + ((c.randomBonuses || 0) * 3);
+					let score = (c.points || 0) + ((c.coins || 0) * 2) + ((c.randomBonuses || 0) * 3);
+
+					const objId = c.id || '';
+					const isSabotage = objId.includes('deny_') || c.dynamicType === 'deny_named_objective';
+
+					// Aggressive bots heavily prefer sabotage
+					if (isAggressive && isSabotage) score += 50;
+					else if (isAggressive && !isSabotage) score -= 5;
+
+					// Match objectives to dominant hand colors
+					if (objId.includes('yellow')) score += (colorCounts.yellow || 0) * 5 + (dominant === 'yellow' ? 10 : 0);
+					else if (objId.includes('green')) score += (colorCounts.green || 0) * 5 + (dominant === 'green' ? 10 : 0);
+					else if (objId.includes('blue')) score += (colorCounts.blue || 0) * 5 + (dominant === 'blue' ? 10 : 0);
+					else if (objId.includes('red')) score += (colorCounts.red || 0) * 5 + (dominant === 'red' ? 10 : 0);
+					else if (objId.includes('purple')) score += (colorCounts.purple || 0) * 5 + (dominant === 'purple' ? 10 : 0);
+
 					if (score > bestScore) { bestScore = score; bestIdx = i; }
 				}
 				const result = this.Rules.chooseObjective(this.gameState, aiId, bestIdx);
@@ -1060,12 +1111,16 @@ class LocusP2PHost {
 				const p = this.gameState.players?.[aiId];
 				if (!p || p.shopReady) continue;
 				const isHard = this._aiDifficulty?.get(aiId) === 'hard';
+				const pers = this._aiPersonality?.get(aiId) || 'normal';
+				const isAggressive = pers === 'aggressive';
 
 				// Perk kiezen als beschikbaar
 				if ((p.perks?.perkPoints || 0) > 0) {
 					const available = this.Rules.getAvailablePerks(p) || [];
 					if (available.length > 0) {
-						const priority = isHard
+						const priority = isAggressive
+							? ['agg_steal', 'agg_mine', 'agg_timebomb', 'bonus_extra_cell', 'bonus_multi_double', 'bonus_red_upgrade', 'flex_wildcard', 'flex_double_coins']
+							: isHard
 							? ['agg_timebomb', 'agg_mine', 'agg_steal', 'flex_wildcard', 'flex_double_coins', 'bonus_extra_cell', 'bonus_multi_double', 'bonus_red_upgrade']
 							: ['bonus_extra_cell', 'bonus_multi_double', 'bonus_red_upgrade', 'flex_double_coins', 'flex_wildcard', 'agg_mine', 'agg_timebomb', 'agg_steal'];
 						let chosenId = null;
@@ -1395,12 +1450,16 @@ class LocusP2PHost {
 		for (const card of hand) {
 			const allowedZones = this.Rules.getAllowedZones(card);
 			const rotations = [0, 1, 2, 3];
+			const mirrors = [false, true];
 			for (const zoneName of allowedZones) {
 				const scoreOnZone = (zoneData, subgridId = null) => {
 					if (!zoneData) return;
 					for (const rotation of rotations) {
+						for (const mirrored of mirrors) {
 						let matrix = this.Rules.cloneMatrix(card.matrix);
+						matrix = this.Rules.getEnhancedMatrix ? this.Rules.getEnhancedMatrix(matrix, zoneName, perkFlags) : matrix;
 						matrix = this.Rules.rotateMatrixN(matrix, rotation);
+						if (mirrored) matrix = this.Rules.mirrorMatrix(matrix);
 						for (let y = 0; y < zoneData.rows; y++) {
 							for (let x = 0; x < zoneData.cols; x++) {
 								const cells = this.Rules.collectPlacementCellsData(zoneData, x, y, matrix);
@@ -1777,11 +1836,16 @@ class LocusP2PHost {
 		const player = this.gameState?.players?.[playerId];
 		if (!player) return;
 
-		// ~8% chance to taunt after a turn
-		if (Math.random() > 0.08) return;
+		const pers = this._aiPersonality?.get(playerId) || 'normal';
+		const isAggressive = pers === 'aggressive';
+		// Aggressive bots taunt ~25%, normal ~8%
+		const chance = isAggressive ? 0.25 : 0.08;
+		if (Math.random() > chance) return;
 
-		const taunts = ['Nooo!', 'HAHA', 'Well played!', 'Oeps...', 'Kom op!', 'cheater', 'fuck off', 'your mum'];
-		const text = taunts[Math.floor(Math.random() * taunts.length)];
+		const aggroPool = ['fuck off', 'your mum', 'cheater', 'HAHA', 'Nooo!'];
+		const normalPool = ['Nooo!', 'HAHA', 'Well played!', 'Oeps...', 'Kom op!', 'cheater', 'fuck off', 'your mum'];
+		const pool = isAggressive ? aggroPool : normalPool;
+		const text = pool[Math.floor(Math.random() * pool.length)];
 
 		this._broadcastEvent('taunt', {
 			playerId,

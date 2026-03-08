@@ -15,6 +15,13 @@ const AI_THINK_DELAY_MIN_MS = 2000;
 const AI_THINK_DELAY_MAX_MS = 4000;
 const AI_ACTION_DELAY_MS = 800; // Delay between individual actions within a turn
 
+// ── AI PERSONALITY SYSTEM ──
+// 25% chance a bot gets 'aggressive' personality at creation
+const AI_PERSONALITIES = ['normal', 'normal', 'normal', 'aggressive']; // 25% aggressive
+function pickAIPersonality() {
+	return AI_PERSONALITIES[Math.floor(Math.random() * AI_PERSONALITIES.length)];
+}
+
 function getAIThinkDelay() {
 	return AI_THINK_DELAY_MIN_MS + Math.floor(Math.random() * (AI_THINK_DELAY_MAX_MS - AI_THINK_DELAY_MIN_MS));
 }
@@ -30,30 +37,36 @@ const AI_REACTIVE_TAUNTS = {
 	random: ['Oeps...', 'Kom op!', 'HAHA', 'fuck off', 'your mum']
 };
 
+const AI_AGGRESSIVE_TAUNTS = ['fuck off', 'your mum', 'cheater', 'HAHA', 'Nooo!'];
+
 /**
  * Decide if the AI should taunt and pick a message.
- * Returns { text } or null.
+ * Returns { text } or null. Aggressive bots taunt more frequently.
  */
-function pickAITaunt(gameState, aiPlayerId, context) {
+function pickAITaunt(gameState, aiPlayerId, context, personality) {
+	const isAggressive = personality === 'aggressive';
+	const aggroPool = AI_AGGRESSIVE_TAUNTS;
+
 	// context: { type: 'bigScore', playerId, points } or { type: 'objectiveAchieved', playerId }
 	if (!context) {
-		// Small random chance to taunt unprovoked (~8%)
-		if (Math.random() > 0.08) return null;
-		const pool = AI_REACTIVE_TAUNTS.random;
+		// Aggressive bots taunt ~25%, normal ~8%
+		const chance = isAggressive ? 0.25 : 0.08;
+		if (Math.random() > chance) return null;
+		const pool = isAggressive ? aggroPool : AI_REACTIVE_TAUNTS.random;
 		return { text: pool[Math.floor(Math.random() * pool.length)] };
 	}
 
 	if (context.type === 'bigScore' && context.points >= 25) {
-		// ~40% chance to react to big score
-		if (Math.random() > 0.40) return null;
-		const pool = AI_REACTIVE_TAUNTS.bigScore;
+		const chance = isAggressive ? 0.70 : 0.40;
+		if (Math.random() > chance) return null;
+		const pool = isAggressive ? aggroPool : AI_REACTIVE_TAUNTS.bigScore;
 		return { text: pool[Math.floor(Math.random() * pool.length)] };
 	}
 
 	if (context.type === 'objectiveAchieved') {
-		// ~30% chance to react to objective
-		if (Math.random() > 0.30) return null;
-		const pool = AI_REACTIVE_TAUNTS.objectiveAchieved;
+		const chance = isAggressive ? 0.60 : 0.30;
+		if (Math.random() > chance) return null;
+		const pool = isAggressive ? aggroPool : AI_REACTIVE_TAUNTS.objectiveAchieved;
 		return { text: pool[Math.floor(Math.random() * pool.length)] };
 	}
 
@@ -61,24 +74,30 @@ function pickAITaunt(gameState, aiPlayerId, context) {
 }
 
 /**
- * Pick a reply taunt from a random AI bot when a human sends a taunt.
- * 60% chance any bot responds. Returns { aiPlayerId, text } or null.
+ * Pick reply taunts from AI bots when a human sends a taunt.
+ * Each bot has an independent 60% chance to reply (aggressive: 85%).
+ * Returns array of { aiPlayerId, text, delay }.
  */
-function pickAIReplyToTaunt(gameState, humanPlayerId) {
-	if (Math.random() > 0.60) return null;
-
+function pickAIReplyToTaunt(gameState, humanPlayerId, personalityMap) {
 	// Find AI players in the game
-	const aiPlayers = (gameState.playerOrder || []).filter(pid =>
+	const aiPlayerIds = (gameState.playerOrder || []).filter(pid =>
 		pid !== humanPlayerId && gameState.players[pid]?.isAI
 	);
-	if (aiPlayers.length === 0) return null;
+	if (aiPlayerIds.length === 0) return [];
 
-	// Pick a random bot to reply
-	const aiId = aiPlayers[Math.floor(Math.random() * aiPlayers.length)];
-	const pool = AI_REACTIVE_TAUNTS.random;
-	const text = pool[Math.floor(Math.random() * pool.length)];
+	const replies = [];
+	for (const aiId of aiPlayerIds) {
+		const pers = personalityMap?.get?.(aiId) || 'normal';
+		const chance = pers === 'aggressive' ? 0.85 : 0.60;
+		if (Math.random() > chance) continue;
+		const pool = pers === 'aggressive' ? AI_AGGRESSIVE_TAUNTS : AI_REACTIVE_TAUNTS.random;
+		const text = pool[Math.floor(Math.random() * pool.length)];
+		const delay = 1000 + Math.floor(Math.random() * 2000);
+		replies.push({ aiPlayerId: aiId, text, delay });
+	}
 
-	return { aiPlayerId: aiId, text };
+	// Limit to max 2 replies to avoid spam
+	return replies.slice(0, 2);
 }
 
 /**
@@ -393,11 +412,37 @@ function chooseStartingDeck() {
 }
 
 /**
- * AI kiest een objective (index 0-2).
- * Weighs reward vs difficulty: high-reward + achievable zone targets preferred.
+ * Analyze which zone colors a player's hand favors.
+ * Returns { yellow, green, blue, red, purple, dominant } counts.
  */
-function chooseObjective(choices) {
+function _getHandColorProfile(player) {
+	const hand = player?.hand || [];
+	const counts = { yellow: 0, green: 0, blue: 0, red: 0, purple: 0 };
+	for (const card of hand) {
+		const zones = GameRules.getAllowedZones(card);
+		for (const z of zones) {
+			if (counts[z] !== undefined) counts[z]++;
+		}
+	}
+	let dominant = 'yellow';
+	let maxCount = 0;
+	for (const [zone, count] of Object.entries(counts)) {
+		if (count > maxCount) { maxCount = count; dominant = zone; }
+	}
+	return { ...counts, dominant };
+}
+
+/**
+ * AI kiest een objective (index 0-2).
+ * Analyzes hand card colors to pick objectives that match dominant zones.
+ * Aggressive bots prefer sabotage objectives.
+ */
+function chooseObjective(choices, gameState, playerId, personality) {
 	if (!choices || choices.length === 0) return 0;
+
+	const player = gameState?.players?.[playerId];
+	const colorProfile = player ? _getHandColorProfile(player) : null;
+	const isAggressive = personality === 'aggressive';
 
 	let bestIdx = 0;
 	let bestScore = -Infinity;
@@ -408,13 +453,25 @@ function chooseObjective(choices) {
 		const bonuses = obj.randomBonuses || 0;
 		let score = points + coins * 2 + bonuses * 4;
 
-		// Prefer zone-specific objectives (AI now understands scoring well)
 		const objId = obj.id || '';
-		if (objId === 'fill_yellow_cols') score += 8;   // Column completion is straightforward
-		else if (objId === 'reach_green_ends') score += 6;
-		else if (objId === 'complete_blue_rows') score += 7;
-		else if (objId === 'fill_red_grids') score += 5;
-		else if (objId === 'purple_cluster') score += 9;  // Purple clusters scale well
+		const isSabotage = objId.includes('deny_') || obj.dynamicType === 'deny_named_objective';
+
+		// Aggressive bots heavily prefer sabotage/blocking objectives
+		if (isAggressive && isSabotage) {
+			score += 50;
+		} else if (isAggressive && !isSabotage) {
+			score -= 5; // Slight penalty for non-aggressive objectives
+		}
+
+		// Match objectives to dominant hand colors
+		if (colorProfile) {
+			const zoneMatch = _objectiveZoneMatch(objId);
+			if (zoneMatch) {
+				// Boost by how many cards of this color the bot has
+				score += (colorProfile[zoneMatch] || 0) * 5;
+				if (zoneMatch === colorProfile.dominant) score += 10;
+			}
+		}
 
 		// Higher reward objectives are worth chasing
 		if (points >= 30) score += 5;
@@ -427,26 +484,62 @@ function chooseObjective(choices) {
 	return bestIdx;
 }
 
+/** Map objective IDs to their primary zone. */
+function _objectiveZoneMatch(objId) {
+	if (objId.includes('yellow')) return 'yellow';
+	if (objId.includes('green')) return 'green';
+	if (objId.includes('blue')) return 'blue';
+	if (objId.includes('red')) return 'red';
+	if (objId.includes('purple')) return 'purple';
+	return null;
+}
+
 /**
- * AI kiest een perk.
+ * AI kiest een perk based on hand colors and personality.
+ * Aggressive bots always pick aggressive perks first.
  */
-function choosePerk(gameState, playerId) {
+function choosePerk(gameState, playerId, personality) {
 	const player = gameState.players[playerId];
 	if (!player?.perks || (player.perks.perkPoints || 0) < 1) return null;
 
 	const available = GameRules.getAvailablePerks(player);
 	if (!available || available.length === 0) return null;
 
-	// Prioriteer nuttige perks
-	const perkPriority = [
-		'bonus_extra_cell', 'bonus_multi_double', 'bonus_red_upgrade',
-		'flex_double_coins', 'flex_wildcard', 'flex_gap', 'flex_gap_red',
-		'agg_mine', 'agg_timebomb', 'agg_steal'
-	];
+	const isAggressive = personality === 'aggressive';
 
-	for (const pId of perkPriority) {
-		const match = available.find(p => p.id === pId);
-		if (match) return match.id;
+	if (isAggressive) {
+		// Aggressive bot: always pick attack perks first
+		const aggroPriority = [
+			'agg_steal', 'agg_mine', 'agg_timebomb',
+			'bonus_extra_cell', 'bonus_multi_double', 'bonus_red_upgrade',
+			'flex_wildcard', 'flex_double_coins', 'flex_gap', 'flex_gap_red'
+		];
+		for (const pId of aggroPriority) {
+			const match = available.find(p => p.id === pId);
+			if (match) return match.id;
+		}
+	} else {
+		// Normal bot: pick perks based on hand card colors
+		const colorProfile = _getHandColorProfile(player);
+		const perkPriority = [];
+
+		// Prioritize bonus perks matching dominant colors
+		if (colorProfile.red >= 2) perkPriority.push('bonus_red_upgrade');
+		perkPriority.push('bonus_extra_cell', 'bonus_multi_double');
+		if (colorProfile.red < 2) perkPriority.push('bonus_red_upgrade');
+		perkPriority.push('flex_double_coins', 'flex_wildcard');
+		// Gap perks: prefer green gap if lots of green, red gap if lots of red
+		if (colorProfile.green >= colorProfile.red) {
+			perkPriority.push('flex_gap', 'flex_gap_red');
+		} else {
+			perkPriority.push('flex_gap_red', 'flex_gap');
+		}
+		perkPriority.push('agg_mine', 'agg_timebomb', 'agg_steal');
+
+		for (const pId of perkPriority) {
+			const match = available.find(p => p.id === pId);
+			if (match) return match.id;
+		}
 	}
 
 	// Fallback: pak eerste beschikbare
@@ -457,7 +550,7 @@ function choosePerk(gameState, playerId) {
  * AI speelt een volledige beurt: kaart + bonussen + endTurn.
  * Geeft een reeks acties terug die de server moet uitvoeren.
  */
-function planTurn(gameState, playerId) {
+function planTurn(gameState, playerId, personality) {
 	const player = gameState.players[playerId];
 	if (!player) return [];
 
@@ -522,7 +615,7 @@ function planTurn(gameState, playerId) {
 	}
 
 	// 3. Perk kiezen als perkPoints beschikbaar
-	const perkId = choosePerk(gameState, playerId);
+	const perkId = choosePerk(gameState, playerId, personality);
 	if (perkId) {
 		actions.push({ type: 'choosePerk', perkId });
 	}
@@ -851,8 +944,23 @@ function _scoreBlueImpact(zoneData, placedCells) {
 
 	// Strongly prefer vertical placements (span multiple rows = reach bold rows faster)
 	const ys = new Set(placedCells.map(c => c.y));
+	const xs = new Set(placedCells.map(c => c.x));
 	const verticalSpan = ys.size;
 	if (verticalSpan >= 2) impact += verticalSpan * 5;
+
+	// PENALIZE horizontal-only placements (single row, multiple cols) that don't hit valuable flags
+	// These waste cells: only 1 cell per bold row = no tier progress
+	if (verticalSpan === 1 && xs.size >= 3) {
+		let hasValuable = false;
+		for (const c of placedCells) {
+			const cell = GameRules.getDataCell(zoneData, c.x, c.y);
+			if (cell?.flags?.some(f => ['gold', 'bonus', 'pearl', 'bold'].includes(f))) {
+				hasValuable = true;
+				break;
+			}
+		}
+		if (!hasValuable) impact -= 15; // Strong penalty for horizontal waste
+	}
 
 	// Favor placements adjacent to existing cells (build connected paths upward)
 	let adjacent = 0;
@@ -1274,6 +1382,7 @@ module.exports = {
 	getHardAIThinkDelay,
 	pickAITaunt,
 	pickAIReplyToTaunt,
+	pickAIPersonality,
 	AI_TAUNTS,
 	findValidPlacements,
 	findValidBonusPlacements,
