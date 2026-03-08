@@ -324,47 +324,40 @@ function _chooseMineTarget(gameState, playerId) {
 	const opponents = (gameState.playerOrder || []).filter(pid => pid !== playerId);
 	if (opponents.length === 0) return null;
 
-	// Zoek cellen die dichtbij actieve tegenstander-cellen liggen maar nog leeg zijn
 	const candidates = [];
-	const zoneNames = ['yellow', 'green', 'blue', 'red', 'purple'];
-
-	for (const zoneName of zoneNames) {
-		const zoneData = board.zones?.[zoneName];
-		if (!zoneData) continue;
-
-		if (zoneName === 'red' && zoneData.subgrids) {
-			for (const sg of zoneData.subgrids) {
-				_findMineCandidates(sg, zoneName, candidates);
-			}
-		} else {
-			_findMineCandidates(zoneData, zoneName, candidates);
-		}
+	for (const zoneName of ['yellow', 'green', 'blue', 'purple']) {
+		_findMineCandidates(board.zones?.[zoneName], zoneName, candidates);
+	}
+	for (const sg of (board.zones?.red?.subgrids || [])) {
+		_findMineCandidates(sg, 'red', candidates);
 	}
 
 	if (candidates.length === 0) return null;
-
-	// Sorteer op score (hogere score = betere plek voor mijn)
 	candidates.sort((a, b) => b.score - a.score);
-	const best = candidates[Math.floor(Math.random() * Math.min(3, candidates.length))];
-	return { type: 'useMine', zoneName: best.zoneName, cellX: best.x, cellY: best.y };
+	const top = candidates.slice(0, Math.min(16, candidates.length));
+	const picked = top[Math.floor(Math.random() * top.length)] || top[0];
+	if (!picked) return null;
+	return { type: 'useMine', zoneName: picked.zoneName, cellX: picked.x, cellY: picked.y };
 }
 
 function _findMineCandidates(zoneData, zoneName, result) {
+	if (!zoneData) return;
 	const rows = zoneData.rows || 0;
 	const cols = zoneData.cols || 0;
 	for (let y = 0; y < rows; y++) {
 		for (let x = 0; x < cols; x++) {
 			const cell = GameRules.getDataCell(zoneData, x, y);
-			if (!cell || cell.active) continue; // Skip void or already active cells
-			// Score based on adjacent active cells (good mine spot = near active territory)
-			let score = 0;
-			if (cell.flags?.includes('bonus')) score += 5;
-			if (cell.flags?.includes('gold')) score += 3;
-			if (cell.flags?.includes('bold')) score += 2;
-			if (GameRules.hasAdjacentActive(zoneData, x, y)) score += 4;
-			if (score > 0) {
-				result.push({ zoneName, x, y, score });
-			}
+			if (!cell || cell.active) continue;
+			if (cell.flags?.includes('void')) continue;
+			let score = 1;
+			if (cell.flags?.includes('bonus')) score += 18;
+			if (cell.flags?.includes('gold')) score += 12;
+			if (cell.flags?.includes('bold')) score += 9;
+			if (cell.flags?.includes('end')) score += 8;
+			if (cell.flags?.includes('portal')) score += 6;
+			if (GameRules.hasAdjacentActive(zoneData, x, y)) score += 5;
+			score += Math.random() * 3;
+			result.push({ zoneName, x, y, score });
 		}
 	}
 }
@@ -376,31 +369,24 @@ function _chooseStealTarget(gameState, playerId) {
 	const opponents = (gameState.playerOrder || []).filter(pid => pid !== playerId);
 	if (opponents.length === 0) return null;
 
-	// Kies tegenstander met de meeste kaarten in hand
-	let bestTarget = null;
-	let bestHandSize = 0;
+	const candidates = [];
 	for (const oppId of opponents) {
 		const opp = gameState.players[oppId];
 		if (!opp) continue;
 		const stealable = (opp.hand || []).filter(c => !c.isGolden && !c.isStone);
-		if (stealable.length > bestHandSize) {
-			bestHandSize = stealable.length;
-			bestTarget = oppId;
+		for (const card of stealable) {
+			const cells = card.matrix ? card.matrix.flat().filter(v => v > 0).length : 0;
+			const score = (cells * 3) + Math.random() * 4;
+			candidates.push({ targetPlayerId: oppId, cardId: card.id, score });
 		}
 	}
 
-	if (!bestTarget || bestHandSize === 0) return null;
-
-	// Kies de kaart met de meeste cellen (grootste shape)
-	const target = gameState.players[bestTarget];
-	const stealable = (target.hand || []).filter(c => !c.isGolden && !c.isStone);
-	stealable.sort((a, b) => {
-		const aCells = a.matrix ? a.matrix.flat().filter(v => v > 0).length : 0;
-		const bCells = b.matrix ? b.matrix.flat().filter(v => v > 0).length : 0;
-		return bCells - aCells;
-	});
-	const chosenCard = stealable[0];
-	return { type: 'stealCard', targetPlayerId: bestTarget, cardId: chosenCard.id };
+	if (candidates.length === 0) return null;
+	candidates.sort((a, b) => b.score - a.score);
+	const top = candidates.slice(0, Math.min(8, candidates.length));
+	const picked = top[Math.floor(Math.random() * top.length)] || top[0];
+	if (!picked) return null;
+	return { type: 'stealCard', targetPlayerId: picked.targetPlayerId, cardId: picked.cardId };
 }
 
 /**

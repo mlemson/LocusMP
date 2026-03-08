@@ -1422,6 +1422,11 @@ class LocusP2PHost {
 					const mineResult = this.Rules.useMine(this.gameState, playerId, action.zoneName, action.cellX, action.cellY);
 					if (!mineResult?.error) {
 						console.log(`[AI ${playerName}] 💣 Mijn geplaatst op ${action.zoneName} (${action.cellX},${action.cellY})`);
+						this._broadcastEvent('botActivity', {
+							playerId,
+							playerName,
+							text: `💣 Mijn geplaatst in ${action.zoneName}`
+						});
 						this._broadcastState();
 					} else {
 						console.log(`[AI ${playerName}] Mijn mislukt: ${mineResult.error}`);
@@ -1434,6 +1439,11 @@ class LocusP2PHost {
 					const stealResult = this.Rules.stealCard(this.gameState, playerId, action.targetPlayerId, action.cardId);
 					if (!stealResult?.error) {
 						console.log(`[AI ${playerName}] 🕵️ Kaart gestolen van ${stealResult.targetPlayerName}: ${stealResult.stolenCard?.shapeName}`);
+						this._broadcastEvent('botActivity', {
+							playerId,
+							playerName,
+							text: `🕵️ Steel van ${stealResult.targetPlayerName}`
+						});
 						this._broadcastEvent('cardStolen', {
 							thiefId: playerId,
 							thiefName: playerName,
