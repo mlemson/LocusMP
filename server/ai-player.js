@@ -512,16 +512,31 @@ function choosePerk(gameState, playerId, personality) {
 	}
 
 	if (isAggressive) {
-		// Aggressive bot: attack perks first, then utility
-		const aggroPriority = [
-			'agg_steal', 'agg_mine', 'agg_stone',
-			'bonus_multi_double', 'flex_wildcard', 'flex_double_coins',
-			'flex_gap', 'flex_gap_red', 'flex_rotate',
-			'bonus_yellow', 'bonus_red', 'bonus_green', 'bonus_purple', 'bonus_blue'
-		];
-		for (const pId of aggroPriority) {
-			const match = available.find(p => p.id === pId);
-			if (match) return match.id;
+		// Aggressive bot: weighted pick (mine is no longer default-first)
+		const candidates = [];
+		if (available.find(p => p.id === 'agg_steal')) candidates.push({ id: 'agg_steal', weight: 13 });
+		if (available.find(p => p.id === 'agg_stone')) candidates.push({ id: 'agg_stone', weight: 11 });
+		if (available.find(p => p.id === 'agg_mine')) candidates.push({ id: 'agg_mine', weight: 7 });
+		if (available.find(p => p.id === 'flex_wildcard')) candidates.push({ id: 'flex_wildcard', weight: 10 });
+		if (available.find(p => p.id === 'flex_double_coins')) candidates.push({ id: 'flex_double_coins', weight: 9 });
+		if (available.find(p => p.id === 'flex_gap')) candidates.push({ id: 'flex_gap', weight: 8 });
+		if (available.find(p => p.id === 'flex_gap_red')) candidates.push({ id: 'flex_gap_red', weight: 8 });
+		if (available.find(p => p.id === 'flex_rotate')) candidates.push({ id: 'flex_rotate', weight: 8 });
+		if (available.find(p => p.id === 'bonus_multi_double')) candidates.push({ id: 'bonus_multi_double', weight: 8 });
+		if (available.find(p => p.id === 'bonus_yellow')) candidates.push({ id: 'bonus_yellow', weight: 6 });
+		if (available.find(p => p.id === 'bonus_red')) candidates.push({ id: 'bonus_red', weight: 6 });
+		if (available.find(p => p.id === 'bonus_green')) candidates.push({ id: 'bonus_green', weight: 6 });
+		if (available.find(p => p.id === 'bonus_purple')) candidates.push({ id: 'bonus_purple', weight: 6 });
+		if (available.find(p => p.id === 'bonus_blue')) candidates.push({ id: 'bonus_blue', weight: 6 });
+
+		if (candidates.length > 0) {
+			const totalWeight = candidates.reduce((sum, c) => sum + c.weight, 0);
+			let roll = Math.random() * totalWeight;
+			for (const c of candidates) {
+				roll -= c.weight;
+				if (roll <= 0) return c.id;
+			}
+			return candidates[candidates.length - 1].id;
 		}
 	} else {
 		// Normal bot: pick perks based on hand card colors with weighted randomness
@@ -1352,21 +1367,35 @@ function chooseHardPerk(gameState, playerId) {
 	const available = GameRules.getAvailablePerks(player);
 	if (!available || available.length === 0) return null;
 
-	// 15% kans op random keuze voor onvoorspelbaarheid
-	if (Math.random() < 0.15) {
+	// 25% kans op random keuze voor onvoorspelbaarheid
+	if (Math.random() < 0.25) {
 		return available[Math.floor(Math.random() * available.length)].id;
 	}
 
-	// Hard AI: aggressive first, then flexibility, then bonus (correct IDs)
-	const perkPriority = [
-		'agg_mine', 'agg_steal', 'agg_stone',
-		'flex_wildcard', 'flex_double_coins', 'flex_gap', 'flex_gap_red', 'flex_rotate',
-		'bonus_multi_double', 'bonus_yellow', 'bonus_red', 'bonus_green', 'bonus_purple', 'bonus_blue'
-	];
+	const candidates = [];
+	if (available.find(p => p.id === 'agg_steal')) candidates.push({ id: 'agg_steal', weight: 14 });
+	if (available.find(p => p.id === 'agg_stone')) candidates.push({ id: 'agg_stone', weight: 11 });
+	if (available.find(p => p.id === 'agg_mine')) candidates.push({ id: 'agg_mine', weight: 6 });
+	if (available.find(p => p.id === 'flex_wildcard')) candidates.push({ id: 'flex_wildcard', weight: 10 });
+	if (available.find(p => p.id === 'flex_double_coins')) candidates.push({ id: 'flex_double_coins', weight: 10 });
+	if (available.find(p => p.id === 'flex_gap')) candidates.push({ id: 'flex_gap', weight: 8 });
+	if (available.find(p => p.id === 'flex_gap_red')) candidates.push({ id: 'flex_gap_red', weight: 8 });
+	if (available.find(p => p.id === 'flex_rotate')) candidates.push({ id: 'flex_rotate', weight: 8 });
+	if (available.find(p => p.id === 'bonus_multi_double')) candidates.push({ id: 'bonus_multi_double', weight: 8 });
+	if (available.find(p => p.id === 'bonus_yellow')) candidates.push({ id: 'bonus_yellow', weight: 5 });
+	if (available.find(p => p.id === 'bonus_red')) candidates.push({ id: 'bonus_red', weight: 5 });
+	if (available.find(p => p.id === 'bonus_green')) candidates.push({ id: 'bonus_green', weight: 5 });
+	if (available.find(p => p.id === 'bonus_purple')) candidates.push({ id: 'bonus_purple', weight: 5 });
+	if (available.find(p => p.id === 'bonus_blue')) candidates.push({ id: 'bonus_blue', weight: 5 });
 
-	for (const pId of perkPriority) {
-		const match = available.find(p => p.id === pId);
-		if (match) return match.id;
+	if (candidates.length > 0) {
+		const totalWeight = candidates.reduce((sum, c) => sum + c.weight, 0);
+		let roll = Math.random() * totalWeight;
+		for (const c of candidates) {
+			roll -= c.weight;
+			if (roll <= 0) return c.id;
+		}
+		return candidates[candidates.length - 1].id;
 	}
 
 	return available[Math.floor(Math.random() * available.length)].id;

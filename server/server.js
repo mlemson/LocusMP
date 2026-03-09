@@ -500,6 +500,7 @@ function executeAIActions(gameId) {
 	if (phase === 'choosingGoals') {
 		let changed = false;
 		for (const aiId of gameAIs) {
+			if (gameState.phase !== 'choosingGoals') break;
 			const player = gameState.players[aiId];
 			if (!player || player.chosenObjective) continue;
 			const choices = gameState.objectiveChoices?.[aiId] || [];
@@ -516,13 +517,14 @@ function executeAIActions(gameId) {
 			}
 		}
 		for (const aiId of gameAIs) {
+			if (gameState.phase !== 'choosingGoals') break;
 			const player = gameState.players[aiId];
 			if (!player || !player.chosenObjective) continue;
 			if (player.goalPerksDone) continue;
 			const aiPers = aiPersonality.get(gameId)?.get(aiId) || 'normal';
 			// Spend ALL perk points in one go to avoid multiple AI cycles
 			let perksChosen = 0;
-			while (!player.goalPerksDone && (player.perks?.perkPoints || 0) > 0) {
+			while (gameState.phase === 'choosingGoals' && !player.goalPerksDone && (player.perks?.perkPoints || 0) > 0) {
 				const perkId = AIPlayer.choosePerk(gameState, aiId, aiPers);
 				const perkChoice = perkId || '__skip__';
 				const perkResult = GameRules.choosePerk(gameState, aiId, perkChoice);
@@ -545,7 +547,7 @@ function executeAIActions(gameId) {
 				if (perksChosen >= 10) break; // Safety limit
 			}
 			// Als bot nog steeds niet klaar is (bv geen perks meer beschikbaar), forceer skip
-			if (!player.goalPerksDone) {
+			if (gameState.phase === 'choosingGoals' && !player.goalPerksDone) {
 				const skipResult = GameRules.choosePerk(gameState, aiId, '__skip__');
 				if (!skipResult.error) {
 					changed = true;
@@ -553,7 +555,21 @@ function executeAIActions(gameId) {
 				}
 			}
 		}
-		if (changed) broadcastGameState(io, gameId);
+		if (changed) {
+			broadcastGameState(io, gameId);
+		} else {
+			// If no state changed, explicitly re-schedule AI to avoid getting stuck in choosingGoals.
+			const gsNow = games.get(gameId);
+			if (gsNow?.phase === 'choosingGoals') {
+				const aiStatus = [...gameAIs].map(aiId => {
+					const p = gsNow.players?.[aiId];
+					if (!p) return `${aiId}:missing`;
+					return `${p.name || aiId}:{obj:${!!p.chosenObjective}, perkPts:${p.perks?.perkPoints || 0}, done:${!!p.goalPerksDone}}`;
+				}).join(' | ');
+				console.warn(`[Locus AI] choosingGoals no progress; rescheduling. ${aiStatus}`);
+				scheduleAIActions(gameId);
+			}
+		}
 		return;
 	}
 
