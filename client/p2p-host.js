@@ -1878,6 +1878,7 @@ class LocusP2PHost {
 		const player = this.gameState?.players?.[playerId];
 		const board = this.gameState?.boardState;
 		if (!player || !board) return null;
+		const prioritizeCoins = this._shouldPrioritizeCoins(playerId);
 
 		const nowMs = () => (typeof performance !== 'undefined' && performance.now)
 			? performance.now()
@@ -1912,7 +1913,7 @@ class LocusP2PHost {
 					if (!zoneData) return;
 					const blueReachedRows = zoneName === 'blue' ? this._getReachedBoldRows(zoneData) : null;
 					const blueBoldSet = zoneName === 'blue' ? new Set(zoneData.boldRows || []) : null;
-					const strategicHotspots = this._collectStrategicHotspots(zoneName, zoneData, blueReachedRows, blueBoldSet);
+					const strategicHotspots = this._collectStrategicHotspots(zoneName, zoneData, blueReachedRows, blueBoldSet, prioritizeCoins);
 					for (const rotation of rotations) {
 						if (stopSearch) break;
 						for (const mirrored of mirrors) {
@@ -1940,9 +1941,9 @@ class LocusP2PHost {
 								let hotspotProximityScore = 0;
 								for (const c of cells) {
 									const cell = this.Rules.getDataCell(zoneData, c.x, c.y);
-									if (cell?.flags?.includes('gold')) { score += 15; hasFlaggedCell = true; flaggedValueHits++; }
+									if (cell?.flags?.includes('gold')) { score += prioritizeCoins ? 17 : 7; hasFlaggedCell = true; flaggedValueHits++; }
 									else if (cell?.flags?.includes('bonus')) { score += 18; hasFlaggedCell = true; flaggedValueHits++; }
-									else if (cell?.flags?.includes('pearl')) { score += 11; hasFlaggedCell = true; flaggedValueHits++; }
+									else if (cell?.flags?.includes('pearl')) { score += prioritizeCoins ? 14 : 6; hasFlaggedCell = true; flaggedValueHits++; }
 									else if (cell?.flags?.includes('end')) { score += 10; hasFlaggedCell = true; flaggedValueHits++; }
 									else if (cell?.flags?.includes('bold')) {
 										// Blue zone bold: only value if this bold row is NOT yet reached
@@ -1992,7 +1993,7 @@ class LocusP2PHost {
 											break;
 										}
 									}
-									if (!hasStrategicValue && hotspotProximityScore >= 4) {
+									if (!hasStrategicValue && hotspotProximityScore >= (prioritizeCoins ? 4 : 5)) {
 										hasStrategicValue = true;
 									}
 
@@ -2375,7 +2376,7 @@ class LocusP2PHost {
 								bestScore = totalScore;
 								bestPlacement = { ...placement, score: totalScore };
 							}
-						});
+						}, playerId);
 					}
 				} else {
 					const zoneData = board.zones?.[zoneName];
@@ -2386,7 +2387,7 @@ class LocusP2PHost {
 							bestScore = totalScore;
 							bestPlacement = { ...placement, score: totalScore };
 						}
-					});
+					}, playerId);
 				}
 			}
 		}
@@ -2441,7 +2442,7 @@ class LocusP2PHost {
 					this._scoreBonusPlacements(bonusMatrix, sg, zoneName, sg.id, bonusColor, (p) => {
 						const totalScore = p.score + this._bonusObjectiveWeight(this.gameState, playerId, player, p);
 						if (totalScore > bestScore) { bestScore = totalScore; bestPlacement = { ...p, score: totalScore }; }
-					});
+					}, playerId);
 				}
 			} else {
 				const zoneData = board.zones?.[zoneName];
@@ -2449,7 +2450,7 @@ class LocusP2PHost {
 					this._scoreBonusPlacements(bonusMatrix, zoneData, zoneName, null, bonusColor, (p) => {
 						const totalScore = p.score + this._bonusObjectiveWeight(this.gameState, playerId, player, p);
 						if (totalScore > bestScore) { bestScore = totalScore; bestPlacement = { ...p, score: totalScore }; }
-					});
+					}, playerId);
 				}
 			}
 		}
@@ -2489,14 +2490,14 @@ class LocusP2PHost {
 				for (const sg of (board.zones?.red?.subgrids || [])) {
 					this._scoreBonusPlacements(bonusMatrix, sg, zoneName, sg.id, bonusColor, (p) => {
 						if (p.score > bestScore) { bestScore = p.score; bestPlacement = p; }
-					});
+					}, playerId);
 				}
 			} else {
 				const zoneData = board.zones?.[zoneName];
 				if (zoneData) {
 					this._scoreBonusPlacements(bonusMatrix, zoneData, zoneName, null, bonusColor, (p) => {
 						if (p.score > bestScore) { bestScore = p.score; bestPlacement = p; }
-					});
+					}, playerId);
 				}
 			}
 		}
@@ -2658,8 +2659,9 @@ class LocusP2PHost {
 		return null;
 	}
 
-	_scoreBonusPlacements(bonusMatrix, zoneData, zoneName, subgridId, bonusColor, onFound) {
+	_scoreBonusPlacements(bonusMatrix, zoneData, zoneName, subgridId, bonusColor, onFound, playerId = null) {
 		if (!zoneData) return;
+		const prioritizeCoins = playerId ? this._shouldPrioritizeCoins(playerId) : false;
 		const rotations = [0, 1, 2, 3];
 		const isBlueZone = zoneName === 'blue';
 		const blueReachedRows = isBlueZone ? this._getReachedBoldRows(zoneData) : null;
@@ -2683,7 +2685,7 @@ class LocusP2PHost {
 					const maxY = Math.max(...cells.map(c => c.y));
 					for (const c of cells) {
 						const cell = this.Rules.getDataCell(zoneData, c.x, c.y);
-						if (cell?.flags?.includes('gold')) { score += 14; valueCount++; }
+						if (cell?.flags?.includes('gold')) { score += prioritizeCoins ? 16 : 7; valueCount++; }
 						if (cell?.flags?.includes('bonus')) { bonusCount++; score += 34; valueCount++; }
 						if (cell?.flags?.includes('bold')) {
 							if (isBlueZone && blueBoldSet?.has(c.y)) {
@@ -2704,7 +2706,7 @@ class LocusP2PHost {
 								score += 5;
 							}
 						}
-						if (cell?.flags?.includes('pearl')) { score += 9; valueCount++; }
+						if (cell?.flags?.includes('pearl')) { score += prioritizeCoins ? 13 : 6; valueCount++; }
 						if (cell?.flags?.includes('end')) { score += 8; valueCount++; }
 						if (this._hasAdjacentActive(zoneData, c.x, c.y)) score += 2;
 					}
@@ -2820,8 +2822,31 @@ class LocusP2PHost {
 		return reached;
 	}
 
+	_isCoinObjectiveId(objectiveId) {
+		const id = String(objectiveId || '').toLowerCase();
+		if (!id) return false;
+		return id.includes('coin') || id.includes('gold') || id.includes('treasure') || id.includes('pearl');
+	}
+
+	_shouldPrioritizeCoins(playerId) {
+		const player = this.gameState?.players?.[playerId];
+		if (!player || !player.chosenObjective || player.objectiveAchieved) return false;
+		const objective = player.chosenObjective;
+		if (!this._isCoinObjectiveId(objective.id)) return false;
+		try {
+			const progress = this.Rules.checkObjective?.(this.gameState, playerId, objective);
+			if (progress?.achieved) return false;
+			const target = Number(progress?.target);
+			const current = Number(progress?.current);
+			if (Number.isFinite(target) && Number.isFinite(current) && target > 0 && current >= target) return false;
+		} catch (_) {
+			// If objective progress can't be evaluated, keep the intent from objective id.
+		}
+		return true;
+	}
+
 	/** Collect unclaimed high-value cells so placements can prefer moving toward score opportunities */
-	_collectStrategicHotspots(zoneName, zoneData, blueReachedRows = null, blueBoldSet = null) {
+	_collectStrategicHotspots(zoneName, zoneData, blueReachedRows = null, blueBoldSet = null, prioritizeCoins = false) {
 		if (!zoneData) return [];
 		const hotspots = [];
 		for (let y = 0; y < (zoneData.rows || 0); y++) {
@@ -2831,8 +2856,8 @@ class LocusP2PHost {
 
 				let weight = 0;
 				if (cell.flags?.includes('bonus')) weight += 16;
-				if (cell.flags?.includes('gold')) weight += 13;
-				if (cell.flags?.includes('pearl')) weight += 11;
+				if (cell.flags?.includes('gold')) weight += prioritizeCoins ? 16 : 7;
+				if (cell.flags?.includes('pearl')) weight += prioritizeCoins ? 14 : 6;
 				if (cell.flags?.includes('end')) weight += 10;
 				if (cell.flags?.includes('portal')) weight += 6;
 
