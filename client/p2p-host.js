@@ -36,6 +36,7 @@ class LocusP2PHost {
 		this._aiPersonality = new Map();
 		this._aiTurnInProgress = false;
 		this._aiTurnPlayerId = null;
+		this._aiTurnWatchdog = null;
 
 		// Callbacks voor de host-UI
 		this.onStateChanged = null; // (sanitizedState) => {}
@@ -1326,6 +1327,33 @@ class LocusP2PHost {
 		const isHard = this._aiDifficulty?.get(playerId) === 'hard';
 		const playerName = player.name || 'Bot';
 		const ACTION_DELAY = isHard ? 260 : 700;
+		const watchdogMs = isHard ? 14000 : 18000;
+
+		if (this._aiTurnWatchdog) {
+			clearTimeout(this._aiTurnWatchdog);
+			this._aiTurnWatchdog = null;
+		}
+		this._aiTurnWatchdog = setTimeout(() => {
+			if (!this.gameState || this.gameState.phase !== 'playing') return;
+			const currentPid = this.gameState.playerOrder?.[this.gameState.currentTurnIndex];
+			if (currentPid !== playerId || this._aiTurnPlayerId !== playerId) return;
+			console.warn(`[P2P Host] AI watchdog triggered for ${playerId}; forcing safe endTurn`);
+			const forced = this.Rules.endTurn(this.gameState, playerId, null);
+			this._aiTurnInProgress = false;
+			this._aiTurnPlayerId = null;
+			this._aiTurnWatchdog = null;
+			this._broadcastState();
+			if (forced?.gameEnded) {
+				this._broadcastEvent('levelComplete', {
+					levelScores: this.gameState.levelScores,
+					levelWinner: this.gameState.levelWinner,
+					level: this.gameState.level
+				});
+			} else {
+				this._startTimerForCurrentPlayer(true);
+				this._scheduleAI();
+			}
+		}, watchdogMs);
 
 		// Build the action queue
 		const actions = [];
@@ -1380,16 +1408,28 @@ class LocusP2PHost {
 			if (currentPid !== playerId || this._aiTurnPlayerId !== playerId) {
 				this._aiTurnInProgress = false;
 				this._aiTurnPlayerId = null;
+				if (this._aiTurnWatchdog) {
+					clearTimeout(this._aiTurnWatchdog);
+					this._aiTurnWatchdog = null;
+				}
 				return;
 			}
 			if (!this.gameState || this.gameState.paused) {
 				this._aiTurnInProgress = false;
 				this._aiTurnPlayerId = null;
+				if (this._aiTurnWatchdog) {
+					clearTimeout(this._aiTurnWatchdog);
+					this._aiTurnWatchdog = null;
+				}
 				return;
 			}
 			if (idx >= actions.length) {
 				this._aiTurnInProgress = false;
 				this._aiTurnPlayerId = null;
+				if (this._aiTurnWatchdog) {
+					clearTimeout(this._aiTurnWatchdog);
+					this._aiTurnWatchdog = null;
+				}
 				this._aiMaybeTaunt(playerId);
 				return;
 			}
@@ -1561,6 +1601,10 @@ class LocusP2PHost {
 							console.log(`[AI ${playerName}] EndTurn mislukt: ${result.error}`);
 							this._aiTurnInProgress = false;
 							this._aiTurnPlayerId = null;
+							if (this._aiTurnWatchdog) {
+								clearTimeout(this._aiTurnWatchdog);
+								this._aiTurnWatchdog = null;
+							}
 							this._scheduleAI();
 							return;
 						}
@@ -1576,6 +1620,10 @@ class LocusP2PHost {
 						}
 						this._aiTurnInProgress = false;
 						this._aiTurnPlayerId = null;
+						if (this._aiTurnWatchdog) {
+							clearTimeout(this._aiTurnWatchdog);
+							this._aiTurnWatchdog = null;
+						}
 						this._broadcastState();
 						this._scheduleAI();
 						this._aiMaybeTaunt(playerId);
@@ -1597,6 +1645,10 @@ class LocusP2PHost {
 							console.log(`[AI ${playerName}] Pas mislukt (${result.error})`);
 							this._aiTurnInProgress = false;
 							this._aiTurnPlayerId = null;
+							if (this._aiTurnWatchdog) {
+								clearTimeout(this._aiTurnWatchdog);
+								this._aiTurnWatchdog = null;
+							}
 							this._broadcastState();
 							this._scheduleAI();
 							return;
@@ -1613,6 +1665,10 @@ class LocusP2PHost {
 						}
 						this._aiTurnInProgress = false;
 						this._aiTurnPlayerId = null;
+						if (this._aiTurnWatchdog) {
+							clearTimeout(this._aiTurnWatchdog);
+							this._aiTurnWatchdog = null;
+						}
 						this._broadcastState();
 						this._scheduleAI();
 					}, 800);
@@ -2623,6 +2679,10 @@ class LocusP2PHost {
 		if (this._aiTimer) {
 			clearTimeout(this._aiTimer);
 			this._aiTimer = null;
+		}
+		if (this._aiTurnWatchdog) {
+			clearTimeout(this._aiTurnWatchdog);
+			this._aiTurnWatchdog = null;
 		}
 		for (const [, conn] of this.connections) {
 			try { conn.close(); } catch (e) { /* skip */ }
