@@ -2914,6 +2914,7 @@ class LocusP2PHost {
 		let matrix = this.Rules.cloneMatrix(card.matrix);
 		matrix = this.Rules.getEnhancedMatrix(matrix, zoneName, {
 			greenGapAllowed: !!player.perks?.greenGapAllowed,
+			redGapAllowed: !!player.perks?.redGapAllowed,
 			diagonalRotation: !!player.perks?.diagonalRotation
 		});
 		matrix = this.Rules.rotateMatrixN(matrix, Number(rotation) || 0);
@@ -3320,14 +3321,15 @@ class LocusP2PGuest {
 			diagonalRotation: !!player?.perks?.diagonalRotation
 		};
 
-		// Als rotation info is meegegeven, pas enhancement toe VÓÓR rotatie
+		// Als rotation info is meegegeven (kaart-mode), pas enhancement toe VÓÓR rotatie
 		let enhancedMatrix;
 		if (rotation !== undefined) {
 			enhancedMatrix = Rules.getEnhancedMatrix(matrix, zoneName, perkFlags);
 			enhancedMatrix = Rules.rotateMatrixN(enhancedMatrix, ((Number(rotation) || 0) + 4) % 4);
 			if (mirrored) enhancedMatrix = Rules.mirrorMatrix(enhancedMatrix);
 		} else {
-			enhancedMatrix = Rules.getEnhancedMatrix(matrix, zoneName, perkFlags);
+			// Bonus-mode: matrix is already built with getBonusShapeForPlayer + local transforms.
+			enhancedMatrix = matrix;
 		}
 
 		let zoneData;
@@ -3337,10 +3339,10 @@ class LocusP2PGuest {
 				: (this.gameState.boardState.zones.red?.subgrids || []);
 			for (const sg of subgridsToCheck) {
 				const cells = Rules.collectPlacementCellsData(sg, baseX, baseY, enhancedMatrix);
-				if (cells) {
-					const valid = Rules.validatePlacement(zoneName, sg, cells, perkFlags);
-					return { valid, cells, enhancedMatrix };
-				}
+				if (!cells) continue;
+				const valid = Rules.validatePlacement(zoneName, sg, cells, perkFlags);
+				if (!valid) continue;
+				return { valid: true, cells, subgridId: sg.id, enhancedMatrix };
 			}
 			return { valid: false };
 		}
