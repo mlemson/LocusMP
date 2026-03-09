@@ -1910,6 +1910,9 @@ class LocusP2PHost {
 				if (stopSearch) break;
 				const scoreOnZone = (zoneData, subgridId = null) => {
 					if (!zoneData) return;
+					const blueReachedRows = zoneName === 'blue' ? this._getReachedBoldRows(zoneData) : null;
+					const blueBoldSet = zoneName === 'blue' ? new Set(zoneData.boldRows || []) : null;
+					const strategicHotspots = this._collectStrategicHotspots(zoneName, zoneData, blueReachedRows, blueBoldSet);
 					for (const rotation of rotations) {
 						if (stopSearch) break;
 						for (const mirrored of mirrors) {
@@ -1933,28 +1936,49 @@ class LocusP2PHost {
 								// Score this placement
 								let score = 0;
 								let hasFlaggedCell = false;
-								// For blue zone, pre-compute reached bold rows so we can ignore already-scored bold cells
-								let blueReachedRows = null;
-								let blueBoldSet = null;
-								if (zoneName === 'blue') {
-									blueReachedRows = this._getReachedBoldRows(zoneData);
-									blueBoldSet = new Set(zoneData.boldRows || []);
-								}
+								let flaggedValueHits = 0;
+								let hotspotProximityScore = 0;
 								for (const c of cells) {
 									const cell = this.Rules.getDataCell(zoneData, c.x, c.y);
-									if (cell?.flags?.includes('gold')) { score += 8; hasFlaggedCell = true; }
-									else if (cell?.flags?.includes('bonus')) { score += 7; hasFlaggedCell = true; }
-									else if (cell?.flags?.includes('pearl')) { score += 6; hasFlaggedCell = true; }
-									else if (cell?.flags?.includes('end')) { score += 5; hasFlaggedCell = true; }
+									if (cell?.flags?.includes('gold')) { score += 15; hasFlaggedCell = true; flaggedValueHits++; }
+									else if (cell?.flags?.includes('bonus')) { score += 18; hasFlaggedCell = true; flaggedValueHits++; }
+									else if (cell?.flags?.includes('pearl')) { score += 11; hasFlaggedCell = true; flaggedValueHits++; }
+									else if (cell?.flags?.includes('end')) { score += 10; hasFlaggedCell = true; flaggedValueHits++; }
 									else if (cell?.flags?.includes('bold')) {
 										// Blue zone bold: only value if this bold row is NOT yet reached
 										if (zoneName === 'blue' && blueBoldSet?.has(c.y) && blueReachedRows?.has(c.y)) {
 											score += 1; // Already scored row — treat as normal cell
 										} else {
-											score += 2; hasFlaggedCell = true;
+											score += zoneName === 'purple' ? 10 : 6;
+											hasFlaggedCell = true;
+											flaggedValueHits++;
 										}
 									}
 									else { score += 1; }
+								}
+								if (flaggedValueHits > 1) {
+									score += flaggedValueHits * 4;
+								}
+
+								// Prefer placements that move toward high-value scoring cells.
+								if (strategicHotspots.length > 0) {
+									const maxHotspots = Math.min(24, strategicHotspots.length);
+									for (const c of cells) {
+										let bestDist = Infinity;
+										let bestWeight = 0;
+										for (let i = 0; i < maxHotspots; i++) {
+											const h = strategicHotspots[i];
+											const dist = Math.abs(c.x - h.x) + Math.abs(c.y - h.y);
+											if (dist < bestDist || (dist === bestDist && h.weight > bestWeight)) {
+												bestDist = dist;
+												bestWeight = h.weight;
+											}
+										}
+										if (bestDist <= 1) hotspotProximityScore += bestWeight * 0.55;
+										else if (bestDist === 2) hotspotProximityScore += bestWeight * 0.30;
+										else if (bestDist === 3) hotspotProximityScore += bestWeight * 0.14;
+									}
+									score += Math.round(hotspotProximityScore);
 								}
 
 								// Penalize placements on empty/plain cells unless strategically valuable
@@ -1967,6 +1991,9 @@ class LocusP2PHost {
 											hasStrategicValue = true;
 											break;
 										}
+									}
+									if (!hasStrategicValue && hotspotProximityScore >= 4) {
+										hasStrategicValue = true;
 									}
 
 									// Zone-specific strategic checks when no adjacency
@@ -2531,7 +2558,7 @@ class LocusP2PHost {
 		if (isAggressive || isHard) {
 			addIfAvailable('agg_steal', 14);
 			addIfAvailable('agg_stone', 11);
-			if (Math.random() < 0.35) addIfAvailable('agg_mine', 1);
+			addIfAvailable('agg_mine', 10);
 			addIfAvailable('flex_wildcard', 10);
 			addIfAvailable('flex_double_coins', 9);
 			addIfAvailable('flex_gap', 8);
@@ -2546,15 +2573,15 @@ class LocusP2PHost {
 			addIfAvailable('flex_rotate', 8);
 			addIfAvailable('flex_gap_red', 7);
 			addIfAvailable('agg_stone', 4);
-			if (Math.random() < 0.30) addIfAvailable('agg_mine', 1);
+			addIfAvailable('agg_mine', 4);
 			addIfAvailable('agg_steal', 3);
 		}
 
-		addIfAvailable('bonus_yellow', 6);
-		addIfAvailable('bonus_red', 6);
-		addIfAvailable('bonus_green', 6);
-		addIfAvailable('bonus_purple', 6);
-		addIfAvailable('bonus_blue', 6);
+		addIfAvailable('bonus_yellow', 10);
+		addIfAvailable('bonus_red', 10);
+		addIfAvailable('bonus_green', 10);
+		addIfAvailable('bonus_purple', 10);
+		addIfAvailable('bonus_blue', 10);
 
 		if (candidates.length === 0) {
 			return available[Math.floor(Math.random() * available.length)]?.id || null;
@@ -2791,6 +2818,37 @@ class LocusP2PHost {
 			}
 		}
 		return reached;
+	}
+
+	/** Collect unclaimed high-value cells so placements can prefer moving toward score opportunities */
+	_collectStrategicHotspots(zoneName, zoneData, blueReachedRows = null, blueBoldSet = null) {
+		if (!zoneData) return [];
+		const hotspots = [];
+		for (let y = 0; y < (zoneData.rows || 0); y++) {
+			for (let x = 0; x < (zoneData.cols || 0); x++) {
+				const cell = this.Rules.getDataCell(zoneData, x, y);
+				if (!cell || cell.active || cell.flags?.includes('void')) continue;
+
+				let weight = 0;
+				if (cell.flags?.includes('bonus')) weight += 16;
+				if (cell.flags?.includes('gold')) weight += 13;
+				if (cell.flags?.includes('pearl')) weight += 11;
+				if (cell.flags?.includes('end')) weight += 10;
+				if (cell.flags?.includes('portal')) weight += 6;
+
+				if (cell.flags?.includes('bold')) {
+					if (zoneName === 'blue' && blueBoldSet?.has(y)) {
+						if (!(blueReachedRows?.has(y))) weight += 12;
+					} else {
+						weight += zoneName === 'purple' ? 10 : 5;
+					}
+				}
+
+				if (weight > 0) hotspots.push({ x, y, weight });
+			}
+		}
+		hotspots.sort((a, b) => b.weight - a.weight);
+		return hotspots.slice(0, 80);
 	}
 
 	_aiMaybeTaunt(playerId) {
