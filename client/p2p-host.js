@@ -2634,6 +2634,9 @@ class LocusP2PHost {
 	_scoreBonusPlacements(bonusMatrix, zoneData, zoneName, subgridId, bonusColor, onFound) {
 		if (!zoneData) return;
 		const rotations = [0, 1, 2, 3];
+		const isBlueZone = zoneName === 'blue';
+		const blueReachedRows = isBlueZone ? this._getReachedBoldRows(zoneData) : null;
+		const blueBoldSet = isBlueZone ? new Set(zoneData.boldRows || []) : null;
 		for (const rotation of rotations) {
 			let matrix = this.Rules.cloneMatrix(bonusMatrix);
 			matrix = this.Rules.rotateMatrixN(matrix, rotation);
@@ -2645,11 +2648,35 @@ class LocusP2PHost {
 					let score = cells.length;
 					let bonusCount = 0;
 					let valueCount = 0;
+					let newBlueTierCount = 0;
+					let staleBlueBoldCount = 0;
+					const newBlueRowsSeen = new Set();
+					const staleBlueRowsSeen = new Set();
+					const minY = Math.min(...cells.map(c => c.y));
+					const maxY = Math.max(...cells.map(c => c.y));
 					for (const c of cells) {
 						const cell = this.Rules.getDataCell(zoneData, c.x, c.y);
 						if (cell?.flags?.includes('gold')) { score += 14; valueCount++; }
 						if (cell?.flags?.includes('bonus')) { bonusCount++; score += 34; valueCount++; }
-						if (cell?.flags?.includes('bold')) score += 5;
+						if (cell?.flags?.includes('bold')) {
+							if (isBlueZone && blueBoldSet?.has(c.y)) {
+								if (blueReachedRows?.has(c.y)) {
+									score += 1;
+									if (!staleBlueRowsSeen.has(c.y)) {
+										staleBlueRowsSeen.add(c.y);
+										staleBlueBoldCount++;
+									}
+								} else {
+									score += 12;
+									if (!newBlueRowsSeen.has(c.y)) {
+										newBlueRowsSeen.add(c.y);
+										newBlueTierCount++;
+									}
+								}
+							} else {
+								score += 5;
+							}
+						}
 						if (cell?.flags?.includes('pearl')) { score += 9; valueCount++; }
 						if (cell?.flags?.includes('end')) { score += 8; valueCount++; }
 						if (this._hasAdjacentActive(zoneData, c.x, c.y)) score += 2;
@@ -2659,6 +2686,21 @@ class LocusP2PHost {
 					if (bonusCount >= 3) score += 25;
 					if (valueCount >= 2) score += valueCount * 4;
 					if (bonusColor === 'any') score += 2;
+
+					if (isBlueZone) {
+						const rows = zoneData.rows || 20;
+						const upwardProgress = Math.max(0, Math.floor((rows - minY) / 2));
+						score += upwardProgress;
+						score += newBlueTierCount * 26;
+						score -= staleBlueBoldCount * 10;
+
+						// Prefer vertical reach instead of flat bottom placements.
+						const verticalSpan = Math.max(1, (maxY - minY) + 1);
+						if (verticalSpan >= 2) score += verticalSpan * 5;
+
+						// Strongly discourage bottom-layer bold placements that no longer score.
+						if (newBlueTierCount === 0 && minY > Math.floor(rows * 0.65)) score -= 18;
+					}
 					onFound({ zoneName, baseX: x, baseY: y, rotation, subgridId, score, bonusColor });
 				}
 			}
