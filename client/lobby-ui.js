@@ -1079,7 +1079,7 @@ class LocusLobbyUI {
 		}
 		const difficulty = this.elements['ai-difficulty-select']?.value || 'normal';
 		this._setLoading(true);
-		try { await this.mp.addAIPlayer(difficulty); this._showToast(difficulty === 'hard' ? '🧠 Harde AI toegevoegd!' : '🤖 AI speler toegevoegd!', 'success'); }
+		try { await this.mp.addAIPlayer(difficulty); this._showToast(difficulty === 'hard' ? '🧠 Harde AI toegevoegd!' : difficulty === 'random' ? '🎲 Random AI toegevoegd!' : '🤖 AI speler toegevoegd!', 'success'); }
 		catch (err) { this._showToast('Kan AI niet toevoegen: ' + (err.message || err), 'error'); }
 		this._setLoading(false);
 	}

@@ -972,7 +972,7 @@ class LocusP2PHost {
 		const aiCount = this.aiPlayerIds.size + 1;
 		const aiId = 'AI_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
 		const baseName = `Bot ${aiCount}`;
-		const aiName = difficulty === 'hard' ? `${baseName} \ud83e\udde0` : baseName;
+		const aiName = difficulty === 'hard' ? `${baseName} \ud83e\udde0` : difficulty === 'random' ? `${baseName} \ud83c\udfb2` : baseName;
 		const addResult = this.Rules.addPlayer(this.gameState, aiId, aiName);
 		if (addResult?.error) return { success: false, error: addResult.error };
 
@@ -1009,9 +1009,10 @@ class LocusP2PHost {
 			this.aiPlayerIds.add(pid);
 			const savedDifficulty = String(p.aiDifficulty || '').toLowerCase();
 			const inferredHard = /\b(hard|\ud83e\udde0)\b/i.test(String(p.name || ''));
-			const difficulty = (savedDifficulty === 'hard' || savedDifficulty === 'normal')
+			const inferredRandom = /\b(random|\ud83c\udfb2)\b/i.test(String(p.name || ''));
+			const difficulty = (savedDifficulty === 'hard' || savedDifficulty === 'normal' || savedDifficulty === 'random')
 				? savedDifficulty
-				: (inferredHard ? 'hard' : 'normal');
+				: (inferredHard ? 'hard' : inferredRandom ? 'random' : 'normal');
 			this._aiDifficulty.set(pid, difficulty);
 			const savedPersonality = String(p.aiPersonality || '').toLowerCase();
 			const personality = savedPersonality === 'aggressive' ? 'aggressive' : 'normal';
@@ -1103,6 +1104,7 @@ class LocusP2PHost {
 
 				const pers = this._aiPersonality?.get(aiId) || 'normal';
 				const isAggressive = pers === 'aggressive';
+				const isRandom = this._aiDifficulty?.get(aiId) === 'random';
 				const playerOrder = Array.isArray(this.gameState.playerOrder) ? this.gameState.playerOrder : [];
 				const myOrderIndex = playerOrder.indexOf(aiId);
 				const nextPlayerId = myOrderIndex >= 0 ? playerOrder[(myOrderIndex + 1) % Math.max(1, playerOrder.length)] : null;
@@ -1137,6 +1139,11 @@ class LocusP2PHost {
 
 				let bestIdx = 0;
 				let bestScore = -Infinity;
+
+				// Random bots just pick a random objective
+				if (isRandom) {
+					bestIdx = Math.floor(Math.random() * choices.length);
+				} else {
 				for (let i = 0; i < choices.length; i++) {
 					const c = choices[i] || {};
 					let score = (c.points || 0) + ((c.coins || 0) * 2) + ((c.randomBonuses || 0) * 3);
@@ -1198,6 +1205,7 @@ class LocusP2PHost {
 
 					if (score > bestScore) { bestScore = score; bestIdx = i; }
 				}
+				} // end if !isRandom
 				const result = this.Rules.chooseObjective(this.gameState, aiId, bestIdx);
 				if (!result?.error) {
 					changed = true;
@@ -1209,7 +1217,10 @@ class LocusP2PHost {
 				const p = this.gameState.players?.[aiId];
 				if (!p || !p.chosenObjective) continue;
 				if (p.goalPerksDone) continue;
-				const chosenId = this._aiPickPerk(aiId, this._aiDifficulty?.get(aiId) === 'hard');
+				const aiDiff = this._aiDifficulty?.get(aiId);
+				const chosenId = aiDiff === 'random'
+					? this._aiPickRandomPerk(aiId)
+					: this._aiPickPerk(aiId, aiDiff === 'hard');
 				const perkChoice = chosenId || '__skip__';
 				const perkRes = this.Rules.choosePerk(this.gameState, aiId, perkChoice);
 				if (perkRes?.error) continue;
@@ -1255,6 +1266,7 @@ class LocusP2PHost {
 				const p = this.gameState.players?.[aiId];
 				if (!p || p.shopReady) continue;
 				const isHard = this._aiDifficulty?.get(aiId) === 'hard';
+				const isRandomBot = this._aiDifficulty?.get(aiId) === 'random';
 
 				// Geen perk-keuze in shopping: choosePerk is alleen geldig tijdens choosingGoals.
 
@@ -1263,8 +1275,15 @@ class LocusP2PHost {
 				if (remainingCoins >= 1) {
 					const shopItems = this.Rules.getShopItems(this.gameState.level || 1, p) || [];
 					const affordable = shopItems.filter(item => item.cost <= remainingCoins && !item.unlockOnly);
-					// Hard AI: duurste eerst, normaal: goedkoopste eerst
-					affordable.sort((a, b) => isHard ? b.cost - a.cost : a.cost - b.cost);
+					// Random AI: shuffle, Hard AI: duurste eerst, normaal: goedkoopste eerst
+					if (isRandomBot) {
+						for (let i = affordable.length - 1; i > 0; i--) {
+							const j = Math.floor(Math.random() * (i + 1));
+							[affordable[i], affordable[j]] = [affordable[j], affordable[i]];
+						}
+					} else {
+						affordable.sort((a, b) => isHard ? b.cost - a.cost : a.cost - b.cost);
+					}
 
 					for (const item of affordable) {
 						if (item.cost > remainingCoins) continue;
@@ -1272,8 +1291,12 @@ class LocusP2PHost {
 						if (item.id === 'extra-bonus') {
 							const inv = p.bonusInventory || {};
 							const colors = ['yellow', 'red', 'green', 'purple', 'blue'];
-							colors.sort((a, b) => (inv[a] || 0) - (inv[b] || 0));
-							extra.bonusColor = colors[0];
+							if (isRandomBot) {
+								extra.bonusColor = colors[Math.floor(Math.random() * colors.length)];
+							} else {
+								colors.sort((a, b) => (inv[a] || 0) - (inv[b] || 0));
+								extra.bonusColor = colors[0];
+							}
 						}
 						const buyResult = this.Rules.buyShopItem(this.gameState, aiId, item.id, extra);
 						if (buyResult && !buyResult.error) {
@@ -1332,9 +1355,38 @@ class LocusP2PHost {
 		if (!player) { this._aiTurnInProgress = false; return; }
 		this._aiTurnPlayerId = playerId;
 		const isHard = this._aiDifficulty?.get(playerId) === 'hard';
+		const isRandom = this._aiDifficulty?.get(playerId) === 'random';
 		const playerName = player.name || 'Bot';
-		const ACTION_DELAY = isHard ? 260 : 700;
+		const ACTION_DELAY = isHard ? 260 : isRandom ? 500 : 700;
 		const watchdogMs = isHard ? 14000 : 18000;
+
+		const resetWatchdog = () => {
+			if (this._aiTurnWatchdog) {
+				clearTimeout(this._aiTurnWatchdog);
+				this._aiTurnWatchdog = null;
+			}
+			this._aiTurnWatchdog = setTimeout(() => {
+				if (!this.gameState || this.gameState.phase !== 'playing') return;
+				const cp = this.gameState.playerOrder?.[this.gameState.currentTurnIndex];
+				if (cp !== playerId || this._aiTurnPlayerId !== playerId) return;
+				console.warn(`[P2P Host] AI watchdog triggered for ${playerId}; forcing safe endTurn`);
+				const forced = this.Rules.endTurn(this.gameState, playerId, null);
+				this._aiTurnInProgress = false;
+				this._aiTurnPlayerId = null;
+				this._aiTurnWatchdog = null;
+				this._broadcastState();
+				if (forced?.gameEnded) {
+					this._broadcastEvent('levelComplete', {
+						levelScores: this.gameState.levelScores,
+						levelWinner: this.gameState.levelWinner,
+						level: this.gameState.level
+					});
+				} else {
+					this._startTimerForCurrentPlayer(true);
+					this._scheduleAI();
+				}
+			}, watchdogMs);
+		};
 
 		const recoverAI = (reason) => {
 			console.warn(`[P2P Host] AI recovery for ${playerId}: ${reason}`);
@@ -1362,32 +1414,6 @@ class LocusP2PHost {
 			this._scheduleAI();
 		};
 
-		if (this._aiTurnWatchdog) {
-			clearTimeout(this._aiTurnWatchdog);
-			this._aiTurnWatchdog = null;
-		}
-		this._aiTurnWatchdog = setTimeout(() => {
-			if (!this.gameState || this.gameState.phase !== 'playing') return;
-			const currentPid = this.gameState.playerOrder?.[this.gameState.currentTurnIndex];
-			if (currentPid !== playerId || this._aiTurnPlayerId !== playerId) return;
-			console.warn(`[P2P Host] AI watchdog triggered for ${playerId}; forcing safe endTurn`);
-			const forced = this.Rules.endTurn(this.gameState, playerId, null);
-			this._aiTurnInProgress = false;
-			this._aiTurnPlayerId = null;
-			this._aiTurnWatchdog = null;
-			this._broadcastState();
-			if (forced?.gameEnded) {
-				this._broadcastEvent('levelComplete', {
-					levelScores: this.gameState.levelScores,
-					levelWinner: this.gameState.levelWinner,
-					level: this.gameState.level
-				});
-			} else {
-				this._startTimerForCurrentPlayer(true);
-				this._scheduleAI();
-			}
-		}, watchdogMs);
-
 		// Build the action queue
 		const actions = [];
 
@@ -1408,7 +1434,7 @@ class LocusP2PHost {
 		}
 
 		// 3. Play card (with preview)
-		const bestMove = this._aiFindBestMove(playerId, isHard);
+		const bestMove = isRandom ? this._aiFindRandomMove(playerId) : this._aiFindBestMove(playerId, isHard);
 		if (bestMove) {
 			actions.push({ type: 'previewCard', move: bestMove });
 			actions.push({ type: 'playCard', move: bestMove });
@@ -1433,6 +1459,9 @@ class LocusP2PHost {
 			// 6. Normal end turn (card was played or bonuses played)
 			actions.push({ type: 'endTurn', discardCardId: null });
 		}
+
+		// Start the watchdog AFTER building the action queue (so heavy sync computation doesn't count)
+		resetWatchdog();
 
 		// Process actions sequentially with delays
 		let idx = 0;
@@ -1485,6 +1514,7 @@ class LocusP2PHost {
 						});
 						this._broadcastState();
 					}
+					resetWatchdog();
 					setTimeout(processNext, ACTION_DELAY);
 					break;
 				}
@@ -1502,6 +1532,7 @@ class LocusP2PHost {
 					} else {
 						console.log(`[AI ${playerName}] Mijn mislukt: ${mineResult.error}`);
 					}
+					resetWatchdog();
 					setTimeout(processNext, ACTION_DELAY);
 					break;
 				}
@@ -1526,6 +1557,7 @@ class LocusP2PHost {
 					} else {
 						console.log(`[AI ${playerName}] Steal mislukt: ${stealResult.error}`);
 					}
+					resetWatchdog();
 					setTimeout(processNext, ACTION_DELAY);
 					break;
 				}
@@ -1590,6 +1622,7 @@ class LocusP2PHost {
 					} else {
 						console.log(`[AI ${playerName}] Kaart mislukt: ${result.error}`);
 					}
+					resetWatchdog();
 					setTimeout(processNext, ACTION_DELAY);
 					break;
 				}
@@ -1609,17 +1642,21 @@ class LocusP2PHost {
 									playerId, playerName,
 									text: `🎁 Bonus ${zl[action.bonusColor]||action.bonusColor} → ${zl[bonusResult.zoneName]||bonusResult.zoneName}`
 								});
-								// Check for bonus chaining: if placement earned new bonus charges, queue them
-								const invAfter = this.gameState.players[playerId]?.bonusInventory || {};
-								const colors = ['yellow', 'red', 'green', 'purple', 'blue', 'any'];
-								for (const col of colors) {
-									const gained = (invAfter[col] || 0) - (invBefore[col] || 0) + (col === action.bonusColor ? 1 : 0);
-									for (let g = 0; g < gained; g++) {
-										actions.splice(idx, 0, { type: 'playBonus', bonusColor: col });
+								// Check for bonus chaining: if placement earned new bonus charges, queue them (max 12 total bonus actions)
+								const bonusActionsInQueue = actions.filter(a => a.type === 'playBonus').length;
+								if (bonusActionsInQueue < 12) {
+									const invAfter = this.gameState.players[playerId]?.bonusInventory || {};
+									const colors = ['yellow', 'red', 'green', 'purple', 'blue', 'any'];
+									for (const col of colors) {
+										const gained = (invAfter[col] || 0) - (invBefore[col] || 0) + (col === action.bonusColor ? 1 : 0);
+										for (let g = 0; g < gained; g++) {
+											actions.splice(idx, 0, { type: 'playBonus', bonusColor: col });
+										}
 									}
 								}
 								this._broadcastState();
 							}
+							resetWatchdog();
 							setTimeout(processNext, ACTION_DELAY);
 						}, 1200);
 					} else {
@@ -1721,6 +1758,62 @@ class LocusP2PHost {
 		};
 
 		processNext();
+	}
+
+	/** Find a random valid card placement (for 'random' difficulty) */
+	_aiFindRandomMove(playerId) {
+		const player = this.gameState?.players?.[playerId];
+		const board = this.gameState?.boardState;
+		if (!player || !board) return null;
+
+		const hand = Array.isArray(player.hand) ? player.hand : [];
+		const validMoves = [];
+		const perkFlags = {
+			greenGapAllowed: !!player.perks?.greenGapAllowed,
+			redGapAllowed: !!player.perks?.redGapAllowed,
+			diagonalRotation: !!player.perks?.diagonalRotation
+		};
+
+		// Collect all valid placements (sample up to ~200 to avoid perf issues)
+		const MAX_VALID = 200;
+		for (const card of hand) {
+			if (validMoves.length >= MAX_VALID) break;
+			const allowedZones = this.Rules.getAllowedZones(card);
+			const rotation = Math.floor(Math.random() * 4);
+			const mirrored = Math.random() < 0.5;
+			for (const zoneName of allowedZones) {
+				if (validMoves.length >= MAX_VALID) break;
+				const tryZone = (zoneData, subgridId = null) => {
+					if (!zoneData) return;
+					for (let rot = 0; rot < 4 && validMoves.length < MAX_VALID; rot++) {
+						for (const mir of [false, true]) {
+							if (validMoves.length >= MAX_VALID) break;
+							let matrix = this.Rules.cloneMatrix(card.matrix);
+							matrix = this.Rules.getEnhancedMatrix ? this.Rules.getEnhancedMatrix(matrix, zoneName, perkFlags) : matrix;
+							matrix = this.Rules.rotateMatrixN(matrix, rot);
+							if (mir) matrix = this.Rules.mirrorMatrix(matrix);
+							for (let y = 0; y < (zoneData.rows || 0); y++) {
+								for (let x = 0; x < (zoneData.cols || 0); x++) {
+									if (validMoves.length >= MAX_VALID) break;
+									const cells = this.Rules.collectPlacementCellsData(zoneData, x, y, matrix);
+									if (!cells || cells.length === 0) continue;
+									if (!this.Rules.validatePlacement(zoneName, zoneData, cells, perkFlags)) continue;
+									validMoves.push({ card, zoneName, x, y, rotation: rot, mirrored: mir, subgridId, matrix });
+								}
+							}
+						}
+					}
+				};
+				if (zoneName === 'red') {
+					for (const sg of (board.zones?.red?.subgrids || [])) tryZone(sg, sg.id);
+				} else {
+					tryZone(board.zones?.[zoneName], null);
+				}
+			}
+		}
+
+		if (validMoves.length === 0) return null;
+		return validMoves[Math.floor(Math.random() * validMoves.length)];
 	}
 
 	/** Find the best card placement for AI */
@@ -2326,6 +2419,15 @@ class LocusP2PHost {
 		const regularCards = (player.hand || []).filter(c => !c.isGolden);
 		if (regularCards.length === 0) return null;
 		return regularCards[0].id;
+	}
+
+	/** Pick a random perk for the 'random' difficulty AI */
+	_aiPickRandomPerk(playerId) {
+		const player = this.gameState?.players?.[playerId];
+		if (!player?.perks || (player.perks.perkPoints || 0) < 1) return null;
+		const available = this.Rules.getAvailablePerks(player) || [];
+		if (available.length === 0) return null;
+		return available[Math.floor(Math.random() * available.length)]?.id || null;
 	}
 
 	/** Pick a perk for the AI (returns perkId or null) */
