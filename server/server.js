@@ -520,20 +520,36 @@ function executeAIActions(gameId) {
 			if (!player || !player.chosenObjective) continue;
 			if (player.goalPerksDone) continue;
 			const aiPers = aiPersonality.get(gameId)?.get(aiId) || 'normal';
-			const perkId = AIPlayer.choosePerk(gameState, aiId, aiPers);
-			const perkChoice = perkId || '__skip__';
-			const perkResult = GameRules.choosePerk(gameState, aiId, perkChoice);
-			if (!perkResult.error) {
+			// Spend ALL perk points in one go to avoid multiple AI cycles
+			let perksChosen = 0;
+			while (!player.goalPerksDone && (player.perks?.perkPoints || 0) > 0) {
+				const perkId = AIPlayer.choosePerk(gameState, aiId, aiPers);
+				const perkChoice = perkId || '__skip__';
+				const perkResult = GameRules.choosePerk(gameState, aiId, perkChoice);
+				if (perkResult.error) break; // Voorkom infinite loop
 				if (perkChoice === '__skip__') {
 					console.log(`[Locus AI] ${player.name} sloeg perks over tijdens doelstellingsfase`);
 					_emitBotActivity(gameId, aiId, '🎯 Klaar met perks');
+					changed = true;
+					break;
 				} else {
+					perksChosen++;
 					console.log(`[Locus AI] ${player.name} koos perk "${perkResult.perk?.name}" tijdens doelstellingsfase`);
 					_emitBotActivity(gameId, aiId, `${perkResult.perk?.icon || '🎯'} Perk: ${perkResult.perk?.name || perkChoice}`);
+					changed = true;
 				}
-				changed = true;
 				if (perkResult.startedPlaying) {
 					_startTimerForCurrentPlayer(gameId, true);
+					break;
+				}
+				if (perksChosen >= 10) break; // Safety limit
+			}
+			// Als bot nog steeds niet klaar is (bv geen perks meer beschikbaar), forceer skip
+			if (!player.goalPerksDone) {
+				const skipResult = GameRules.choosePerk(gameState, aiId, '__skip__');
+				if (!skipResult.error) {
+					changed = true;
+					if (skipResult.startedPlaying) _startTimerForCurrentPlayer(gameId, true);
 				}
 			}
 		}

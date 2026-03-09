@@ -1503,6 +1503,15 @@ class LocusLobbyUI {
 	}
 
 	_showChosenGoalWaitingState() {
+		// Als het spel al gestart is, niet terug naar goal-screen
+		const currentPhase = this.mp?.gameState?.phase;
+		if (currentPhase === 'playing') {
+			this._onGameStarted(this.mp.gameState);
+			return;
+		}
+		if (currentPhase && currentPhase !== 'choosingGoals') {
+			return;
+		}
 		this._showScreen('goal-screen');
 		const container = this.elements['goal-choices-container'];
 		if (container) {
@@ -1543,6 +1552,15 @@ class LocusLobbyUI {
 	}
 
 	_promptPerksAfterGoalChoice() {
+		// Als het spel al gestart is, niet terug naar goal-screen
+		const currentPhase = this.mp?.gameState?.phase;
+		if (currentPhase === 'playing') {
+			this._onGameStarted(this.mp.gameState);
+			return;
+		}
+		if (currentPhase && currentPhase !== 'choosingGoals') {
+			return;
+		}
 		const myPlayer = this.mp.getMyPlayer?.();
 		const perkPoints = myPlayer?.perks?.perkPoints || 0;
 		if (perkPoints <= 0) {
@@ -6371,6 +6389,8 @@ class LocusLobbyUI {
 			if (prevState?.phase !== 'playing') {
 				this._lastTimerBeep = null;
 				this._syncTurnTimerFromState(state);
+				// Sluit perk popup als die nog open is
+				document.getElementById('mp-perk-popup-overlay')?.remove();
 				// Schakel naar game-screen als we er nog niet zijn
 				this._showScreen('game-screen');
 			}

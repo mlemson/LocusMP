@@ -223,9 +223,10 @@ function _tryBonusPlacements(bonusMatrix, zoneData, zoneName, rotations, subgrid
 
 				let score = cells.length;
 				let bonusCount = 0;
+				let goldCount = 0;
 				for (const c of cells) {
 					const cell = GameRules.getDataCell(zoneData, c.x, c.y);
-					if (cell?.flags?.includes('gold')) score += 8;
+					if (cell?.flags?.includes('gold')) { score += 10; goldCount++; }
 					if (cell?.flags?.includes('bonus')) {
 						// Heavily reward bonus chaining: picking up a same-color bonus with a bonus = free extra placement
 						bonusCount++;
@@ -238,6 +239,8 @@ function _tryBonusPlacements(bonusMatrix, zoneData, zoneName, rotations, subgrid
 				// Extra scaling for multi-bonus grabs (3 bonuses >> 3x one bonus)
 				if (bonusCount >= 2) score += bonusCount * 15;
 				if (bonusCount >= 3) score += 25;
+				// Gold + bonus combo synergy
+				if (goldCount > 0 && bonusCount > 0) score += (goldCount + bonusCount) * 8;
 
 				// Zone-specific bonus impact (lighter than full card impact)
 				if (zoneName === 'yellow') score += _scoreYellowImpact(zoneData, cells);
@@ -260,7 +263,17 @@ function _tryBonusPlacements(bonusMatrix, zoneData, zoneName, rotations, subgrid
 				for (const c of cells) {
 					if (GameRules.hasAdjacentActive(zoneData, c.x, c.y)) adjacentCount++;
 				}
-				score += adjacentCount * 2;
+				score += adjacentCount * 3;
+
+				// Penalty for isolated bonus placement (no adjacent active cells when zone has active cells)
+				if (adjacentCount === 0) {
+					let zoneHasActive = false;
+					const zCells = zoneData.cells || {};
+					for (const k in zCells) {
+						if (zCells[k]?.active) { zoneHasActive = true; break; }
+					}
+					if (zoneHasActive) score -= 20;
+				}
 
 				result.push({ zoneName, baseX, baseY, rotation, subgridId, score, bonusColor });
 			}
@@ -493,43 +506,70 @@ function choosePerk(gameState, playerId, personality) {
 
 	const isAggressive = personality === 'aggressive';
 
+	// 30% kans op volledig random keuze voor variatie
+	if (Math.random() < 0.30) {
+		return available[Math.floor(Math.random() * available.length)].id;
+	}
+
 	if (isAggressive) {
-		// Aggressive bot: always pick attack perks first
+		// Aggressive bot: attack perks first, then utility
 		const aggroPriority = [
-			'agg_steal', 'agg_mine', 'agg_timebomb',
-			'bonus_extra_cell', 'bonus_multi_double', 'bonus_red_upgrade',
-			'flex_wildcard', 'flex_double_coins', 'flex_gap', 'flex_gap_red'
+			'agg_steal', 'agg_mine', 'agg_stone',
+			'bonus_multi_double', 'flex_wildcard', 'flex_double_coins',
+			'flex_gap', 'flex_gap_red', 'flex_rotate',
+			'bonus_yellow', 'bonus_red', 'bonus_green', 'bonus_purple', 'bonus_blue'
 		];
 		for (const pId of aggroPriority) {
 			const match = available.find(p => p.id === pId);
 			if (match) return match.id;
 		}
 	} else {
-		// Normal bot: pick perks based on hand card colors
+		// Normal bot: pick perks based on hand card colors with weighted randomness
 		const colorProfile = _getHandColorProfile(player);
-		const perkPriority = [];
+		const candidates = []; // { id, weight }
 
-		// Prioritize bonus perks matching dominant colors
-		if (colorProfile.red >= 2) perkPriority.push('bonus_red_upgrade');
-		perkPriority.push('bonus_extra_cell', 'bonus_multi_double');
-		if (colorProfile.red < 2) perkPriority.push('bonus_red_upgrade');
-		perkPriority.push('flex_double_coins', 'flex_wildcard');
-		// Gap perks: prefer green gap if lots of green, red gap if lots of red
-		if (colorProfile.green >= colorProfile.red) {
-			perkPriority.push('flex_gap', 'flex_gap_red');
-		} else {
-			perkPriority.push('flex_gap_red', 'flex_gap');
+		// Bonus perks matching dominant hand colors
+		const colorPerks = [
+			{ id: 'bonus_yellow', zone: 'yellow' },
+			{ id: 'bonus_red', zone: 'red' },
+			{ id: 'bonus_green', zone: 'green' },
+			{ id: 'bonus_purple', zone: 'purple' },
+			{ id: 'bonus_blue', zone: 'blue' }
+		];
+		for (const cp of colorPerks) {
+			if (available.find(p => p.id === cp.id)) {
+				const colorCount = colorProfile[cp.zone] || 0;
+				candidates.push({ id: cp.id, weight: 5 + colorCount * 3 + (cp.zone === colorProfile.dominant ? 8 : 0) });
+			}
 		}
-		perkPriority.push('agg_mine', 'agg_timebomb', 'agg_steal');
+		if (available.find(p => p.id === 'bonus_multi_double')) candidates.push({ id: 'bonus_multi_double', weight: 12 });
 
-		for (const pId of perkPriority) {
-			const match = available.find(p => p.id === pId);
-			if (match) return match.id;
+		// Flex perks
+		if (available.find(p => p.id === 'flex_gap')) candidates.push({ id: 'flex_gap', weight: 8 + (colorProfile.green >= 2 ? 5 : 0) });
+		if (available.find(p => p.id === 'flex_rotate')) candidates.push({ id: 'flex_rotate', weight: 8 + (colorProfile.purple >= 2 ? 5 : 0) });
+		if (available.find(p => p.id === 'flex_gap_red')) candidates.push({ id: 'flex_gap_red', weight: 7 + (colorProfile.red >= 2 ? 5 : 0) });
+		if (available.find(p => p.id === 'flex_wildcard')) candidates.push({ id: 'flex_wildcard', weight: 10 });
+		if (available.find(p => p.id === 'flex_double_coins')) candidates.push({ id: 'flex_double_coins', weight: 9 });
+
+		// Aggressive perks (lower weight for normal bots)
+		if (available.find(p => p.id === 'agg_stone')) candidates.push({ id: 'agg_stone', weight: 4 });
+		if (available.find(p => p.id === 'agg_mine')) candidates.push({ id: 'agg_mine', weight: 4 });
+		if (available.find(p => p.id === 'agg_steal')) candidates.push({ id: 'agg_steal', weight: 3 });
+
+		// Weighted random selection
+		if (candidates.length > 0) {
+			const totalWeight = candidates.reduce((sum, c) => sum + c.weight, 0);
+			let roll = Math.random() * totalWeight;
+			for (const c of candidates) {
+				roll -= c.weight;
+				if (roll <= 0) return c.id;
+			}
+			return candidates[candidates.length - 1].id;
 		}
 	}
 
-	// Fallback: pak eerste beschikbare
-	return available[0]?.id || null;
+	// Fallback: pak random beschikbare
+	return available[Math.floor(Math.random() * available.length)].id;
 }
 
 /**
@@ -744,12 +784,18 @@ function _evaluatePlacementImpact(gameState, playerId, card, placement) {
 
 	// ── Collect valuable cell resources ──
 	let bonusFlagsCollected = 0;
+	let goldCoinsCollected = 0;
 	for (const c of cells) {
 		const cell = GameRules.getDataCell(zoneData, c.x, c.y);
-		if (cell?.flags?.includes('gold')) impactScore += 10;
+		if (cell?.flags?.includes('gold')) {
+			goldCoinsCollected++;
+			// Gold coins: base 10 + extra if doubleCoins perk active
+			const coinValue = player.perks?.doubleCoins ? 20 : 10;
+			impactScore += coinValue;
+		}
 		if (cell?.flags?.includes('bonus')) {
 			bonusFlagsCollected++;
-			impactScore += 15;
+			impactScore += 18;
 		}
 		if (cell?.flags?.includes('pearl')) impactScore += 8;
 	}
@@ -757,10 +803,14 @@ function _evaluatePlacementImpact(gameState, playerId, card, placement) {
 	// ── 2-step lookahead: bonus cells captured → future bonus placements ──
 	// Multiple bonuses from one card = exponential value (3 bonuses >> 1 bonus)
 	if (bonusFlagsCollected >= 2) {
-		impactScore += bonusFlagsCollected * 20; // Extra scaling for multi-bonus
+		impactScore += bonusFlagsCollected * 22;
 	}
 	if (bonusFlagsCollected >= 3) {
-		impactScore += 30; // Big bonus for 3+ in one placement
+		impactScore += 35;
+	}
+	// Gold + bonus combo: extra synergy
+	if (goldCoinsCollected > 0 && bonusFlagsCollected > 0) {
+		impactScore += (goldCoinsCollected + bonusFlagsCollected) * 8;
 	}
 
 	// ── Zone-specific scoring simulation ──
@@ -798,19 +848,31 @@ function _evaluatePlacementImpact(gameState, playerId, card, placement) {
 
 	// ── Adjacency — prefer extending existing territory ──
 	let adjacentCount = 0;
+	let totalActiveCells = 0;
 	for (const c of cells) {
 		if (GameRules.hasAdjacentActive(zoneData, c.x, c.y)) adjacentCount++;
 	}
-	impactScore += adjacentCount * 2;
+	// Count total active cells in zone to know if this is zoneOpening
+	const zCells = zoneData.cells || {};
+	for (const k in zCells) {
+		if (zCells[k]?.active) totalActiveCells++;
+	}
+	impactScore += adjacentCount * 3;
 
-	// ── Penalize pure empty-cell placements with no strategic value ──
-	// If no valuable flags were hit and no adjacency, this is a wasted placement
+	// ── STRONG penalize isolated placements with no strategic value ──
 	const hasAnyFlag = cells.some(c => {
 		const cell = GameRules.getDataCell(zoneData, c.x, c.y);
 		return cell?.flags?.some(f => ['gold', 'bonus', 'pearl', 'end', 'bold'].includes(f));
 	});
-	if (!hasAnyFlag && adjacentCount === 0) {
-		impactScore -= 10; // Penalty for isolated empty placements
+	if (adjacentCount === 0 && totalActiveCells > 0) {
+		// There ARE active cells on the zone but we're not adjacent to any — strongly penalize
+		impactScore -= 30;
+		if (!hasAnyFlag) {
+			impactScore -= 20; // Even worse if no valuable flags
+		}
+	} else if (!hasAnyFlag && adjacentCount === 0 && totalActiveCells === 0) {
+		// First placement on an empty zone — mild penalty if no flags
+		impactScore -= 5;
 	}
 
 	// ── Cell count bonus — bigger placements are inherently better ──
@@ -927,11 +989,21 @@ function _scoreBlueImpact(zoneData, placedCells) {
 					const pts = tierPoints[Math.min(tierIdx, tierPoints.length - 1)] || 10;
 					impact += pts * 2;
 				} else {
-					// Bold row already scored — penalize wasting placement here
-					impact -= 8;
+					// Bold row already scored — STRONG penalize wasting placement here
+					impact -= 25;
 				}
 			}
 		}
+	}
+
+	// Check if ALL bold rows already scored — placement on blue is low value
+	if (reachedBoldRows.size >= boldYs.length && boldYs.length > 0) {
+		// All bold rows already reached, placements here give diminishing returns
+		const hitsBonus = placedCells.some(c => {
+			const cell = GameRules.getDataCell(zoneData, c.x, c.y);
+			return cell?.flags?.some(f => ['gold', 'bonus', 'pearl'].includes(f));
+		});
+		if (!hitsBonus) impact -= 20; // Strong penalty if no bonus/gold either
 	}
 
 	// Favor building upward — higher cells are worth more
@@ -1280,11 +1352,16 @@ function chooseHardPerk(gameState, playerId) {
 	const available = GameRules.getAvailablePerks(player);
 	if (!available || available.length === 0) return null;
 
-	// Hard AI: aggressive first, then flexibility, then bonus
+	// 15% kans op random keuze voor onvoorspelbaarheid
+	if (Math.random() < 0.15) {
+		return available[Math.floor(Math.random() * available.length)].id;
+	}
+
+	// Hard AI: aggressive first, then flexibility, then bonus (correct IDs)
 	const perkPriority = [
-		'agg_timebomb', 'agg_mine', 'agg_steal',
-		'flex_wildcard', 'flex_double_coins', 'flex_gap', 'flex_gap_red',
-		'bonus_extra_cell', 'bonus_multi_double', 'bonus_red_upgrade'
+		'agg_mine', 'agg_steal', 'agg_stone',
+		'flex_wildcard', 'flex_double_coins', 'flex_gap', 'flex_gap_red', 'flex_rotate',
+		'bonus_multi_double', 'bonus_yellow', 'bonus_red', 'bonus_green', 'bonus_purple', 'bonus_blue'
 	];
 
 	for (const pId of perkPriority) {
@@ -1292,7 +1369,7 @@ function chooseHardPerk(gameState, playerId) {
 		if (match) return match.id;
 	}
 
-	return available[0]?.id || null;
+	return available[Math.floor(Math.random() * available.length)].id;
 }
 
 /**
