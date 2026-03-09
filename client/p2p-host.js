@@ -1273,61 +1273,117 @@ class LocusP2PHost {
 				// Koop shop items met beschikbare coins
 				let remainingCoins = p.goldCoins || 0;
 				if (remainingCoins >= 1) {
-					const shopItems = this.Rules.getShopItems(this.gameState.level || 1, p) || [];
-					const affordable = shopItems.filter(item => item.cost <= remainingCoins && !item.unlockOnly);
-					// Random AI: shuffle, Hard AI: duurste eerst, normaal: goedkoopste eerst
-					if (isRandomBot) {
-						for (let i = affordable.length - 1; i > 0; i--) {
-							const j = Math.floor(Math.random() * (i + 1));
-							[affordable[i], affordable[j]] = [affordable[j], affordable[i]];
-						}
-					} else {
-						affordable.sort((a, b) => isHard ? b.cost - a.cost : a.cost - b.cost);
-					}
-
-					for (const item of affordable) {
-						if (item.cost > remainingCoins) continue;
-						const extra = {};
-						if (item.id === 'extra-bonus') {
-							const inv = p.bonusInventory || {};
-							const colors = ['yellow', 'red', 'green', 'purple', 'blue'];
-							if (isRandomBot) {
-								extra.bonusColor = colors[Math.floor(Math.random() * colors.length)];
-							} else {
-								colors.sort((a, b) => (inv[a] || 0) - (inv[b] || 0));
-								extra.bonusColor = colors[0];
+					const claimPendingFreeChoice = () => {
+						const choices = p._pendingFreeChoices || [];
+						if (!Array.isArray(choices) || choices.length === 0) return false;
+						let picked = choices[0];
+						if (isRandomBot) {
+							picked = choices[Math.floor(Math.random() * choices.length)] || choices[0];
+						} else {
+							let best = -Infinity;
+							for (const c of choices) {
+								const cells = c?.matrix ? c.matrix.flat().filter(Boolean).length : 1;
+								const score = cells + (c?.isGolden ? 2 : 0) + ((c?.color?.zone === 'any' || c?.color?.name === 'multikleur') ? 2 : 0);
+								if (score > best) { best = score; picked = c; }
 							}
 						}
-						const buyResult = this.Rules.buyShopItem(this.gameState, aiId, item.id, extra);
-						if (buyResult && !buyResult.error) {
-							console.log(`🛒 Bot ${p.name} bought: ${item.id} (cost: ${item.cost}) ${extra.bonusColor ? '→ ' + extra.bonusColor : ''}`);
+						const claim = this.Rules.claimFreeCard(this.gameState, aiId, picked.id);
+						if (claim && !claim.error) {
 							this._broadcastEvent('botActivity', {
-								playerId: aiId, playerName: p.name,
-								text: `🛒 Kocht: ${item.name || item.id} (${item.cost} 💰)`
+								playerId: aiId,
+								playerName: p.name,
+								text: `🎁 Gratis kaart gekozen: ${picked.shapeName || 'kaart'}`
 							});
-							remainingCoins -= item.cost;
 							changed = true;
+							return true;
 						}
-					}
+						return false;
+					};
 
-					// Koop shop card offerings
-					const offerings = p.shopOfferings || [];
-					for (let ci = 0; ci < offerings.length; ci++) {
-						const card = offerings[ci];
-						if (!card) continue;
-						const price = card.shopPrice || this.Rules.getCardPrice?.(card) || 2;
-						if (price <= remainingCoins) {
-							const buyResult = this.Rules.buyShopItem(this.gameState, aiId, `shop-card-${ci}`, {});
+					claimPendingFreeChoice();
+					let guard = 0;
+					while (remainingCoins >= 1 && guard++ < 16) {
+						let boughtSomething = false;
+
+						// 1) Prioriteit: blijvende shop-card offerings (incl. gesloten random offer)
+						const offerings = p.shopOfferings || [];
+						let bestOffer = null;
+						for (let ci = 0; ci < offerings.length; ci++) {
+							const card = offerings[ci];
+							if (!card) continue;
+							const price = card.shopPrice || this.Rules.getCardPrice?.(card) || 2;
+							if (price > remainingCoins) continue;
+							let value = 10 - price;
+							if (card.isRandomOffer) value += 8;
+							if (card.isGolden) value += 6;
+							if (card.color?.zone === 'any' || card.color?.name === 'multikleur') value += 6;
+							const cells = card.matrix ? card.matrix.flat().filter(Boolean).length : 1;
+							value += Math.min(6, cells);
+							if (isHard) value += 2;
+							if (isRandomBot) value += Math.random() * 5;
+							if (!bestOffer || value > bestOffer.value) bestOffer = { ci, card, price, value };
+						}
+						if (bestOffer) {
+							const buyResult = this.Rules.buyShopItem(this.gameState, aiId, `shop-card-${bestOffer.ci}`, {});
 							if (buyResult && !buyResult.error) {
-								console.log(`🛒 Bot ${p.name} bought card from shop (slot ${ci}, cost: ${price})`);
+								console.log(`🛒 Bot ${p.name} bought card from shop (slot ${bestOffer.ci}, cost: ${bestOffer.price})`);
 								this._broadcastEvent('botActivity', {
-									playerId: aiId, playerName: p.name,
-									text: `🃏 Kocht kaart: ${card.shapeName || 'kaart'} (${price} 💰)`
+									playerId: aiId,
+									playerName: p.name,
+									text: `🃏 Kocht blijvende kaart: ${bestOffer.card.shapeName || 'kaart'} (${bestOffer.price} 💰)`
 								});
-								remainingCoins -= price;
+								remainingCoins -= bestOffer.price;
 								changed = true;
+								boughtSomething = true;
+								claimPendingFreeChoice();
 							}
 						}
+
+						// 2) Daarna reguliere shop-items (incl. unlocks)
+						if (!boughtSomething) {
+							const shopItems = this.Rules.getShopItems(this.gameState.level || 1, p) || [];
+							const affordable = shopItems.filter(item => item.cost <= remainingCoins);
+							let bestItem = null;
+							for (const item of affordable) {
+								let value = 0;
+								if (item.unlockOnly) value += 30; // blijvende unlocks eerst
+								if (item.id === 'extra-bonus') value += isHard ? 16 : 12;
+								if (item.id === 'time-bomb') value += isHard ? 10 : 7;
+								if (item.id === 'random-card') value += 5; // tijdelijk, lagere prioriteit
+								value -= item.cost * 1.2;
+								if (isRandomBot) value += Math.random() * 8;
+								if (!bestItem || value > bestItem.value) bestItem = { item, value };
+							}
+							if (bestItem && bestItem.item) {
+								const item = bestItem.item;
+								const extra = {};
+								if (item.id === 'extra-bonus') {
+									const inv = p.bonusInventory || {};
+									const colors = ['yellow', 'red', 'green', 'purple', 'blue'];
+									if (isRandomBot) {
+										extra.bonusColor = colors[Math.floor(Math.random() * colors.length)];
+									} else {
+										colors.sort((a, b) => (inv[a] || 0) - (inv[b] || 0));
+										extra.bonusColor = colors[0];
+									}
+								}
+								const buyResult = this.Rules.buyShopItem(this.gameState, aiId, item.id, extra);
+								if (buyResult && !buyResult.error) {
+									console.log(`🛒 Bot ${p.name} bought: ${item.id} (cost: ${item.cost}) ${extra.bonusColor ? '→ ' + extra.bonusColor : ''}`);
+									this._broadcastEvent('botActivity', {
+										playerId: aiId,
+										playerName: p.name,
+										text: `🛒 Kocht: ${item.name || item.id} (${item.cost} 💰)`
+									});
+									remainingCoins -= item.cost;
+									changed = true;
+									boughtSomething = true;
+									claimPendingFreeChoice();
+								}
+							}
+						}
+
+						if (!boughtSomething) break;
 					}
 				}
 
