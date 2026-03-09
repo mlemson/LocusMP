@@ -1561,6 +1561,7 @@ class LocusP2PHost {
 							console.log(`[AI ${playerName}] EndTurn mislukt: ${result.error}`);
 							this._aiTurnInProgress = false;
 							this._aiTurnPlayerId = null;
+							this._scheduleAI();
 							return;
 						}
 						console.log(`[AI ${playerName}] ✅ Beurt beëindigd`);
@@ -1573,9 +1574,10 @@ class LocusP2PHost {
 						} else {
 							this._startTimerForCurrentPlayer(true);
 						}
-						this._broadcastState();
 						this._aiTurnInProgress = false;
 						this._aiTurnPlayerId = null;
+						this._broadcastState();
+						this._scheduleAI();
 						this._aiMaybeTaunt(playerId);
 					}, 1000);
 					break;
@@ -1596,6 +1598,7 @@ class LocusP2PHost {
 							this._aiTurnInProgress = false;
 							this._aiTurnPlayerId = null;
 							this._broadcastState();
+							this._scheduleAI();
 							return;
 						}
 						console.log(`[AI ${playerName}] ↩️ Gepast (kaart weggegooid)`);
@@ -1608,9 +1611,10 @@ class LocusP2PHost {
 						} else {
 							this._startTimerForCurrentPlayer(true);
 						}
-						this._broadcastState();
 						this._aiTurnInProgress = false;
 						this._aiTurnPlayerId = null;
+						this._broadcastState();
+						this._scheduleAI();
 					}, 800);
 					break;
 				}
