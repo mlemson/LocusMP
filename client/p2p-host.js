@@ -1038,6 +1038,21 @@ class LocusP2PHost {
 		if (!this.gameState) return;
 		if (this.aiPlayerIds.size === 0) return;
 		if (this._aiTimer) return;
+		if (this._aiTurnInProgress) return;
+
+		const phase = this.gameState.phase;
+		const currentPid = this.gameState.playerOrder?.[this.gameState.currentTurnIndex];
+		const aiTurnActive = phase === 'playing' && !!currentPid && this.aiPlayerIds.has(currentPid) && !this.gameState.paused;
+
+		// During an active AI turn, react quickly so the timer does not appear stuck at ~37s.
+		if (aiTurnActive) {
+			const fastDelay = 220 + Math.floor(Math.random() * 220);
+			this._aiTimer = setTimeout(() => {
+				this._aiTimer = null;
+				this._runAI();
+			}, fastDelay);
+			return;
+		}
 		// Use longer delay if any hard AI is present
 		let hasHard = false;
 		if (this._aiDifficulty) {
@@ -1046,8 +1061,8 @@ class LocusP2PHost {
 			}
 		}
 		const delay = hasHard
-			? (3000 + Math.floor(Math.random() * 2000))  // 3-5s for hard
-			: (2000 + Math.floor(Math.random() * 2000)); // 2-4s for normal
+			? (900 + Math.floor(Math.random() * 700))   // 0.9-1.6s for hard
+			: (700 + Math.floor(Math.random() * 700));  // 0.7-1.4s for normal
 		this._aiTimer = setTimeout(() => {
 			this._aiTimer = null;
 			this._runAI();
@@ -1229,36 +1244,8 @@ class LocusP2PHost {
 				const p = this.gameState.players?.[aiId];
 				if (!p || p.shopReady) continue;
 				const isHard = this._aiDifficulty?.get(aiId) === 'hard';
-				const pers = this._aiPersonality?.get(aiId) || 'normal';
-				const isAggressive = pers === 'aggressive';
 
-				// Perk kiezen als beschikbaar
-				if ((p.perks?.perkPoints || 0) > 0) {
-					const available = this.Rules.getAvailablePerks(p) || [];
-					if (available.length > 0) {
-						const priority = isAggressive
-							? ['agg_steal', 'agg_mine', 'agg_timebomb', 'bonus_extra_cell', 'bonus_multi_double', 'bonus_red_upgrade', 'flex_wildcard', 'flex_double_coins']
-							: isHard
-							? ['agg_timebomb', 'agg_mine', 'agg_steal', 'flex_wildcard', 'flex_double_coins', 'bonus_extra_cell', 'bonus_multi_double', 'bonus_red_upgrade']
-							: ['bonus_extra_cell', 'bonus_multi_double', 'bonus_red_upgrade', 'flex_double_coins', 'flex_wildcard', 'agg_mine', 'agg_timebomb', 'agg_steal'];
-						let chosenId = null;
-						for (const pId of priority) {
-							if (available.find(pk => pk.id === pId)) { chosenId = pId; break; }
-						}
-						if (!chosenId) chosenId = available[0]?.id;
-						if (chosenId) {
-							const perkRes = this.Rules.choosePerk(this.gameState, aiId, chosenId);
-							const perkLabel = perkRes?.perk?.name || chosenId;
-							const perkIcon = perkRes?.perk?.icon || '🎯';
-							console.log(`🛒 Bot ${p.name} chose perk: ${chosenId} (${isHard ? 'hard' : 'normal'} AI)`);
-							this._broadcastEvent('botActivity', {
-								playerId: aiId, playerName: p.name,
-								text: `${perkIcon} Perk: ${perkLabel}`
-							});
-							changed = true;
-						}
-					}
-				}
+				// Geen perk-keuze in shopping: choosePerk is alleen geldig tijdens choosingGoals.
 
 				// Koop shop items met beschikbare coins
 				let remainingCoins = p.goldCoins || 0;
@@ -1334,16 +1321,12 @@ class LocusP2PHost {
 		if (!player) { this._aiTurnInProgress = false; return; }
 		const isHard = this._aiDifficulty?.get(playerId) === 'hard';
 		const playerName = player.name || 'Bot';
-		const ACTION_DELAY = 800;
+		const ACTION_DELAY = isHard ? 260 : 700;
 
 		// Build the action queue
 		const actions = [];
 
-		// 1. Choose perk if available
-		const perkId = this._aiPickPerk(playerId, isHard);
-		if (perkId) actions.push({ type: 'choosePerk', perkId });
-
-		// 2. Use mine if has perk and hasn't used it this level
+		// 1. Use mine if has perk and hasn't used it this level
 		if (this.Rules.playerHasPerk(player, 'agg_mine') &&
 			(player.perks?.minesPerRound || 0) > 0 &&
 			(player.perks?.minesUsedThisLevel || 0) < 1) {
@@ -1351,7 +1334,7 @@ class LocusP2PHost {
 			if (mineTarget) actions.push({ type: 'useMine', ...mineTarget });
 		}
 
-		// 3. Steal card if has perk and hasn't used it this level
+		// 2. Steal card if has perk and hasn't used it this level
 		if (this.Rules.playerHasPerk(player, 'agg_steal') &&
 			(player.perks?.stealsPerRound || 0) > 0 &&
 			(player.perks?.stealsUsedThisLevel || 0) < (player.perks?.stealsPerRound || 0)) {
@@ -1359,14 +1342,14 @@ class LocusP2PHost {
 			if (stealTarget) actions.push({ type: 'stealCard', ...stealTarget });
 		}
 
-		// 4. Play card (with preview)
+		// 3. Play card (with preview)
 		const bestMove = this._aiFindBestMove(playerId, isHard);
 		if (bestMove) {
 			actions.push({ type: 'previewCard', move: bestMove });
 			actions.push({ type: 'playCard', move: bestMove });
 		}
 
-		// 5. Play bonuses
+		// 4. Play bonuses
 		const bonusColors = ['yellow', 'red', 'green', 'purple', 'blue', 'any'];
 		for (const color of bonusColors) {
 			const charges = player.bonusInventory?.[color] || 0;
@@ -1375,14 +1358,14 @@ class LocusP2PHost {
 			}
 		}
 
-		// 6. If the bot cannot play a card and has no bonuses, explicitly pass
+		// 5. If the bot cannot play a card and has no bonuses, explicitly pass
 		// (discard a non-golden card, or forfeit if only golden cards remain)
 		const hasBonusTurns = actions.some(a => a.type === 'playBonus');
 		if (!bestMove && !hasBonusTurns) {
 			const discardCardId = this._aiPickDiscardCard(playerId);
 			actions.push({ type: 'pass', discardCardId });
 		} else {
-			// 7. Normal end turn (card was played or bonuses played)
+			// 6. Normal end turn (card was played or bonuses played)
 			actions.push({ type: 'endTurn', discardCardId: null });
 		}
 
@@ -2235,14 +2218,58 @@ class LocusP2PHost {
 		if (!player?.perks || (player.perks.perkPoints || 0) < 1) return null;
 		const available = this.Rules.getAvailablePerks(player) || [];
 		if (available.length === 0) return null;
+		const personality = this._aiPersonality?.get(playerId) || 'normal';
+		const isAggressive = personality === 'aggressive';
 
-		const priority = isHard
-			? ['agg_timebomb', 'agg_mine', 'agg_steal', 'flex_wildcard', 'flex_double_coins', 'bonus_extra_cell', 'bonus_multi_double', 'bonus_red_upgrade']
-			: ['bonus_extra_cell', 'bonus_multi_double', 'bonus_red_upgrade', 'flex_double_coins', 'flex_wildcard', 'agg_mine', 'agg_timebomb', 'agg_steal'];
-		for (const pId of priority) {
-			if (available.find(p => p.id === pId)) return pId;
+		// Global random branch for variety
+		if (Math.random() < (isHard ? 0.25 : 0.30)) {
+			return available[Math.floor(Math.random() * available.length)]?.id || null;
 		}
-		return available[0]?.id || null;
+
+		const candidates = [];
+		const addIfAvailable = (id, weight) => {
+			if (available.find(p => p.id === id)) candidates.push({ id, weight });
+		};
+
+		if (isAggressive || isHard) {
+			addIfAvailable('agg_steal', 14);
+			addIfAvailable('agg_stone', 11);
+			if (Math.random() < 0.35) addIfAvailable('agg_mine', 1);
+			addIfAvailable('flex_wildcard', 10);
+			addIfAvailable('flex_double_coins', 9);
+			addIfAvailable('flex_gap', 8);
+			addIfAvailable('flex_gap_red', 8);
+			addIfAvailable('flex_rotate', 8);
+			addIfAvailable('bonus_multi_double', 8);
+		} else {
+			addIfAvailable('bonus_multi_double', 12);
+			addIfAvailable('flex_wildcard', 10);
+			addIfAvailable('flex_double_coins', 9);
+			addIfAvailable('flex_gap', 8);
+			addIfAvailable('flex_rotate', 8);
+			addIfAvailable('flex_gap_red', 7);
+			addIfAvailable('agg_stone', 4);
+			if (Math.random() < 0.30) addIfAvailable('agg_mine', 1);
+			addIfAvailable('agg_steal', 3);
+		}
+
+		addIfAvailable('bonus_yellow', 6);
+		addIfAvailable('bonus_red', 6);
+		addIfAvailable('bonus_green', 6);
+		addIfAvailable('bonus_purple', 6);
+		addIfAvailable('bonus_blue', 6);
+
+		if (candidates.length === 0) {
+			return available[Math.floor(Math.random() * available.length)]?.id || null;
+		}
+
+		const totalWeight = candidates.reduce((sum, c) => sum + c.weight, 0);
+		let roll = Math.random() * totalWeight;
+		for (const c of candidates) {
+			roll -= c.weight;
+			if (roll <= 0) return c.id;
+		}
+		return candidates[candidates.length - 1]?.id || null;
 	}
 
 	/** Find a good mine target (empty cell in opponent's likely zone) */
