@@ -1329,6 +1329,32 @@ class LocusP2PHost {
 		const ACTION_DELAY = isHard ? 260 : 700;
 		const watchdogMs = isHard ? 14000 : 18000;
 
+		const recoverAI = (reason) => {
+			console.warn(`[P2P Host] AI recovery for ${playerId}: ${reason}`);
+			if (this._aiTurnWatchdog) {
+				clearTimeout(this._aiTurnWatchdog);
+				this._aiTurnWatchdog = null;
+			}
+			this._aiTurnInProgress = false;
+			this._aiTurnPlayerId = null;
+			if (!this.gameState || this.gameState.phase !== 'playing') return;
+			const currentPid = this.gameState.playerOrder?.[this.gameState.currentTurnIndex];
+			if (currentPid === playerId) {
+				const safeEnd = this.Rules.endTurn(this.gameState, playerId, null);
+				this._broadcastState();
+				if (safeEnd?.gameEnded) {
+					this._broadcastEvent('levelComplete', {
+						levelScores: this.gameState.levelScores,
+						levelWinner: this.gameState.levelWinner,
+						level: this.gameState.level
+					});
+				} else {
+					this._startTimerForCurrentPlayer(true);
+				}
+			}
+			this._scheduleAI();
+		};
+
 		if (this._aiTurnWatchdog) {
 			clearTimeout(this._aiTurnWatchdog);
 			this._aiTurnWatchdog = null;
@@ -1404,6 +1430,7 @@ class LocusP2PHost {
 		// Process actions sequentially with delays
 		let idx = 0;
 		const processNext = () => {
+			try {
 			const currentPid = this.gameState?.playerOrder?.[this.gameState?.currentTurnIndex];
 			if (currentPid !== playerId || this._aiTurnPlayerId !== playerId) {
 				this._aiTurnInProgress = false;
@@ -1412,6 +1439,7 @@ class LocusP2PHost {
 					clearTimeout(this._aiTurnWatchdog);
 					this._aiTurnWatchdog = null;
 				}
+				this._scheduleAI();
 				return;
 			}
 			if (!this.gameState || this.gameState.paused) {
@@ -1421,6 +1449,7 @@ class LocusP2PHost {
 					clearTimeout(this._aiTurnWatchdog);
 					this._aiTurnWatchdog = null;
 				}
+				this._scheduleAI();
 				return;
 			}
 			if (idx >= actions.length) {
@@ -1678,6 +1707,10 @@ class LocusP2PHost {
 				default:
 					setTimeout(processNext, ACTION_DELAY);
 			}
+				} catch (err) {
+					console.error('[P2P Host] AI processNext crash:', err);
+					recoverAI('processNext exception');
+				}
 		};
 
 		processNext();
