@@ -1358,6 +1358,7 @@ class LocusP2PHost {
 		const isRandom = this._aiDifficulty?.get(playerId) === 'random';
 		const playerName = player.name || 'Bot';
 		const ACTION_DELAY = isHard ? 260 : isRandom ? 500 : 700;
+		const BONUS_PREVIEW_DELAY = isHard ? 700 : isRandom ? 850 : 1000;
 		const watchdogMs = isHard ? 14000 : 18000;
 
 		const resetWatchdog = () => {
@@ -1658,7 +1659,7 @@ class LocusP2PHost {
 							}
 							resetWatchdog();
 							setTimeout(processNext, ACTION_DELAY);
-						}, 1200);
+						}, BONUS_PREVIEW_DELAY);
 					} else {
 						setTimeout(processNext, ACTION_DELAY);
 					}
@@ -1822,6 +1823,15 @@ class LocusP2PHost {
 		const board = this.gameState?.boardState;
 		if (!player || !board) return null;
 
+		const nowMs = () => (typeof performance !== 'undefined' && performance.now)
+			? performance.now()
+			: Date.now();
+		const evalStart = nowMs();
+		const evalBudgetMs = isHard ? 220 : 140;
+		const maxPlanSims = isHard ? 22 : 0;
+		let planSims = 0;
+		let stopSearch = false;
+
 		const hand = Array.isArray(player.hand) ? player.hand : [];
 		let bestMove = null;
 		let bestScore = -Infinity;
@@ -1836,20 +1846,30 @@ class LocusP2PHost {
 		const hasBonuses = totalBonuses > 0;
 
 		for (const card of hand) {
+			if (stopSearch) break;
 			const allowedZones = this.Rules.getAllowedZones(card);
 			const rotations = [0, 1, 2, 3];
 			const mirrors = [false, true];
 			for (const zoneName of allowedZones) {
+				if (stopSearch) break;
 				const scoreOnZone = (zoneData, subgridId = null) => {
 					if (!zoneData) return;
 					for (const rotation of rotations) {
+						if (stopSearch) break;
 						for (const mirrored of mirrors) {
+						if (stopSearch) break;
 						let matrix = this.Rules.cloneMatrix(card.matrix);
 						matrix = this.Rules.getEnhancedMatrix ? this.Rules.getEnhancedMatrix(matrix, zoneName, perkFlags) : matrix;
 						matrix = this.Rules.rotateMatrixN(matrix, rotation);
 						if (mirrored) matrix = this.Rules.mirrorMatrix(matrix);
 						for (let y = 0; y < zoneData.rows; y++) {
+							if (stopSearch) break;
 							for (let x = 0; x < zoneData.cols; x++) {
+								if (stopSearch) break;
+								if ((x & 7) === 0 && (nowMs() - evalStart) >= evalBudgetMs) {
+									stopSearch = true;
+									break;
+								}
 								const cells = this.Rules.collectPlacementCellsData(zoneData, x, y, matrix);
 								if (!cells || cells.length === 0) continue;
 								if (!this.Rules.validatePlacement(zoneName, zoneData, cells, perkFlags)) continue;
@@ -1981,8 +2001,11 @@ class LocusP2PHost {
 								if (isHard) {
 									score += this._hardZoneBonus(zoneName, zoneData, cells, subgridId, board);
 									score += this._objectiveMoveWeight(playerId, zoneName, zoneData, cells, subgridId, hasFlaggedCell);
-									const shouldSimulatePlan = hasBonuses || hasFlaggedCell || score >= 10;
+									const shouldSimulatePlan = (hasBonuses || hasFlaggedCell || score >= 10)
+										&& planSims < maxPlanSims
+										&& (nowMs() - evalStart) < evalBudgetMs;
 									if (shouldSimulatePlan) {
+										planSims++;
 										const followUpBonusScore = this._estimateHardMoveBonusPlan(playerId, {
 											card,
 											zoneName,
@@ -2565,17 +2588,21 @@ class LocusP2PHost {
 					if (!this.Rules.validatePlacement(zoneName, zoneData, cells, {})) continue;
 					let score = cells.length;
 					let bonusCount = 0;
+					let valueCount = 0;
 					for (const c of cells) {
 						const cell = this.Rules.getDataCell(zoneData, c.x, c.y);
-						if (cell?.flags?.includes('gold')) score += 8;
-						if (cell?.flags?.includes('bonus')) { bonusCount++; score += 25; }
-						if (cell?.flags?.includes('bold')) score += 3;
-						if (cell?.flags?.includes('pearl')) score += 6;
-						if (cell?.flags?.includes('end')) score += 5;
+						if (cell?.flags?.includes('gold')) { score += 14; valueCount++; }
+						if (cell?.flags?.includes('bonus')) { bonusCount++; score += 34; valueCount++; }
+						if (cell?.flags?.includes('bold')) score += 5;
+						if (cell?.flags?.includes('pearl')) { score += 9; valueCount++; }
+						if (cell?.flags?.includes('end')) { score += 8; valueCount++; }
+						if (this._hasAdjacentActive(zoneData, c.x, c.y)) score += 2;
 					}
 					// Extra scaling for multi-bonus grabs
 					if (bonusCount >= 2) score += bonusCount * 15;
 					if (bonusCount >= 3) score += 25;
+					if (valueCount >= 2) score += valueCount * 4;
+					if (bonusColor === 'any') score += 2;
 					onFound({ zoneName, baseX: x, baseY: y, rotation, subgridId, score, bonusColor });
 				}
 			}
