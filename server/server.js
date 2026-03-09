@@ -700,9 +700,12 @@ function executeAITurn(gameId, aiPlayerId) {
 
 	const difficulty = aiDifficulty.get(gameId)?.get(aiPlayerId) || 'normal';
 	const personality = aiPersonality.get(gameId)?.get(aiPlayerId) || 'normal';
+	const actionDelayMs = difficulty === 'hard' ? AIPlayer.HARD_ACTION_DELAY_MS : AIPlayer.AI_ACTION_DELAY_MS;
+	const bonusPreviewDelayMs = difficulty === 'hard' ? 380 : 1200;
 	const actions = difficulty === 'hard'
 		? AIPlayer.planTurnHard(gameState, aiPlayerId)
 		: AIPlayer.planTurn(gameState, aiPlayerId, personality);
+	const maxInjectedBonusActionsPerStep = difficulty === 'hard' ? 2 : 4;
 	let gameEnded = false;
 	let actionIndex = 0;
 
@@ -728,7 +731,7 @@ function executeAITurn(gameId, aiPlayerId) {
 				_emitBotActivity(gameId, aiPlayerId, `${perkResult.perk?.icon || '🎯'} Perk: ${perkResult.perk?.name || action.perkId}`);
 				broadcastGameState(io, gameId);
 			}
-			setTimeout(processNextAction, AIPlayer.AI_ACTION_DELAY_MS);
+			setTimeout(processNextAction, actionDelayMs);
 		} else if (action.type === 'playCard') {
 			const transformedMatrix = buildTransformedCardMatrix(
 				gs,
@@ -744,7 +747,7 @@ function executeAITurn(gameId, aiPlayerId) {
 			);
 			if (moveResult.error) {
 				console.log(`[Locus AI] ${player.name} move mislukt: ${moveResult.error}`);
-				setTimeout(processNextAction, AIPlayer.AI_ACTION_DELAY_MS);
+				setTimeout(processNextAction, actionDelayMs);
 				return;
 			}
 			console.log(`[Locus AI] ${player.name} speelde ${action.cardId} op ${action.zoneName} (${action.baseX},${action.baseY})`);
@@ -767,11 +770,11 @@ function executeAITurn(gameId, aiPlayerId) {
 				objectivesRevealed: shouldRevealObjectives(gs),
 				mineTriggered: moveResult.mineTriggered || null
 			});
-			setTimeout(processNextAction, AIPlayer.AI_ACTION_DELAY_MS);
+			setTimeout(processNextAction, actionDelayMs);
 		} else if (action.type === 'playBonus') {
 			// Herbereken bonus plaatsingen na eerdere acties
 			const bonusPlacements = AIPlayer.findValidBonusPlacements(gs, aiPlayerId, action.bonusColor);
-			if (bonusPlacements.length === 0) { setTimeout(processNextAction, AIPlayer.AI_ACTION_DELAY_MS); return; }
+			if (bonusPlacements.length === 0) { setTimeout(processNextAction, actionDelayMs); return; }
 			bonusPlacements.sort((a, b) => b.score - a.score);
 			const best = bonusPlacements[0];
 
@@ -807,16 +810,20 @@ function executeAITurn(gameId, aiPlayerId) {
 					// Check for bonus chaining: if placement earned new bonus charges, queue them
 					const invAfter = gs2.players[aiPlayerId]?.bonusInventory || {};
 					const colors = ['yellow', 'red', 'green', 'purple', 'blue', 'any'];
+					let injected = 0;
 					for (const col of colors) {
 						const gained = (invAfter[col] || 0) - (invBefore[col] || 0) + (col === action.bonusColor ? 1 : 0);
 						for (let g = 0; g < gained; g++) {
+							if (injected >= maxInjectedBonusActionsPerStep) break;
 							actions.splice(actionIndex, 0, { type: 'playBonus', bonusColor: col });
+							injected++;
 						}
+						if (injected >= maxInjectedBonusActionsPerStep) break;
 					}
 				}
 				broadcastGameState(io, gameId);
-				setTimeout(processNextAction, AIPlayer.AI_ACTION_DELAY_MS);
-			}, 1200);
+				setTimeout(processNextAction, actionDelayMs);
+			}, bonusPreviewDelayMs);
 		} else if (action.type === 'useMine') {
 			const mineResult = GameRules.useMine(gs, aiPlayerId, action.zoneName, action.cellX, action.cellY);
 			if (mineResult.error) {
@@ -826,7 +833,7 @@ function executeAITurn(gameId, aiPlayerId) {
 				_emitBotActivity(gameId, aiPlayerId, `💣 Mijn geplaatst in ${action.zoneName}`);
 				broadcastGameState(io, gameId);
 			}
-			setTimeout(processNextAction, AIPlayer.AI_ACTION_DELAY_MS);
+			setTimeout(processNextAction, actionDelayMs);
 		} else if (action.type === 'stealCard') {
 			const stealResult = GameRules.stealCard(gs, aiPlayerId, action.targetPlayerId, action.cardId);
 			if (stealResult.error) {
@@ -844,7 +851,7 @@ function executeAITurn(gameId, aiPlayerId) {
 				});
 				broadcastGameState(io, gameId);
 			}
-			setTimeout(processNextAction, AIPlayer.AI_ACTION_DELAY_MS);
+			setTimeout(processNextAction, actionDelayMs);
 		} else if (action.type === 'endTurn') {
 			const endResult = GameRules.endTurn(gs, aiPlayerId, action.discardCardId || null);
 			if (endResult.error) {
@@ -863,9 +870,9 @@ function executeAITurn(gameId, aiPlayerId) {
 				});
 				return;
 			}
-			setTimeout(processNextAction, AIPlayer.AI_ACTION_DELAY_MS);
+			setTimeout(processNextAction, actionDelayMs);
 		} else {
-			setTimeout(processNextAction, AIPlayer.AI_ACTION_DELAY_MS);
+			setTimeout(processNextAction, actionDelayMs);
 		}
 	}
 

@@ -13,7 +13,8 @@ const GameRules = require('../shared/game-rules');
 const AI_NAMES = ['Bot Alpha', 'Bot Beta', 'Bot Gamma', 'Bot Delta', 'Bot Epsilon', 'Bot Zeta'];
 const AI_THINK_DELAY_MIN_MS = 2000;
 const AI_THINK_DELAY_MAX_MS = 4000;
-const AI_ACTION_DELAY_MS = 800; // Delay between individual actions within a turn
+const AI_ACTION_DELAY_MS = 800; // Delay between individual actions within a turn (normal)
+const HARD_ACTION_DELAY_MS = 260; // Snappier hard AI so turns don't feel stuck
 
 // ── AI PERSONALITY SYSTEM ──
 // 25% chance a bot gets 'aggressive' personality at creation
@@ -516,7 +517,7 @@ function choosePerk(gameState, playerId, personality) {
 		const candidates = [];
 		if (available.find(p => p.id === 'agg_steal')) candidates.push({ id: 'agg_steal', weight: 13 });
 		if (available.find(p => p.id === 'agg_stone')) candidates.push({ id: 'agg_stone', weight: 11 });
-		if (available.find(p => p.id === 'agg_mine')) candidates.push({ id: 'agg_mine', weight: 7 });
+		if (available.find(p => p.id === 'agg_mine') && Math.random() < 0.45) candidates.push({ id: 'agg_mine', weight: 2 });
 		if (available.find(p => p.id === 'flex_wildcard')) candidates.push({ id: 'flex_wildcard', weight: 10 });
 		if (available.find(p => p.id === 'flex_double_coins')) candidates.push({ id: 'flex_double_coins', weight: 9 });
 		if (available.find(p => p.id === 'flex_gap')) candidates.push({ id: 'flex_gap', weight: 8 });
@@ -568,7 +569,7 @@ function choosePerk(gameState, playerId, personality) {
 
 		// Aggressive perks (lower weight for normal bots)
 		if (available.find(p => p.id === 'agg_stone')) candidates.push({ id: 'agg_stone', weight: 4 });
-		if (available.find(p => p.id === 'agg_mine')) candidates.push({ id: 'agg_mine', weight: 4 });
+		if (available.find(p => p.id === 'agg_mine') && Math.random() < 0.35) candidates.push({ id: 'agg_mine', weight: 1 });
 		if (available.find(p => p.id === 'agg_steal')) candidates.push({ id: 'agg_steal', weight: 3 });
 
 		// Weighted random selection
@@ -773,8 +774,8 @@ function planShop(gameState, playerId) {
 //  HARD AI — Advanced heuristic (ML-style)
 // ══════════════════════════════════════════════
 
-const HARD_THINK_DELAY_MIN_MS = 3000;
-const HARD_THINK_DELAY_MAX_MS = 5000;
+const HARD_THINK_DELAY_MIN_MS = 900;
+const HARD_THINK_DELAY_MAX_MS = 1700;
 
 function getHardAIThinkDelay() {
 	return HARD_THINK_DELAY_MIN_MS + Math.floor(Math.random() * (HARD_THINK_DELAY_MAX_MS - HARD_THINK_DELAY_MIN_MS));
@@ -1375,7 +1376,7 @@ function chooseHardPerk(gameState, playerId) {
 	const candidates = [];
 	if (available.find(p => p.id === 'agg_steal')) candidates.push({ id: 'agg_steal', weight: 14 });
 	if (available.find(p => p.id === 'agg_stone')) candidates.push({ id: 'agg_stone', weight: 11 });
-	if (available.find(p => p.id === 'agg_mine')) candidates.push({ id: 'agg_mine', weight: 6 });
+	if (available.find(p => p.id === 'agg_mine') && Math.random() < 0.35) candidates.push({ id: 'agg_mine', weight: 1 });
 	if (available.find(p => p.id === 'flex_wildcard')) candidates.push({ id: 'flex_wildcard', weight: 10 });
 	if (available.find(p => p.id === 'flex_double_coins')) candidates.push({ id: 'flex_double_coins', weight: 10 });
 	if (available.find(p => p.id === 'flex_gap')) candidates.push({ id: 'flex_gap', weight: 8 });
@@ -1478,6 +1479,7 @@ module.exports = {
 	AI_THINK_DELAY_MIN_MS,
 	AI_THINK_DELAY_MAX_MS,
 	AI_ACTION_DELAY_MS,
+	HARD_ACTION_DELAY_MS,
 	HARD_THINK_DELAY_MIN_MS,
 	HARD_THINK_DELAY_MAX_MS,
 	getAIThinkDelay,
