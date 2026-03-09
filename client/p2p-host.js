@@ -34,6 +34,8 @@ class LocusP2PHost {
 		this._aiTimer = null;
 		this._aiDifficulty = new Map();
 		this._aiPersonality = new Map();
+		this._aiTurnInProgress = false;
+		this._aiTurnPlayerId = null;
 
 		// Callbacks voor de host-UI
 		this.onStateChanged = null; // (sanitizedState) => {}
@@ -1227,6 +1229,7 @@ class LocusP2PHost {
 				// Don't start if already processing an AI turn
 				if (this._aiTurnInProgress) return;
 				this._aiTurnInProgress = true;
+				this._aiTurnPlayerId = currentPid;
 				this._clearTimer();
 				this._runAITurnAsync(currentPid);
 				// Don't set changed — the async queue handles broadcasting
@@ -1319,6 +1322,7 @@ class LocusP2PHost {
 	_runAITurnAsync(playerId) {
 		const player = this.gameState?.players?.[playerId];
 		if (!player) { this._aiTurnInProgress = false; return; }
+		this._aiTurnPlayerId = playerId;
 		const isHard = this._aiDifficulty?.get(playerId) === 'hard';
 		const playerName = player.name || 'Bot';
 		const ACTION_DELAY = isHard ? 260 : 700;
@@ -1372,12 +1376,20 @@ class LocusP2PHost {
 		// Process actions sequentially with delays
 		let idx = 0;
 		const processNext = () => {
+			const currentPid = this.gameState?.playerOrder?.[this.gameState?.currentTurnIndex];
+			if (currentPid !== playerId || this._aiTurnPlayerId !== playerId) {
+				this._aiTurnInProgress = false;
+				this._aiTurnPlayerId = null;
+				return;
+			}
 			if (!this.gameState || this.gameState.paused) {
 				this._aiTurnInProgress = false;
+				this._aiTurnPlayerId = null;
 				return;
 			}
 			if (idx >= actions.length) {
 				this._aiTurnInProgress = false;
+				this._aiTurnPlayerId = null;
 				this._aiMaybeTaunt(playerId);
 				return;
 			}
@@ -1543,11 +1555,12 @@ class LocusP2PHost {
 				case 'endTurn': {
 					// 1 second pause before ending turn so the placement is visible
 					setTimeout(() => {
-						if (!this.gameState) { this._aiTurnInProgress = false; return; }
+						if (!this.gameState) { this._aiTurnInProgress = false; this._aiTurnPlayerId = null; return; }
 						const result = this.Rules.endTurn(this.gameState, playerId, null);
 						if (result?.error) {
 							console.log(`[AI ${playerName}] EndTurn mislukt: ${result.error}`);
 							this._aiTurnInProgress = false;
+							this._aiTurnPlayerId = null;
 							return;
 						}
 						console.log(`[AI ${playerName}] ✅ Beurt beëindigd`);
@@ -1562,6 +1575,7 @@ class LocusP2PHost {
 						}
 						this._broadcastState();
 						this._aiTurnInProgress = false;
+						this._aiTurnPlayerId = null;
 						this._aiMaybeTaunt(playerId);
 					}, 1000);
 					break;
@@ -1570,7 +1584,7 @@ class LocusP2PHost {
 				case 'pass': {
 					// Bot can't play a card and has no bonuses — pass by discarding a non-golden card
 					setTimeout(() => {
-						if (!this.gameState) { this._aiTurnInProgress = false; return; }
+						if (!this.gameState) { this._aiTurnInProgress = false; this._aiTurnPlayerId = null; return; }
 						// Only call passMove if we have a non-golden card to discard
 						// (passMove with null cardId would discard index 0, risking a golden card)
 						const canPass = !!action.discardCardId;
@@ -1580,6 +1594,7 @@ class LocusP2PHost {
 						if (result?.error) {
 							console.log(`[AI ${playerName}] Pas mislukt (${result.error})`);
 							this._aiTurnInProgress = false;
+							this._aiTurnPlayerId = null;
 							this._broadcastState();
 							return;
 						}
@@ -1595,6 +1610,7 @@ class LocusP2PHost {
 						}
 						this._broadcastState();
 						this._aiTurnInProgress = false;
+						this._aiTurnPlayerId = null;
 					}, 800);
 					break;
 				}
@@ -2549,6 +2565,9 @@ class LocusP2PHost {
 		this.gameState._turnTimerRemainingMs = duration;
 
 		this._turnTimer = setTimeout(() => {
+			// Running AI chain is stale once the timer forces a turn end.
+			this._aiTurnInProgress = false;
+			this._aiTurnPlayerId = null;
 			// Auto-end turn
 			const result = this.Rules.endTurn(this.gameState, playerId);
 			console.log(`[P2P Host] Timer verlopen voor ${playerId}`);
