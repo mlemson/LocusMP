@@ -1040,6 +1040,13 @@ class LocusP2PHost {
 	_scheduleAI() {
 		if (!this.gameState) return;
 		if (this.aiPlayerIds.size === 0) return;
+		if (this.gameState.phase === 'playing' && !this.gameState.paused && !this._turnTimer) {
+			const pid = this.gameState.playerOrder?.[this.gameState.currentTurnIndex];
+			if (pid && !this.aiPlayerIds.has(pid)) {
+				// Safety net: if timer was lost unexpectedly, restore it for human turns.
+				this._startTimerForCurrentPlayer(false);
+			}
+		}
 		if (this._aiTimer) return;
 		if (this._aiTurnInProgress) return;
 
