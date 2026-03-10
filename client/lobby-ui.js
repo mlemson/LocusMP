@@ -4761,17 +4761,23 @@ class LocusLobbyUI {
 		if (!zoneEl) return;
 		const zones = Array.from(board.querySelectorAll('.mp-zone'));
 		const idx = zones.indexOf(zoneEl);
-		const targetLeft = Math.max(0, zoneEl.offsetLeft || 0);
+		const targetLeft = idx >= 0
+			? Math.max(0, idx * board.clientWidth)
+			: Math.max(0, zoneEl.offsetLeft || 0);
 
 		const applyHorizontalScroll = (behavior = 'auto') => {
-			try {
-				zoneEl.scrollIntoView({ behavior, block: 'nearest', inline: 'start' });
-			} catch (_) {}
 			board.scrollTo({ left: targetLeft, top: 0, behavior });
 			if (behavior === 'auto' && Math.abs((board.scrollLeft || 0) - targetLeft) > 1) {
 				board.scrollLeft = targetLeft;
 			}
 		};
+
+		const prevInlineSnapType = board.style.scrollSnapType;
+		const prevInlineBehavior = board.style.scrollBehavior;
+		if (!smooth) {
+			board.style.scrollSnapType = 'none';
+			board.style.scrollBehavior = 'auto';
+		}
 
 		applyHorizontalScroll(smooth ? 'smooth' : 'auto');
 		if (smooth) {
@@ -4787,6 +4793,13 @@ class LocusLobbyUI {
 					applyHorizontalScroll('auto');
 				}
 			});
+			setTimeout(() => {
+				if (Math.abs((board.scrollLeft || 0) - targetLeft) > 8) {
+					applyHorizontalScroll('auto');
+				}
+				board.style.scrollSnapType = prevInlineSnapType;
+				board.style.scrollBehavior = prevInlineBehavior;
+			}, 140);
 		}
 		if (idx >= 0) this._lastMobileBoardIndex = idx;
 		this._lastMobileZoneName = normalizedZone;
