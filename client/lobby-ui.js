@@ -2876,21 +2876,20 @@ class LocusLobbyUI {
 		const board = document.querySelector('.mp-board');
 		if (board) board.classList.add('placement-mode');
 
-		// Touch/coarse: spring direct naar de bijbehorende kleur-zone bij single-color kaarten
+		// Spring direct naar de bijbehorende kleur-zone.
+		// _scrollMobileBoardToZone bepaalt zelf of mobiel layout actief is.
 		// IMPORTANT: scroll BEFORE locking, otherwise overflow:hidden blocks scrollTo
-		const isTouchInput = e.pointerType === 'touch' || e.pointerType === 'pen' || this._isTouchLikeDevice();
 		const allowedZones = Rules.getAllowedZones(card);
-		if (isTouchInput) {
-			if (allowedZones.length === 1) {
-				const targetZone = this._normalizeZoneName(allowedZones[0]);
-				if (targetZone) this._scrollMobileBoardToZone(targetZone, false);
-			} else if (allowedZones.length > 1) {
-				const currentZone = this._lastMobileZoneName || allowedZones[0];
-				if (currentZone) this._scrollMobileBoardToZone(currentZone, false);
-			}
+		if (allowedZones.length === 1) {
+			const targetZone = this._normalizeZoneName(allowedZones[0]);
+			if (targetZone) this._scrollMobileBoardToZone(targetZone, false);
+		} else if (allowedZones.length > 1) {
+			const currentZone = this._lastMobileZoneName || allowedZones[0];
+			if (currentZone) this._scrollMobileBoardToZone(currentZone, false);
 		}
 
 		// Lock scroll AFTER zone navigation so scrollTo isn't blocked by overflow:hidden
+		const isTouchInput = e.pointerType === 'touch' || e.pointerType === 'pen' || this._isTouchLikeDevice();
 		this._setTouchDragScrollLock(isTouchInput);
 
 		// Ghost volgt muis (click-move-click: geen knop ingedrukt houden)
@@ -4036,24 +4035,23 @@ class LocusLobbyUI {
 		const board = document.querySelector('.mp-board');
 		if (board) board.classList.add('placement-mode');
 
-		// Mobiel/touch: ga direct naar de juiste kleurzone
+		// Ga direct naar de juiste kleurzone.
+		// _scrollMobileBoardToZone bepaalt zelf of mobiel layout actief is.
 		// IMPORTANT: scroll BEFORE locking, otherwise overflow:hidden blocks scrollTo
-		const isTouchBonus = this._isTouchLikeDevice() || startPointerEvent?.pointerType === 'touch' || startPointerEvent?.pointerType === 'pen';
-		if (isTouchBonus) {
-			const targetZone = bonusColor === 'any'
-				? (this._lastMobileZoneName || 'yellow')
-				: this._normalizeZoneName(bonusColor);
-			if (targetZone) {
-				const targetIdx = this._getMobileZoneIndex(targetZone);
-				if (Number.isFinite(targetIdx)) {
-					this._lastMobileBoardIndex = targetIdx;
-					this._lastMobileZoneName = targetZone;
-				}
-				this._scrollMobileBoardToZone(targetZone, false);
+		const targetZone = bonusColor === 'any'
+			? (this._lastMobileZoneName || 'yellow')
+			: this._normalizeZoneName(bonusColor);
+		if (targetZone) {
+			const targetIdx = this._getMobileZoneIndex(targetZone);
+			if (Number.isFinite(targetIdx)) {
+				this._lastMobileBoardIndex = targetIdx;
+				this._lastMobileZoneName = targetZone;
 			}
+			this._scrollMobileBoardToZone(targetZone, false);
 		}
 
 		// Lock scroll AFTER zone navigation so scrollTo isn't blocked by overflow:hidden
+		const isTouchBonus = this._isTouchLikeDevice() || startPointerEvent?.pointerType === 'touch' || startPointerEvent?.pointerType === 'pen';
 		this._setTouchDragScrollLock(isTouchBonus);
 
 		// Ghost volgt muis + preview (centered, like card ghosts)
