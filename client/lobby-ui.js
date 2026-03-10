@@ -69,6 +69,7 @@ class LocusLobbyUI {
 		this._activeSelections = {};
 		this._touchDragScrollLocked = false;
 		this._touchDragScrollLockTimer = null;
+		this._mobileZoneProgrammaticScrollTimer = null;
 		this._ignoreNextBonusClickUntil = 0;
 		this._cardTransforms = {};
 		this._goalPerkPromptShown = false;
@@ -2889,11 +2890,9 @@ class LocusLobbyUI {
 			if (currentZone) this._focusMobileZoneForSelection(currentZone);
 		}
 
-		// Lock scroll AFTER zone navigation so scrollTo isn't blocked by overflow:hidden.
-		// On real touch devices we delay this slightly, otherwise the programmatic
-		// zone scroll can be cancelled once overflow/touch-action are locked.
+		// Lock touch drag only after the programmatic zone jump has had time to settle.
 		const isTouchInput = e.pointerType === 'touch' || e.pointerType === 'pen' || this._isTouchLikeDevice();
-		this._scheduleTouchDragScrollLock(isTouchInput);
+		this._scheduleTouchDragScrollLock(isTouchInput, 180);
 
 		// Ghost volgt muis (click-move-click: geen knop ingedrukt houden)
 		document.addEventListener('pointermove', this._onPointerMove);
@@ -3578,15 +3577,6 @@ class LocusLobbyUI {
 		const normalizedZone = this._normalizeZoneName(zoneName);
 		if (!normalizedZone) return;
 		this._scrollMobileBoardToZone(normalizedZone, false);
-		setTimeout(() => {
-			const board = this.elements['mp-board-container']?.querySelector('.mp-board');
-			const zoneEl = board?.querySelector(`.mp-zone[data-zone="${normalizedZone}"]`);
-			if (!board || !zoneEl) return;
-			const targetLeft = Math.max(0, zoneEl.offsetLeft || 0);
-			if (Math.abs((board.scrollLeft || 0) - targetLeft) > 8) {
-				this._scrollMobileBoardToZone(normalizedZone, false);
-			}
-		}, 90);
 	}
 
 	/**
@@ -4086,11 +4076,9 @@ class LocusLobbyUI {
 			this._focusMobileZoneForSelection(targetZone);
 		}
 
-		// Lock scroll AFTER zone navigation so scrollTo isn't blocked by overflow:hidden.
-		// On real touch devices we delay this slightly, otherwise the programmatic
-		// zone scroll can be cancelled once overflow/touch-action are locked.
+		// Lock touch drag only after the programmatic zone jump has had time to settle.
 		const isTouchBonus = this._isTouchLikeDevice() || startPointerEvent?.pointerType === 'touch' || startPointerEvent?.pointerType === 'pen';
-		this._scheduleTouchDragScrollLock(isTouchBonus);
+		this._scheduleTouchDragScrollLock(isTouchBonus, 180);
 
 		// Ghost volgt muis + preview (centered, like card ghosts)
 		this._bonusMoveHandler = (e) => {
@@ -4765,42 +4753,26 @@ class LocusLobbyUI {
 			? Math.max(0, idx * board.clientWidth)
 			: Math.max(0, zoneEl.offsetLeft || 0);
 
-		const applyHorizontalScroll = (behavior = 'auto') => {
-			board.scrollTo({ left: targetLeft, top: 0, behavior });
-			if (behavior === 'auto' && Math.abs((board.scrollLeft || 0) - targetLeft) > 1) {
-				board.scrollLeft = targetLeft;
-			}
-		};
+		if (this._mobileZoneProgrammaticScrollTimer) {
+			clearTimeout(this._mobileZoneProgrammaticScrollTimer);
+			this._mobileZoneProgrammaticScrollTimer = null;
+		}
 
 		const prevInlineSnapType = board.style.scrollSnapType;
 		const prevInlineBehavior = board.style.scrollBehavior;
-		if (!smooth) {
-			board.style.scrollSnapType = 'none';
-			board.style.scrollBehavior = 'auto';
-		}
+		board.style.scrollSnapType = 'none';
+		board.style.scrollBehavior = smooth ? 'smooth' : 'auto';
+		board.scrollLeft = targetLeft;
 
-		applyHorizontalScroll(smooth ? 'smooth' : 'auto');
-		if (smooth) {
-			setTimeout(() => {
-				this._restoreMobileZoneVerticalScroll(normalizedZone, zoneEl, true);
-				// One extra settle step avoids theme/layout timing causing wrong snap target on mobile.
-				applyHorizontalScroll('auto');
-			}, 220);
-		} else {
-			requestAnimationFrame(() => {
-				this._restoreMobileZoneVerticalScroll(normalizedZone, zoneEl, true);
-				if (Math.abs((board.scrollLeft || 0) - targetLeft) > 8) {
-					applyHorizontalScroll('auto');
-				}
-			});
-			setTimeout(() => {
-				if (Math.abs((board.scrollLeft || 0) - targetLeft) > 8) {
-					applyHorizontalScroll('auto');
-				}
-				board.style.scrollSnapType = prevInlineSnapType;
-				board.style.scrollBehavior = prevInlineBehavior;
-			}, 140);
-		}
+		const cleanupDelay = smooth ? 260 : 80;
+		this._mobileZoneProgrammaticScrollTimer = setTimeout(() => {
+			this._mobileZoneProgrammaticScrollTimer = null;
+			board.scrollLeft = targetLeft;
+			board.style.scrollSnapType = prevInlineSnapType;
+			board.style.scrollBehavior = prevInlineBehavior;
+			this._restoreMobileZoneVerticalScroll(normalizedZone, zoneEl, true);
+		}, cleanupDelay);
+
 		if (idx >= 0) this._lastMobileBoardIndex = idx;
 		this._lastMobileZoneName = normalizedZone;
 		this._updateZoneDots(idx);
@@ -4960,17 +4932,14 @@ class LocusLobbyUI {
 					? prevMobileIdx
 					: (Number.isFinite(this._lastMobileBoardIndex) ? this._lastMobileBoardIndex : 0);
 				const clamped = Math.max(0, Math.min(zones.length - 1, preferredIdx || 0));
-				const target = preferredZone
-					? (boardEl.querySelector(`.mp-zone[data-zone="${preferredZone}"]`) || zones[clamped])
-					: zones[clamped];
-				if (target) {
-					boardEl.scrollTo({ left: target.offsetLeft, top: 0, behavior: 'auto' });
-					this._lastMobileBoardIndex = zones.indexOf(target);
-					const zoneName = target.dataset.zone || null;
-					this._restoreMobileZoneVerticalScroll(zoneName, target, true);
-					this._lastMobileZoneName = zoneName;
+				const fallbackZone = zones[clamped]?.dataset?.zone || null;
+				const targetZone = preferredZone || fallbackZone;
+				if (targetZone) {
+					this._lastMobileZoneName = targetZone;
+					const targetIdx = this._getMobileZoneIndex(targetZone);
+					if (Number.isFinite(targetIdx)) this._lastMobileBoardIndex = targetIdx;
+					this._scrollMobileBoardToZone(targetZone, false);
 				}
-				this._updateZoneDots(this._lastMobileBoardIndex);
 			}
 		}
 	}
