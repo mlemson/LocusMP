@@ -3578,8 +3578,15 @@ class LocusLobbyUI {
 		const normalizedZone = this._normalizeZoneName(zoneName);
 		if (!normalizedZone) return;
 		this._scrollMobileBoardToZone(normalizedZone, false);
-		requestAnimationFrame(() => this._scrollMobileBoardToZone(normalizedZone, false));
-		setTimeout(() => this._scrollMobileBoardToZone(normalizedZone, false), 120);
+		setTimeout(() => {
+			const board = this.elements['mp-board-container']?.querySelector('.mp-board');
+			const zoneEl = board?.querySelector(`.mp-zone[data-zone="${normalizedZone}"]`);
+			if (!board || !zoneEl) return;
+			const targetLeft = Math.max(0, zoneEl.offsetLeft || 0);
+			if (Math.abs((board.scrollLeft || 0) - targetLeft) > 8) {
+				this._scrollMobileBoardToZone(normalizedZone, false);
+			}
+		}, 90);
 	}
 
 	/**
@@ -4757,6 +4764,9 @@ class LocusLobbyUI {
 		const targetLeft = Math.max(0, zoneEl.offsetLeft || 0);
 
 		const applyHorizontalScroll = (behavior = 'auto') => {
+			try {
+				zoneEl.scrollIntoView({ behavior, block: 'nearest', inline: 'start' });
+			} catch (_) {}
 			board.scrollTo({ left: targetLeft, top: 0, behavior });
 			if (behavior === 'auto' && Math.abs((board.scrollLeft || 0) - targetLeft) > 1) {
 				board.scrollLeft = targetLeft;
@@ -4773,9 +4783,10 @@ class LocusLobbyUI {
 		} else {
 			requestAnimationFrame(() => {
 				this._restoreMobileZoneVerticalScroll(normalizedZone, zoneEl, true);
-				applyHorizontalScroll('auto');
+				if (Math.abs((board.scrollLeft || 0) - targetLeft) > 8) {
+					applyHorizontalScroll('auto');
+				}
 			});
-			setTimeout(() => applyHorizontalScroll('auto'), 80);
 		}
 		if (idx >= 0) this._lastMobileBoardIndex = idx;
 		this._lastMobileZoneName = normalizedZone;
