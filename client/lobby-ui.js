@@ -68,6 +68,7 @@ class LocusLobbyUI {
 		this._turnTimerPausedRemainingMs = 0;
 		this._activeSelections = {};
 		this._touchDragScrollLocked = false;
+		this._touchDragScrollLockTimer = null;
 		this._ignoreNextBonusClickUntil = 0;
 		this._cardTransforms = {};
 		this._goalPerkPromptShown = false;
@@ -2888,9 +2889,11 @@ class LocusLobbyUI {
 			if (currentZone) this._scrollMobileBoardToZone(currentZone, false);
 		}
 
-		// Lock scroll AFTER zone navigation so scrollTo isn't blocked by overflow:hidden
+		// Lock scroll AFTER zone navigation so scrollTo isn't blocked by overflow:hidden.
+		// On real touch devices we delay this slightly, otherwise the programmatic
+		// zone scroll can be cancelled once overflow/touch-action are locked.
 		const isTouchInput = e.pointerType === 'touch' || e.pointerType === 'pen' || this._isTouchLikeDevice();
-		this._setTouchDragScrollLock(isTouchInput);
+		this._scheduleTouchDragScrollLock(isTouchInput);
 
 		// Ghost volgt muis (click-move-click: geen knop ingedrukt houden)
 		document.addEventListener('pointermove', this._onPointerMove);
@@ -3544,6 +3547,10 @@ class LocusLobbyUI {
 	}
 
 	_setTouchDragScrollLock(locked) {
+		if (this._touchDragScrollLockTimer) {
+			clearTimeout(this._touchDragScrollLockTimer);
+			this._touchDragScrollLockTimer = null;
+		}
 		if (locked === this._touchDragScrollLocked) return;
 		this._touchDragScrollLocked = !!locked;
 		document.body.classList.toggle('mp-touch-drag-lock', this._touchDragScrollLocked);
@@ -3551,6 +3558,20 @@ class LocusLobbyUI {
 		if (boardContainer) boardContainer.classList.toggle('mp-touch-drag-lock', this._touchDragScrollLocked);
 		const board = boardContainer?.querySelector('.mp-board') || document.querySelector('.mp-board');
 		if (board) board.classList.toggle('mp-touch-drag-lock', this._touchDragScrollLocked);
+	}
+
+	_scheduleTouchDragScrollLock(locked, delay = 80) {
+		if (!locked) {
+			this._setTouchDragScrollLock(false);
+			return;
+		}
+		if (this._touchDragScrollLockTimer) {
+			clearTimeout(this._touchDragScrollLockTimer);
+		}
+		this._touchDragScrollLockTimer = setTimeout(() => {
+			this._touchDragScrollLockTimer = null;
+			this._setTouchDragScrollLock(true);
+		}, delay);
 	}
 
 	/**
@@ -4050,9 +4071,11 @@ class LocusLobbyUI {
 			this._scrollMobileBoardToZone(targetZone, false);
 		}
 
-		// Lock scroll AFTER zone navigation so scrollTo isn't blocked by overflow:hidden
+		// Lock scroll AFTER zone navigation so scrollTo isn't blocked by overflow:hidden.
+		// On real touch devices we delay this slightly, otherwise the programmatic
+		// zone scroll can be cancelled once overflow/touch-action are locked.
 		const isTouchBonus = this._isTouchLikeDevice() || startPointerEvent?.pointerType === 'touch' || startPointerEvent?.pointerType === 'pen';
-		this._setTouchDragScrollLock(isTouchBonus);
+		this._scheduleTouchDragScrollLock(isTouchBonus);
 
 		// Ghost volgt muis + preview (centered, like card ghosts)
 		this._bonusMoveHandler = (e) => {
