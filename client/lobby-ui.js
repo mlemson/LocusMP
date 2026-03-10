@@ -2883,10 +2883,10 @@ class LocusLobbyUI {
 		const allowedZones = Rules.getAllowedZones(card);
 		if (allowedZones.length === 1) {
 			const targetZone = this._normalizeZoneName(allowedZones[0]);
-			if (targetZone) this._scrollMobileBoardToZone(targetZone, false);
+			if (targetZone) this._focusMobileZoneForSelection(targetZone);
 		} else if (allowedZones.length > 1) {
 			const currentZone = this._lastMobileZoneName || allowedZones[0];
-			if (currentZone) this._scrollMobileBoardToZone(currentZone, false);
+			if (currentZone) this._focusMobileZoneForSelection(currentZone);
 		}
 
 		// Lock scroll AFTER zone navigation so scrollTo isn't blocked by overflow:hidden.
@@ -3574,6 +3574,14 @@ class LocusLobbyUI {
 		}, delay);
 	}
 
+	_focusMobileZoneForSelection(zoneName) {
+		const normalizedZone = this._normalizeZoneName(zoneName);
+		if (!normalizedZone) return;
+		this._scrollMobileBoardToZone(normalizedZone, false);
+		requestAnimationFrame(() => this._scrollMobileBoardToZone(normalizedZone, false));
+		setTimeout(() => this._scrollMobileBoardToZone(normalizedZone, false), 120);
+	}
+
 	/**
 	 * Pas baseX/baseY aan zodat de geklikte cel overeenkomt met de eerste
 	 * gevulde cel in de (geroteerde) matrix, niet met matrix[0][0].
@@ -4068,7 +4076,7 @@ class LocusLobbyUI {
 				this._lastMobileBoardIndex = targetIdx;
 				this._lastMobileZoneName = targetZone;
 			}
-			this._scrollMobileBoardToZone(targetZone, false);
+			this._focusMobileZoneForSelection(targetZone);
 		}
 
 		// Lock scroll AFTER zone navigation so scrollTo isn't blocked by overflow:hidden.
@@ -4746,20 +4754,28 @@ class LocusLobbyUI {
 		if (!zoneEl) return;
 		const zones = Array.from(board.querySelectorAll('.mp-zone'));
 		const idx = zones.indexOf(zoneEl);
+		const targetLeft = Math.max(0, zoneEl.offsetLeft || 0);
 
-		board.scrollTo({
-			left: zoneEl.offsetLeft,
-			top: 0,
-			behavior: smooth ? 'smooth' : 'auto'
-		});
+		const applyHorizontalScroll = (behavior = 'auto') => {
+			board.scrollTo({ left: targetLeft, top: 0, behavior });
+			if (behavior === 'auto' && Math.abs((board.scrollLeft || 0) - targetLeft) > 1) {
+				board.scrollLeft = targetLeft;
+			}
+		};
+
+		applyHorizontalScroll(smooth ? 'smooth' : 'auto');
 		if (smooth) {
 			setTimeout(() => {
 				this._restoreMobileZoneVerticalScroll(normalizedZone, zoneEl, true);
 				// One extra settle step avoids theme/layout timing causing wrong snap target on mobile.
-				board.scrollTo({ left: zoneEl.offsetLeft, top: 0, behavior: 'auto' });
+				applyHorizontalScroll('auto');
 			}, 220);
 		} else {
-			this._restoreMobileZoneVerticalScroll(normalizedZone, zoneEl, true);
+			requestAnimationFrame(() => {
+				this._restoreMobileZoneVerticalScroll(normalizedZone, zoneEl, true);
+				applyHorizontalScroll('auto');
+			});
+			setTimeout(() => applyHorizontalScroll('auto'), 80);
 		}
 		if (idx >= 0) this._lastMobileBoardIndex = idx;
 		this._lastMobileZoneName = normalizedZone;
@@ -4915,19 +4931,22 @@ class LocusLobbyUI {
 			const boardEl = container.querySelector('.mp-board');
 			const zones = boardEl ? Array.from(boardEl.querySelectorAll('.mp-zone')) : [];
 			if (boardEl && zones.length > 0) {
+				const preferredZone = this._normalizeZoneName(this._lastMobileZoneName);
 				const preferredIdx = Number.isFinite(prevMobileIdx)
 					? prevMobileIdx
 					: (Number.isFinite(this._lastMobileBoardIndex) ? this._lastMobileBoardIndex : 0);
 				const clamped = Math.max(0, Math.min(zones.length - 1, preferredIdx || 0));
-				const target = zones[clamped];
+				const target = preferredZone
+					? (boardEl.querySelector(`.mp-zone[data-zone="${preferredZone}"]`) || zones[clamped])
+					: zones[clamped];
 				if (target) {
 					boardEl.scrollTo({ left: target.offsetLeft, top: 0, behavior: 'auto' });
-					this._lastMobileBoardIndex = clamped;
+					this._lastMobileBoardIndex = zones.indexOf(target);
 					const zoneName = target.dataset.zone || null;
 					this._restoreMobileZoneVerticalScroll(zoneName, target, true);
 					this._lastMobileZoneName = zoneName;
 				}
-				this._updateZoneDots(clamped);
+				this._updateZoneDots(this._lastMobileBoardIndex);
 			}
 		}
 	}
