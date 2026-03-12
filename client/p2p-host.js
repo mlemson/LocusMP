@@ -1339,10 +1339,10 @@ class LocusP2PHost {
 							}
 						}
 
-						// 2) Daarna reguliere shop-items (incl. unlocks)
+						// 2) Daarna reguliere shop-items (incl. unlocks, skip unlock-steen — bots can't use stones)
 						if (!boughtSomething) {
 							const shopItems = this.Rules.getShopItems(this.gameState.level || 1, p) || [];
-							const affordable = shopItems.filter(item => item.cost <= remainingCoins);
+							const affordable = shopItems.filter(item => item.cost <= remainingCoins && item.id !== 'unlock-steen');
 							let bestItem = null;
 							for (const item of affordable) {
 								let value = 0;
@@ -1939,10 +1939,11 @@ class LocusP2PHost {
 								let hasFlaggedCell = false;
 								let flaggedValueHits = 0;
 								let hotspotProximityScore = 0;
+								let bonusFlagsHit = 0;
 								for (const c of cells) {
 									const cell = this.Rules.getDataCell(zoneData, c.x, c.y);
 									if (cell?.flags?.includes('gold')) { score += prioritizeCoins ? 17 : 7; hasFlaggedCell = true; flaggedValueHits++; }
-									else if (cell?.flags?.includes('bonus')) { score += 18; hasFlaggedCell = true; flaggedValueHits++; }
+									else if (cell?.flags?.includes('bonus')) { score += 35; hasFlaggedCell = true; flaggedValueHits++; bonusFlagsHit++; }
 									else if (cell?.flags?.includes('pearl')) { score += prioritizeCoins ? 14 : 6; hasFlaggedCell = true; flaggedValueHits++; }
 									else if (cell?.flags?.includes('end')) { score += 10; hasFlaggedCell = true; flaggedValueHits++; }
 									else if (cell?.flags?.includes('bold')) {
@@ -1960,30 +1961,13 @@ class LocusP2PHost {
 								if (flaggedValueHits > 1) {
 									score += flaggedValueHits * 4;
 								}
+								// Bonus chaining: 2+ bonuses in one card is exponentially valuable
+								if (bonusFlagsHit >= 2) score += bonusFlagsHit * 30;
+								if (bonusFlagsHit >= 3) score += 50;
 
 								// Prefer placements that move toward high-value scoring cells.
 								if (strategicHotspots.length > 0) {
 									const maxHotspots = Math.min(24, strategicHotspots.length);
-									for (const c of cells) {
-										let bestDist = Infinity;
-										let bestWeight = 0;
-										for (let i = 0; i < maxHotspots; i++) {
-											const h = strategicHotspots[i];
-											const dist = Math.abs(c.x - h.x) + Math.abs(c.y - h.y);
-											if (dist < bestDist || (dist === bestDist && h.weight > bestWeight)) {
-												bestDist = dist;
-												bestWeight = h.weight;
-											}
-										}
-										if (bestDist <= 1) hotspotProximityScore += bestWeight * 0.55;
-										else if (bestDist === 2) hotspotProximityScore += bestWeight * 0.30;
-										else if (bestDist === 3) hotspotProximityScore += bestWeight * 0.14;
-									}
-									score += Math.round(hotspotProximityScore);
-								}
-
-								// Penalize placements on empty/plain cells unless strategically valuable
-								if (!hasFlaggedCell) {
 									let hasStrategicValue = false;
 
 									// Adjacency to existing territory = building/connecting
@@ -2055,9 +2039,9 @@ class LocusP2PHost {
 									}
 
 									if (hasStrategicValue) {
-										score = Math.max(1, Math.floor(score * (hasBonuses ? 0.3 : 0.5))); // Moderate penalty — on track; stronger when bonuses available
+										score = Math.max(1, Math.floor(score * (hasBonuses ? 0.2 : 0.4))); // Moderate penalty — on track; stronger when bonuses available
 									} else {
-										score = Math.max(1, Math.floor(score * (hasBonuses ? 0.05 : 0.15))); // Heavy penalty — wasted cells; near-zero when bonuses available
+										score = Math.max(1, Math.floor(score * (hasBonuses ? 0.03 : 0.10))); // Very heavy penalty — wasted cells; near-zero when bonuses available
 									}
 								}
 
@@ -2532,7 +2516,7 @@ class LocusP2PHost {
 	_aiPickRandomPerk(playerId) {
 		const player = this.gameState?.players?.[playerId];
 		if (!player?.perks || (player.perks.perkPoints || 0) < 1) return null;
-		const available = this.Rules.getAvailablePerks(player) || [];
+		const available = (this.Rules.getAvailablePerks(player) || []).filter(p => p.id !== 'agg_stone');
 		if (available.length === 0) return null;
 		return available[Math.floor(Math.random() * available.length)]?.id || null;
 	}
@@ -2546,19 +2530,23 @@ class LocusP2PHost {
 		const personality = this._aiPersonality?.get(playerId) || 'normal';
 		const isAggressive = personality === 'aggressive';
 
-		// Global random branch for variety
+		// Filter out agg_stone — bots cannot use stone blocks effectively
+		const filteredAvailable = available.filter(p => p.id !== 'agg_stone');
+		if (filteredAvailable.length === 0) return null;
+
+		// Global random branch for variety (from filtered list)
 		if (Math.random() < (isHard ? 0.25 : 0.30)) {
-			return available[Math.floor(Math.random() * available.length)]?.id || null;
+			return filteredAvailable[Math.floor(Math.random() * filteredAvailable.length)]?.id || null;
 		}
 
 		const candidates = [];
 		const addIfAvailable = (id, weight) => {
-			if (available.find(p => p.id === id)) candidates.push({ id, weight });
+			if (filteredAvailable.find(p => p.id === id)) candidates.push({ id, weight });
 		};
 
 		if (isAggressive || isHard) {
 			addIfAvailable('agg_steal', 14);
-			addIfAvailable('agg_stone', 11);
+			// agg_stone skipped — bots can't use it well
 			addIfAvailable('agg_mine', 10);
 			addIfAvailable('flex_wildcard', 10);
 			addIfAvailable('flex_double_coins', 9);
@@ -2573,7 +2561,7 @@ class LocusP2PHost {
 			addIfAvailable('flex_gap', 8);
 			addIfAvailable('flex_rotate', 8);
 			addIfAvailable('flex_gap_red', 7);
-			addIfAvailable('agg_stone', 4);
+			// agg_stone skipped — bots can't use it well
 			addIfAvailable('agg_mine', 4);
 			addIfAvailable('agg_steal', 3);
 		}
@@ -2585,7 +2573,7 @@ class LocusP2PHost {
 		addIfAvailable('bonus_blue', 10);
 
 		if (candidates.length === 0) {
-			return available[Math.floor(Math.random() * available.length)]?.id || null;
+			return filteredAvailable[Math.floor(Math.random() * filteredAvailable.length)]?.id || null;
 		}
 
 		const totalWeight = candidates.reduce((sum, c) => sum + c.weight, 0);
@@ -2710,11 +2698,16 @@ class LocusP2PHost {
 						if (cell?.flags?.includes('end')) { score += 8; valueCount++; }
 						if (this._hasAdjacentActive(zoneData, c.x, c.y)) score += 2;
 					}
-					// Extra scaling for multi-bonus grabs
-					if (bonusCount >= 2) score += bonusCount * 15;
-					if (bonusCount >= 3) score += 25;
+					// Extra scaling for multi-bonus grabs (3 bonuses >> 3x one bonus)
+					if (bonusCount >= 2) score += bonusCount * 20;
+					if (bonusCount >= 3) score += 40;
 					if (valueCount >= 2) score += valueCount * 4;
 					if (bonusColor === 'any') score += 2;
+
+					// Purple zone: use connection simulation for bonus placements too
+					if (zoneName === 'purple') {
+						score += this._scorePurpleConnections(zoneData, cells);
+					}
 
 					if (isBlueZone) {
 						const rows = zoneData.rows || 20;
@@ -2787,13 +2780,138 @@ class LocusP2PHost {
 				else if (oldRatio >= 0.5) bonus += 4;
 			}
 		} else if (zoneName === 'purple') {
-			for (const c of cells) {
-				if (this._hasAdjacentActive(zoneData, c.x, c.y)) bonus += 2;
-				const cell = this.Rules.getDataCell(zoneData, c.x, c.y);
-				if (cell?.flags?.includes('bold')) bonus += 3;
-			}
+			bonus += this._scorePurpleConnections(zoneData, cells);
 		}
 		return bonus;
+	}
+
+	/** Full purple connection simulation using union-find — accurately predicts 6n scoring */
+	_scorePurpleConnections(zoneData, placedCells) {
+		if (!zoneData?.cells) return 0;
+		let impact = 0;
+
+		const keyOf = (x, y) => `${x},${y}`;
+		const parent = new Map();
+		const rankMap = new Map();
+		const boldCount = new Map();
+
+		const find = (k) => {
+			let p = parent.get(k);
+			if (p === k) return k;
+			p = find(p);
+			parent.set(k, p);
+			return p;
+		};
+		const union = (a, b) => {
+			let ra = find(a), rb = find(b);
+			if (ra === rb) return ra;
+			const rA = rankMap.get(ra) || 0, rB = rankMap.get(rb) || 0;
+			if (rA < rB) { const t = ra; ra = rb; rb = t; }
+			parent.set(rb, ra);
+			if (rA === rB) rankMap.set(ra, rA + 1);
+			boldCount.set(ra, (boldCount.get(ra) || 0) + (boldCount.get(rb) || 0));
+			boldCount.delete(rb);
+			return ra;
+		};
+		const connFromBold = (count) => Math.max(0, (count || 0) - 1);
+
+		// Build current clusters from existing active cells
+		const activeCells = new Set();
+		for (const k in zoneData.cells) {
+			const cell = zoneData.cells[k];
+			if (!cell?.active || cell.isStone) continue;
+			const key = keyOf(cell.x, cell.y);
+			activeCells.add(key);
+			parent.set(key, key);
+			rankMap.set(key, 0);
+			boldCount.set(key, cell.flags?.includes('bold') ? 1 : 0);
+		}
+		for (const k in zoneData.cells) {
+			const cell = zoneData.cells[k];
+			if (!cell?.active || cell.isStone) continue;
+			const key = keyOf(cell.x, cell.y);
+			for (const [dx, dy] of [[1,0],[-1,0],[0,1],[0,-1]]) {
+				const nk = keyOf(cell.x+dx, cell.y+dy);
+				if (activeCells.has(nk)) union(key, nk);
+			}
+		}
+
+		let connectionsBefore = 0;
+		const rootsSeen = new Set();
+		for (const k of activeCells) {
+			const r = find(k);
+			if (!rootsSeen.has(r)) {
+				rootsSeen.add(r);
+				connectionsBefore += connFromBold(boldCount.get(r));
+			}
+		}
+
+		// Simulate placement
+		const placedKeys = new Set();
+		for (const c of placedCells) {
+			const key = keyOf(c.x, c.y);
+			if (activeCells.has(key)) continue;
+			placedKeys.add(key);
+			const cell = this.Rules.getDataCell(zoneData, c.x, c.y);
+			parent.set(key, key);
+			rankMap.set(key, 0);
+			boldCount.set(key, cell?.flags?.includes('bold') ? 1 : 0);
+			for (const [dx, dy] of [[1,0],[-1,0],[0,1],[0,-1]]) {
+				const nk = keyOf(c.x+dx, c.y+dy);
+				if ((activeCells.has(nk) || placedKeys.has(nk)) && parent.has(nk)) {
+					union(key, nk);
+				}
+			}
+		}
+
+		let connectionsAfter = 0;
+		const rootsSeen2 = new Set();
+		for (const k of [...activeCells, ...placedKeys]) {
+			const r = find(k);
+			if (!rootsSeen2.has(r)) {
+				rootsSeen2.add(r);
+				connectionsAfter += connFromBold(boldCount.get(r));
+			}
+		}
+
+		const newConnections = Math.max(0, connectionsAfter - connectionsBefore);
+
+		// Score using actual 6n formula
+		const connPoints = this.Rules.getPurpleConnectionPoints;
+		if (connPoints) {
+			for (let i = 0; i < newConnections; i++) {
+				impact += connPoints(connectionsBefore + 1 + i);
+			}
+		} else {
+			// Fallback if getPurpleConnectionPoints not available
+			for (let i = 0; i < newConnections; i++) {
+				impact += 6 * (connectionsBefore + 1 + i);
+			}
+		}
+		// Double-weight: creating connections IS the purple strategy
+		if (newConnections > 0) impact *= 2;
+
+		// Late-game escalation
+		if (connectionsBefore >= 3 && newConnections > 0) impact += 20;
+		if (connectionsBefore >= 5 && newConnections > 0) impact += 30;
+
+		// 2-step lookahead: building toward bold cells
+		if (newConnections === 0) {
+			for (const c of placedCells) {
+				const cell = this.Rules.getDataCell(zoneData, c.x, c.y);
+				if (cell?.flags?.includes('bold')) impact += 15;
+				for (const k in zoneData.cells) {
+					const bc = zoneData.cells[k];
+					if (!bc?.flags?.includes('bold')) continue;
+					const dist = Math.abs(c.x - bc.x) + Math.abs(c.y - bc.y);
+					if (dist === 1 && !bc.active) impact += 12;
+					else if (dist === 2 && !bc.active) impact += 6;
+					else if (dist === 1 && bc.active) impact += 8;
+				}
+			}
+		}
+
+		return impact;
 	}
 
 	/** Check if any orthogonal neighbor of (x,y) is active in zoneData */
