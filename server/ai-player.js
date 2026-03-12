@@ -507,16 +507,20 @@ function choosePerk(gameState, playerId, personality) {
 
 	const isAggressive = personality === 'aggressive';
 
+	// Filter out agg_stone — bots cannot use stone blocks effectively
+	const filteredAvailable = available.filter(p => p.id !== 'agg_stone');
+	if (filteredAvailable.length === 0) return null;
+
 	// 30% kans op volledig random keuze voor variatie
 	if (Math.random() < 0.30) {
-		return available[Math.floor(Math.random() * available.length)].id;
+		return filteredAvailable[Math.floor(Math.random() * filteredAvailable.length)].id;
 	}
 
 	if (isAggressive) {
-		// Aggressive bot: weighted pick (mine is no longer default-first)
+		// Aggressive bot: weighted pick — never pick agg_stone (bots can't use it well)
 		const candidates = [];
 		if (available.find(p => p.id === 'agg_steal')) candidates.push({ id: 'agg_steal', weight: 13 });
-		if (available.find(p => p.id === 'agg_stone')) candidates.push({ id: 'agg_stone', weight: 11 });
+		// agg_stone skipped — bots cannot strategically place stone blocks
 		if (available.find(p => p.id === 'agg_mine') && Math.random() < 0.45) candidates.push({ id: 'agg_mine', weight: 2 });
 		if (available.find(p => p.id === 'flex_wildcard')) candidates.push({ id: 'flex_wildcard', weight: 10 });
 		if (available.find(p => p.id === 'flex_double_coins')) candidates.push({ id: 'flex_double_coins', weight: 9 });
@@ -567,8 +571,7 @@ function choosePerk(gameState, playerId, personality) {
 		if (available.find(p => p.id === 'flex_wildcard')) candidates.push({ id: 'flex_wildcard', weight: 10 });
 		if (available.find(p => p.id === 'flex_double_coins')) candidates.push({ id: 'flex_double_coins', weight: 9 });
 
-		// Aggressive perks (lower weight for normal bots)
-		if (available.find(p => p.id === 'agg_stone')) candidates.push({ id: 'agg_stone', weight: 4 });
+		// Aggressive perks (lower weight for normal bots — skip agg_stone entirely)
 		if (available.find(p => p.id === 'agg_mine') && Math.random() < 0.35) candidates.push({ id: 'agg_mine', weight: 1 });
 		if (available.find(p => p.id === 'agg_steal')) candidates.push({ id: 'agg_steal', weight: 3 });
 
@@ -584,8 +587,8 @@ function choosePerk(gameState, playerId, personality) {
 		}
 	}
 
-	// Fallback: pak random beschikbare
-	return available[Math.floor(Math.random() * available.length)].id;
+	// Fallback: pak random beschikbare (excluding agg_stone)
+	return filteredAvailable[Math.floor(Math.random() * filteredAvailable.length)].id;
 }
 
 /**
@@ -617,9 +620,15 @@ function planTurn(gameState, playerId, personality) {
 	if (allPlacements.length > 0) {
 		allPlacements.sort((a, b) => b.impactScore - a.impactScore);
 
-		// Normal AI: slight randomization among top-5
-		const topN = Math.min(5, allPlacements.length);
-		const chosenIdx = Math.floor(Math.random() * Math.min(3, topN));
+		// Normal AI: weighted randomization among top-3 (smarter card/rotation pick)
+		const topN = Math.min(3, allPlacements.length);
+		const weights = [0.55, 0.30, 0.15];
+		let r = Math.random();
+		let chosenIdx = 0;
+		for (let i = 0; i < topN; i++) {
+			r -= weights[i] || 0;
+			if (r <= 0) { chosenIdx = i; break; }
+		}
 
 		const best = allPlacements[chosenIdx];
 		actions.push({
@@ -726,9 +735,9 @@ function planShop(gameState, playerId) {
 		remainingCoins -= cs.price;
 	}
 
-	// 2. Dan eenmalige shop items
+	// 2. Dan eenmalige shop items (skip unlock-steen — bots can't use stones well)
 	const shopItems = GameRules.getShopItems(gameState.level || 1, player);
-	const affordableItems = shopItems.filter(item => item.cost <= remainingCoins && !item.unlockOnly);
+	const affordableItems = shopItems.filter(item => item.cost <= remainingCoins && !item.unlockOnly && item.id !== 'unlock-steen');
 	affordableItems.sort((a, b) => a.cost - b.cost);
 
 	for (const item of affordableItems) {
@@ -747,7 +756,7 @@ function planShop(gameState, playerId) {
 	// 3. Als we nog niets gekocht hebben en er IS iets betaalbaar, koop het goedkoopste
 	if (actions.length === 0 && coins > 0) {
 		const allBuyable = [
-			...shopItems.filter(item => item.cost <= coins && !item.unlockOnly).map(item => ({ id: item.id, cost: item.cost, extra: {} })),
+			...shopItems.filter(item => item.cost <= coins && !item.unlockOnly && item.id !== 'unlock-steen').map(item => ({ id: item.id, cost: item.cost, extra: {} })),
 			...offerings.map((card, i) => {
 				if (!card) return null;
 				const price = card.shopPrice || GameRules.getCardPrice(card);
@@ -801,32 +810,46 @@ function _evaluatePlacementImpact(gameState, playerId, card, placement) {
 	// ── Collect valuable cell resources ──
 	let bonusFlagsCollected = 0;
 	let goldCoinsCollected = 0;
+	let hasAnyValueFlag = false;
 	for (const c of cells) {
 		const cell = GameRules.getDataCell(zoneData, c.x, c.y);
 		if (cell?.flags?.includes('gold')) {
 			goldCoinsCollected++;
-			// Gold coins: base 10 + extra if doubleCoins perk active
+			hasAnyValueFlag = true;
 			const coinValue = player.perks?.doubleCoins ? 20 : 10;
 			impactScore += coinValue;
 		}
 		if (cell?.flags?.includes('bonus')) {
 			bonusFlagsCollected++;
-			impactScore += 18;
+			hasAnyValueFlag = true;
+			// Bonuses are extremely valuable: they chain into more bonuses and points
+			impactScore += 35;
 		}
-		if (cell?.flags?.includes('pearl')) impactScore += 8;
+		if (cell?.flags?.includes('pearl')) { impactScore += 8; hasAnyValueFlag = true; }
+		if (cell?.flags?.includes('bold')) hasAnyValueFlag = true;
+		if (cell?.flags?.includes('end')) hasAnyValueFlag = true;
 	}
 
 	// ── 2-step lookahead: bonus cells captured → future bonus placements ──
+	// Collecting bonuses gives free extra placements which can grab MORE bonuses and points
 	// Multiple bonuses from one card = exponential value (3 bonuses >> 1 bonus)
 	if (bonusFlagsCollected >= 2) {
-		impactScore += bonusFlagsCollected * 22;
+		impactScore += bonusFlagsCollected * 30;
 	}
 	if (bonusFlagsCollected >= 3) {
-		impactScore += 35;
+		// 3+ bonuses in one placement is a massive strategic win
+		impactScore += 50;
 	}
 	// Gold + bonus combo: extra synergy
 	if (goldCoinsCollected > 0 && bonusFlagsCollected > 0) {
-		impactScore += (goldCoinsCollected + bonusFlagsCollected) * 8;
+		impactScore += (goldCoinsCollected + bonusFlagsCollected) * 10;
+	}
+
+	// ── Bonus collection ALWAYS beats empty cells when no direct points ──
+	// If this placement has no zone-scoring value (no bold, no end, no column completion etc.)
+	// then bonus cells should be strongly preferred over plain empty cells
+	if (!hasAnyValueFlag) {
+		impactScore -= 10; // Penalize pure empty-cell placements
 	}
 
 	// ── Zone-specific scoring simulation ──
@@ -1090,51 +1113,145 @@ function _scoreRedImpact(board, placement, placedCells) {
 	return impact;
 }
 
-/** Purple: simulate cluster connection scoring (6n multiplicative). */
+/** Purple: full connection simulation using union-find (6n multiplicative scoring). */
 function _scorePurpleImpact(zoneData, placedCells) {
 	let impact = 0;
+	if (!zoneData?.cells) return 0;
 
-	// Count current bold cells in neighbors' clusters
-	let adjacentBold = 0;
-	let adjacentActive = 0;
-	for (const c of placedCells) {
-		if (GameRules.hasAdjacentActive(zoneData, c.x, c.y)) adjacentActive++;
-		const cell = GameRules.getDataCell(zoneData, c.x, c.y);
-		if (cell?.flags?.includes('bold')) {
-			// Bold cells are key to purple scoring
-			impact += 10;
-		}
-		// Check if neighbor cells are bold and active
-		const neighbors = [
-			{ x: c.x - 1, y: c.y }, { x: c.x + 1, y: c.y },
-			{ x: c.x, y: c.y - 1 }, { x: c.x, y: c.y + 1 }
-		];
-		for (const n of neighbors) {
-			const nc = GameRules.getDataCell(zoneData, n.x, n.y);
-			if (nc?.active && nc.flags?.includes('bold')) adjacentBold++;
+	// ── Step 1: Count current connections BEFORE placement via lightweight union-find ──
+	const keyOf = (x, y) => `${x},${y}`;
+	const parent = new Map();
+	const rankMap = new Map();
+	const boldCount = new Map(); // bold cells per root
+
+	const find = (k) => {
+		let p = parent.get(k);
+		if (p === k) return k;
+		p = find(p);
+		parent.set(k, p);
+		return p;
+	};
+	const union = (a, b) => {
+		let ra = find(a), rb = find(b);
+		if (ra === rb) return ra;
+		const rA = rankMap.get(ra) || 0, rB = rankMap.get(rb) || 0;
+		if (rA < rB) { const t = ra; ra = rb; rb = t; }
+		parent.set(rb, ra);
+		if (rA === rB) rankMap.set(ra, rA + 1);
+		boldCount.set(ra, (boldCount.get(ra) || 0) + (boldCount.get(rb) || 0));
+		boldCount.delete(rb);
+		return ra;
+	};
+	const connFromBold = (count) => Math.max(0, (count || 0) - 1);
+
+	// Build current clusters from existing active cells
+	const activeCells = new Set();
+	for (const k in zoneData.cells) {
+		const cell = zoneData.cells[k];
+		if (!cell?.active || cell.isStone) continue;
+		activeCells.add(keyOf(cell.x, cell.y));
+		const key = keyOf(cell.x, cell.y);
+		parent.set(key, key);
+		rankMap.set(key, 0);
+		boldCount.set(key, cell.flags?.includes('bold') ? 1 : 0);
+	}
+	for (const k in zoneData.cells) {
+		const cell = zoneData.cells[k];
+		if (!cell?.active || cell.isStone) continue;
+		const key = keyOf(cell.x, cell.y);
+		for (const [dx, dy] of [[1,0],[-1,0],[0,1],[0,-1]]) {
+			const nk = keyOf(cell.x+dx, cell.y+dy);
+			if (activeCells.has(nk)) union(key, nk);
 		}
 	}
 
-	// Connecting to active cells with bold cells is extremely valuable
-	impact += adjacentBold * 12;
-	impact += adjacentActive * 4;
+	let connectionsBefore = 0;
+	const rootsSeen = new Set();
+	for (const k of activeCells) {
+		const r = find(k);
+		if (!rootsSeen.has(r)) {
+			rootsSeen.add(r);
+			connectionsBefore += connFromBold(boldCount.get(r));
+		}
+	}
 
-	// Simulate potential connections: count distinct neighboring active clusters
-	const neighborRoots = new Set();
+	// ── Step 2: Simulate placement — add new cells and re-union ──
+	const placedKeys = new Set();
 	for (const c of placedCells) {
-		const neighbors = [
-			{ x: c.x - 1, y: c.y }, { x: c.x + 1, y: c.y },
-			{ x: c.x, y: c.y - 1 }, { x: c.x, y: c.y + 1 }
-		];
-		for (const n of neighbors) {
-			const nc = GameRules.getDataCell(zoneData, n.x, n.y);
-			if (nc?.active && !nc.isStone) {
-				neighborRoots.add(`${n.x},${n.y}`);
+		const key = keyOf(c.x, c.y);
+		if (activeCells.has(key)) continue; // already active
+		placedKeys.add(key);
+		const cell = GameRules.getDataCell(zoneData, c.x, c.y);
+		parent.set(key, key);
+		rankMap.set(key, 0);
+		boldCount.set(key, cell?.flags?.includes('bold') ? 1 : 0);
+
+		// Union with existing active neighbors and other placed cells
+		for (const [dx, dy] of [[1,0],[-1,0],[0,1],[0,-1]]) {
+			const nk = keyOf(c.x+dx, c.y+dy);
+			if (activeCells.has(nk) || placedKeys.has(nk)) {
+				if (parent.has(nk)) union(key, nk);
 			}
 		}
 	}
-	// Merging multiple clusters is very valuable (connections are multiplicative)
-	if (neighborRoots.size >= 2) impact += 15;
+
+	let connectionsAfter = 0;
+	const rootsSeen2 = new Set();
+	const allKeys = new Set([...activeCells, ...placedKeys]);
+	for (const k of allKeys) {
+		const r = find(k);
+		if (!rootsSeen2.has(r)) {
+			rootsSeen2.add(r);
+			connectionsAfter += connFromBold(boldCount.get(r));
+		}
+	}
+
+	const newConnections = Math.max(0, connectionsAfter - connectionsBefore);
+
+	// ── Step 3: Score new connections using actual 6n formula ──
+	// Connection i (1-based global) = 6*i points. New connections start at (connectionsBefore+1).
+	for (let i = 0; i < newConnections; i++) {
+		const connNumber = connectionsBefore + 1 + i;
+		impact += GameRules.getPurpleConnectionPoints(connNumber);
+	}
+	// Double-weight because creating connections is THE strategy in purple
+	if (newConnections > 0) {
+		impact *= 2;
+	}
+
+	// ── Step 4: Value building TOWARDS bold cells (2-step lookahead) ──
+	// If we're not creating a connection now, check if we're 1-2 steps from a bold cell
+	if (newConnections === 0) {
+		for (const c of placedCells) {
+			const cell = GameRules.getDataCell(zoneData, c.x, c.y);
+			if (cell?.flags?.includes('bold')) {
+				impact += 15; // Placing ON a bold cell (will be part of connection later)
+			}
+			// Check 1-step and 2-step distance to unconnected bold cells
+			for (const k in zoneData.cells) {
+				const bc = zoneData.cells[k];
+				if (!bc?.flags?.includes('bold')) continue;
+				const dist = Math.abs(c.x - bc.x) + Math.abs(c.y - bc.y);
+				if (dist === 1 && !bc.active) {
+					impact += 12; // One step from an inactive bold cell — bonus will reach it
+				} else if (dist === 2 && !bc.active) {
+					impact += 6; // Two steps — reachable with bonus placement
+				} else if (dist === 1 && bc.active) {
+					// Adjacent to active bold cell — extending a cluster
+					impact += 8;
+				}
+			}
+		}
+	}
+
+	// ── Step 5: Bonus for late-game connections (escalating value) ──
+	// After several connections are already made, each new one is worth much more
+	if (connectionsBefore >= 3 && newConnections > 0) {
+		impact += 20; // Late-game connection bonus
+	}
+	if (connectionsBefore >= 5 && newConnections > 0) {
+		impact += 30; // Very late connections are extremely valuable (30+ pts each)
+	}
 
 	return impact;
 }
@@ -1368,14 +1485,18 @@ function chooseHardPerk(gameState, playerId) {
 	const available = GameRules.getAvailablePerks(player);
 	if (!available || available.length === 0) return null;
 
+	// Filter out agg_stone — bots cannot use stone blocks effectively
+	const filteredAvailable = available.filter(p => p.id !== 'agg_stone');
+	if (filteredAvailable.length === 0) return null;
+
 	// 25% kans op random keuze voor onvoorspelbaarheid
 	if (Math.random() < 0.25) {
-		return available[Math.floor(Math.random() * available.length)].id;
+		return filteredAvailable[Math.floor(Math.random() * filteredAvailable.length)].id;
 	}
 
 	const candidates = [];
 	if (available.find(p => p.id === 'agg_steal')) candidates.push({ id: 'agg_steal', weight: 14 });
-	if (available.find(p => p.id === 'agg_stone')) candidates.push({ id: 'agg_stone', weight: 11 });
+	// agg_stone skipped — bots cannot strategically place stone blocks
 	if (available.find(p => p.id === 'agg_mine') && Math.random() < 0.35) candidates.push({ id: 'agg_mine', weight: 1 });
 	if (available.find(p => p.id === 'flex_wildcard')) candidates.push({ id: 'flex_wildcard', weight: 10 });
 	if (available.find(p => p.id === 'flex_double_coins')) candidates.push({ id: 'flex_double_coins', weight: 10 });
@@ -1399,7 +1520,7 @@ function chooseHardPerk(gameState, playerId) {
 		return candidates[candidates.length - 1].id;
 	}
 
-	return available[Math.floor(Math.random() * available.length)].id;
+	return filteredAvailable[Math.floor(Math.random() * filteredAvailable.length)].id;
 }
 
 /**
@@ -1431,9 +1552,9 @@ function planShopHard(gameState, playerId) {
 		remainingCoins -= cs.price;
 	}
 
-	// 2. Then shop items (most expensive = most value)
+	// 2. Then shop items (most expensive = most value, skip unlock-steen)
 	const shopItems = GameRules.getShopItems(gameState.level || 1, player);
-	const affordableItems = shopItems.filter(item => item.cost <= remainingCoins && !item.unlockOnly);
+	const affordableItems = shopItems.filter(item => item.cost <= remainingCoins && !item.unlockOnly && item.id !== 'unlock-steen');
 	affordableItems.sort((a, b) => b.cost - a.cost);
 
 	for (const item of affordableItems) {
@@ -1449,10 +1570,10 @@ function planShopHard(gameState, playerId) {
 		remainingCoins -= item.cost;
 	}
 
-	// 3. Always buy something if possible
+	// 3. Always buy something if possible (skip unlock-steen)
 	if (actions.length === 0 && coins > 0) {
 		const allBuyable = [
-			...shopItems.filter(item => item.cost <= coins && !item.unlockOnly).map(item => ({ id: item.id, cost: item.cost, extra: {} })),
+			...shopItems.filter(item => item.cost <= coins && !item.unlockOnly && item.id !== 'unlock-steen').map(item => ({ id: item.id, cost: item.cost, extra: {} })),
 			...offerings.map((card, i) => {
 				if (!card) return null;
 				const price = card.shopPrice || GameRules.getCardPrice(card);

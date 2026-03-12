@@ -4961,6 +4961,7 @@ const GameRules = {
 	scoreYellowData, scoreGreenData, scoreBlueData, scoreRedData, scorePurpleData,
 	getRedSubgridScoreInfo,
 	calculateBalanceBonus,
+	getPurpleConnectionPoints,
 
 	// Objectives
 	OBJECTIVE_TEMPLATES, LEVEL_OBJECTIVES, generateObjectiveChoices, checkObjective,
