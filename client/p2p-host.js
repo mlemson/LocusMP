@@ -1912,8 +1912,6 @@ class LocusP2PHost {
 				const scoreOnZone = (zoneData, subgridId = null) => {
 					if (!zoneData) return;
 					const blueReachedRows = zoneName === 'blue' ? this._getReachedBoldRows(zoneData) : null;
-					const blueBoldSet = zoneName === 'blue' ? new Set(zoneData.boldRows || []) : null;
-					const strategicHotspots = this._collectStrategicHotspots(zoneName, zoneData, blueReachedRows, blueBoldSet, prioritizeCoins);
 					for (const rotation of rotations) {
 						if (stopSearch) break;
 						for (const mirrored of mirrors) {
@@ -1934,140 +1932,206 @@ class LocusP2PHost {
 								if (!cells || cells.length === 0) continue;
 								if (!this.Rules.validatePlacement(zoneName, zoneData, cells, perkFlags)) continue;
 
-								// Score this placement
+								// ── Score this placement (matching ai-player _evaluatePlacementImpact) ──
 								let score = 0;
 								let hasFlaggedCell = false;
-								let flaggedValueHits = 0;
-								let hotspotProximityScore = 0;
 								let bonusFlagsHit = 0;
+								let goldHit = 0;
 								for (const c of cells) {
 									const cell = this.Rules.getDataCell(zoneData, c.x, c.y);
-									if (cell?.flags?.includes('gold')) { score += prioritizeCoins ? 17 : 7; hasFlaggedCell = true; flaggedValueHits++; }
-									else if (cell?.flags?.includes('bonus')) { score += 35; hasFlaggedCell = true; flaggedValueHits++; bonusFlagsHit++; }
-									else if (cell?.flags?.includes('pearl')) { score += prioritizeCoins ? 14 : 6; hasFlaggedCell = true; flaggedValueHits++; }
-									else if (cell?.flags?.includes('end')) { score += 10; hasFlaggedCell = true; flaggedValueHits++; }
-									else if (cell?.flags?.includes('bold')) {
-										// Blue zone bold: only value if this bold row is NOT yet reached
-										if (zoneName === 'blue' && blueBoldSet?.has(c.y) && blueReachedRows?.has(c.y)) {
-											score += 1; // Already scored row — treat as normal cell
-										} else {
-											score += zoneName === 'purple' ? 10 : 6;
-											hasFlaggedCell = true;
-											flaggedValueHits++;
-										}
+									if (cell?.flags?.includes('gold')) {
+										goldHit++;
+										hasFlaggedCell = true;
+										score += prioritizeCoins ? 17 : (player.perks?.doubleCoins ? 20 : 10);
 									}
-									else { score += 1; }
+									if (cell?.flags?.includes('bonus')) {
+										bonusFlagsHit++;
+										hasFlaggedCell = true;
+										score += 35;
+									}
+									if (cell?.flags?.includes('pearl')) { score += prioritizeCoins ? 14 : 8; hasFlaggedCell = true; }
+									if (cell?.flags?.includes('bold')) hasFlaggedCell = true;
+									if (cell?.flags?.includes('end')) hasFlaggedCell = true;
 								}
-								if (flaggedValueHits > 1) {
-									score += flaggedValueHits * 4;
-								}
-								// Bonus chaining: 2+ bonuses in one card is exponentially valuable
+
+								// Bonus chaining: multiple bonuses = exponential value
 								if (bonusFlagsHit >= 2) score += bonusFlagsHit * 30;
 								if (bonusFlagsHit >= 3) score += 50;
+								if (goldHit > 0 && bonusFlagsHit > 0) score += (goldHit + bonusFlagsHit) * 10;
 
-								// Prefer placements that move toward high-value scoring cells.
-								if (strategicHotspots.length > 0) {
-									const maxHotspots = Math.min(24, strategicHotspots.length);
-									let hasStrategicValue = false;
+								// Penalize pure empty-cell placements (no valuable flags at all)
+								if (!hasFlaggedCell) score -= 10;
 
-									// Adjacency to existing territory = building/connecting
+								// ── Zone-specific scoring (ALL bots, from ai-player) ──
+								if (zoneName === 'yellow') {
+									// Column completion simulation
+									const colXs = new Set(cells.map(c => c.x));
+									for (const colX of colXs) {
+										let emptyCount = 0, totalCells = 0;
+										const placedInCol = cells.filter(c => c.x === colX).length;
+										for (let cy = 0; cy < (zoneData.rows || 0); cy++) {
+											const cell = this.Rules.getDataCell(zoneData, colX, cy);
+											if (cell) { totalCells++; if (!cell.active) emptyCount++; }
+										}
+										const remainingEmpty = Math.max(0, emptyCount - placedInCol);
+										if (remainingEmpty === 0 && totalCells > 0) {
+											const pairIndex = Math.min(Math.floor(colX / 2), 4);
+											const pairPoints = [10, 14, 20, 28, 38];
+											score += pairPoints[pairIndex] * 2;
+										} else if (remainingEmpty <= 2) score += 12;
+										else if (remainingEmpty <= 4) score += 4;
+									}
+								} else if (zoneName === 'green') {
+									// End cell scoring + path advancement
+									const startX = Number.isFinite(zoneData.startX) ? zoneData.startX : Math.floor((zoneData.cols || 1) / 2);
+									const startY = Number.isFinite(zoneData.startY) ? zoneData.startY : Math.floor((zoneData.rows || 1) / 2);
 									for (const c of cells) {
-										if (this._hasAdjacentActive(zoneData, c.x, c.y)) {
-											hasStrategicValue = true;
-											break;
+										const cell = this.Rules.getDataCell(zoneData, c.x, c.y);
+										if (cell?.flags?.includes('end')) {
+											const dist = Math.abs(c.x - startX) + Math.abs(c.y - startY);
+											let maxDist = 1;
+											for (const k in zoneData.cells) {
+												const ec = zoneData.cells[k];
+												if (ec?.flags?.includes('end')) {
+													const d = Math.abs((ec.x || 0) - startX) + Math.abs((ec.y || 0) - startY);
+													if (d > maxDist) maxDist = d;
+												}
+											}
+											score += Math.round(5 + Math.min(1, dist / maxDist) * 20) * 2;
 										}
 									}
-									if (!hasStrategicValue && hotspotProximityScore >= (prioritizeCoins ? 4 : 5)) {
-										hasStrategicValue = true;
+									// Proximity to nearest unreached end cell
+									const unreachedEnds = [];
+									for (const k in zoneData.cells) {
+										const ec = zoneData.cells[k];
+										if (ec?.flags?.includes('end') && !ec.active) unreachedEnds.push(ec);
 									}
-
-									// Zone-specific strategic checks when no adjacency
-									if (!hasStrategicValue) {
-										if (zoneName === 'blue') {
-											// Near unscored bold rows = progressing upward
-											const minY = Math.min(...cells.map(c => c.y));
-											const nextBold = (zoneData.boldRows || []).filter(by => !blueReachedRows.has(by) && by >= minY - 2 && by <= minY + 2);
-											if (nextBold.length > 0) hasStrategicValue = true;
-										} else if (zoneName === 'green') {
-											// Near unreached end cells
-											for (const c of cells) {
-												for (const k in zoneData.cells) {
-													const ec = zoneData.cells[k];
-													if (ec?.flags?.includes('end') && !ec.active) {
-														const dist = Math.abs(c.x - (ec.x || 0)) + Math.abs(c.y - (ec.y || 0));
-														if (dist <= 3) { hasStrategicValue = true; break; }
-													}
-												}
-												if (hasStrategicValue) break;
+									if (unreachedEnds.length > 0) {
+										for (const c of cells) {
+											let minDist = Infinity;
+											for (const ec of unreachedEnds) {
+												const d = Math.abs(c.x - (ec.x || 0)) + Math.abs(c.y - (ec.y || 0));
+												if (d < minDist) minDist = d;
 											}
-										} else if (zoneName === 'yellow') {
-											// In columns already partially filled (>30%)
-											const colXs = new Set(cells.map(c => c.x));
-											for (const cx of colXs) {
-												let filled = 0, total = 0;
-												for (let cy = 0; cy < (zoneData.rows || 0); cy++) {
-													const cc = this.Rules.getDataCell(zoneData, cx, cy);
-													if (cc) { total++; if (cc.active) filled++; }
-												}
-												if (total > 0 && filled / total >= 0.3) { hasStrategicValue = true; break; }
-											}
-										} else if (zoneName === 'purple') {
-											// Near bold cells (even inactive ones — heading toward them)
-											for (const c of cells) {
-												const neighbors = [
-													this.Rules.getDataCell(zoneData, c.x - 1, c.y),
-													this.Rules.getDataCell(zoneData, c.x + 1, c.y),
-													this.Rules.getDataCell(zoneData, c.x, c.y - 1),
-													this.Rules.getDataCell(zoneData, c.x, c.y + 1)
-												];
-												for (const n of neighbors) {
-													if (n?.flags?.includes('bold')) { hasStrategicValue = true; break; }
-												}
-												if (hasStrategicValue) break;
-											}
-										} else if (zoneName === 'red') {
-											// In a subgrid already partially filled (>30%)
-											if (subgridId) {
-												const sg = board?.zones?.red?.subgrids?.find(s => s.id === subgridId);
-												if (sg) {
-													let filled = 0, total = 0;
-													for (const k in sg.cells) { total++; if (sg.cells[k]?.active) filled++; }
-													if (total > 0 && filled / total >= 0.3) hasStrategicValue = true;
-												}
-											}
+											if (minDist <= 1) score += 10;
+											else if (minDist <= 3) score += 5;
+											else if (minDist <= 5) score += 2;
 										}
 									}
-
-									if (hasStrategicValue) {
-										score = Math.max(1, Math.floor(score * (hasBonuses ? 0.2 : 0.4))); // Moderate penalty — on track; stronger when bonuses available
-									} else {
-										score = Math.max(1, Math.floor(score * (hasBonuses ? 0.03 : 0.10))); // Very heavy penalty — wasted cells; near-zero when bonuses available
-									}
-								}
-
-								// Blue zone: new tier bonus + favor going upward
-								if (zoneName === 'blue') {
-									const counted = new Set();
-									let newTiers = 0;
+								} else if (zoneName === 'blue') {
+									// Bold row tier unlocking (10/15/20/25/40 pts)
+									const boldYs = [...new Set(zoneData.boldRows || [])].sort((a, b) => b - a);
+									const tierPoints = [10, 15, 20, 25, 40];
 									for (const c of cells) {
-										if (blueBoldSet.has(c.y) && !blueReachedRows.has(c.y) && !counted.has(c.y)) {
-											newTiers++;
-											counted.add(c.y);
+										const cell = this.Rules.getDataCell(zoneData, c.x, c.y);
+										if (cell?.flags?.includes('bold')) {
+											const tierIdx = boldYs.indexOf(c.y);
+											if (tierIdx >= 0) {
+												if (!blueReachedRows.has(c.y)) {
+													score += (tierPoints[Math.min(tierIdx, tierPoints.length - 1)] || 10) * 2;
+												} else {
+													score -= 25; // Bold row already scored — wasted
+												}
+											}
 										}
 									}
-									score += newTiers * 10;
+									// All bold rows already reached → low value
+									if (blueReachedRows.size >= boldYs.length && boldYs.length > 0) {
+										const hitsBonusGold = cells.some(c => {
+											const cell = this.Rules.getDataCell(zoneData, c.x, c.y);
+											return cell?.flags?.some(f => ['gold', 'bonus', 'pearl'].includes(f));
+										});
+										if (!hitsBonusGold) score -= 20;
+									}
+									// Favor building upward — higher cells worth more
 									const minY = Math.min(...cells.map(c => c.y));
-									score += Math.max(0, Math.floor(((zoneData.rows || 20) - minY) / 3));
+									score += Math.max(0, Math.floor(((zoneData.rows || 20) - minY) / 2));
+									// Strongly prefer vertical placements (reach bold rows faster)
+									const blueYs = new Set(cells.map(c => c.y));
+									const blueXs = new Set(cells.map(c => c.x));
+									if (blueYs.size >= 2) score += blueYs.size * 5;
+									// PENALIZE horizontal-only without valuable flags (wastes cells)
+									if (blueYs.size === 1 && blueXs.size >= 3 && !hasFlaggedCell) score -= 15;
+								} else if (zoneName === 'red') {
+									// Subgrid completion toward 80% threshold
+									if (subgridId) {
+										const sg = board?.zones?.red?.subgrids?.find(s => s.id === subgridId);
+										if (sg) {
+											let filled = 0, total = 0;
+											for (const k in sg.cells) { total++; if (sg.cells[k]?.active) filled++; }
+											const newFilled = filled + cells.length;
+											const newRatio = total > 0 ? newFilled / total : 0;
+											const oldRatio = total > 0 ? filled / total : 0;
+											if (newRatio >= 0.8 && oldRatio < 0.8) {
+												const rawBase = sg.targetPoints || (total * 2);
+												score += Math.max(4, Math.round(rawBase * 0.5)) * 2;
+											}
+											if (newRatio >= 1.0 && oldRatio < 1.0) score += 20;
+											if (oldRatio >= 0.5) score += 10;
+											else if (oldRatio >= 0.3) score += 5;
+											if (filled === 0 && oldRatio === 0) score -= 3;
+										}
+									}
+								} else if (zoneName === 'purple') {
+									score += this._scorePurpleConnections(zoneData, cells);
 								}
 
-								// Adjacency bonus — both bots prefer extending territory
+								// ── Adjacency — prefer extending territory ──
+								let adjacentCount = 0;
+								let totalActiveCells = 0;
 								for (const c of cells) {
-									if (this._hasAdjacentActive(zoneData, c.x, c.y)) score += isHard ? 2 : 1;
+									if (this._hasAdjacentActive(zoneData, c.x, c.y)) adjacentCount++;
+								}
+								for (const k in zoneData.cells) {
+									if (zoneData.cells[k]?.active) { totalActiveCells++; break; }
+								}
+								score += adjacentCount * 3;
+
+								// STRONG penalize isolated placements (matching ai-player)
+								if (adjacentCount === 0 && totalActiveCells > 0) {
+									score -= 30;
+									if (!hasFlaggedCell) score -= 20;
+								} else if (!hasFlaggedCell && adjacentCount === 0 && totalActiveCells === 0) {
+									score -= 5;
 								}
 
-								// Hard AI: zone-strategic impact scoring
+								// Cell count bonus — bigger placements inherently better
+								score += cells.length * 2;
+
+								// Balance bonus — boost weakest zone
+								const scoreBreakdown = player.scoreBreakdown || {};
+								const zoneScores = {
+									yellow: scoreBreakdown.yellow || 0,
+									green: scoreBreakdown.green || 0,
+									blue: scoreBreakdown.blue || 0,
+									red: scoreBreakdown.red || 0,
+									purple: scoreBreakdown.purple || 0
+								};
+								const currentMin = Math.min(...Object.values(zoneScores));
+								if (zoneScores[zoneName] === currentMin && currentMin < 15) score += 8;
+
+								// ── Objective awareness ──
+								const objective = player.chosenObjective;
+								if (objective && !player.objectiveAchieved) {
+									const objId = objective.id || '';
+									if ((objId === 'fill_yellow_cols' && zoneName === 'yellow') ||
+										(objId === 'reach_green_ends' && zoneName === 'green') ||
+										(objId === 'complete_blue_rows' && zoneName === 'blue') ||
+										(objId === 'fill_red_grids' && zoneName === 'red') ||
+										(objId === 'purple_cluster' && zoneName === 'purple')) score += 15;
+									if (objective.zone === zoneName) score += 10;
+									if (objective.type === 'coverage' && objective.zones?.includes(zoneName)) score += 8;
+									if (objective.type === 'density') score += (cells.length || 1) * 3;
+									if (objId.includes('collect_gold')) {
+										for (const c of cells) {
+											const cell = this.Rules.getDataCell(zoneData, c.x, c.y);
+											if (cell?.flags?.includes('gold')) score += 10;
+										}
+									}
+								}
+
+								// Hard AI: extra objective weighting + bonus plan simulation
 								if (isHard) {
-									score += this._hardZoneBonus(zoneName, zoneData, cells, subgridId, board);
 									score += this._objectiveMoveWeight(playerId, zoneName, zoneData, cells, subgridId, hasFlaggedCell);
 									const shouldSimulatePlan = (hasBonuses || hasFlaggedCell || score >= 10)
 										&& planSims < maxPlanSims
@@ -2092,16 +2156,6 @@ class LocusP2PHost {
 									} else if (hasBonuses && !hasFlaggedCell) {
 										score -= 6;
 									}
-								}
-
-								// Blue zone: penalize horizontal-only placements without valuable flags
-								if (zoneName === 'blue') {
-									const blueYs = new Set(cells.map(c => c.y));
-									const blueXs = new Set(cells.map(c => c.x));
-									if (blueYs.size === 1 && blueXs.size >= 3 && !hasFlaggedCell) {
-										score -= 15; // Strong penalty for horizontal waste
-									}
-									if (blueYs.size >= 2) score += blueYs.size * 5; // Reward vertical span
 								}
 
 								if (score > bestScore) {
@@ -2664,7 +2718,9 @@ class LocusP2PHost {
 					if (!this.Rules.validatePlacement(zoneName, zoneData, cells, {})) continue;
 					let score = cells.length;
 					let bonusCount = 0;
+					let goldCount = 0;
 					let valueCount = 0;
+					let adjacentCount = 0;
 					let newBlueTierCount = 0;
 					let staleBlueBoldCount = 0;
 					const newBlueRowsSeen = new Set();
@@ -2673,8 +2729,8 @@ class LocusP2PHost {
 					const maxY = Math.max(...cells.map(c => c.y));
 					for (const c of cells) {
 						const cell = this.Rules.getDataCell(zoneData, c.x, c.y);
-						if (cell?.flags?.includes('gold')) { score += prioritizeCoins ? 16 : 7; valueCount++; }
-						if (cell?.flags?.includes('bonus')) { bonusCount++; score += 34; valueCount++; }
+						if (cell?.flags?.includes('gold')) { score += prioritizeCoins ? 16 : 10; goldCount++; valueCount++; }
+						if (cell?.flags?.includes('bonus')) { bonusCount++; score += 25; valueCount++; }
 						if (cell?.flags?.includes('bold')) {
 							if (isBlueZone && blueBoldSet?.has(c.y)) {
 								if (blueReachedRows?.has(c.y)) {
@@ -2696,13 +2752,74 @@ class LocusP2PHost {
 						}
 						if (cell?.flags?.includes('pearl')) { score += prioritizeCoins ? 13 : 6; valueCount++; }
 						if (cell?.flags?.includes('end')) { score += 8; valueCount++; }
-						if (this._hasAdjacentActive(zoneData, c.x, c.y)) score += 2;
+						if (this._hasAdjacentActive(zoneData, c.x, c.y)) adjacentCount++;
 					}
 					// Extra scaling for multi-bonus grabs (3 bonuses >> 3x one bonus)
-					if (bonusCount >= 2) score += bonusCount * 20;
-					if (bonusCount >= 3) score += 40;
+					if (bonusCount >= 2) score += bonusCount * 15;
+					if (bonusCount >= 3) score += 25;
 					if (valueCount >= 2) score += valueCount * 4;
+					// Gold + bonus synergy
+					if (goldCount > 0 && bonusCount > 0) score += (goldCount + bonusCount) * 8;
 					if (bonusColor === 'any') score += 2;
+
+					// Adjacency bonus (matching ai-player: +3 per adjacent)
+					score += adjacentCount * 3;
+					// Isolation penalty for bonus placement
+					if (adjacentCount === 0) {
+						let zoneHasActive = false;
+						for (const k in zoneData.cells) {
+							if (zoneData.cells[k]?.active) { zoneHasActive = true; break; }
+						}
+						if (zoneHasActive) score -= 20;
+					}
+
+					// Zone-specific bonus impact (matching ai-player)
+					if (zoneName === 'yellow') {
+						const colXs = new Set(cells.map(c => c.x));
+						for (const colX of colXs) {
+							let emptyCount = 0, totalCells = 0;
+							const placedInCol = cells.filter(c => c.x === colX).length;
+							for (let cy = 0; cy < (zoneData.rows || 0); cy++) {
+								const cc = this.Rules.getDataCell(zoneData, colX, cy);
+								if (cc) { totalCells++; if (!cc.active) emptyCount++; }
+							}
+							const remainingEmpty = Math.max(0, emptyCount - placedInCol);
+							if (remainingEmpty === 0 && totalCells > 0) score += 15;
+							else if (remainingEmpty <= 2) score += 8;
+						}
+					} else if (zoneName === 'green') {
+						for (const c of cells) {
+							const cell = this.Rules.getDataCell(zoneData, c.x, c.y);
+							if (cell?.flags?.includes('end')) score += 15;
+						}
+						// Proximity to unreached end cells
+						const unreachedEnds = [];
+						for (const k in zoneData.cells) {
+							const ec = zoneData.cells[k];
+							if (ec?.flags?.includes('end') && !ec.active) unreachedEnds.push(ec);
+						}
+						if (unreachedEnds.length > 0) {
+							for (const c of cells) {
+								let minDist = Infinity;
+								for (const ec of unreachedEnds) {
+									const d = Math.abs(c.x - (ec.x || 0)) + Math.abs(c.y - (ec.y || 0));
+									if (d < minDist) minDist = d;
+								}
+								if (minDist <= 1) score += 8;
+								else if (minDist <= 3) score += 4;
+							}
+						}
+					} else if (zoneName === 'red' && subgridId) {
+						// Simplified red scoring using subgrid fill
+						let sgFilled = 0, sgTotal = 0;
+						for (const k in zoneData.cells) { sgTotal++; if (zoneData.cells[k]?.active) sgFilled++; }
+						const newRatio = sgTotal > 0 ? (sgFilled + cells.length) / sgTotal : 0;
+						const oldRatio = sgTotal > 0 ? sgFilled / sgTotal : 0;
+						if (newRatio >= 0.8 && oldRatio < 0.8) score += 20;
+						if (newRatio >= 1.0 && oldRatio < 1.0) score += 15;
+						if (oldRatio >= 0.5) score += 8;
+						else if (oldRatio >= 0.3) score += 4;
+					}
 
 					// Purple zone: use connection simulation for bonus placements too
 					if (zoneName === 'purple') {
