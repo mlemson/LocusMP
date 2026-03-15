@@ -317,12 +317,12 @@ function _getBonusPlayOrder(player) {
 
 function _isObjectiveZone(objective, zoneName) {
 	if (!objective) return false;
-	const objId = objective.id || '';
-	if (objId === 'fill_yellow_cols' && zoneName === 'yellow') return true;
-	if (objId === 'reach_green_ends' && zoneName === 'green') return true;
-	if (objId === 'complete_blue_rows' && zoneName === 'blue') return true;
-	if (objId === 'fill_red_grids' && zoneName === 'red') return true;
-	if (objId === 'purple_cluster' && zoneName === 'purple') return true;
+	const objId = (objective.id || '').toLowerCase();
+	if (objId.includes('yellow') && zoneName === 'yellow') return true;
+	if (objId.includes('green') && zoneName === 'green') return true;
+	if (objId.includes('blue') && zoneName === 'blue') return true;
+	if (objId.includes('red') && zoneName === 'red') return true;
+	if (objId.includes('purple') && zoneName === 'purple') return true;
 	if (objective.zone === zoneName) return true;
 	if (objective.zones?.includes(zoneName)) return true;
 	return false;
@@ -871,7 +871,7 @@ function _evaluatePlacementImpact(gameState, playerId, card, placement) {
 		impactScore += _scoreObjectiveImpact(objective, zoneName, cells, board, placement);
 	}
 
-	// ── Balance bonus awareness ──
+	// ── Zone momentum — prefer zones with existing progress ──
 	const scoreBreakdown = player.scoreBreakdown || {};
 	const zoneScores = {
 		yellow: scoreBreakdown.yellow || 0,
@@ -880,9 +880,13 @@ function _evaluatePlacementImpact(gameState, playerId, card, placement) {
 		red: scoreBreakdown.red || 0,
 		purple: scoreBreakdown.purple || 0
 	};
+	const myZoneScore = zoneScores[zoneName] || 0;
+	if (myZoneScore > 0) impactScore += Math.min(12, Math.round(myZoneScore / 3));
+
+	// ── Balance bonus — only boost weakest zone when it has 0 pts ──
 	const currentMin = Math.min(...Object.values(zoneScores));
-	if (zoneScores[zoneName] === currentMin && currentMin < 15) {
-		impactScore += 8; // Boost weakest zone for balance bonus
+	if (zoneScores[zoneName] === currentMin && currentMin === 0) {
+		impactScore += 3;
 	}
 
 	// ── Adjacency — prefer extending existing territory ──
@@ -1047,13 +1051,22 @@ function _scoreBlueImpact(zoneData, placedCells) {
 
 	// Favor building upward — higher cells are worth more
 	const minY = Math.min(...placedCells.map(c => c.y));
-	impact += Math.max(0, Math.floor(((zoneData.rows || 20) - minY) / 2));
+	const blueRows = zoneData.rows || 20;
+	impact += Math.max(0, blueRows - minY);
+	// Penalize bottom-half placements that don't hit bold/bonus
+	if (minY > blueRows * 0.55) {
+		const hasBoldOrBonus = placedCells.some(c => {
+			const cell = GameRules.getDataCell(zoneData, c.x, c.y);
+			return cell?.flags?.some(f => ['bold', 'bonus', 'gold', 'pearl'].includes(f));
+		});
+		if (!hasBoldOrBonus) impact -= Math.round((minY - blueRows * 0.55) * 3);
+	}
 
 	// Strongly prefer vertical placements (span multiple rows = reach bold rows faster)
 	const ys = new Set(placedCells.map(c => c.y));
 	const xs = new Set(placedCells.map(c => c.x));
 	const verticalSpan = ys.size;
-	if (verticalSpan >= 2) impact += verticalSpan * 5;
+	if (verticalSpan >= 2) impact += verticalSpan * 8;
 
 	// PENALIZE horizontal-only placements (single row, multiple cols) that don't hit valuable flags
 	// These waste cells: only 1 cell per bold row = no tier progress
@@ -1259,19 +1272,25 @@ function _scorePurpleImpact(zoneData, placedCells) {
 /** Evaluate how a placement helps achieve the player's objective. */
 function _scoreObjectiveImpact(objective, zoneName, cells, board, placement) {
 	let impact = 0;
-	const objId = objective.id || '';
+	const objId = (objective.id || '').toLowerCase();
 
-	// Zone-specific objective matching
-	if (objId === 'fill_yellow_cols' && zoneName === 'yellow') impact += 15;
-	else if (objId === 'reach_green_ends' && zoneName === 'green') impact += 15;
-	else if (objId === 'complete_blue_rows' && zoneName === 'blue') impact += 15;
-	else if (objId === 'fill_red_grids' && zoneName === 'red') impact += 15;
-	else if (objId === 'purple_cluster' && zoneName === 'purple') impact += 15;
+	// Zone-specific objective matching (use includes for numbered variants like fill_2_yellow_cols)
+	const objZone = objId.includes('yellow') ? 'yellow' :
+		objId.includes('green') ? 'green' :
+		objId.includes('blue') ? 'blue' :
+		objId.includes('red') ? 'red' :
+		objId.includes('purple') ? 'purple' : null;
+	if (objZone === zoneName) impact += 25;
 
 	// General zone matching from objective
-	if (objective.zone && objective.zone === zoneName) impact += 10;
+	if (objective.zone && objective.zone === zoneName) impact += 15;
 	if (objective.type === 'coverage' && objective.zones?.includes(zoneName)) impact += 8;
 	if (objective.type === 'density') impact += (cells.length || 1) * 3;
+
+	// Penalize non-objective zones
+	if (objZone && objZone !== zoneName && !objId.includes('deny') && !objId.includes('gold') && !objId.includes('balance')) {
+		impact -= 8;
+	}
 
 	// Specific objective progress boosting
 	if (objId.includes('sabotage') && objective.targetPlayerId) {

@@ -2090,6 +2090,11 @@ class LocusP2PHost {
 									const rows = zoneData.rows || 20;
 									// Scale: y=0 (top) → +rows pts, y=rows-1 (bottom) → 0 pts
 									score += Math.max(0, rows - minY);
+									// Penalize bottom-half placements that don't hit bold/bonus
+									if (minY > rows * 0.55) {
+										const bottomPenalty = Math.round((minY - rows * 0.55) * 3);
+										if (boldHit === 0 && bonusFlagsHit === 0) score -= bottomPenalty;
+									}
 
 									// ── STRICT vertical enforcement for blue ──
 									// Blue MUST be vertical (standing). Horizontal wastes cells.
@@ -2156,7 +2161,7 @@ class LocusP2PHost {
 								// Cell count bonus — bigger placements inherently better
 								score += cells.length * 2;
 
-								// Balance bonus — boost weakest zone
+								// Zone momentum — prefer zones where we already invested
 								const scoreBreakdown = player.scoreBreakdown || {};
 								const zoneScores = {
 									yellow: scoreBreakdown.yellow || 0,
@@ -2165,26 +2170,36 @@ class LocusP2PHost {
 									red: scoreBreakdown.red || 0,
 									purple: scoreBreakdown.purple || 0
 								};
+								const myZoneScore = zoneScores[zoneName] || 0;
+								if (myZoneScore > 0) score += Math.min(12, Math.round(myZoneScore / 3));
+
+								// Balance bonus — only boost weakest zone when it has 0 pts
 								const currentMin = Math.min(...Object.values(zoneScores));
-								if (zoneScores[zoneName] === currentMin && currentMin < 15) score += 8;
+								if (zoneScores[zoneName] === currentMin && currentMin === 0) score += 3;
 
 								// ── Objective awareness ──
 								const objective = player.chosenObjective;
 								if (objective && !player.objectiveAchieved) {
-									const objId = objective.id || '';
-									if ((objId === 'fill_yellow_cols' && zoneName === 'yellow') ||
-										(objId === 'reach_green_ends' && zoneName === 'green') ||
-										(objId === 'complete_blue_rows' && zoneName === 'blue') ||
-										(objId === 'fill_red_grids' && zoneName === 'red') ||
-										(objId === 'purple_cluster' && zoneName === 'purple')) score += 15;
-									if (objective.zone === zoneName) score += 10;
+									const objId = (objective.id || '').toLowerCase();
+									// Derive objective zone from ID (handles fill_2_yellow_cols, reach_1_green_end, etc.)
+									const objZone = objId.includes('yellow') ? 'yellow' :
+										objId.includes('green') ? 'green' :
+										objId.includes('blue') ? 'blue' :
+										objId.includes('red') ? 'red' :
+										objId.includes('purple') ? 'purple' : null;
+									if (objZone === zoneName) score += 25;
+									if (objective.zone === zoneName) score += 15;
 									if (objective.type === 'coverage' && objective.zones?.includes(zoneName)) score += 8;
 									if (objective.type === 'density') score += (cells.length || 1) * 3;
-									if (objId.includes('collect_gold')) {
+									if (objId.includes('gold')) {
 										for (const c of cells) {
 											const cell = this.Rules.getDataCell(zoneData, c.x, c.y);
-											if (cell?.flags?.includes('gold')) score += 10;
+											if (cell?.flags?.includes('gold')) score += 12;
 										}
+									}
+									// Penalize non-objective zones when objective is zone-specific
+									if (objZone && objZone !== zoneName && !objId.includes('deny') && !objId.includes('gold') && !objId.includes('balance')) {
+										score -= 8;
 									}
 								}
 
