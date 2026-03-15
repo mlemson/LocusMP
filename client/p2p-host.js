@@ -1140,6 +1140,18 @@ class LocusP2PHost {
 				let bestIdx = 0;
 				let bestScore = -Infinity;
 
+				// Owned perks → boost objectives that match
+				const ownedPerks = p.perks || {};
+				const perkZoneBoost = { yellow: 0, green: 0, blue: 0, red: 0, purple: 0 };
+				if (ownedPerks.bonus_yellow) perkZoneBoost.yellow += 8;
+				if (ownedPerks.bonus_red) perkZoneBoost.red += 8;
+				if (ownedPerks.bonus_green) perkZoneBoost.green += 8;
+				if (ownedPerks.bonus_purple) perkZoneBoost.purple += 8;
+				if (ownedPerks.bonus_blue) perkZoneBoost.blue += 8;
+				if (ownedPerks.flex_gap) perkZoneBoost.green += 5;
+				if (ownedPerks.flex_gap_red) perkZoneBoost.red += 5;
+				if (ownedPerks.flex_rotate) perkZoneBoost.purple += 5;
+
 				// Random bots just pick a random objective
 				if (isRandom) {
 					bestIdx = Math.floor(Math.random() * choices.length);
@@ -1155,12 +1167,12 @@ class LocusP2PHost {
 					if (isAggressive && isSabotage) score += 50;
 					else if (isAggressive && !isSabotage) score -= 5;
 
-					// Match objectives to dominant hand colors
-					if (objId.includes('yellow')) score += (colorCounts.yellow || 0) * 5 + (dominant === 'yellow' ? 10 : 0);
-					else if (objId.includes('green')) score += (colorCounts.green || 0) * 5 + (dominant === 'green' ? 10 : 0);
-					else if (objId.includes('blue')) score += (colorCounts.blue || 0) * 5 + (dominant === 'blue' ? 10 : 0);
-					else if (objId.includes('red')) score += (colorCounts.red || 0) * 5 + (dominant === 'red' ? 10 : 0);
-					else if (objId.includes('purple')) score += (colorCounts.purple || 0) * 5 + (dominant === 'purple' ? 10 : 0);
+					// Match objectives to dominant hand colors + owned perks
+					if (objId.includes('yellow')) score += (colorCounts.yellow || 0) * 5 + (dominant === 'yellow' ? 10 : 0) + perkZoneBoost.yellow;
+					else if (objId.includes('green')) score += (colorCounts.green || 0) * 5 + (dominant === 'green' ? 10 : 0) + perkZoneBoost.green;
+					else if (objId.includes('blue')) score += (colorCounts.blue || 0) * 5 + (dominant === 'blue' ? 10 : 0) + perkZoneBoost.blue;
+					else if (objId.includes('red')) score += (colorCounts.red || 0) * 5 + (dominant === 'red' ? 10 : 0) + perkZoneBoost.red;
+					else if (objId.includes('purple')) score += (colorCounts.purple || 0) * 5 + (dominant === 'purple' ? 10 : 0) + perkZoneBoost.purple;
 
 					if (objId.includes('balance_')) {
 						const averageCoverage = totalCards > 0 ? totalCards / 5 : 0;
@@ -1209,6 +1221,11 @@ class LocusP2PHost {
 				const result = this.Rules.chooseObjective(this.gameState, aiId, bestIdx);
 				if (!result?.error) {
 					changed = true;
+					// ML logging for objective choice
+					try {
+						const chosen = choices[bestIdx];
+						console.log(`[AI-ML] OBJECTIVE player=${aiId} chose=${chosen?.id || bestIdx} dominant=${dominant} colors=Y${colorCounts.yellow}G${colorCounts.green}B${colorCounts.blue}R${colorCounts.red}P${colorCounts.purple}`);
+					} catch (_e) { /* logging must never break gameplay */ }
 					if (result.startedPlaying) this._startTimerForCurrentPlayer(true);
 				}
 			}
@@ -1225,6 +1242,10 @@ class LocusP2PHost {
 				const perkRes = this.Rules.choosePerk(this.gameState, aiId, perkChoice);
 				if (perkRes?.error) continue;
 				changed = true;
+				// ML logging for perk choice
+				try {
+					console.log(`[AI-ML] PERK player=${aiId} chose=${perkChoice} diff=${aiDiff}`);
+				} catch (_e) { /* logging must never break gameplay */ }
 				if (perkChoice === '__skip__') {
 					this._broadcastEvent('botActivity', {
 						playerId: aiId,
@@ -1327,6 +1348,7 @@ class LocusP2PHost {
 							const buyResult = this.Rules.buyShopItem(this.gameState, aiId, `shop-card-${bestOffer.ci}`, {});
 							if (buyResult && !buyResult.error) {
 								console.log(`🛒 Bot ${p.name} bought card from shop (slot ${bestOffer.ci}, cost: ${bestOffer.price})`);
+								try { console.log(`[AI-ML] SHOP player=${aiId} bought=shop-card-${bestOffer.ci} cost=${bestOffer.price} coins=${remainingCoins}`); } catch (_e) {}
 								this._broadcastEvent('botActivity', {
 									playerId: aiId,
 									playerName: p.name,
@@ -1933,25 +1955,45 @@ class LocusP2PHost {
 								if (!this.Rules.validatePlacement(zoneName, zoneData, cells, perkFlags)) continue;
 
 								// ── Score this placement (matching ai-player _evaluatePlacementImpact) ──
+								// Priority: points (bold/end) > bonuses > coins
 								let score = 0;
 								let hasFlaggedCell = false;
 								let bonusFlagsHit = 0;
 								let goldHit = 0;
+								let boldHit = 0;
+								let endHit = 0;
 								for (const c of cells) {
 									const cell = this.Rules.getDataCell(zoneData, c.x, c.y);
-									if (cell?.flags?.includes('gold')) {
-										goldHit++;
+									if (cell?.flags?.includes('bold')) {
+										boldHit++;
 										hasFlaggedCell = true;
-										score += prioritizeCoins ? 17 : (player.perks?.doubleCoins ? 20 : 10);
+										// Bold cells = direct points (highest priority)
+										score += zoneName === 'purple' ? 18 : 12;
+									}
+									if (cell?.flags?.includes('end')) {
+										endHit++;
+										hasFlaggedCell = true;
+										score += 14; // End cells = direct points
 									}
 									if (cell?.flags?.includes('bonus')) {
 										bonusFlagsHit++;
 										hasFlaggedCell = true;
-										score += 35;
+										score += 35; // Bonus cells = chaining potential (high)
 									}
-									if (cell?.flags?.includes('pearl')) { score += prioritizeCoins ? 14 : 8; hasFlaggedCell = true; }
-									if (cell?.flags?.includes('bold')) hasFlaggedCell = true;
-									if (cell?.flags?.includes('end')) hasFlaggedCell = true;
+									if (cell?.flags?.includes('gold')) {
+										goldHit++;
+										hasFlaggedCell = true;
+										score += prioritizeCoins ? 17 : (player.perks?.doubleCoins ? 14 : 8);
+									}
+									if (cell?.flags?.includes('pearl')) {
+										hasFlaggedCell = true;
+										score += prioritizeCoins ? 14 : 6;
+									}
+								}
+
+								// Combo multiplier: hitting both points AND bonuses = perfect placement
+								if ((boldHit + endHit) > 0 && bonusFlagsHit > 0) {
+									score += (boldHit + endHit + bonusFlagsHit) * 12;
 								}
 
 								// Bonus chaining: multiple bonuses = exponential value
@@ -1960,7 +2002,7 @@ class LocusP2PHost {
 								if (goldHit > 0 && bonusFlagsHit > 0) score += (goldHit + bonusFlagsHit) * 10;
 
 								// Penalize pure empty-cell placements (no valuable flags at all)
-								if (!hasFlaggedCell) score -= 10;
+								if (!hasFlaggedCell) score -= 15;
 
 								// ── Zone-specific scoring (ALL bots, from ai-player) ──
 								if (zoneName === 'yellow') {
@@ -2046,12 +2088,26 @@ class LocusP2PHost {
 									// Favor building upward — higher cells worth more
 									const minY = Math.min(...cells.map(c => c.y));
 									score += Math.max(0, Math.floor(((zoneData.rows || 20) - minY) / 2));
-									// Strongly prefer vertical placements (reach bold rows faster)
+
+									// ── STRICT vertical enforcement for blue ──
+									// Blue MUST be vertical (standing). Horizontal wastes cells.
 									const blueYs = new Set(cells.map(c => c.y));
 									const blueXs = new Set(cells.map(c => c.x));
-									if (blueYs.size >= 2) score += blueYs.size * 5;
-									// PENALIZE horizontal-only without valuable flags (wastes cells)
-									if (blueYs.size === 1 && blueXs.size >= 3 && !hasFlaggedCell) score -= 15;
+									if (blueYs.size >= 2) score += blueYs.size * 8; // Strong vertical bonus
+
+									// HARD BLOCK horizontal placements (1 row, wide spread)
+									if (blueYs.size === 1 && blueXs.size >= 2) {
+										// Only allow if it hits BOTH points (bold/end) AND bonuses — practically never
+										const hitsPoints = boldHit > 0 || endHit > 0;
+										const hitsBonus = bonusFlagsHit > 0;
+										if (hitsPoints && hitsBonus) {
+											// Perfect horizontal block: rare exception, small penalty
+											score -= 10;
+										} else {
+											// Block horizontal: massive penalty
+											score -= 120;
+										}
+									}
 								} else if (zoneName === 'red') {
 									// Subgrid completion toward 80% threshold
 									if (subgridId) {
@@ -2180,6 +2236,21 @@ class LocusP2PHost {
 		}
 
 		if (!bestMove) return null;
+
+		// ── ML-ready structured logging ──
+		try {
+			const player = this.gameState?.players?.[playerId];
+			const diffLabel = isHard ? 'HARD' : 'NORMAL';
+			const personality = this._aiPersonality?.get(playerId) || 'normal';
+			const sb = player?.scoreBreakdown || {};
+			const obj = player?.chosenObjective;
+			const bonusInv = player?.bonusInventory || {};
+			const totalBonuses = Object.values(bonusInv).reduce((s, v) => s + (v || 0), 0);
+			console.log(`[AI-ML] ${diffLabel}|${personality} player=${playerId} chose zone=${bestMove.zoneName} card=${bestMove.card?.id} pos=(${bestMove.x},${bestMove.y}) rot=${bestMove.rotation} mir=${bestMove.mirrored ? 1 : 0} score=${bestScore}`);
+			console.log(`[AI-ML]   scores: Y=${sb.yellow||0} G=${sb.green||0} B=${sb.blue||0} R=${sb.red||0} P=${sb.purple||0} total=${player?.score||0} coins=${player?.coins||0} bonuses=${totalBonuses}`);
+			if (obj) console.log(`[AI-ML]   objective: ${obj.id || 'unknown'} achieved=${!!player?.objectiveAchieved}`);
+		} catch (_e) { /* logging must never break gameplay */ }
+
 		return bestMove;
 	}
 
@@ -2365,7 +2436,60 @@ class LocusP2PHost {
 		);
 		if (result?.error) return 0;
 		const objectiveGain = this._estimateObjectiveProgressGain(beforeState, simState, playerId);
-		return objectiveGain + this._estimateBonusChainValue(simState, playerId, 3);
+
+		// ── Purple 1-step lookahead: place empty block toward bold, then bonus to reach bold ──
+		let purpleBoldBonus = 0;
+		if (move.zoneName === 'purple') {
+			const purpleData = simState.boardState?.zones?.purple;
+			if (purpleData) {
+				// Find unreached bold cells in purple
+				const unreachedBolds = [];
+				for (const k in purpleData.cells) {
+					const cell = purpleData.cells[k];
+					if (cell && cell.flags?.includes('bold') && !cell.active) {
+						unreachedBolds.push(cell);
+					}
+				}
+				if (unreachedBolds.length > 0) {
+					// Check if any bonus can now reach a bold cell after this placement
+					const player = simState.players?.[playerId];
+					if (player) {
+						const colors = ['purple', 'any'];
+						for (const bonusColor of colors) {
+							if (!player.bonusInventory?.[bonusColor] || player.bonusInventory[bonusColor] <= 0) continue;
+							const bonusMatrix = this.Rules.getBonusShapeForPlayer(bonusColor, player);
+							if (!bonusMatrix) continue;
+							for (let rot = 0; rot < 4; rot++) {
+								let rMatrix = this.Rules.cloneMatrix(bonusMatrix);
+								rMatrix = this.Rules.rotateMatrixN(rMatrix, rot);
+								for (let bx = 0; bx < (purpleData.cols || 0); bx++) {
+									for (let by = 0; by < (purpleData.rows || 0); by++) {
+										const bonusCells = this.Rules.collectPlacementCellsData(purpleData, bx, by, rMatrix);
+										if (!bonusCells || bonusCells.length === 0) continue;
+										const allValid = bonusCells.every(c => {
+											const bc = this.Rules.getDataCell(purpleData, c.x, c.y);
+											return bc && !bc.active && !bc.flags?.includes('void');
+										});
+										if (!allValid) continue;
+										// Does this bonus placement cover any bold cell?
+										const hitsBold = bonusCells.some(c =>
+											unreachedBolds.some(b => (b.x || 0) === c.x && (b.y || 0) === c.y)
+										);
+										if (hitsBold) {
+											// Simulate: how many points would the purple connection give?
+											const connScore = this._scorePurpleConnections(purpleData, bonusCells);
+											purpleBoldBonus = Math.max(purpleBoldBonus, connScore + 20);
+										}
+									}
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+
+		return objectiveGain + purpleBoldBonus + this._estimateBonusChainValue(simState, playerId, 3);
 	}
 
 	_estimateBonusChainValue(state, playerId, maxSteps = 2) {
@@ -2495,6 +2619,11 @@ class LocusP2PHost {
 
 		if (!bestPlacement) return null;
 
+		// ── ML-ready bonus logging ──
+		try {
+			console.log(`[AI-ML] BONUS ${bonusColor} → zone=${bestPlacement.zoneName} pos=(${bestPlacement.baseX},${bestPlacement.baseY}) score=${bestScore}`);
+		} catch (_e) { /* logging must never break gameplay */ }
+
 		const result = this.Rules.playBonus(
 			this.gameState, playerId, bonusColor,
 			bestPlacement.zoneName, bestPlacement.baseX, bestPlacement.baseY,
@@ -2589,18 +2718,42 @@ class LocusP2PHost {
 		if (filteredAvailable.length === 0) return null;
 
 		// Global random branch for variety (from filtered list)
-		if (Math.random() < (isHard ? 0.25 : 0.30)) {
+		if (Math.random() < (isHard ? 0.20 : 0.25)) {
 			return filteredAvailable[Math.floor(Math.random() * filteredAvailable.length)]?.id || null;
 		}
+
+		// ── Hand color profile (from ai-player) ──
+		const hand = player.hand || [];
+		const colorCounts = { yellow: 0, green: 0, blue: 0, red: 0, purple: 0 };
+		for (const card of hand) {
+			const zones = this.Rules.getAllowedZones(card);
+			for (const z of zones) {
+				if (colorCounts[z] !== undefined) colorCounts[z]++;
+			}
+		}
+		let dominant = 'yellow';
+		let maxCount = 0;
+		for (const [zone, count] of Object.entries(colorCounts)) {
+			if (count > maxCount) { maxCount = count; dominant = zone; }
+		}
+
+		// ── Objective alignment ──
+		const objective = player.chosenObjective;
+		const objId = objective?.id || '';
+		let objZone = null;
+		if (objId.includes('yellow')) objZone = 'yellow';
+		else if (objId.includes('green')) objZone = 'green';
+		else if (objId.includes('blue')) objZone = 'blue';
+		else if (objId.includes('red')) objZone = 'red';
+		else if (objId.includes('purple')) objZone = 'purple';
 
 		const candidates = [];
 		const addIfAvailable = (id, weight) => {
 			if (filteredAvailable.find(p => p.id === id)) candidates.push({ id, weight });
 		};
 
-		if (isAggressive || isHard) {
+		if (isAggressive) {
 			addIfAvailable('agg_steal', 14);
-			// agg_stone skipped — bots can't use it well
 			addIfAvailable('agg_mine', 10);
 			addIfAvailable('flex_wildcard', 10);
 			addIfAvailable('flex_double_coins', 9);
@@ -2608,23 +2761,42 @@ class LocusP2PHost {
 			addIfAvailable('flex_gap_red', 8);
 			addIfAvailable('flex_rotate', 8);
 			addIfAvailable('bonus_multi_double', 8);
+			// Bonus perks at lower weight for aggressive
+			const colorPerks = ['bonus_yellow', 'bonus_red', 'bonus_green', 'bonus_purple', 'bonus_blue'];
+			for (const cp of colorPerks) {
+				addIfAvailable(cp, 6);
+			}
 		} else {
+			// Normal/Hard bot: perks weighted by hand colors + objective alignment
+			const colorPerks = [
+				{ id: 'bonus_yellow', zone: 'yellow' },
+				{ id: 'bonus_red', zone: 'red' },
+				{ id: 'bonus_green', zone: 'green' },
+				{ id: 'bonus_purple', zone: 'purple' },
+				{ id: 'bonus_blue', zone: 'blue' }
+			];
+			for (const cp of colorPerks) {
+				if (filteredAvailable.find(p => p.id === cp.id)) {
+					const colorCount = colorCounts[cp.zone] || 0;
+					let w = 5 + colorCount * 3 + (cp.zone === dominant ? 8 : 0);
+					// Boost if perk matches objective zone
+					if (objZone && cp.zone === objZone) w += 10;
+					candidates.push({ id: cp.id, weight: w });
+				}
+			}
 			addIfAvailable('bonus_multi_double', 12);
+
+			// Flex perks — boost based on relevant hand colors
+			addIfAvailable('flex_gap', 8 + (colorCounts.green >= 2 ? 5 : 0));
+			addIfAvailable('flex_rotate', 8 + (colorCounts.purple >= 2 ? 5 : 0));
+			addIfAvailable('flex_gap_red', 7 + (colorCounts.red >= 2 ? 5 : 0));
 			addIfAvailable('flex_wildcard', 10);
 			addIfAvailable('flex_double_coins', 9);
-			addIfAvailable('flex_gap', 8);
-			addIfAvailable('flex_rotate', 8);
-			addIfAvailable('flex_gap_red', 7);
-			// agg_stone skipped — bots can't use it well
-			addIfAvailable('agg_mine', 4);
+
+			// Aggressive perks at lower weight for normal bots
+			if (Math.random() < 0.35) addIfAvailable('agg_mine', 1);
 			addIfAvailable('agg_steal', 3);
 		}
-
-		addIfAvailable('bonus_yellow', 10);
-		addIfAvailable('bonus_red', 10);
-		addIfAvailable('bonus_green', 10);
-		addIfAvailable('bonus_purple', 10);
-		addIfAvailable('bonus_blue', 10);
 
 		if (candidates.length === 0) {
 			return filteredAvailable[Math.floor(Math.random() * filteredAvailable.length)]?.id || null;
@@ -2719,6 +2891,8 @@ class LocusP2PHost {
 					let score = cells.length;
 					let bonusCount = 0;
 					let goldCount = 0;
+					let boldCount = 0;
+					let endCount = 0;
 					let valueCount = 0;
 					let adjacentCount = 0;
 					let newBlueTierCount = 0;
@@ -2729,9 +2903,10 @@ class LocusP2PHost {
 					const maxY = Math.max(...cells.map(c => c.y));
 					for (const c of cells) {
 						const cell = this.Rules.getDataCell(zoneData, c.x, c.y);
-						if (cell?.flags?.includes('gold')) { score += prioritizeCoins ? 16 : 10; goldCount++; valueCount++; }
+						if (cell?.flags?.includes('gold')) { score += prioritizeCoins ? 16 : 8; goldCount++; valueCount++; }
 						if (cell?.flags?.includes('bonus')) { bonusCount++; score += 25; valueCount++; }
 						if (cell?.flags?.includes('bold')) {
+							boldCount++;
 							if (isBlueZone && blueBoldSet?.has(c.y)) {
 								if (blueReachedRows?.has(c.y)) {
 									score += 1;
@@ -2740,19 +2915,24 @@ class LocusP2PHost {
 										staleBlueBoldCount++;
 									}
 								} else {
-									score += 12;
+									score += 14;
 									if (!newBlueRowsSeen.has(c.y)) {
 										newBlueRowsSeen.add(c.y);
 										newBlueTierCount++;
 									}
 								}
 							} else {
-								score += 5;
+								score += zoneName === 'purple' ? 18 : 12;
 							}
+							valueCount++;
 						}
-						if (cell?.flags?.includes('pearl')) { score += prioritizeCoins ? 13 : 6; valueCount++; }
-						if (cell?.flags?.includes('end')) { score += 8; valueCount++; }
+						if (cell?.flags?.includes('pearl')) { score += prioritizeCoins ? 13 : 5; valueCount++; }
+						if (cell?.flags?.includes('end')) { score += 14; endCount++; valueCount++; }
 						if (this._hasAdjacentActive(zoneData, c.x, c.y)) adjacentCount++;
+					}
+					// Combo bonus: points + bonuses together = best placement
+					if ((boldCount + endCount) > 0 && bonusCount > 0) {
+						score += (boldCount + endCount + bonusCount) * 10;
 					}
 					// Extra scaling for multi-bonus grabs (3 bonuses >> 3x one bonus)
 					if (bonusCount >= 2) score += bonusCount * 15;
@@ -2835,7 +3015,18 @@ class LocusP2PHost {
 
 						// Prefer vertical reach instead of flat bottom placements.
 						const verticalSpan = Math.max(1, (maxY - minY) + 1);
-						if (verticalSpan >= 2) score += verticalSpan * 5;
+						if (verticalSpan >= 2) score += verticalSpan * 8;
+
+						// BLOCK horizontal bonus placements (same rule as cards)
+						const bonusBYs = new Set(cells.map(c => c.y));
+						const bonusBXs = new Set(cells.map(c => c.x));
+						if (bonusBYs.size === 1 && bonusBXs.size >= 2) {
+							const hitsPoints = boldCount > 0 || endCount > 0;
+							const hitsBonus = bonusCount > 0;
+							if (!(hitsPoints && hitsBonus)) {
+								score -= 80; // Block horizontal bonus too
+							}
+						}
 
 						// Strongly discourage bottom-layer bold placements that no longer score.
 						if (newBlueTierCount === 0 && minY > Math.floor(rows * 0.65)) score -= 18;
