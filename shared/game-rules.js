@@ -158,9 +158,13 @@ function getBonusShapeForPlayer(bonusColor, player) {
 		base = cloneMatrix(BONUS_SHAPES.default);
 	}
 
-	// Check perk upgrade (niet voor 'any')
+	// Check perk upgrade
 	if (!isAny && player?.perks?.bonusUpgrades?.[bonusColor]) {
 		base.push([2]); // Optionele 3e cel
+	}
+	// Dubbele Multikleur perk: upgrade any bonus van 1x1 naar 2x1 met optionele cel
+	if (isAny && playerHasPerk(player, 'bonus_multi_double')) {
+		base.push([2]); // Optionele 2e cel erbij
 	}
 	return base;
 }

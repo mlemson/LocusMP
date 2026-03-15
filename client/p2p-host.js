@@ -1109,8 +1109,8 @@ class LocusP2PHost {
 				const myOrderIndex = playerOrder.indexOf(aiId);
 				const nextPlayerId = myOrderIndex >= 0 ? playerOrder[(myOrderIndex + 1) % Math.max(1, playerOrder.length)] : null;
 
-				// Analyze hand card colors
-				const hand = p.hand || [];
+				// Analyze card colors (use deck as fallback — hand is empty during choosingGoals)
+				const hand = (p.hand && p.hand.length > 0) ? p.hand : (p.deck || []);
 				const colorCounts = { yellow: 0, green: 0, blue: 0, red: 0, purple: 0 };
 				for (const card of hand) {
 					const zones = this.Rules.getAllowedZones(card);
@@ -1224,7 +1224,7 @@ class LocusP2PHost {
 					// ML logging for objective choice
 					try {
 						const chosen = choices[bestIdx];
-						console.log(`[AI-ML] OBJECTIVE player=${aiId} chose=${chosen?.id || bestIdx} dominant=${dominant} colors=Y${colorCounts.yellow}G${colorCounts.green}B${colorCounts.blue}R${colorCounts.red}P${colorCounts.purple}`);
+						console.log(`[AI-ML] OBJECTIVE player=${aiId} chose=${chosen?.id || bestIdx} dominant=${dominant} colors=Y${colorCounts.yellow}G${colorCounts.green}B${colorCounts.blue}R${colorCounts.red}P${colorCounts.purple} src=${(p.hand && p.hand.length > 0) ? 'hand' : 'deck'}`);
 					} catch (_e) { /* logging must never break gameplay */ }
 					if (result.startedPlaying) this._startTimerForCurrentPlayer(true);
 				}
@@ -2085,15 +2085,17 @@ class LocusP2PHost {
 										});
 										if (!hitsBonusGold) score -= 20;
 									}
-									// Favor building upward — higher cells worth more
+									// Favor building upward — STRONG height preference
 									const minY = Math.min(...cells.map(c => c.y));
-									score += Math.max(0, Math.floor(((zoneData.rows || 20) - minY) / 2));
+									const rows = zoneData.rows || 20;
+									// Scale: y=0 (top) → +rows pts, y=rows-1 (bottom) → 0 pts
+									score += Math.max(0, rows - minY);
 
 									// ── STRICT vertical enforcement for blue ──
 									// Blue MUST be vertical (standing). Horizontal wastes cells.
 									const blueYs = new Set(cells.map(c => c.y));
 									const blueXs = new Set(cells.map(c => c.x));
-									if (blueYs.size >= 2) score += blueYs.size * 8; // Strong vertical bonus
+									if (blueYs.size >= 2) score += blueYs.size * 10; // Strong vertical bonus
 
 									// HARD BLOCK horizontal placements (1 row, wide spread)
 									if (blueYs.size === 1 && blueXs.size >= 2) {
@@ -3008,7 +3010,7 @@ class LocusP2PHost {
 
 					if (isBlueZone) {
 						const rows = zoneData.rows || 20;
-						const upwardProgress = Math.max(0, Math.floor((rows - minY) / 2));
+						const upwardProgress = Math.max(0, rows - minY);
 						score += upwardProgress;
 						score += newBlueTierCount * 26;
 						score -= staleBlueBoldCount * 10;
@@ -3184,24 +3186,21 @@ class LocusP2PHost {
 
 		const newConnections = Math.max(0, connectionsAfter - connectionsBefore);
 
-		// Score using actual 6n formula
+		// Score using actual 6n formula — capped to ~30 per bold cell for balanced AI weighting
 		const connPoints = this.Rules.getPurpleConnectionPoints;
 		if (connPoints) {
 			for (let i = 0; i < newConnections; i++) {
-				impact += connPoints(connectionsBefore + 1 + i);
+				// Cap each connection contribution at 30
+				impact += Math.min(30, connPoints(connectionsBefore + 1 + i));
 			}
 		} else {
-			// Fallback if getPurpleConnectionPoints not available
 			for (let i = 0; i < newConnections; i++) {
-				impact += 6 * (connectionsBefore + 1 + i);
+				impact += Math.min(30, 6 * (connectionsBefore + 1 + i));
 			}
 		}
-		// Double-weight: creating connections IS the purple strategy
-		if (newConnections > 0) impact *= 2;
 
-		// Late-game escalation
-		if (connectionsBefore >= 3 && newConnections > 0) impact += 20;
-		if (connectionsBefore >= 5 && newConnections > 0) impact += 30;
+		// Moderate bonus for creating connections (not doubling anymore)
+		if (newConnections > 0) impact += newConnections * 8;
 
 		// 2-step lookahead: building toward bold cells
 		if (newConnections === 0) {
