@@ -2908,11 +2908,8 @@ const LEVEL_OBJECTIVES = {
 /** Genereer 3 objectives voor een level (level-afhankelijk) */
 function generateObjectiveChoices(rng, level, gameState = null, playerId = null) {
 	const lvl = Math.min(level || 1, 3);
-	const actualLevel = level || 1;
 	const pool = LEVEL_OBJECTIVES[lvl] || LEVEL_OBJECTIVES[1];
 	const shuffled = shuffleWithRNG([...pool], rng);
-	// Scale rewards upward at higher levels: +20% per level beyond 1
-	const rewardScale = 1 + Math.max(0, actualLevel - 1) * 0.20;
 	return shuffled.slice(0, 3).map(obj => {
 		const materialized = materializeObjectiveForPlayer(obj, gameState, playerId, rng);
 		const basePoints = getObjectiveRewardPoints(materialized, 15);
@@ -2928,9 +2925,9 @@ function generateObjectiveChoices(rng, level, gameState = null, playerId = null)
 			name: materialized.name,
 			description: materialized.description,
 			target: materialized.target,
-			points: Math.round(basePoints * rewardScale),
-			coins: Math.round(baseCoins * rewardScale),
-			randomBonuses: Math.round(baseRandomBonuses * rewardScale),
+			points: basePoints,
+			coins: baseCoins,
+			randomBonuses: baseRandomBonuses,
 			dynamicType: materialized.dynamicType || null,
 			endOnly: !!materialized.endOnly,
 			targetPlayerId: materialized.targetPlayerId || null,

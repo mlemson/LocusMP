@@ -5095,7 +5095,7 @@ class LocusLobbyUI {
 		if (zoneName === 'purple') {
 			purplePointsGuideHtml = `
 				<div class="mp-purple-points-guide" title="Punten per verbonden bold-cellen">
-					2=6 • 3=12 • 4=18 • 5=24 • 6=30 • 7=36 • 8=42 • 9=48
+					2=6 • 3=8 • 4=10 • 5=12 • 6=18 • 7=24 • 8+=30
 				</div>
 			`;
 		}
