@@ -1709,6 +1709,9 @@ class LocusP2PHost {
 					// Clear the preview
 					this._broadcastEvent('opponentInteraction', { playerId, playerName, type: 'end' });
 
+					// Snapshot bonus inventory before card play so we can detect newly earned bonuses
+					const cardInvBefore = { ...(this.gameState.players[playerId]?.bonusInventory || {}) };
+
 					const result = this.Rules.playMove(
 						this.gameState, playerId, m.card.id, m.zoneName,
 						m.x, m.y, m.rotation, !!m.mirrored, m.subgridId
@@ -1732,6 +1735,16 @@ class LocusP2PHost {
 							mineTriggered: result.mineTriggered || null
 						});
 						this._broadcastState();
+
+						// Chain bonuses earned from card play: insert new bonus actions immediately
+						const cardInvAfter = this.gameState.players[playerId]?.bonusInventory || {};
+						const chainColors = ['yellow', 'red', 'green', 'purple', 'blue', 'any'];
+						for (const col of chainColors) {
+							const gained = (cardInvAfter[col] || 0) - (cardInvBefore[col] || 0);
+							for (let g = 0; g < gained; g++) {
+								actions.splice(idx, 0, { type: 'playBonus', bonusColor: col });
+							}
+						}
 					} else {
 						console.log(`[AI ${playerName}] Kaart mislukt: ${result.error}`);
 					}
@@ -1996,23 +2009,27 @@ class LocusP2PHost {
 								let goldHit = 0;
 								let boldHit = 0;
 								let endHit = 0;
+								let staleBoldHit = 0;
 								for (const c of cells) {
 									const cell = this.Rules.getDataCell(zoneData, c.x, c.y);
 									if (cell?.flags?.includes('bold')) {
 										boldHit++;
 										hasFlaggedCell = true;
-										// Bold cells = direct points (highest priority)
-										score += zoneName === 'purple' ? 18 : 12;
+										if (zoneName === 'blue' && blueReachedRows?.has(c.y)) {
+											staleBoldHit++;
+										} else {
+											score += zoneName === 'purple' ? 18 : 12;
+										}
 									}
 									if (cell?.flags?.includes('end')) {
 										endHit++;
 										hasFlaggedCell = true;
-										score += 14; // End cells = direct points
+										score += 14;
 									}
 									if (cell?.flags?.includes('bonus')) {
 										bonusFlagsHit++;
 										hasFlaggedCell = true;
-										score += 35; // Bonus cells = chaining potential (high)
+										score += 35;
 									}
 									if (cell?.flags?.includes('gold')) {
 										goldHit++;
@@ -2106,23 +2123,29 @@ class LocusP2PHost {
 												if (!blueReachedRows.has(c.y)) {
 													score += (tierPoints[Math.min(tierIdx, tierPoints.length - 1)] || 10) * 2;
 												} else {
-													score -= 25; // Bold row already scored — wasted
+													// Bold row already scored — strongly penalize
+													score -= 35;
 												}
 											}
 										}
 									}
-									// All bold rows already reached → low value
+									// All bold rows already reached → strongly prefer bonus/gold cells
 									if (blueReachedRows.size >= boldYs.length && boldYs.length > 0) {
 										const hitsBonusGold = cells.some(c => {
 											const cell = this.Rules.getDataCell(zoneData, c.x, c.y);
 											return cell?.flags?.some(f => ['gold', 'bonus', 'pearl'].includes(f));
 										});
-										if (!hitsBonusGold) score -= 20;
+										if (!hitsBonusGold) score -= 30;
+										else score += 15;
 									}
+
+									// Blue-specific: extra boost for bonus/gold/pearl cells
+									if (bonusFlagsHit > 0) score += bonusFlagsHit * 15;
+									if (goldHit > 0) score += goldHit * 8;
+
 									// Favor building upward — STRONG height preference
 									const minY = Math.min(...cells.map(c => c.y));
 									const rows = zoneData.rows || 20;
-									// Scale: y=0 (top) → +rows pts, y=rows-1 (bottom) → 0 pts
 									score += Math.max(0, rows - minY);
 									// Penalize bottom-half placements that don't hit bold/bonus
 									if (minY > rows * 0.55) {
@@ -2130,22 +2153,23 @@ class LocusP2PHost {
 										if (boldHit === 0 && bonusFlagsHit === 0) score -= bottomPenalty;
 									}
 
-									// ── STRICT vertical enforcement for blue ──
-									// Blue MUST be vertical (standing). Horizontal wastes cells.
+									// Penalize placements that ONLY hit stale bold cells and nothing else
+									if (staleBoldHit > 0 && bonusFlagsHit === 0 && goldHit === 0 && endHit === 0) {
+										score -= staleBoldHit * 10;
+									}
+
+									// STRICT vertical enforcement for blue
 									const blueYs = new Set(cells.map(c => c.y));
 									const blueXs = new Set(cells.map(c => c.x));
-									if (blueYs.size >= 2) score += blueYs.size * 10; // Strong vertical bonus
+									if (blueYs.size >= 2) score += blueYs.size * 10;
 
 									// HARD BLOCK horizontal placements (1 row, wide spread)
 									if (blueYs.size === 1 && blueXs.size >= 2) {
-										// Only allow if it hits BOTH points (bold/end) AND bonuses — practically never
 										const hitsPoints = boldHit > 0 || endHit > 0;
 										const hitsBonus = bonusFlagsHit > 0;
 										if (hitsPoints && hitsBonus) {
-											// Perfect horizontal block: rare exception, small penalty
 											score -= 10;
 										} else {
-											// Block horizontal: massive penalty
 											score -= 120;
 										}
 									}
@@ -2169,6 +2193,9 @@ class LocusP2PHost {
 											if (filled === 0 && oldRatio === 0) score -= 3;
 										}
 									}
+									// Red-specific: extra reward for bonus/gold flags
+									if (bonusFlagsHit > 0) score += bonusFlagsHit * 20;
+									if (goldHit > 0) score += goldHit * 8;
 								} else if (zoneName === 'purple') {
 									score += this._scorePurpleConnections(zoneData, cells);
 								}
@@ -2954,7 +2981,7 @@ class LocusP2PHost {
 							boldCount++;
 							if (isBlueZone && blueBoldSet?.has(c.y)) {
 								if (blueReachedRows?.has(c.y)) {
-									score += 1;
+									score -= 10; // Already scored — no value, slight penalty
 									if (!staleBlueRowsSeen.has(c.y)) {
 										staleBlueRowsSeen.add(c.y);
 										staleBlueBoldCount++;
@@ -3044,6 +3071,9 @@ class LocusP2PHost {
 						if (newRatio >= 1.0 && oldRatio < 1.0) score += 15;
 						if (oldRatio >= 0.5) score += 8;
 						else if (oldRatio >= 0.3) score += 4;
+						// Red-specific: extra bonus/gold signal for bonus placements
+						if (bonusCount > 0) score += bonusCount * 15;
+						if (goldCount > 0) score += goldCount * 6;
 					}
 
 					// Purple zone: use connection simulation for bonus placements too
@@ -3056,7 +3086,11 @@ class LocusP2PHost {
 						const upwardProgress = Math.max(0, rows - minY);
 						score += upwardProgress;
 						score += newBlueTierCount * 26;
-						score -= staleBlueBoldCount * 10;
+						score -= staleBlueBoldCount * 15;
+
+						// Blue bonus placement: extra boost for bonus/gold flags
+						if (bonusCount > 0) score += bonusCount * 12;
+						if (goldCount > 0) score += goldCount * 6;
 
 						// Prefer vertical reach instead of flat bottom placements.
 						const verticalSpan = Math.max(1, (maxY - minY) + 1);
