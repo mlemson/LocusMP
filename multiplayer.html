@@ -148,13 +148,15 @@
 				</div>
 
 				<div class="mp-divider"><span>Bots</span></div>
-				<button id="add-ai-btn" class="mp-btn mp-btn-secondary">
-					🤖 AI Speler Toevoegen
-				</button>
-				<select id="ai-difficulty-select" class="mp-select">
-					<option value="normal">🤖 Normaal</option>
-					<option value="hard">🧠 Hard (ML)</option>
-				</select>
+				<div class="mp-bot-row">
+					<button id="add-ai-btn" class="mp-btn mp-btn-secondary">
+						🤖 AI Speler Toevoegen
+					</button>
+					<select id="ai-difficulty-select" class="mp-select">
+						<option value="normal">🤖 Normaal</option>
+						<option value="hard">🧠 Hard (ML)</option>
+					</select>
+				</div>
 			</div>
 
 			<div class="mp-waiting-dots">
@@ -1246,8 +1248,6 @@
 			`;
 			lobbyCard.appendChild(p2pSection);
 			if (!hasServer) {
-				const hostSettings = document.getElementById('host-settings-block');
-				if (hostSettings) p2pSection.appendChild(hostSettings);
 				const hostActions = document.getElementById('p2p-host-actions');
 				if (hostActions) p2pSection.appendChild(hostActions);
 			}
@@ -1269,8 +1269,6 @@
 				}
 
 				const maxPlayers = 8;
-				const cardsPerPlayer = Number(document.getElementById('cards-per-player-select')?.value || 8);
-				const mapSize = Number(document.getElementById('map-size-select')?.value || 4);
 
 				// Toon loading state
 				const hostBtn = document.getElementById('p2p-host-btn');
@@ -1281,7 +1279,7 @@
 				try {
 					const host = new LocusP2PHost();
 					LocusP2PHost._logMobile('Host starten... roomCode zal zijn: ' + (host.roomCode || 'wordt gegenereerd'));
-					const result = await host.startHost(name, { maxPlayers, cardsPerPlayer, mapSize });
+					const result = await host.startHost(name, { maxPlayers });
 					LocusP2PHost._logMobile('Host gestart! Room: ' + result.roomCode);
 
 					// Maak een P2P-wrapper die dezelfde interface heeft als LocusMultiplayer
