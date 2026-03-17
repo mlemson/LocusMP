@@ -1872,17 +1872,23 @@ function scoreRedData(redZone) {
 /**
  * PURPLE SCORING: BFS cluster-score
  * Verbindingen tellen GLOBAAL door over alle spelers heen.
- * Verbinding #1 = 6pt, #2 = 12pt, #3 = 18pt, ...
+ * Punten per verbinding: 6, 8, 10, 12, 18, 24, 30, 30, 30, ...
  * De punten van een verbinding gaan naar de speler die die verbinding maakte.
  */
+const PURPLE_CONNECTION_POINTS = [6, 8, 10, 12, 18, 24, 30];
+const PURPLE_MAX_POINTS = 30;
+
 function getPurpleConnectionPoints(connectionNumber) {
 	if (!Number.isFinite(connectionNumber) || connectionNumber < 1) return 0;
-	return 6 * connectionNumber;
+	if (connectionNumber <= PURPLE_CONNECTION_POINTS.length) return PURPLE_CONNECTION_POINTS[connectionNumber - 1];
+	return PURPLE_MAX_POINTS;
 }
 
 function getPurpleTotalPointsForConnectionCount(connectionCount) {
 	if (!Number.isFinite(connectionCount) || connectionCount < 1) return 0;
-	return 3 * connectionCount * (connectionCount + 1);
+	let total = 0;
+	for (let i = 1; i <= connectionCount; i++) total += getPurpleConnectionPoints(i);
+	return total;
 }
 
 function buildPurpleConnectionEvents(zoneData) {

@@ -2120,6 +2120,13 @@ class LocusP2PHost {
 									// Bold row tier unlocking (10/15/20/25/40 pts)
 									const boldYs = [...new Set(zoneData.boldRows || [])].sort((a, b) => b - a);
 									const tierPoints = [10, 15, 20, 25, 40];
+
+									// Determine the NEXT target bold row (first unscored, bottom-up)
+									let nextTargetBoldY = null;
+									for (let ti = 0; ti < boldYs.length; ti++) {
+										if (!blueReachedRows.has(boldYs[ti])) { nextTargetBoldY = boldYs[ti]; break; }
+									}
+
 									for (const c of cells) {
 										const cell = this.Rules.getDataCell(zoneData, c.x, c.y);
 										if (cell?.flags?.includes('bold')) {
@@ -2134,6 +2141,31 @@ class LocusP2PHost {
 											}
 										}
 									}
+
+									// Penalize cells BELOW the next target bold row — they don't help progress
+									if (nextTargetBoldY !== null) {
+										let cellsBelowTarget = 0;
+										let cellsAtOrAboveTarget = 0;
+										for (const c of cells) {
+											const cell = this.Rules.getDataCell(zoneData, c.x, c.y);
+											const hasBonusFlag = cell?.flags?.some(f => ['gold', 'bonus', 'pearl'].includes(f));
+											// y higher number = lower on board (boldYs sorted b-a = index 0 is bottom)
+											if (c.y > nextTargetBoldY && !hasBonusFlag) {
+												cellsBelowTarget++;
+											} else {
+												cellsAtOrAboveTarget++;
+											}
+										}
+										// Strong penalty: all cells below target with no bonus value
+										if (cellsAtOrAboveTarget === 0 && cellsBelowTarget > 0) {
+											score -= 40 + cellsBelowTarget * 15;
+										} else if (cellsBelowTarget > 0) {
+											score -= cellsBelowTarget * 8;
+										}
+										// Reward placing AT or above the target row
+										if (cellsAtOrAboveTarget > 0) score += cellsAtOrAboveTarget * 6;
+									}
+
 									// All bold rows already reached → strongly prefer bonus/gold cells
 									if (blueReachedRows.size >= boldYs.length && boldYs.length > 0) {
 										const hitsBonusGold = cells.some(c => {
@@ -3268,16 +3300,17 @@ class LocusP2PHost {
 
 		const newConnections = Math.max(0, connectionsAfter - connectionsBefore);
 
-		// Score using actual 6n formula — capped to ~30 per bold cell for balanced AI weighting
+		// Score using actual point table — already capped at 30 per connection
 		const connPoints = this.Rules.getPurpleConnectionPoints;
 		if (connPoints) {
 			for (let i = 0; i < newConnections; i++) {
-				// Cap each connection contribution at 30
-				impact += Math.min(30, connPoints(connectionsBefore + 1 + i));
+				impact += connPoints(connectionsBefore + 1 + i);
 			}
 		} else {
+			const fallback = [6, 8, 10, 12, 18, 24, 30];
 			for (let i = 0; i < newConnections; i++) {
-				impact += Math.min(30, 6 * (connectionsBefore + 1 + i));
+				const idx = connectionsBefore + i;
+				impact += idx < fallback.length ? fallback[idx] : 30;
 			}
 		}
 
