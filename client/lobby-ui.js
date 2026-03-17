@@ -91,8 +91,30 @@ class LocusLobbyUI {
 		this._bindMobileGestureGuards();
 		this._registerCallbacks();
 		this._bindKeyboard();
+		this._bindVisibilityHandler();
 		this._setVersionBadge();
 		this._showScreen('lobby-screen');
+	}
+
+	/**
+	 * Pause all ticking timers when the page/tab is hidden (screen off, tab switch, app backgrounded).
+	 * This is the single biggest battery saver on mobile.
+	 */
+	_bindVisibilityHandler() {
+		document.addEventListener('visibilitychange', () => {
+			if (document.hidden) {
+				this._stopTurnTimer();
+				this._stopOpponentTimerTicker();
+			} else {
+				// Re-sync timers from latest state when becoming visible again
+				const gs = this.mp?.gameState;
+				if (gs?.phase === 'playing') {
+					this._syncTurnTimerFromState(gs);
+					this._startTurnTimer();
+					this._startOpponentTimerTicker();
+				}
+			}
+		});
 	}
 
 	_setVersionBadge() {
@@ -241,10 +263,13 @@ class LocusLobbyUI {
 			themeSwitcher.style.display = (screenId === 'lobby-screen' || screenId === 'waiting-screen') ? 'flex' : 'none';
 		}
 
-		// Init lobby particles for lobby screen
+		// Init lobby particles for lobby screen, remove when leaving
 		if (screenId === 'lobby-screen') {
 			try { this._initLobbyParticles(); } catch (_) {}
 			this._initServerBrowseToggle();
+		} else {
+			// Remove particles when not on lobby — they run infinite CSS animations on document.body
+			document.querySelector('.mp-lobby-particles')?.remove();
 		}
 	}
 
@@ -1248,7 +1273,12 @@ class LocusLobbyUI {
 		const timerEl = this.elements['mp-turn-timer'];
 		if (timerEl && this.mp.isMyTurn()) timerEl.style.display = 'flex';
 
+		// Cache DOM references once instead of querySelectorAll every tick
+		this._cachedTimerFills = document.querySelectorAll('.mp-timer-fill');
+		this._cachedTimerTexts = document.querySelectorAll('.mp-timer-text');
+
 		this._turnTimerInterval = setInterval(() => {
+			if (document.hidden) return; // Don't burn CPU while hidden
 			const gs = this.mp?.gameState;
 			const paused = !!gs?.paused;
 			const remaining = paused
@@ -1263,12 +1293,12 @@ class LocusLobbyUI {
 				turnIndicator.classList.remove('timer-urgent');
 			}
 
-			document.querySelectorAll('.mp-timer-fill').forEach(fill => {
+			this._cachedTimerFills.forEach(fill => {
 				fill.style.width = `${pct}%`;
 				fill.classList.toggle('timer-warning', secs <= 10 && secs > 5);
 				fill.classList.toggle('timer-critical', secs <= 5);
 			});
-			document.querySelectorAll('.mp-timer-text').forEach(text => {
+			this._cachedTimerTexts.forEach(text => {
 				text.textContent = `${secs}s`;
 			});
 
@@ -1282,7 +1312,7 @@ class LocusLobbyUI {
 				this._stopTurnTimer();
 				// Server handelt auto-endTurn af, geen actie nodig
 			}
-		}, 100);
+		}, 250);
 	}
 
 	_stopTurnTimer() {
@@ -1475,7 +1505,6 @@ class LocusLobbyUI {
 	// ──────────────────────────────────────────
 
 	_onGoalPhase(choices) {
-		console.log('[Locus UI] _onGoalPhase called, choices:', choices?.length);
 		try {
 			if (this._startDeckOverlay) {
 				this._startDeckOverlay.remove();
@@ -1885,7 +1914,10 @@ class LocusLobbyUI {
 
 	_startOpponentTimerTicker() {
 		if (this._oppTimerInterval) return;
+		this._oppTimerLastPid = null;
+		this._oppTimerCachedNodes = null;
 		this._oppTimerInterval = setInterval(() => {
+			if (document.hidden) return; // Don't burn CPU while hidden
 			const gs = this.mp?.gameState;
 			if (!gs || gs.phase !== 'playing') return;
 			const currentPid = gs.playerOrder?.[gs.currentTurnIndex];
@@ -1900,13 +1932,17 @@ class LocusLobbyUI {
 				? Math.max(0, Number(gs._turnTimerRemainingMs || this._turnTimerPausedRemainingMs || 0))
 				: Math.max(0, this._turnTimerEnd - Date.now());
 			const secs = Math.ceil(remaining / 1000);
-			const nodes = document.querySelectorAll(`.mp-opp-timer[data-player-id="${currentPid}"]`);
-			nodes.forEach(el => {
+			// Cache DOM query — only re-query when the current player changes
+			if (currentPid !== this._oppTimerLastPid) {
+				this._oppTimerLastPid = currentPid;
+				this._oppTimerCachedNodes = document.querySelectorAll(`.mp-opp-timer[data-player-id="${currentPid}"]`);
+			}
+			this._oppTimerCachedNodes?.forEach(el => {
 				el.textContent = isPaused ? `⏸ ${secs}s` : `⏱ ${secs}s`;
 				el.classList.toggle('is-warning', secs <= 10 && secs > 5);
 				el.classList.toggle('is-critical', secs <= 5);
 			});
-		}, 150);
+		}, 500);
 	}
 
 	_stopOpponentTimerTicker() {
@@ -5497,7 +5533,6 @@ class LocusLobbyUI {
 	// ──────────────────────────────────────────
 
 	_onLevelComplete(levelScores, levelWinner, level) {
-		console.log('[Locus UI] _onLevelComplete called', { levelScores, levelWinner, level });
 		this._cancelDrag();
 		this._cancelBonusMode();
 		this._stopTurnTimer();
@@ -5611,7 +5646,6 @@ class LocusLobbyUI {
 
 		// Bind shop button
 		const shopBtn = document.getElementById('mp-go-shop-btn');
-		console.log('[Locus UI] _onLevelComplete overlay rendered, shopBtn:', !!shopBtn, 'isHost:', isHost);
 		if (shopBtn) {
 			shopBtn.addEventListener('click', async () => {
 				shopBtn.disabled = true;
@@ -5631,16 +5665,13 @@ class LocusLobbyUI {
 	}
 
 	_onShopPhase() {
-		console.log('[Locus UI] _onShopPhase called');
 		// Hide level complete overlay
 		const overlay = document.getElementById('level-complete-overlay');
 		if (overlay) {
-			console.log('[Locus UI] Removing level-complete overlay');
 			overlay.remove();
 		}
 		this.elements['level-complete-overlay'] = null;
 		this._showScreen('shop-screen');
-		console.log('[Locus UI] Shop screen display:', this.elements['shop-screen']?.style.display);
 		this._renderShop();
 	}
 
@@ -6354,9 +6385,6 @@ class LocusLobbyUI {
 	// ──────────────────────────────────────────
 
 	_onGameStateChanged(state, prevState) {
-		if (state.phase !== prevState?.phase) {
-			console.log('[Locus UI] Phase transition:', prevState?.phase, '→', state.phase);
-		}
 		// ── TV Cast: forward state to TV display ──
 		try { this._broadcastTVState(); } catch (e) { console.warn('[Locus TV] broadcast error:', e); }
 
@@ -6383,9 +6411,6 @@ class LocusLobbyUI {
 			this._onStartDeckPhase();
 		}
 		if (state.phase === 'choosingGoals') {
-			console.log('[Locus UI] choosingGoals detected, userId:', this.mp.userId,
-				'objectiveChoices keys:', Object.keys(state.objectiveChoices || {}),
-				'myChoices:', state.objectiveChoices?.[this.mp.userId]?.length || 0);
 			// Verberg startdeck overlay als die er nog is
 			if (this._startDeckOverlay) {
 				this._startDeckOverlay.remove();
@@ -6396,7 +6421,6 @@ class LocusLobbyUI {
 			const myPlayer = state.players?.[this.mp.userId];
 			const myPerkPoints = myPlayer?.perks?.perkPoints || 0;
 			if (myPlayer?.chosenObjective) {
-				console.log('[Locus UI] Goal al gekozen');
 				if (myPerkPoints > 0 && !this._goalPerkPromptShown) {
 					this._promptPerksAfterGoalChoice();
 				} else {
@@ -6466,7 +6490,6 @@ class LocusLobbyUI {
 				this._startDeckOverlay.remove();
 				this._startDeckOverlay = null;
 			}
-			console.log('[Locus UI] gameStateChanged: phase=levelComplete, scores:', Object.keys(state.levelScores));
 			// Always show overlay when phase is levelComplete — force re-render
 			this._cancelDrag();
 			this._cancelBonusMode();
@@ -7197,9 +7220,8 @@ class LocusLobbyUI {
 	}
 
 	_escapeHtml(str) {
-		const div = document.createElement('div');
-		div.textContent = str || '';
-		return div.innerHTML;
+		return String(str || '').replace(/[&<>"']/g, c =>
+			({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]);
 	}
 
 	_setLoading(loading) {

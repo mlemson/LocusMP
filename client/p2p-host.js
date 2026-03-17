@@ -65,7 +65,7 @@ class LocusP2PHost {
 		return new Promise((resolve, reject) => {
 			// PeerJS met gratis cloud signaling + meerdere STUN/TURN servers voor mobiel
 			this.peer = new Peer(peerId, {
-				debug: 2,
+				debug: 0,
 				config: {
 					iceServers: [
 						{ urls: 'stun:stun.l.google.com:19302' },
@@ -652,7 +652,6 @@ class LocusP2PHost {
 
 	/** Host speelt zelf een actie (roep direct de game rules aan) */
 	hostAction(type, data = {}) {
-		console.log('[P2P Host] hostAction:', type, data);
 		const playerId = this.hostPlayerId;
 		let result;
 
@@ -809,7 +808,6 @@ class LocusP2PHost {
 				result = { error: 'Onbekende actie: ' + type };
 		}
 
-		console.log('[P2P Host] hostAction result:', type, '→ phase:', this.gameState?.phase, 'result:', JSON.stringify(result)?.slice(0, 200));
 		this._broadcastState();
 		return result;
 	}
@@ -826,78 +824,109 @@ class LocusP2PHost {
 
 	// ── Sanitize state per speler (verberg andermans kaarten) ──
 
-	_sanitizeForPlayer(playerId) {
-		const sanitized = JSON.parse(JSON.stringify(this.gameState));
+	/**
+	 * Clone once, then produce per-player views by masking.
+	 * Returns a Map<playerId, sanitizedState>.
+	 */
+	_sanitizeForAll() {
+		const baseJson = JSON.stringify(this.gameState);
 		const revealObjectives = this._shouldRevealObjectives();
-		sanitized._objectivesRevealed = revealObjectives;
-		for (const pid of Object.keys(sanitized.players)) {
-			if (pid !== playerId) {
-				// Laat hand zichtbaar voor tegenstanders (gevraagd UX-gedrag)
-				sanitized.players[pid].drawPile = Array.isArray(sanitized.players[pid].drawPile)
-					? sanitized.players[pid].drawPile.length : 0;
-				sanitized.players[pid].discardPile = Array.isArray(sanitized.players[pid].discardPile)
-					? sanitized.players[pid].discardPile.length : 0;
-				sanitized.players[pid].deck = [];
-				sanitized.players[pid].shopOfferings = [];
-				delete sanitized.players[pid]._pendingFreeChoices;
-				// Verberg tegenstanders' actieve mijnen
-				if (sanitized.players[pid].perks) {
-					sanitized.players[pid].perks.activeMines = [];
+		const playerIds = Object.keys(this.gameState.players || {});
+		const results = new Map();
+
+		// Pre-compute cardsPlayed counts once (avoid N×M history scans)
+		const cardsPlayedCounts = {};
+		for (const pid of playerIds) {
+			cardsPlayedCounts[pid] = this._countCardsPlayed(pid);
+		}
+
+		// Pre-compute objective results once
+		const objectiveResults = {};
+		for (const pid of playerIds) {
+			if (this.gameState.players[pid]?.chosenObjective && this.gameState.boardState) {
+				objectiveResults[pid] = this.Rules.checkObjective(this.gameState, pid, this.gameState.players[pid].chosenObjective);
+			}
+		}
+
+		for (const targetPlayerId of playerIds) {
+			const sanitized = JSON.parse(baseJson);
+			sanitized._objectivesRevealed = revealObjectives;
+
+			for (const pid of playerIds) {
+				if (pid !== targetPlayerId) {
+					sanitized.players[pid].drawPile = Array.isArray(sanitized.players[pid].drawPile)
+						? sanitized.players[pid].drawPile.length : 0;
+					sanitized.players[pid].discardPile = Array.isArray(sanitized.players[pid].discardPile)
+						? sanitized.players[pid].discardPile.length : 0;
+					sanitized.players[pid].deck = [];
+					sanitized.players[pid].shopOfferings = [];
+					delete sanitized.players[pid]._pendingFreeChoices;
+					if (sanitized.players[pid].perks) {
+						sanitized.players[pid].perks.activeMines = [];
+					}
+					if (sanitized.players[pid].chosenObjective) {
+						if (revealObjectives) {
+							sanitized.players[pid].chosenObjective._revealed = true;
+						} else {
+							sanitized.players[pid].chosenObjective = { hidden: true };
+						}
+					}
 				}
-				if (sanitized.players[pid].chosenObjective) {
-					if (revealObjectives) {
-						sanitized.players[pid].chosenObjective._revealed = true;
+
+				sanitized.players[pid].cardsPlayed = cardsPlayedCounts[pid];
+
+				const objResult = objectiveResults[pid];
+				if (objResult) {
+					const objectiveDef = this.gameState.players[pid].chosenObjective || {};
+					const isEndOnlyObjective = !!objectiveDef.endOnly;
+					const shouldDelayOutcome = isEndOnlyObjective && this.gameState.phase === 'playing';
+					if (shouldDelayOutcome) {
+						sanitized.players[pid].objectiveAchieved = !!this.gameState.players[pid].objectiveAchieved;
+						sanitized.players[pid].objectiveFailed = false;
+						sanitized.players[pid].objectiveAchievedPoints = this.gameState.players[pid].objectiveAchievedPoints || 0;
 					} else {
-						sanitized.players[pid].chosenObjective = { hidden: true };
+						sanitized.players[pid].objectiveAchieved = this.gameState.players[pid].objectiveAchieved || objResult.achieved;
+						sanitized.players[pid].objectiveFailed = !sanitized.players[pid].objectiveAchieved && !!objResult.failed;
+						sanitized.players[pid].objectiveAchievedPoints = this.gameState.players[pid].objectiveAchievedPoints || 0;
+					}
+					sanitized.players[pid].objectiveProgress = {
+						current: objResult.current,
+						target: objResult.target,
+						points: objResult.points,
+						coins: objResult.coins || 0,
+						randomBonuses: objResult.randomBonuses || 0
+					};
+				}
+			}
+
+			if (sanitized.objectiveChoices) {
+				for (const pid of Object.keys(sanitized.objectiveChoices)) {
+					if (pid !== targetPlayerId) {
+						sanitized.objectiveChoices[pid] = [];
 					}
 				}
 			}
-
-			// Voeg cardsPlayed count toe voor elke speler
-			sanitized.players[pid].cardsPlayed = this._countCardsPlayed(pid);
-
-			// Objective status + voortgang (zelfde gedrag als server-mode)
-			if (this.gameState.players[pid].chosenObjective && this.gameState.boardState) {
-				const objectiveDef = this.gameState.players[pid].chosenObjective || {};
-				const isEndOnlyObjective = !!objectiveDef.endOnly;
-				const objResult = this.Rules.checkObjective(this.gameState, pid, this.gameState.players[pid].chosenObjective);
-				const shouldDelayOutcome = isEndOnlyObjective && this.gameState.phase === 'playing';
-				if (shouldDelayOutcome) {
-					sanitized.players[pid].objectiveAchieved = !!this.gameState.players[pid].objectiveAchieved;
-					sanitized.players[pid].objectiveFailed = false;
-					sanitized.players[pid].objectiveAchievedPoints = this.gameState.players[pid].objectiveAchievedPoints || 0;
-				} else {
-					sanitized.players[pid].objectiveAchieved = this.gameState.players[pid].objectiveAchieved || objResult.achieved;
-					sanitized.players[pid].objectiveFailed = !sanitized.players[pid].objectiveAchieved && !!objResult.failed;
-					sanitized.players[pid].objectiveAchievedPoints = this.gameState.players[pid].objectiveAchievedPoints || 0;
-				}
-				sanitized.players[pid].objectiveProgress = {
-					current: objResult.current,
-					target: objResult.target,
-					points: objResult.points,
-					coins: objResult.coins || 0,
-					randomBonuses: objResult.randomBonuses || 0
-				};
-			}
+			results.set(targetPlayerId, sanitized);
 		}
-		// Verberg objectiveChoices van andere spelers
-		if (sanitized.objectiveChoices) {
-			for (const pid of Object.keys(sanitized.objectiveChoices)) {
-				if (pid !== playerId) {
-					sanitized.objectiveChoices[pid] = [];
-				}
-			}
-		}
-		return sanitized;
+		return results;
+	}
+
+	/** Legacy: single-player sanitize (used in some edge cases) */
+	_sanitizeForPlayer(playerId) {
+		const all = this._sanitizeForAll();
+		return all.get(playerId) || JSON.parse(JSON.stringify(this.gameState));
 	}
 
 	// ── Broadcasting ──
 
 	_broadcastState() {
+		// Compute all sanitized views with a single JSON.stringify + shared objective checks
+		const sanitizedMap = this._sanitizeForAll();
+
 		// Stuur naar host UI
 		if (this.onStateChanged) {
 			try {
-				this.onStateChanged(this._sanitizeForPlayer(this.hostPlayerId));
+				this.onStateChanged(sanitizedMap.get(this.hostPlayerId));
 			} catch (err) {
 				console.error('[P2P Host] onStateChanged error:', err);
 			}
@@ -908,7 +937,8 @@ class LocusP2PHost {
 			const playerId = this.playerMap.get(peerId);
 			if (!playerId) continue;
 			try {
-				conn.send({ type: 'gameState', state: this._sanitizeForPlayer(playerId) });
+				const state = sanitizedMap.get(playerId);
+				if (state) conn.send({ type: 'gameState', state });
 			} catch (err) {
 				console.error('[P2P Host] Broadcast error naar', peerId, err);
 			}
@@ -1041,10 +1071,10 @@ class LocusP2PHost {
 	_scheduleAI() {
 		if (!this.gameState) return;
 		if (this.aiPlayerIds.size === 0) return;
+		// Safety net: restore human turn timer if lost
 		if (this.gameState.phase === 'playing' && !this.gameState.paused && !this._turnTimer) {
 			const pid = this.gameState.playerOrder?.[this.gameState.currentTurnIndex];
 			if (pid && !this.aiPlayerIds.has(pid)) {
-				// Safety net: if timer was lost unexpectedly, restore it for human turns.
 				this._startTimerForCurrentPlayer(false);
 			}
 		}
@@ -1053,6 +1083,10 @@ class LocusP2PHost {
 
 		const phase = this.gameState.phase;
 		const currentPid = this.gameState.playerOrder?.[this.gameState.currentTurnIndex];
+
+		// Skip scheduling during human turns in playing phase — no AI work to do, saves CPU wake-ups
+		if (phase === 'playing' && currentPid && !this.aiPlayerIds.has(currentPid)) return;
+
 		const aiTurnActive = phase === 'playing' && !!currentPid && this.aiPlayerIds.has(currentPid) && !this.gameState.paused;
 
 		// During an active AI turn, react quickly so the timer does not appear stuck at ~37s.
@@ -2254,19 +2288,7 @@ class LocusP2PHost {
 
 		if (!bestMove) return null;
 
-		// ── ML-ready structured logging ──
-		try {
-			const player = this.gameState?.players?.[playerId];
-			const diffLabel = isHard ? 'HARD' : 'NORMAL';
-			const personality = this._aiPersonality?.get(playerId) || 'normal';
-			const sb = player?.scoreBreakdown || {};
-			const obj = player?.chosenObjective;
-			const bonusInv = player?.bonusInventory || {};
-			const totalBonuses = Object.values(bonusInv).reduce((s, v) => s + (v || 0), 0);
-			console.log(`[AI-ML] ${diffLabel}|${personality} player=${playerId} chose zone=${bestMove.zoneName} card=${bestMove.card?.id} pos=(${bestMove.x},${bestMove.y}) rot=${bestMove.rotation} mir=${bestMove.mirrored ? 1 : 0} score=${bestScore}`);
-			console.log(`[AI-ML]   scores: Y=${sb.yellow||0} G=${sb.green||0} B=${sb.blue||0} R=${sb.red||0} P=${sb.purple||0} total=${player?.score||0} coins=${player?.coins||0} bonuses=${totalBonuses}`);
-			if (obj) console.log(`[AI-ML]   objective: ${obj.id || 'unknown'} achieved=${!!player?.objectiveAchieved}`);
-		} catch (_e) { /* logging must never break gameplay */ }
+		// ── ML-ready structured logging (disabled for battery) ──
 
 		return bestMove;
 	}
@@ -2579,19 +2601,25 @@ class LocusP2PHost {
 		let score = 0;
 		if (obj.zone && obj.zone === placement.zoneName) score += 8;
 		if (obj.type === 'density') score += placement.zoneName === 'purple' || placement.zoneName === 'red' ? 4 : 1;
-		const simState = JSON.parse(JSON.stringify(state));
-		const result = this.Rules.playBonus(
-			simState,
-			playerId,
-			placement.bonusColor,
-			placement.zoneName,
-			placement.baseX,
-			placement.baseY,
-			placement.subgridId || null,
-			placement.rotation || 0
-		);
-		if (!result?.error) {
-			score += this._estimateObjectiveProgressGain(state, simState, playerId);
+		// Only simulate objective progress for placements that match the objective zone
+		// (avoids hundreds of expensive deep clones for irrelevant placements)
+		const objRelevant = !obj.zone || obj.zone === placement.zoneName ||
+			(obj.type === 'coverage' && obj.zones?.includes(placement.zoneName));
+		if (objRelevant) {
+			const simState = JSON.parse(JSON.stringify(state));
+			const result = this.Rules.playBonus(
+				simState,
+				playerId,
+				placement.bonusColor,
+				placement.zoneName,
+				placement.baseX,
+				placement.baseY,
+				placement.subgridId || null,
+				placement.rotation || 0
+			);
+			if (!result?.error) {
+				score += this._estimateObjectiveProgressGain(state, simState, playerId);
+			}
 		}
 		return score;
 	}
@@ -3532,7 +3560,7 @@ class LocusP2PGuest {
 
 	async init() {
 		this.peer = new Peer(undefined, {
-			debug: 1,
+			debug: 0,
 			config: {
 				iceServers: [
 					{ urls: 'stun:stun.l.google.com:19302' },
@@ -3651,17 +3679,19 @@ class LocusP2PGuest {
 				return reject(new Error('Niet verbonden'));
 			}
 			this.connection.send({ type, ...data });
+			let timeoutId;
 			// P2P host stuurt resultaat terug via 'result' messages
 			const handler = (msg) => {
 				if (msg.type === 'result' && msg.action === type) {
+					clearTimeout(timeoutId);
 					this.connection.off('data', handler);
 					if (msg.error) reject(new Error(msg.error));
 					else resolve(msg);
 				}
 			};
 			this.connection.on('data', handler);
-			// Timeout
-			setTimeout(() => {
+			// Timeout — clear handler to prevent leak
+			timeoutId = setTimeout(() => {
 				this.connection.off('data', handler);
 				resolve({ success: true }); // assume ok
 			}, 5000);
