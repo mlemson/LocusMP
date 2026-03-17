@@ -1045,13 +1045,11 @@ class LocusLobbyUI {
 		this._saveLobbyName(name);
 
 		const maxPlayers = 8;
-		const cardsPerPlayer = Number(this.elements['cards-per-player-select']?.value) || 8;
-		const mapSize = Number(this.elements['map-size-select']?.value) || 4;
 
 		this._setLoading(true);
 		try {
 			await this.mp.init();
-			const result = await this.mp.createGame(name, { maxPlayers, cardsPerPlayer, mapSize });
+			const result = await this.mp.createGame(name, { maxPlayers });
 			this._showWaitingRoom(result.inviteCode, true);
 		} catch (err) {
 			this._showToast('Kan spel niet aanmaken: ' + (err.message || err), 'error');
@@ -1093,8 +1091,11 @@ class LocusLobbyUI {
 	}
 
 	async _handleStartGame() {
+		// Read host settings from waiting room before starting
+		const cardsPerPlayer = Number(this.elements['cards-per-player-select']?.value) || 8;
+		const mapSize = Number(this.elements['map-size-select']?.value) || 4;
 		this._setLoading(true);
-		try { await this.mp.startGame(); }
+		try { await this.mp.startGame({ cardsPerPlayer, mapSize }); }
 		catch (err) { this._showToast('Kan spel niet starten: ' + (err.message || err), 'error'); }
 		this._setLoading(false);
 	}
@@ -1106,7 +1107,7 @@ class LocusLobbyUI {
 		}
 		const difficulty = this.elements['ai-difficulty-select']?.value || 'normal';
 		this._setLoading(true);
-		try { await this.mp.addAIPlayer(difficulty); this._showToast(difficulty === 'hard' ? '🧠 Harde AI toegevoegd!' : difficulty === 'random' ? '🎲 Random AI toegevoegd!' : '🤖 AI speler toegevoegd!', 'success'); }
+		try { await this.mp.addAIPlayer(difficulty); this._showToast(difficulty === 'hard' ? '🧠 Harde AI toegevoegd!' : '🤖 AI speler toegevoegd!', 'success'); }
 		catch (err) { this._showToast('Kan AI niet toevoegen: ' + (err.message || err), 'error'); }
 		this._setLoading(false);
 	}

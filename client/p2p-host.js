@@ -663,6 +663,11 @@ class LocusP2PHost {
 				result = this._removeAIPlayer(data.playerId);
 				break;
 			case 'startGame':
+				// Apply host settings if provided (from waiting room UI)
+				if (data && this.gameState?.settings) {
+					if (data.cardsPerPlayer) this.gameState.settings.cardsPerPlayer = Number(data.cardsPerPlayer);
+					if (data.mapSize) this.gameState.settings.mapSize = Number(data.mapSize);
+				}
 				result = this.Rules.startGame(this.gameState);
 				break;
 			case 'chooseStartingDeck':

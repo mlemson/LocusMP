@@ -400,9 +400,9 @@ class LocusMultiplayer {
 	}
 
 	/** Host start het spel */
-	async startGame() {
+	async startGame(settings) {
 		try {
-			await this._emitWithAck('startGame', {});
+			await this._emitWithAck('startGame', settings || {});
 			console.log('[Locus MP] Game started');
 			return { success: true };
 		} catch (error) {

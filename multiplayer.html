@@ -71,31 +71,7 @@
 				🔗 Deelnemen
 			</button>
 
-			<div id="host-settings-block">
-				<div class="mp-divider"><span>Host instellingen</span></div>
-				<div class="mp-settings-row">
-					<div class="mp-input-group" style="flex:1;">
-						<label for="map-size-select">Kaart</label>
-						<select id="map-size-select">
-							<option value="2">Klein</option>
-							<option value="4" selected>Middel</option>
-							<option value="6">Groot</option>
-							<option value="8">Mega</option>
-						</select>
-					</div>
-					<div class="mp-input-group" style="flex:1;">
-						<label for="cards-per-player-select">Kaarten</label>
-						<select id="cards-per-player-select">
-							<option value="4">4</option>
-							<option value="6">6</option>
-							<option value="8" selected>8</option>
-							<option value="10">10</option>
-							<option value="12">12</option>
-						</select>
-					</div>
-				</div>
 			</div>
-		</div>
 
 		<div class="mp-server-browser" id="server-browser" style="display:none;">
 			<button class="mp-btn mp-btn-secondary mp-server-browse-toggle" id="server-browse-toggle">
@@ -146,13 +122,38 @@
 			</button>
 
 			<div class="mp-ai-controls" id="ai-controls" style="display:none;">
+				<div id="host-settings-block">
+					<div class="mp-divider"><span>Instellingen</span></div>
+					<div class="mp-settings-row">
+						<div class="mp-input-group" style="flex:1;">
+							<label for="map-size-select">Kaart</label>
+							<select id="map-size-select">
+								<option value="2">Klein</option>
+								<option value="4" selected>Middel</option>
+								<option value="6">Groot</option>
+								<option value="8">Mega</option>
+							</select>
+						</div>
+						<div class="mp-input-group" style="flex:1;">
+							<label for="cards-per-player-select">Kaarten</label>
+							<select id="cards-per-player-select">
+								<option value="4">4</option>
+								<option value="6">6</option>
+								<option value="8" selected>8</option>
+								<option value="10">10</option>
+								<option value="12">12</option>
+							</select>
+						</div>
+					</div>
+				</div>
+
+				<div class="mp-divider"><span>Bots</span></div>
 				<button id="add-ai-btn" class="mp-btn mp-btn-secondary">
 					🤖 AI Speler Toevoegen
 				</button>
 				<select id="ai-difficulty-select" class="mp-select">
 					<option value="normal">🤖 Normaal</option>
 					<option value="hard">🧠 Hard (ML)</option>
-					<option value="random">🎲 Random</option>
 				</select>
 			</div>
 
@@ -1494,7 +1495,7 @@
 
 				async joinGame() { /* host is already in */ },
 
-				async startGame() { return host.hostAction('startGame'); },
+				async startGame(settings) { return host.hostAction('startGame', settings || {}); },
 				async addAIPlayer(difficulty) { return host.hostAction('addAIPlayer', { difficulty: difficulty || 'normal' }); },
 				async removeAIPlayer(playerId) { return host.hostAction('removeAIPlayer', { playerId }); },
 				async chooseStartingDeck(dt) { return host.hostAction('chooseStartingDeck', { deckType: dt }); },
