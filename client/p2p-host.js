@@ -2221,21 +2221,27 @@ class LocusP2PHost {
 										score -= staleBoldHit * 10;
 									}
 
-									// STRICT vertical enforcement for blue
+									// STRICT vertical enforcement for blue — ALWAYS prefer taller than wider
 									const blueYs = new Set(cells.map(c => c.y));
 									const blueXs = new Set(cells.map(c => c.x));
-									if (blueYs.size >= 2) score += blueYs.size * 10;
+									const blueHeight = blueYs.size;
+									const blueWidth = blueXs.size;
+									if (blueHeight >= 2) score += blueHeight * 10;
 
-									// HARD BLOCK horizontal placements (1 row, wide spread)
-									if (blueYs.size === 1 && blueXs.size >= 2) {
+									// HARD BLOCK: any placement wider than tall
+									if (blueWidth > blueHeight) {
 										const hitsPoints = boldHit > 0 || endHit > 0;
 										const hitsBonus = bonusFlagsHit > 0;
 										if (hitsPoints && hitsBonus) {
-											score -= 10;
+											score -= 15;
+										} else if (blueHeight <= 1) {
+											score -= 150; // Completely flat = massive penalty
 										} else {
-											score -= 120;
+											score -= 60 + (blueWidth - blueHeight) * 25;
 										}
 									}
+									// Bonus for taller-than-wide placements
+									if (blueHeight > blueWidth) score += (blueHeight - blueWidth) * 12;
 								} else if (zoneName === 'red') {
 									// Subgrid completion toward 80% threshold
 									if (subgridId) {
@@ -3184,16 +3190,23 @@ class LocusP2PHost {
 						const verticalSpan = Math.max(1, (maxY - minY) + 1);
 						if (verticalSpan >= 2) score += verticalSpan * 8;
 
-						// BLOCK horizontal bonus placements (same rule as cards)
+						// BLOCK horizontal bonus placements — always prefer taller than wider
 						const bonusBYs = new Set(cells.map(c => c.y));
 						const bonusBXs = new Set(cells.map(c => c.x));
-						if (bonusBYs.size === 1 && bonusBXs.size >= 2) {
+						const bonusBHeight = bonusBYs.size;
+						const bonusBWidth = bonusBXs.size;
+						if (bonusBWidth > bonusBHeight) {
 							const hitsPoints = boldCount > 0 || endCount > 0;
 							const hitsBonus = bonusCount > 0;
-							if (!(hitsPoints && hitsBonus)) {
-								score -= 80; // Block horizontal bonus too
+							if (hitsPoints && hitsBonus) {
+								score -= 10;
+							} else if (bonusBHeight <= 1) {
+								score -= 120;
+							} else {
+								score -= 50 + (bonusBWidth - bonusBHeight) * 20;
 							}
 						}
+						if (bonusBHeight > bonusBWidth) score += (bonusBHeight - bonusBWidth) * 10;
 
 						// Strongly discourage bottom-layer bold placements that no longer score.
 						if (newBlueTierCount === 0 && minY > Math.floor(rows * 0.65)) score -= 18;

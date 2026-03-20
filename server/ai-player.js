@@ -1092,15 +1092,15 @@ function _scoreBlueImpact(zoneData, placedCells) {
 		if (!hasBoldOrBonus) impact -= Math.round((minY - blueRows * 0.55) * 3);
 	}
 
-	// Strongly prefer vertical placements (span multiple rows = reach bold rows faster)
+	// STRICT vertical enforcement — ALWAYS prefer taller than wider
 	const ys = new Set(placedCells.map(c => c.y));
 	const xs = new Set(placedCells.map(c => c.x));
-	const verticalSpan = ys.size;
-	if (verticalSpan >= 2) impact += verticalSpan * 8;
+	const blueHeight = ys.size;
+	const blueWidth = xs.size;
+	if (blueHeight >= 2) impact += blueHeight * 10;
 
-	// PENALIZE horizontal-only placements (single row, multiple cols) that don't hit valuable flags
-	// These waste cells: only 1 cell per bold row = no tier progress
-	if (verticalSpan === 1 && xs.size >= 3) {
+	// HARD BLOCK: any placement wider than tall
+	if (blueWidth > blueHeight) {
 		let hasValuable = false;
 		for (const c of placedCells) {
 			const cell = GameRules.getDataCell(zoneData, c.x, c.y);
@@ -1109,8 +1109,16 @@ function _scoreBlueImpact(zoneData, placedCells) {
 				break;
 			}
 		}
-		if (!hasValuable) impact -= 15; // Strong penalty for horizontal waste
+		if (hasValuable) {
+			impact -= 15;
+		} else if (blueHeight <= 1) {
+			impact -= 150; // Completely flat = massive penalty
+		} else {
+			impact -= 60 + (blueWidth - blueHeight) * 25;
+		}
 	}
+	// Bonus for taller-than-wide placements
+	if (blueHeight > blueWidth) impact += (blueHeight - blueWidth) * 12;
 
 	// Favor placements adjacent to existing cells (build connected paths upward)
 	let adjacent = 0;
