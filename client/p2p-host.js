@@ -2052,10 +2052,36 @@ class LocusP2PHost {
 									score += (boldHit + endHit + bonusFlagsHit) * 12;
 								}
 
+								// ── MULTI-BOLD STACKING: hitting 2+ bold cells in 1 placement is exponentially valuable ──
+								if (boldHit >= 2) {
+									score += boldHit * 20; // Stacking: each bold in a multi-bold is worth more
+									if (zoneName === 'purple') score += boldHit * 15; // Purple connections scale hard
+								}
+
+								// ── MULTI-POINT STACKING: hitting multiple different point sources (bold+end) ──
+								if (boldHit > 0 && endHit > 0) {
+									score += (boldHit + endHit) * 15; // Double-dipping: points AND points
+								}
+
+								// ── MULTI-VALUE TYPE STACKING: the more different value types hit, the better ──
+								{
+									let valueTypes = 0;
+									if (boldHit > 0) valueTypes++;
+									if (endHit > 0) valueTypes++;
+									if (bonusFlagsHit > 0) valueTypes++;
+									if (goldHit > 0) valueTypes++;
+									// 2 types = small bonus, 3+ types = massive bonus (exponential stacking)
+									if (valueTypes >= 3) score += valueTypes * 25;
+									else if (valueTypes === 2) score += 12;
+								}
+
 								// Bonus chaining: multiple bonuses = exponential value
 								if (bonusFlagsHit >= 2) score += bonusFlagsHit * 30;
 								if (bonusFlagsHit >= 3) score += 50;
 								if (goldHit > 0 && bonusFlagsHit > 0) score += (goldHit + bonusFlagsHit) * 10;
+
+								// Multi-gold stacking
+								if (goldHit >= 2) score += goldHit * 8;
 
 								// Penalize pure empty-cell placements (no valuable flags at all)
 								if (!hasFlaggedCell) score -= 15;
@@ -3043,12 +3069,37 @@ class LocusP2PHost {
 					if ((boldCount + endCount) > 0 && bonusCount > 0) {
 						score += (boldCount + endCount + bonusCount) * 10;
 					}
+
+					// ── MULTI-BOLD STACKING: hitting 2+ bold cells in 1 placement ──
+					if (boldCount >= 2) {
+						score += boldCount * 18;
+						if (zoneName === 'purple') score += boldCount * 12;
+					}
+
+					// ── MULTI-POINT STACKING: bold+end in one placement ──
+					if (boldCount > 0 && endCount > 0) {
+						score += (boldCount + endCount) * 12;
+					}
+
+					// ── MULTI-VALUE TYPE STACKING: more different types = better ──
+					{
+						let vTypes = 0;
+						if (boldCount > 0) vTypes++;
+						if (endCount > 0) vTypes++;
+						if (bonusCount > 0) vTypes++;
+						if (goldCount > 0) vTypes++;
+						if (vTypes >= 3) score += vTypes * 22;
+						else if (vTypes === 2) score += 10;
+					}
+
 					// Extra scaling for multi-bonus grabs (3 bonuses >> 3x one bonus)
 					if (bonusCount >= 2) score += bonusCount * 15;
 					if (bonusCount >= 3) score += 25;
 					if (valueCount >= 2) score += valueCount * 4;
 					// Gold + bonus synergy
 					if (goldCount > 0 && bonusCount > 0) score += (goldCount + bonusCount) * 8;
+					// Multi-gold stacking
+					if (goldCount >= 2) score += goldCount * 6;
 					if (bonusColor === 'any') score += 2;
 
 					// Adjacency bonus (matching ai-player: +3 per adjacent)
@@ -3314,8 +3365,13 @@ class LocusP2PHost {
 			}
 		}
 
-		// Moderate bonus for creating connections (not doubling anymore)
-		if (newConnections > 0) impact += newConnections * 8;
+		// Stacking bonus: creating connections is valuable, MULTI-connections in 1 placement = exponentially better
+		if (newConnections > 0) {
+			impact += newConnections * 8;
+			// Multi-connection stacking: 2+ connections from one placement is extremely efficient
+			if (newConnections >= 2) impact += newConnections * 20;
+			if (newConnections >= 3) impact += 40;
+		}
 
 		// 2-step lookahead: building toward bold cells
 		if (newConnections === 0) {

@@ -807,9 +807,11 @@ function _evaluatePlacementImpact(gameState, playerId, card, placement) {
 	const cells = _getPlacementCells(card, placement, zoneData);
 	if (!cells || cells.length === 0) return placement.score;
 
-	// ── Collect valuable cell resources ──
+	// ── Collect valuable cell resources and count point-sources ──
 	let bonusFlagsCollected = 0;
 	let goldCoinsCollected = 0;
+	let boldHit = 0;
+	let endHit = 0;
 	let hasAnyValueFlag = false;
 	for (const c of cells) {
 		const cell = GameRules.getDataCell(zoneData, c.x, c.y);
@@ -826,8 +828,35 @@ function _evaluatePlacementImpact(gameState, playerId, card, placement) {
 			impactScore += 35;
 		}
 		if (cell?.flags?.includes('pearl')) { impactScore += 8; hasAnyValueFlag = true; }
-		if (cell?.flags?.includes('bold')) hasAnyValueFlag = true;
-		if (cell?.flags?.includes('end')) hasAnyValueFlag = true;
+		if (cell?.flags?.includes('bold')) { boldHit++; hasAnyValueFlag = true; }
+		if (cell?.flags?.includes('end')) { endHit++; hasAnyValueFlag = true; }
+	}
+
+	// ── MULTI-BOLD STACKING: hitting 2+ bold cells in 1 placement is exponentially valuable ──
+	if (boldHit >= 2) {
+		impactScore += boldHit * 20;
+		if (zoneName === 'purple') impactScore += boldHit * 15; // Purple connections scale hard
+	}
+
+	// ── MULTI-POINT STACKING: hitting bold+end in one placement = double-dipping ──
+	if (boldHit > 0 && endHit > 0) {
+		impactScore += (boldHit + endHit) * 15;
+	}
+
+	// ── MULTI-VALUE TYPE STACKING: the more different value types hit, the better ──
+	{
+		let valueTypes = 0;
+		if (boldHit > 0) valueTypes++;
+		if (endHit > 0) valueTypes++;
+		if (bonusFlagsCollected > 0) valueTypes++;
+		if (goldCoinsCollected > 0) valueTypes++;
+		if (valueTypes >= 3) impactScore += valueTypes * 25;
+		else if (valueTypes === 2) impactScore += 12;
+	}
+
+	// ── Combo multiplier: hitting points AND bonuses = perfect placement ──
+	if ((boldHit + endHit) > 0 && bonusFlagsCollected > 0) {
+		impactScore += (boldHit + endHit + bonusFlagsCollected) * 12;
 	}
 
 	// ── 2-step lookahead: bonus cells captured → future bonus placements ──
@@ -837,13 +866,14 @@ function _evaluatePlacementImpact(gameState, playerId, card, placement) {
 		impactScore += bonusFlagsCollected * 30;
 	}
 	if (bonusFlagsCollected >= 3) {
-		// 3+ bonuses in one placement is a massive strategic win
 		impactScore += 50;
 	}
 	// Gold + bonus combo: extra synergy
 	if (goldCoinsCollected > 0 && bonusFlagsCollected > 0) {
 		impactScore += (goldCoinsCollected + bonusFlagsCollected) * 10;
 	}
+	// Multi-gold stacking
+	if (goldCoinsCollected >= 2) impactScore += goldCoinsCollected * 8;
 
 	// ── Bonus collection ALWAYS beats empty cells when no direct points ──
 	// If this placement has no zone-scoring value (no bold, no end, no column completion etc.)
@@ -1230,6 +1260,9 @@ function _scorePurpleImpact(zoneData, placedCells) {
 	// Double-weight because creating connections is THE strategy in purple
 	if (newConnections > 0) {
 		impact *= 2;
+		// Multi-connection stacking: 2+ connections from one placement is extremely efficient
+		if (newConnections >= 2) impact += newConnections * 20;
+		if (newConnections >= 3) impact += 40;
 	}
 
 	// ── Step 4: Value building TOWARDS bold cells (2-step lookahead) ──
