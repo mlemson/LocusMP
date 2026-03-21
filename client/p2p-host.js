@@ -542,17 +542,17 @@ class LocusP2PHost {
 				const playerName = this.gameState.players[playerId]?.name || 'Speler';
 				this._broadcastEvent('taunt', { playerId, playerName, text: msg.text, timestamp: Date.now() });
 
-				// Bot auto-reply: each bot has independent chance to respond (aggressive 85%, normal 60%)
+				// Bot auto-reply: each bot has independent chance to respond (aggressive 95%, normal 50%)
 				const aiPlayers = (this.gameState.playerOrder || []).filter(pid =>
 					pid !== playerId && this.gameState.players[pid]?.isAI
 				);
-				const aggroTaunts = ['fuck off', 'your mum', 'cheater', 'HAHA', 'Nooo!'];
-				const normalTaunts = ['Nooo!', 'HAHA', 'Well played!', 'Oeps...', 'Kom op!', 'cheater', 'fuck off', 'your mum'];
+				const aggroTaunts = ['fuck off', 'your mum', 'cheater', 'HAHA', 'Nooo!', 'get rekt', 'too easy'];
+				const normalTaunts = ['Nooo!', 'HAHA', 'Well played!', 'Oeps...', 'Kom op!'];
 				let replyCount = 0;
 				for (const botId of aiPlayers) {
 					if (replyCount >= 2) break; // Max 2 replies
 					const botPers = this._aiPersonality?.get(botId) || 'normal';
-					const chance = botPers === 'aggressive' ? 0.85 : 0.60;
+					const chance = botPers === 'aggressive' ? 0.95 : 0.50;
 					if (Math.random() > chance) continue;
 					const pool = botPers === 'aggressive' ? aggroTaunts : normalTaunts;
 					const replyText = pool[Math.floor(Math.random() * pool.length)];
@@ -969,8 +969,10 @@ class LocusP2PHost {
 		for (const aiId of this.aiPlayerIds) {
 			const aiPlayer = this.gameState.players?.[aiId];
 			if (!aiPlayer || (aiPlayer.timeBombs || 0) <= 0) continue;
-			// 40% chance to use time bomb
-			if (Math.random() >= 0.4) continue;
+			const isAggressive = (this._aiPersonality?.get(aiId) || 'normal') === 'aggressive';
+			// Aggressive bots use bombs 80% of the time, normal 40%
+			const bombChance = isAggressive ? 0.80 : 0.40;
+			if (Math.random() >= bombChance) continue;
 
 			// Fire after a very short delay so the player sees their turn start
 			this._timeBombPending = true;
@@ -3581,12 +3583,12 @@ class LocusP2PHost {
 
 		const pers = this._aiPersonality?.get(playerId) || 'normal';
 		const isAggressive = pers === 'aggressive';
-		// Aggressive bots taunt ~25%, normal ~8%
-		const chance = isAggressive ? 0.25 : 0.08;
+		// Aggressive bots taunt ~40%, normal ~8%
+		const chance = isAggressive ? 0.40 : 0.08;
 		if (Math.random() > chance) return;
 
-		const aggroPool = ['fuck off', 'your mum', 'cheater', 'HAHA', 'Nooo!'];
-		const normalPool = ['Nooo!', 'HAHA', 'Well played!', 'Oeps...', 'Kom op!', 'cheater', 'fuck off', 'your mum'];
+		const aggroPool = ['fuck off', 'your mum', 'cheater', 'HAHA', 'Nooo!', 'get rekt', 'too easy'];
+		const normalPool = ['Nooo!', 'HAHA', 'Well played!', 'Oeps...', 'Kom op!'];
 		const pool = isAggressive ? aggroPool : normalPool;
 		const text = pool[Math.floor(Math.random() * pool.length)];
 
