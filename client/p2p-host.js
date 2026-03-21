@@ -1404,12 +1404,13 @@ class LocusP2PHost {
 						if (!boughtSomething) {
 							const shopItems = this.Rules.getShopItems(this.gameState.level || 1, p) || [];
 							const affordable = shopItems.filter(item => item.cost <= remainingCoins && item.id !== 'unlock-steen');
+							const isAggressive = (this._aiPersonality?.get(aiId) || 'normal') === 'aggressive';
 							let bestItem = null;
 							for (const item of affordable) {
 								let value = 0;
 								if (item.unlockOnly) value += 30; // blijvende unlocks eerst
 								if (item.id === 'extra-bonus') value += isHard ? 16 : 12;
-								if (item.id === 'time-bomb') value += isHard ? 10 : 7;
+								if (item.id === 'time-bomb') value += isAggressive ? 28 : (isHard ? 10 : 7);
 								if (item.id === 'random-card') value += 5; // tijdelijk, lagere prioriteit
 								value -= item.cost * 1.2;
 								if (isRandomBot) value += Math.random() * 8;
