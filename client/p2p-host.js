@@ -1016,8 +1016,8 @@ class LocusP2PHost {
 		this._aiDifficulty.set(aiId, difficulty);
 		// Assign personality (25% aggressive)
 		if (!this._aiPersonality) this._aiPersonality = new Map();
-		const personalities = ['normal', 'normal', 'normal', 'aggressive'];
-		const personality = personalities[Math.floor(Math.random() * personalities.length)];
+		// 10% aggressive bots
+		const personality = Math.random() < 0.10 ? 'aggressive' : 'normal';
 		this._aiPersonality.set(aiId, personality);
 		if (personality === 'aggressive') {
 			const aggroName = aiName + ' \ud83d\udca2';
@@ -1558,12 +1558,17 @@ class LocusP2PHost {
 			actions.push({ type: 'playCard', move: bestMove });
 		}
 
-		// 4. Play bonuses
+		// 4. Play bonuses — only queue them if a good placement exists; save otherwise
 		const bonusColors = ['yellow', 'red', 'green', 'purple', 'blue', 'any'];
 		for (const color of bonusColors) {
 			const charges = player.bonusInventory?.[color] || 0;
 			for (let i = 0; i < charges; i++) {
-				actions.push({ type: 'playBonus', bonusColor: color });
+				// Pre-check: does a worthwhile placement exist?
+				const preCheck = this._aiBonusBestScore(playerId, color);
+				if (preCheck !== null && preCheck >= 5) {
+					actions.push({ type: 'playBonus', bonusColor: color });
+				}
+				// Otherwise save the bonus for a better moment
 			}
 		}
 
@@ -2084,8 +2089,7 @@ class LocusP2PHost {
 								if (goldHit >= 2) score += goldHit * 8;
 
 								// Penalize pure empty-cell placements (no valuable flags at all)
-								if (!hasFlaggedCell) score -= 15;
-
+										if (!hasFlaggedCell) score -= 35;
 								// ── Zone-specific scoring (ALL bots, from ai-player) ──
 								if (zoneName === 'yellow') {
 									// Column completion simulation
@@ -2280,12 +2284,24 @@ class LocusP2PHost {
 								}
 								score += adjacentCount * 3;
 
-								// STRONG penalize isolated placements (matching ai-player)
+								// STRONG penalize isolated placements — bots should almost never place on barren spots
+								// Exception: blue zone where building upward toward a bold row is strategic (block + bonus later)
+								const blueStrategicUpward = (zoneName === 'blue' && hasBonuses && !hasFlaggedCell
+									&& cells.some(c => {
+										// Check if any cell is directly below a bold cell
+										const above = this.Rules.getDataCell(zoneData, c.x, c.y - 1);
+										return above && !above.active && above.flags?.includes('bold');
+									}));
 								if (adjacentCount === 0 && totalActiveCells > 0) {
-									score -= 30;
-									if (!hasFlaggedCell) score -= 20;
+									if (blueStrategicUpward) {
+										score -= 10; // Mild penalty — strategic stepping stone
+									} else {
+										score -= 50;
+										if (!hasFlaggedCell) score -= 40; // Totally waste placement
+									}
 								} else if (!hasFlaggedCell && adjacentCount === 0 && totalActiveCells === 0) {
-									score -= 5;
+									// First placement in zone — still bad if no flags, but tolerable
+									score -= 15;
 								}
 
 								// Cell count bonus — bigger placements inherently better
@@ -2720,6 +2736,61 @@ class LocusP2PHost {
 		return score;
 	}
 
+	/** Pre-check: return the best score for placing a bonus, or null if no valid placement.
+	 *  Used to decide whether to save a bonus for later. */
+	_aiBonusBestScore(playerId, bonusColor) {
+		const player = this.gameState?.players?.[playerId];
+		const board = this.gameState?.boardState;
+		if (!player || !board) return null;
+		if (!player.bonusInventory?.[bonusColor] || player.bonusInventory[bonusColor] <= 0) return null;
+		const bonusMatrix = this.Rules.getBonusShapeForPlayer(bonusColor, player);
+		if (!bonusMatrix) return null;
+
+		let bestScore = -Infinity;
+		const targetZones = bonusColor === 'any'
+			? ['yellow', 'green', 'blue', 'red', 'purple']
+			: [bonusColor];
+
+		// For multikleur ('any') bonuses, prefer objective-matching zone
+		const objective = player.chosenObjective;
+		const objZone = objective ? this._getObjectiveZone(objective) : null;
+
+		for (const zoneName of targetZones) {
+			if (zoneName === 'red') {
+				for (const sg of (board.zones?.red?.subgrids || [])) {
+					this._scoreBonusPlacements(bonusMatrix, sg, zoneName, sg.id, bonusColor, (p) => {
+						let totalScore = p.score + this._bonusObjectiveWeight(this.gameState, playerId, player, p);
+						// Multikleur bonus on objective zone gets a boost
+						if (bonusColor === 'any' && objZone === zoneName) totalScore += 15;
+						if (totalScore > bestScore) bestScore = totalScore;
+					}, playerId);
+				}
+			} else {
+				const zoneData = board.zones?.[zoneName];
+				if (zoneData) {
+					this._scoreBonusPlacements(bonusMatrix, zoneData, zoneName, null, bonusColor, (p) => {
+						let totalScore = p.score + this._bonusObjectiveWeight(this.gameState, playerId, player, p);
+						if (bonusColor === 'any' && objZone === zoneName) totalScore += 15;
+						if (totalScore > bestScore) bestScore = totalScore;
+					}, playerId);
+				}
+			}
+		}
+		return bestScore > -Infinity ? bestScore : null;
+	}
+
+	/** Extract the zone name from an objective ID */
+	_getObjectiveZone(objective) {
+		if (!objective) return null;
+		const objId = String(objective.id || '').toLowerCase();
+		if (objId.includes('yellow')) return 'yellow';
+		if (objId.includes('green')) return 'green';
+		if (objId.includes('blue')) return 'blue';
+		if (objId.includes('red')) return 'red';
+		if (objId.includes('purple')) return 'purple';
+		return null;
+	}
+
 	/** Play a single bonus of the given color, returns {zoneName} or null */
 	_aiPlayOneBonus(playerId, bonusColor) {
 		const player = this.gameState?.players?.[playerId];
@@ -2738,12 +2809,17 @@ class LocusP2PHost {
 			? ['yellow', 'green', 'blue', 'red', 'purple']
 			: [bonusColor];
 
+		// For multikleur bonuses, prefer objective-matching zone
+		const objective = player.chosenObjective;
+		const objZone = objective ? this._getObjectiveZone(objective) : null;
+
 		for (const zoneName of targetZones) {
 			if (zoneName === 'red') {
 				const subgrids = board.zones?.red?.subgrids || [];
 				for (const sg of subgrids) {
 					this._scoreBonusPlacements(bonusMatrix, sg, zoneName, sg.id, bonusColor, (p) => {
-						const totalScore = p.score + this._bonusObjectiveWeight(this.gameState, playerId, player, p);
+						let totalScore = p.score + this._bonusObjectiveWeight(this.gameState, playerId, player, p);
+						if (bonusColor === 'any' && objZone === zoneName) totalScore += 15;
 						if (totalScore > bestScore) { bestScore = totalScore; bestPlacement = { ...p, score: totalScore }; }
 					}, playerId);
 				}
@@ -2751,14 +2827,15 @@ class LocusP2PHost {
 				const zoneData = board.zones?.[zoneName];
 				if (zoneData) {
 					this._scoreBonusPlacements(bonusMatrix, zoneData, zoneName, null, bonusColor, (p) => {
-						const totalScore = p.score + this._bonusObjectiveWeight(this.gameState, playerId, player, p);
+						let totalScore = p.score + this._bonusObjectiveWeight(this.gameState, playerId, player, p);
+						if (bonusColor === 'any' && objZone === zoneName) totalScore += 15;
 						if (totalScore > bestScore) { bestScore = totalScore; bestPlacement = { ...p, score: totalScore }; }
 					}, playerId);
 				}
 			}
 		}
 
-		if (!bestPlacement) return null;
+		if (!bestPlacement || bestScore < 5) return null; // Save bonus if no good placement
 
 		// ── ML-ready bonus logging ──
 		try {
@@ -3018,12 +3095,15 @@ class LocusP2PHost {
 		if (!zoneData) return;
 		const prioritizeCoins = playerId ? this._shouldPrioritizeCoins(playerId) : false;
 		const rotations = [0, 1, 2, 3];
+		const mirrors = [false, true];
 		const isBlueZone = zoneName === 'blue';
 		const blueReachedRows = isBlueZone ? this._getReachedBoldRows(zoneData) : null;
 		const blueBoldSet = isBlueZone ? new Set(zoneData.boldRows || []) : null;
 		for (const rotation of rotations) {
+		  for (const mirrored of mirrors) {
 			let matrix = this.Rules.cloneMatrix(bonusMatrix);
 			matrix = this.Rules.rotateMatrixN(matrix, rotation);
+			if (mirrored) matrix = this.Rules.mirrorMatrix(matrix);
 			for (let y = 0; y < (zoneData.rows || 0); y++) {
 				for (let x = 0; x < (zoneData.cols || 0); x++) {
 					const cells = this.Rules.collectPlacementCellsData(zoneData, x, y, matrix);
@@ -3110,13 +3190,13 @@ class LocusP2PHost {
 
 					// Adjacency bonus (matching ai-player: +3 per adjacent)
 					score += adjacentCount * 3;
-					// Isolation penalty for bonus placement
+					// Isolation penalty for bonus placement — stronger than card penalty
 					if (adjacentCount === 0) {
 						let zoneHasActive = false;
 						for (const k in zoneData.cells) {
 							if (zoneData.cells[k]?.active) { zoneHasActive = true; break; }
 						}
-						if (zoneHasActive) score -= 20;
+						if (zoneHasActive) score -= 45; // Never place bonus isolated when zone has territory
 					}
 
 					// Zone-specific bonus impact (matching ai-player)
@@ -3211,9 +3291,18 @@ class LocusP2PHost {
 						// Strongly discourage bottom-layer bold placements that no longer score.
 						if (newBlueTierCount === 0 && minY > Math.floor(rows * 0.65)) score -= 18;
 					}
+
+					// STRONG penalty: bonus on completely empty cells with no value flags
+					if (valueCount === 0 && adjacentCount === 0) {
+						score -= 60; // Never place a bonus on a barren, isolated spot
+					} else if (valueCount === 0) {
+						score -= 30; // Has neighbors but no value — still bad for a bonus
+					}
+
 					onFound({ zoneName, baseX: x, baseY: y, rotation, subgridId, score, bonusColor });
 				}
 			}
+		  } // end mirrored
 		}
 	}
 
