@@ -10,6 +10,21 @@
 		   LOCUS TV DISPLAY — Big Screen Spectator View
 		   ══════════════════════════════════════════════ */
 		:root {
+			--tv-bg: #18071e;
+			--tv-panel: rgba(60,33,70,0.72);
+			--tv-text: #f0e6f6;
+			--tv-dim: rgba(255,255,255,0.50);
+			--tv-accent: #a68cff;
+			--tv-gold: #ff8f6f;
+			--tv-radius: 14px;
+			--tv-cell-size: 32px;
+			--tv-cell-gap: 3px;
+			--tv-cell-radius: 6px;
+			--mp-cell-size: 32px;
+			--mp-cell-radius: 6px;
+			--mp-radius: 14px;
+		}
+		html.theme-classic {
 			--tv-bg: #0c0e14;
 			--tv-panel: rgba(20,22,34,0.92);
 			--tv-text: #e8e6e0;
@@ -17,21 +32,20 @@
 			--tv-accent: #6366f1;
 			--tv-gold: #f0c040;
 			--tv-radius: 12px;
-			--tv-cell-size: 32px;
-			--tv-cell-gap: 3px;
-			--tv-cell-radius: 6px;
-			--mp-cell-size: 32px;
-			--mp-cell-radius: 6px;
 			--mp-radius: 12px;
 		}
 		* { margin: 0; padding: 0; box-sizing: border-box; }
 		body {
-			background: var(--tv-bg);
+			background: linear-gradient(160deg, #18071e, #1f0e28, #2a1435, #18071e);
 			color: var(--tv-text);
-			font-family: 'Segoe UI', -apple-system, sans-serif;
+			font-family: 'Be Vietnam Pro', 'Segoe UI', -apple-system, sans-serif;
 			overflow: hidden;
 			width: 100vw;
 			height: 100vh;
+		}
+		html.theme-classic body {
+			background: #0c0e14;
+			font-family: 'Segoe UI', -apple-system, sans-serif;
 		}
 
 		/* ── Waiting / Connection State ── */
@@ -44,26 +58,41 @@
 			gap: 24px;
 		}
 		.tv-waiting h1 {
+			font-family: 'Plus Jakarta Sans', 'Be Vietnam Pro', sans-serif;
 			font-size: 3rem;
 			font-weight: 800;
 			letter-spacing: 8px;
+			background: linear-gradient(135deg, #ff8f6f, #a68cff, #81ecff, #5be8b4);
+			-webkit-background-clip: text;
+			-webkit-text-fill-color: transparent;
+		}
+		html.theme-classic .tv-waiting h1 {
 			background: linear-gradient(135deg, #6366f1, #818cf8, #c084fc);
 			-webkit-background-clip: text;
 			-webkit-text-fill-color: transparent;
+			font-family: 'Segoe UI', -apple-system, sans-serif;
 		}
 		.tv-waiting p {
 			font-size: 1.3rem;
 			color: var(--tv-dim);
 		}
 		.tv-waiting .tv-room-code {
+			font-family: 'Plus Jakarta Sans', 'Be Vietnam Pro', sans-serif;
 			font-size: 3.5rem;
 			font-weight: 800;
 			letter-spacing: 12px;
 			color: var(--tv-gold);
 			padding: 16px 40px;
+			background: rgba(255,143,111,0.08);
+			border: 1px solid rgba(255,143,111,0.2);
+			border-radius: 16px;
+			backdrop-filter: blur(12px);
+		}
+		html.theme-classic .tv-waiting .tv-room-code {
 			background: rgba(240,192,64,0.08);
 			border: 2px solid rgba(240,192,64,0.2);
-			border-radius: 16px;
+			backdrop-filter: none;
+			font-family: 'Segoe UI', -apple-system, sans-serif;
 		}
 		.tv-pulse {
 			animation: tvPulse 2s ease-in-out infinite;
@@ -109,13 +138,18 @@
 		.tv-waiting-qr-link:hover { color: #fff; }
 		.tv-player-chip {
 			background: var(--tv-panel);
-			border: 1px solid rgba(255,255,255,0.1);
+			border: 1px solid rgba(166,140,255,0.15);
 			border-radius: 24px;
 			padding: 8px 20px;
 			font-size: 1.1rem;
 			display: flex;
 			align-items: center;
 			gap: 8px;
+			backdrop-filter: blur(12px);
+		}
+		html.theme-classic .tv-player-chip {
+			border-color: rgba(255,255,255,0.1);
+			backdrop-filter: none;
 		}
 		.tv-player-chip .tv-connected {
 			width: 8px; height: 8px;
@@ -152,7 +186,11 @@
 			gap: 8px;
 			padding: 12px 24px;
 			background: var(--tv-panel);
-			border-bottom: 1px solid rgba(255,255,255,0.06);
+			border-bottom: 1px solid rgba(166,140,255,0.10);
+			backdrop-filter: blur(16px) saturate(1.4);
+		}
+		html.theme-classic .tv-top-bar {
+			border-bottom-color: rgba(255,255,255,0.06);
 			backdrop-filter: blur(12px);
 		}
 		.tv-turn-info {
@@ -182,10 +220,19 @@
 			border-radius: 8px;
 		}
 		.tv-logo-small {
+			font-family: 'Plus Jakarta Sans', 'Be Vietnam Pro', sans-serif;
 			font-size: 1.2rem;
 			font-weight: 800;
 			letter-spacing: 4px;
+			background: linear-gradient(135deg, #ff8f6f, #a68cff);
+			-webkit-background-clip: text;
+			-webkit-text-fill-color: transparent;
+		}
+		html.theme-classic .tv-logo-small {
+			background: none;
+			-webkit-text-fill-color: unset;
 			color: var(--tv-dim);
+			font-family: 'Segoe UI', -apple-system, sans-serif;
 		}
 
 		/* ── Timer ── */
@@ -241,7 +288,11 @@
 			padding: 10px;
 			padding-top: 28px;
 			position: relative;
-			border: 2px solid;
+			border: 1px solid;
+			box-shadow: 0 4px 16px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.04);
+		}
+		html.theme-classic .tv-zone {
+			border-width: 2px;
 			box-shadow: 0 4px 10px rgba(0,0,0,0.3);
 		}
 		.tv-zone-label {
@@ -267,7 +318,8 @@
 			height: var(--mp-cell-size);
 			border-radius: var(--mp-cell-radius);
 			background: rgba(255,255,255,0.06);
-			border: 1px solid rgba(255,255,255,0.1);
+			border: 1px solid rgba(255,255,255,0.08);
+			box-shadow: inset 0 1px 2px rgba(0,0,0,0.2);
 			transition: background 0.25s ease, transform 0.15s ease, box-shadow 0.25s ease;
 			display: flex;
 			align-items: center;
@@ -275,8 +327,15 @@
 		}
 		.tv-cell.void { visibility: hidden; }
 		.tv-cell.active {
-			box-shadow: inset 0 1px 3px rgba(0,0,0,0.3), 0 0 6px rgba(58,111,247,0.2);
+			box-shadow: inset 0 1px 3px rgba(0,0,0,0.3), 0 0 8px rgba(166,140,255,0.25);
 			transform: scale(1.02);
+		}
+		html.theme-classic .tv-cell {
+			border-color: rgba(255,255,255,0.1);
+			box-shadow: none;
+		}
+		html.theme-classic .tv-cell.active {
+			box-shadow: inset 0 1px 3px rgba(0,0,0,0.3), 0 0 6px rgba(58,111,247,0.2);
 		}
 		/* Bonus dots on unclaimed cells */
 		.tv-bonus-dot {
@@ -333,8 +392,13 @@
 			gap: 8px;
 			padding: 12px;
 			background: var(--tv-panel);
-			border-right: 1px solid rgba(255,255,255,0.06);
+			border-right: 1px solid rgba(166,140,255,0.10);
+			backdrop-filter: blur(16px) saturate(1.4);
 			overflow-y: auto;
+		}
+		html.theme-classic .tv-sidebar {
+			border-right-color: rgba(255,255,255,0.06);
+			backdrop-filter: none;
 		}
 		.tv-score-row {
 			display: flex;
@@ -382,8 +446,13 @@
 			gap: 16px;
 			padding: 12px 24px;
 			background: var(--tv-panel);
-			border-top: 1px solid rgba(255,255,255,0.06);
+			border-top: 1px solid rgba(166,140,255,0.10);
+			backdrop-filter: blur(16px) saturate(1.4);
 			min-height: 80px;
+		}
+		html.theme-classic .tv-bottom-bar {
+			border-top-color: rgba(255,255,255,0.06);
+			backdrop-filter: none;
 		}
 		.tv-hand-label {
 			font-size: 0.85rem;
@@ -401,7 +470,7 @@
 		}
 		.tv-card {
 			background: var(--tv-panel);
-			border: 1px solid rgba(255,255,255,0.10);
+			border: 1px solid rgba(166,140,255,0.12);
 			border-radius: 10px;
 			padding: 8px;
 			display: flex;
@@ -410,6 +479,11 @@
 			gap: 4px;
 			min-width: 80px;
 			cursor: default;
+			backdrop-filter: blur(8px);
+		}
+		html.theme-classic .tv-card {
+			border-color: rgba(255,255,255,0.10);
+			backdrop-filter: none;
 		}
 		.tv-card-name {
 			font-size: 0.7rem;
@@ -444,8 +518,8 @@
 			top: 50%;
 			left: 50%;
 			transform: translate(-50%, -50%) scale(0);
-			background: rgba(20,22,34,0.95);
-			border: 2px solid rgba(99,102,241,0.3);
+			background: rgba(60,33,70,0.92);
+			border: 1px solid rgba(166,140,255,0.25);
 			border-radius: 20px;
 			padding: 24px 48px;
 			z-index: 100;
@@ -453,10 +527,19 @@
 			transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.3s ease;
 			opacity: 0;
 			pointer-events: none;
+			backdrop-filter: blur(16px);
+		}
+		html.theme-classic .tv-taunt {
+			background: rgba(20,22,34,0.95);
+			border: 2px solid rgba(99,102,241,0.3);
+			backdrop-filter: none;
 		}
 		.tv-taunt.show {
 			transform: translate(-50%, -50%) scale(1);
 			opacity: 1;
+		}
+		html.theme-classic .tv-taunt-name {
+			color: #6366f1;
 		}
 		.tv-taunt-name {
 			font-size: 0.9rem;
@@ -498,10 +581,15 @@
 		.tv-level-overlay.show { display: flex; }
 		.tv-level-card {
 			background: var(--tv-panel);
-			border: 1px solid rgba(255,255,255,0.1);
+			border: 1px solid rgba(166,140,255,0.15);
 			border-radius: 20px;
 			padding: 40px 60px;
 			text-align: center;
+			backdrop-filter: blur(16px) saturate(1.4);
+		}
+		html.theme-classic .tv-level-card {
+			border-color: rgba(255,255,255,0.1);
+			backdrop-filter: none;
 		}
 		.tv-level-card h2 {
 			font-size: 2rem;
@@ -533,13 +621,19 @@
 			top: 56%;
 			transform: translate(-50%, -50%);
 			width: min(760px, calc(100vw - 48px));
-			background: rgba(20,22,34,0.95);
-			border: 1px solid rgba(255,255,255,0.14);
+			background: rgba(60,33,70,0.90);
+			border: 1px solid rgba(166,140,255,0.18);
 			border-radius: 16px;
 			box-shadow: 0 14px 38px rgba(0,0,0,0.45);
+			backdrop-filter: blur(16px) saturate(1.4);
 			padding: 18px;
 			z-index: 45;
 			display: none;
+		}
+		html.theme-classic .tv-phase-overlay {
+			background: rgba(20,22,34,0.95);
+			border-color: rgba(255,255,255,0.14);
+			backdrop-filter: none;
 		}
 		.tv-phase-overlay.show {
 			display: block;
@@ -605,21 +699,33 @@
 			max-width: 360px;
 			padding: 9px 12px;
 			border-radius: 10px;
-			border: 1px solid rgba(255,255,255,0.15);
-			background: rgba(12,14,28,0.94);
+			border: 1px solid rgba(166,140,255,0.15);
+			background: rgba(24,7,30,0.92);
 			box-shadow: 0 10px 24px rgba(0,0,0,0.35);
+			backdrop-filter: blur(12px);
 			font-size: 0.9rem;
 			animation: tvActionIn 360ms cubic-bezier(0.2, 0.8, 0.2, 1), tvActionOut 320ms ease-in forwards;
 			animation-delay: 0ms, 2500ms;
 		}
 		.tv-action-item.score {
-			border-color: rgba(245,215,110,0.45);
+			border-color: rgba(255,143,111,0.45);
 		}
 		.tv-action-item.bomb {
 			border-color: rgba(239,68,68,0.5);
 			background: rgba(45,18,18,0.92);
 		}
 		.tv-action-item.info {
+			border-color: rgba(166,140,255,0.45);
+		}
+		html.theme-classic .tv-action-item {
+			border-color: rgba(255,255,255,0.15);
+			background: rgba(12,14,28,0.94);
+			backdrop-filter: none;
+		}
+		html.theme-classic .tv-action-item.score {
+			border-color: rgba(245,215,110,0.45);
+		}
+		html.theme-classic .tv-action-item.info {
 			border-color: rgba(99,102,241,0.45);
 		}
 		@keyframes tvActionIn {
