@@ -305,6 +305,139 @@ html.theme-classic .mp-logo {
 	background-clip: text;
 }
 
+/* ── Classic theme: revert Neon component overrides ── */
+html.theme-classic .mp-version-badge {
+	color: rgba(113,146,219,0.85);
+	background: rgba(20,22,34,0.72);
+	border-color: rgba(113,146,219,0.25);
+}
+html.theme-classic .mp-version-badge-inline {
+	color: rgba(113,146,219,0.85);
+	background: rgba(20,22,34,0.52);
+	border-color: rgba(113,146,219,0.25);
+}
+html.theme-classic .mp-shop-card {
+	background: var(--mp-panel);
+	border-color: rgba(255,255,255,0.08);
+	backdrop-filter: none;
+}
+html.theme-classic .mp-shop-gold {
+	color: #f5d76e;
+	background: rgba(245,215,110,0.08);
+}
+html.theme-classic .mp-shop-offering {
+	background: rgba(255,255,255,0.04);
+	border: 2px solid rgba(255,255,255,0.1);
+}
+html.theme-classic .mp-shop-offering:not(.sold):not(.cant-afford):hover {
+	background: rgba(255,255,255,0.08);
+}
+html.theme-classic .mp-shop-buy-btn {
+	background: rgba(245,215,110,0.12);
+}
+html.theme-classic .mp-shop-buy-btn:hover:not(:disabled) {
+	background: rgba(245,215,110,0.25);
+}
+html.theme-classic .mp-result-row {
+	background: var(--mp-bg);
+	border-color: rgba(255,255,255,0.06);
+}
+html.theme-classic .mp-result-row.winner {
+	background: rgba(245,215,110,0.06);
+}
+html.theme-classic .mp-level-popup {
+	background: var(--mp-panel);
+	border: 2px solid rgba(255,255,255,0.12);
+	backdrop-filter: none;
+}
+html.theme-classic .mp-opponent-panel {
+	background: rgba(255,255,255,0.03);
+	border-color: rgba(255,255,255,0.08);
+}
+html.theme-classic .mp-opponent-panel.is-active {
+	background: rgba(61,117,181,0.08);
+	box-shadow: 0 0 8px rgba(61,117,181,0.15);
+}
+html.theme-classic .mp-taunt-menu-panel {
+	background: rgba(20,25,34,0.96);
+	border-color: rgba(255,255,255,0.14);
+	backdrop-filter: none;
+}
+html.theme-classic .mp-taunt-bubble {
+	background: linear-gradient(180deg, rgba(35,41,58,0.95), rgba(22,27,39,0.95));
+	border-color: rgba(255,255,255,0.18);
+	backdrop-filter: blur(2px);
+}
+html.theme-classic .mp-taunt-bubble.is-me {
+	border-color: rgba(146,194,140,0.44);
+	box-shadow: 0 8px 24px rgba(146,194,140,0.16);
+}
+html.theme-classic .mp-timer-fill {
+	background: linear-gradient(90deg, #4caf50, #8bc34a);
+}
+html.theme-classic .mp-timer-fill.timer-warning {
+	background: linear-gradient(90deg, #ff9800, #ffc107);
+}
+html.theme-classic .mp-timer-fill.timer-critical {
+	background: linear-gradient(90deg, #f44336, #ff5722);
+}
+html.theme-classic .mp-score-row.is-me {
+	background: rgba(61,117,181,0.1);
+}
+html.theme-classic .mp-objective-badge {
+	background: rgba(245,215,110,0.08);
+	border-color: rgba(245,215,110,0.2);
+}
+html.theme-classic .mp-objective-badge.objective-achieved {
+	background: rgba(76,175,80,0.18);
+	border-color: rgba(76,175,80,0.5);
+	box-shadow: 0 0 12px rgba(76,175,80,0.25);
+}
+html.theme-classic .mp-objective-badge.objective-failed {
+	background: rgba(181,96,105,0.16);
+	border-color: rgba(181,96,105,0.52);
+	box-shadow: 0 0 10px rgba(181,96,105,0.2);
+}
+html.theme-classic .mp-card-choice-content {
+	background: var(--mp-panel);
+	border: 2px solid rgba(255,255,255,0.12);
+	backdrop-filter: none;
+}
+html.theme-classic .mp-card-choice-option {
+	background: rgba(255,255,255,0.05);
+	border: 2px solid rgba(255,255,255,0.12);
+	color: #e0e0e0;
+}
+html.theme-classic .mp-card-choice-option:hover {
+	border-color: #f5d76e;
+	background: rgba(245,215,110,0.08);
+}
+html.theme-classic .mp-discard-overlay {
+	background: rgba(8,10,16,0.72);
+}
+html.theme-classic .mp-discard-modal {
+	background: var(--mp-panel);
+	border-color: rgba(255,255,255,0.14);
+	backdrop-filter: none;
+}
+html.theme-classic .mp-discard-card {
+	border-color: rgba(255,255,255,0.14);
+	background: rgba(255,255,255,0.03);
+}
+html.theme-classic .mp-discard-card:hover {
+	border-color: rgba(113,146,219,0.55);
+	background: rgba(113,146,219,0.12);
+}
+html.theme-classic .mp-startdeck-modal {
+	background: linear-gradient(160deg, rgba(36,39,48,0.95) 0%, rgba(31,34,42,0.96) 100%);
+	border-color: rgba(255,255,255,0.12);
+	backdrop-filter: none;
+}
+html.theme-classic .mp-deck-overlay {
+	background: rgba(10,12,18,0.95);
+	backdrop-filter: none;
+}
+
 /* When split layout is present, allow goal container to be wider */
 .mp-goal-container:has(.mp-goal-split-layout) {
 	max-width: 860px;
