@@ -769,7 +769,7 @@ function generateLevel1Board(rng, level, playerCount) {
 	// ══════════════════════════════════════════
 	if (world === 1) {
 		const yellowCols = 10;
-		const yellowRows = 4 + playerTier;
+		const yellowRows = 5 + playerTier;
 		const yellowBold = [];
 		for (let y = 0; y < yellowRows; y++) {
 			yellowBold.push({ x: 0, y });
@@ -789,7 +789,7 @@ function generateLevel1Board(rng, level, playerCount) {
 		placeBonusSymbols(zones.yellow, rng, 4);
 	} else if (world === 2) {
 		const yellowCols = 13;
-		const yellowRows = 5 + playerTier;
+		const yellowRows = 6 + playerTier;
 		const yellowBold = [];
 		for (let y = 0; y < yellowRows; y++) {
 			yellowBold.push({ x: 0, y });
@@ -809,7 +809,7 @@ function generateLevel1Board(rng, level, playerCount) {
 		placeBonusSymbols(zones.yellow, rng, 6);
 	} else {
 		const yellowCols = 14;
-		const yellowRows = 6 + playerTier;
+		const yellowRows = 7 + playerTier;
 		const yellowBold = [];
 		for (let y = 0; y < yellowRows; y++) {
 			yellowBold.push({ x: 0, y });
@@ -882,61 +882,106 @@ function generateLevel1Board(rng, level, playerCount) {
 	// ══════════════════════════════════════════
 	//  BLUE ZONE — Wereldafhankelijk + spelerafhankelijk
 	//  Breedte begint smal, +1 per playerTier
+	//  Rivier-achtige vorm met meanderende void cellen
 	// ══════════════════════════════════════════
+	// Helper: genereer void cellen die een rivier-achtig patroon creëren
+	function generateBlueRiverVoids(width, height, rng) {
+		const voids = [];
+		// De rivier "meandert" door het grid: op elke rij is er 1 void cel die
+		// van links naar rechts beweegt (en terug) om een kronkelend pad te maken.
+		// Dit maakt het moeilijker om rechte kolommen te vullen.
+		let pos = 0; // huidige void-positie (0 = links, width-1 = rechts)
+		let dir = 1; // richting van de meander
+		for (let y = 0; y < height; y++) {
+			// Voeg void toe op de huidige positie
+			voids.push({ x: pos, y });
+			// Soms ook een tweede void ernaast voor een bredere rivier
+			if (width >= 6 && rng() < 0.3) {
+				const extra = pos + dir;
+				if (extra >= 0 && extra < width) {
+					voids.push({ x: extra, y });
+				}
+			}
+			// Beweeg de void-positie
+			if (rng() < 0.65) {
+				pos += dir;
+			}
+			// Keer om bij de randen (houd minimaal 3 cellen over)
+			if (pos >= width - 1) { pos = width - 1; dir = -1; }
+			if (pos <= 0) { pos = 0; dir = 1; }
+		}
+		return voids;
+	}
+
 	if (world === 1) {
-		const blueWidth = 4 + playerTier;
+		const blueWidth = 5 + playerTier; // 1 breder dan voorheen voor de rivier
 		const blueHeight = 21;
+		const blueVoid = generateBlueRiverVoids(blueWidth, blueHeight, rng);
+		const blueVoidSet = new Set(blueVoid.map(v => `${v.x},${v.y}`));
 		const blueBold = [];
 		const blueBoldRows = [];
 		for (let r = 0; r < blueHeight; r += 5) { blueBoldRows.push(r); }
 		for (const by of blueBoldRows) {
 			for (let x = 0; x < blueWidth; x++) {
-				blueBold.push({ x, y: by });
+				if (!blueVoidSet.has(`${x},${by}`)) blueBold.push({ x, y: by });
 			}
 		}
 		const blueGold = [];
 		for (let i = 0; i < 2; i++) {
-			blueGold.push({ x: Math.floor(rng() * blueWidth), y: Math.floor(rng() * blueHeight) });
+			let gx, gy;
+			do { gx = Math.floor(rng() * blueWidth); gy = Math.floor(rng() * blueHeight); }
+			while (blueVoidSet.has(`${gx},${gy}`));
+			blueGold.push({ x: gx, y: gy });
 		}
-		zones.blue = createZoneGrid(blueHeight, blueWidth, { boldCells: blueBold, goldCells: blueGold });
+		zones.blue = createZoneGrid(blueHeight, blueWidth, { boldCells: blueBold, goldCells: blueGold, voidCells: blueVoid });
 		zones.blue.boldRows = blueBoldRows;
 		placeGoldFlags(zones.blue, rng, 2);
 		placeBonusSymbols(zones.blue, rng, 3);
 	} else if (world === 2) {
-		const blueWidth = 5 + playerTier;
+		const blueWidth = 6 + playerTier; // 1 breder dan voorheen
 		const blueHeight = 30;
+		const blueVoid = generateBlueRiverVoids(blueWidth, blueHeight, rng);
+		const blueVoidSet = new Set(blueVoid.map(v => `${v.x},${v.y}`));
 		const blueBold = [];
 		const blueBoldRows = [];
 		for (let r = 0; r < blueHeight; r += 6) { blueBoldRows.push(r); }
 		for (const by of blueBoldRows) {
 			for (let x = 0; x < blueWidth; x++) {
-				blueBold.push({ x, y: by });
+				if (!blueVoidSet.has(`${x},${by}`)) blueBold.push({ x, y: by });
 			}
 		}
 		const blueGold = [];
 		for (let i = 0; i < 4; i++) {
-			blueGold.push({ x: Math.floor(rng() * blueWidth), y: Math.floor(rng() * blueHeight) });
+			let gx, gy;
+			do { gx = Math.floor(rng() * blueWidth); gy = Math.floor(rng() * blueHeight); }
+			while (blueVoidSet.has(`${gx},${gy}`));
+			blueGold.push({ x: gx, y: gy });
 		}
-		zones.blue = createZoneGrid(blueHeight, blueWidth, { boldCells: blueBold, goldCells: blueGold });
+		zones.blue = createZoneGrid(blueHeight, blueWidth, { boldCells: blueBold, goldCells: blueGold, voidCells: blueVoid });
 		zones.blue.boldRows = blueBoldRows;
 		placeGoldFlags(zones.blue, rng, 4);
 		placeBonusSymbols(zones.blue, rng, 5);
 	} else {
-		const blueWidth = 6 + playerTier;
+		const blueWidth = 7 + playerTier; // 1 breder dan voorheen
 		const blueHeight = 40;
+		const blueVoid = generateBlueRiverVoids(blueWidth, blueHeight, rng);
+		const blueVoidSet = new Set(blueVoid.map(v => `${v.x},${v.y}`));
 		const blueBold = [];
 		const blueBoldRows = [];
 		for (let r = 0; r < blueHeight; r += 7) { blueBoldRows.push(r); }
 		for (const by of blueBoldRows) {
 			for (let x = 0; x < blueWidth; x++) {
-				blueBold.push({ x, y: by });
+				if (!blueVoidSet.has(`${x},${by}`)) blueBold.push({ x, y: by });
 			}
 		}
 		const blueGold = [];
 		for (let i = 0; i < 6; i++) {
-			blueGold.push({ x: Math.floor(rng() * blueWidth), y: Math.floor(rng() * blueHeight) });
+			let gx, gy;
+			do { gx = Math.floor(rng() * blueWidth); gy = Math.floor(rng() * blueHeight); }
+			while (blueVoidSet.has(`${gx},${gy}`));
+			blueGold.push({ x: gx, y: gy });
 		}
-		zones.blue = createZoneGrid(blueHeight, blueWidth, { boldCells: blueBold, goldCells: blueGold });
+		zones.blue = createZoneGrid(blueHeight, blueWidth, { boldCells: blueBold, goldCells: blueGold, voidCells: blueVoid });
 		zones.blue.boldRows = blueBoldRows;
 		placeGoldFlags(zones.blue, rng, 6);
 		placeBonusSymbols(zones.blue, rng, 7);
@@ -1675,9 +1720,9 @@ function applyPlacement(boardState, zoneName, zoneData, baseX, baseY, matrix, co
 /**
  * YELLOW SCORING: Kolom-gebaseerd
  * Punten per compleet gevulde kolom, oplopend van links→rechts:
- * Kolom paar 0,1 → 12pt; 2,3 → 18pt; 4,5 → 30pt; 6,7 → 42pt; 8,9 → 60pt
+ * Kolom paar 0,1 → 6pt; 2,3 → 8pt; 4,5 → 10pt; 6,7 → 12pt; 8,9 → 15pt; 10,11 → 20pt; 12,13 → 25pt
  */
-const YELLOW_COLUMN_PAIR_POINTS = [10, 14, 20, 28, 38];
+const YELLOW_COLUMN_PAIR_POINTS = [6, 8, 10, 12, 15, 20, 25];
 
 function hasStoneInYellowColumn(zoneData, x) {
 	if (!zoneData) return false;

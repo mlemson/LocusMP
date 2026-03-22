@@ -2316,7 +2316,7 @@ class LocusLobbyUI {
 					<div class="mp-opp-stats">
 						<span class="mp-opp-cards-left" title="Totaal kaarten over" data-count="${totalCards}">${cardsIcon}${totalCards}</span>
 						<span title="Kaarten gespeeld">${playedIcon}${cardsPlayed} gespeeld</span>
-						${totalBonuses > 0 ? `<span class="mp-opp-bonuses" title="Bonussen over">${bonusDots}</span>` : ''}
+						<span class="mp-opp-bonuses" title="Bonussen over">${totalBonuses > 0 ? bonusDots : `<span class="mp-opp-bonus-count">0 bonus</span>`}</span>
 					</div>
 					${objectiveHtml}
 				</div>
