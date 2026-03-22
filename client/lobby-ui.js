@@ -222,7 +222,7 @@ class LocusLobbyUI {
 			'game-screen', 'results-screen', 'shop-screen',
 			'level-complete-overlay',
 			'player-name-input', 'create-game-btn', 'join-game-btn',
-			'invite-code-input', 'max-players-select', 'cards-per-player-select', 'map-size-select',
+			'invite-code-input', 'max-players-select', 'cards-per-player-select', 'map-size-select', 'timer-toggle', 'tutorial-toggle',
 			'invite-code-display', 'player-list', 'start-game-btn',
 			'waiting-status',
 			'goal-choices-container',
@@ -1094,8 +1094,11 @@ class LocusLobbyUI {
 		// Read host settings from waiting room before starting
 		const cardsPerPlayer = Number(this.elements['cards-per-player-select']?.value) || 8;
 		const mapSize = Number(this.elements['map-size-select']?.value) || 4;
+		const timerEnabled = this.elements['timer-toggle']?.checked !== false;
+		const tutorialEnabled = !!this.elements['tutorial-toggle']?.checked;
+		this._tutorialEnabled = tutorialEnabled;
 		this._setLoading(true);
-		try { await this.mp.startGame({ cardsPerPlayer, mapSize }); }
+		try { await this.mp.startGame({ cardsPerPlayer, mapSize, timerEnabled, tutorialEnabled }); }
 		catch (err) { this._showToast('Kan spel niet starten: ' + (err.message || err), 'error'); }
 		this._setLoading(false);
 	}
@@ -1267,6 +1270,7 @@ class LocusLobbyUI {
 	_startTurnTimer() {
 		this._stopTurnTimer();
 		if (this.mp?.gameState?.paused) return;
+		if (this.mp?.gameState?.settings?.timerEnabled === false) return;
 		if (!Number.isFinite(this._turnTimerEnd) || this._turnTimerEnd <= Date.now()) {
 			this._turnTimerEnd = Date.now() + 40000;
 		}
@@ -1880,6 +1884,7 @@ class LocusLobbyUI {
 	// ──────────────────────────────────────────
 
 	_onGameStarted(state) {
+		this._tutorialEnabled = !!state?.settings?.tutorialEnabled;
 		this._syncTurnTimerFromState(state);
 		this._startOpponentTimerTicker();
 		this._showScreen('game-screen');

@@ -667,6 +667,8 @@ class LocusP2PHost {
 				if (data && this.gameState?.settings) {
 					if (data.cardsPerPlayer) this.gameState.settings.cardsPerPlayer = Number(data.cardsPerPlayer);
 					if (data.mapSize) this.gameState.settings.mapSize = Number(data.mapSize);
+					if ('timerEnabled' in data) this.gameState.settings.timerEnabled = !!data.timerEnabled;
+					if ('tutorialEnabled' in data) this.gameState.settings.tutorialEnabled = !!data.tutorialEnabled;
 				}
 				result = this.Rules.startGame(this.gameState);
 				break;
@@ -3654,6 +3656,7 @@ class LocusP2PHost {
 	_startTimerForCurrentPlayer(forceFull = false) {
 		this._clearTimer();
 		if (!this.gameState || this.gameState.phase !== 'playing') return;
+		if (this.gameState.settings?.timerEnabled === false) return;
 
 		const currentPid = this.gameState.playerOrder[this.gameState.currentTurnIndex];
 		if (!currentPid) return;

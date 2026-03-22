@@ -118,6 +118,7 @@ function _startTimerForCurrentPlayer(gameId, forceFull = false) {
 	const gameState = games.get(gameId);
 	if (!gameState || gameState.phase !== 'playing') return;
 	if (gameState.paused) return;
+	if (gameState.settings?.timerEnabled === false) return;
 	const currentPid = gameState.playerOrder[gameState.currentTurnIndex];
 	if (currentPid) {
 		const duration = forceFull
@@ -1151,6 +1152,14 @@ io.on('connection', (socket) => {
 
 			if (gameState.hostPlayerId !== info.playerId) {
 				return callback({ success: false, error: 'Alleen de host kan het spel starten.' });
+			}
+
+			// Apply host settings if provided
+			if (data && gameState.settings) {
+				if (data.cardsPerPlayer) gameState.settings.cardsPerPlayer = Math.min(16, Math.max(4, Number(data.cardsPerPlayer)));
+				if (data.mapSize) gameState.settings.mapSize = Math.min(8, Math.max(2, Number(data.mapSize)));
+				if ('timerEnabled' in data) gameState.settings.timerEnabled = !!data.timerEnabled;
+				if ('tutorialEnabled' in data) gameState.settings.tutorialEnabled = !!data.tutorialEnabled;
 			}
 
 			const startResult = GameRules.startGame(gameState);

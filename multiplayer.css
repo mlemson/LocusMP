@@ -565,6 +565,67 @@ html.theme-classic .mp-deck-overlay {
 	margin: 10px 0 6px;
 }
 
+/* ── Toggle Switches ── */
+.mp-toggle-row {
+	gap: 8px;
+	margin-top: 8px;
+}
+.mp-toggle-label {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	flex: 1;
+	padding: 8px 12px;
+	background: rgba(166, 140, 255, 0.06);
+	border: 1px solid rgba(166, 140, 255, 0.12);
+	border-radius: 0.6rem;
+	cursor: pointer;
+	font-size: 0.85rem;
+	font-weight: 600;
+	color: var(--mp-text, #e8e0f0);
+	transition: background 0.2s;
+}
+.mp-toggle-label:hover {
+	background: rgba(166, 140, 255, 0.12);
+}
+.mp-toggle-switch {
+	position: relative;
+	width: 40px;
+	height: 22px;
+	flex-shrink: 0;
+	margin-left: 10px;
+}
+.mp-toggle-switch input {
+	opacity: 0;
+	width: 0;
+	height: 0;
+	position: absolute;
+}
+.mp-toggle-slider {
+	position: absolute;
+	inset: 0;
+	background: rgba(255, 255, 255, 0.12);
+	border-radius: 22px;
+	transition: background 0.25s;
+}
+.mp-toggle-slider::before {
+	content: '';
+	position: absolute;
+	left: 3px;
+	top: 3px;
+	width: 16px;
+	height: 16px;
+	background: #fff;
+	border-radius: 50%;
+	transition: transform 0.25s;
+}
+.mp-toggle-switch input:checked + .mp-toggle-slider {
+	background: var(--mp-accent, #a68cff);
+}
+.mp-toggle-switch input:checked + .mp-toggle-slider::before {
+	transform: translateX(18px);
+}
+
 .mp-half { flex: 1; }
 .mp-third { flex: 1; min-width: 0; }
 
