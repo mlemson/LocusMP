@@ -7343,8 +7343,134 @@ class LocusLobbyUI {
 				icon: '🗺️',
 				title: 'Het Speelbord',
 				body: `
-					<p>Het bord heeft meerdere <strong>gekleurde zones</strong>. Elke zone heeft een eigen kleur.</p>
-					<p>Je scoort punten door kaarten in de <strong>juiste kleurzone</strong> te plaatsen.</p>
+					<p>Het bord heeft <strong>5 gekleurde zones</strong>. Elke zone scoort op een <strong>andere manier</strong>!</p>
+					<p>Plaats kaarten van de <strong>juiste kleur</strong> in de bijpassende zone.</p>
+				`
+			},
+			{
+				icon: '💛',
+				title: 'Geel — Kolommen Vullen',
+				body: `
+					<div class="mp-tutorial-zone-illustration">
+						<svg viewBox="0 0 120 80" class="mp-tutorial-svg">
+							<rect x="5" y="5" width="20" height="70" rx="3" fill="#e8dca0" stroke="#c8a820" stroke-width="1.5"/>
+							<rect x="8" y="8" width="14" height="14" rx="2" fill="#c8a820"/>
+							<rect x="8" y="25" width="14" height="14" rx="2" fill="#c8a820"/>
+							<rect x="8" y="42" width="14" height="14" rx="2" fill="#c8a820"/>
+							<rect x="8" y="59" width="14" height="14" rx="2" fill="#c8a820"/>
+							<text x="15" y="2" text-anchor="middle" fill="#8a7820" font-size="7" font-weight="bold">+10</text>
+							<rect x="30" y="5" width="20" height="70" rx="3" fill="#e8dca0" stroke="#c8b050" stroke-width="1" stroke-dasharray="3,2"/>
+							<rect x="33" y="8" width="14" height="14" rx="2" fill="rgba(255,248,200,0.65)" stroke="#c8b050" stroke-width="0.5"/>
+							<rect x="33" y="25" width="14" height="14" rx="2" fill="#c8a820"/>
+							<rect x="33" y="42" width="14" height="14" rx="2" fill="rgba(255,248,200,0.65)" stroke="#c8b050" stroke-width="0.5"/>
+							<rect x="33" y="59" width="14" height="14" rx="2" fill="#c8a820"/>
+							<text x="40" y="2" text-anchor="middle" fill="#aaa" font-size="7">+14</text>
+							<text x="75" y="42" fill="#8a7820" font-size="9" font-weight="bold">Vul een hele</text>
+							<text x="75" y="54" fill="#8a7820" font-size="9" font-weight="bold">kolom = punten!</text>
+						</svg>
+					</div>
+					<p>Vul een <strong>complete kolom</strong> van boven tot onder. Kolommen verder naar rechts = meer punten (10→38).</p>
+				`
+			},
+			{
+				icon: '💚',
+				title: 'Groen — Eind-cellen Bereiken',
+				body: `
+					<div class="mp-tutorial-zone-illustration">
+						<svg viewBox="0 0 120 80" class="mp-tutorial-svg">
+							<rect x="50" y="35" width="12" height="12" rx="2" fill="#5a9e50"/>
+							<rect x="38" y="30" width="10" height="10" rx="2" fill="#5a9e50"/>
+							<rect x="64" y="30" width="10" height="10" rx="2" fill="rgba(200,238,195,0.65)" stroke="#78b070" stroke-width="0.5"/>
+							<rect x="28" y="22" width="10" height="10" rx="2" fill="rgba(200,238,195,0.65)" stroke="#78b070" stroke-width="0.5"/>
+							<rect x="18" y="14" width="10" height="10" rx="2" fill="#3d8848" stroke="#2a6830" stroke-width="1.5"/>
+							<text x="23" y="13" text-anchor="middle" fill="#2d7840" font-size="6" font-weight="bold">END</text>
+							<rect x="76" y="24" width="10" height="10" rx="2" fill="#3d8848" stroke="#2a6830" stroke-width="1.5"/>
+							<text x="81" y="23" text-anchor="middle" fill="#2d7840" font-size="6" font-weight="bold">END</text>
+							<line x1="56" y1="38" x2="43" y2="35" stroke="#5a9e50" stroke-width="1.5"/>
+							<line x1="43" y1="33" x2="33" y2="27" stroke="#5a9e50" stroke-width="1.5"/>
+							<line x1="33" y1="25" x2="23" y2="19" stroke="#5a9e50" stroke-width="1.5"/>
+							<text x="60" y="65" fill="#3a7835" font-size="9" font-weight="bold" text-anchor="middle">Verder = meer punten</text>
+							<text x="60" y="75" fill="#3a7835" font-size="8" text-anchor="middle">5pt (dichtbij) → 25pt (ver)</text>
+						</svg>
+					</div>
+					<p>Groen groeit als een <strong>boom met takken</strong>. Bereik de <strong>eind-cellen</strong> (uiteinden van takken) voor punten. Hoe <strong>verder weg</strong>, hoe meer punten!</p>
+				`
+			},
+			{
+				icon: '💙',
+				title: 'Blauw — Bold-rijen Activeren',
+				body: `
+					<div class="mp-tutorial-zone-illustration">
+						<svg viewBox="0 0 120 80" class="mp-tutorial-svg">
+							<rect x="25" y="5" width="70" height="70" rx="3" fill="#a8d0ee"/>
+							<rect x="28" y="8" width="14" height="10" rx="2" fill="rgba(195,225,250,0.65)" stroke="#6aa0d0" stroke-width="0.5"/>
+							<rect x="44" y="8" width="14" height="10" rx="2" fill="rgba(195,225,250,0.65)" stroke="#6aa0d0" stroke-width="0.5"/>
+							<rect x="60" y="8" width="14" height="10" rx="2" fill="rgba(195,225,250,0.65)" stroke="#6aa0d0" stroke-width="0.5"/>
+							<rect x="76" y="8" width="14" height="10" rx="2" fill="rgba(195,225,250,0.65)" stroke="#6aa0d0" stroke-width="0.5"/>
+							<rect x="28" y="21" width="14" height="10" rx="2" fill="rgba(195,225,250,0.65)" stroke="#306898" stroke-width="2"/>
+							<rect x="44" y="21" width="14" height="10" rx="2" fill="#4888b8" stroke="#306898" stroke-width="2"/>
+							<rect x="60" y="21" width="14" height="10" rx="2" fill="rgba(195,225,250,0.65)" stroke="#306898" stroke-width="2"/>
+							<rect x="76" y="21" width="14" height="10" rx="2" fill="rgba(195,225,250,0.65)" stroke="#306898" stroke-width="2"/>
+							<text x="96" y="28" fill="#2a6898" font-size="7" font-weight="bold">+10</text>
+							<rect x="28" y="47" width="14" height="10" rx="2" fill="rgba(195,225,250,0.65)" stroke="#306898" stroke-width="2"/>
+							<rect x="44" y="47" width="14" height="10" rx="2" fill="rgba(195,225,250,0.65)" stroke="#306898" stroke-width="2"/>
+							<rect x="60" y="47" width="14" height="10" rx="2" fill="rgba(195,225,250,0.65)" stroke="#306898" stroke-width="2"/>
+							<rect x="76" y="47" width="14" height="10" rx="2" fill="rgba(195,225,250,0.65)" stroke="#306898" stroke-width="2"/>
+							<text x="96" y="54" fill="#aaa" font-size="7">+20</text>
+							<text x="60" y="74" fill="#2a6898" font-size="8" text-anchor="middle">Bold-rij = dikkere rand</text>
+						</svg>
+					</div>
+					<p>Blauw is een <strong>hoge toren</strong>. Activeer minstens 1 <strong>bold-cel</strong> (dikke rand) in een rij om punten te scoren. Hogere rijen = meer punten (10→40).</p>
+				`
+			},
+			{
+				icon: '❤️',
+				title: 'Rood — Subgrids Vullen',
+				body: `
+					<div class="mp-tutorial-zone-illustration">
+						<svg viewBox="0 0 120 80" class="mp-tutorial-svg">
+							<rect x="5" y="10" width="45" height="35" rx="4" fill="#eaacb4" stroke="#c87888" stroke-width="1"/>
+							<rect x="8" y="13" width="10" height="10" rx="2" fill="#c05868"/>
+							<rect x="20" y="13" width="10" height="10" rx="2" fill="#c05868"/>
+							<rect x="32" y="13" width="10" height="10" rx="2" fill="rgba(248,200,210,0.65)" stroke="#c87888" stroke-width="0.5"/>
+							<rect x="8" y="26" width="10" height="10" rx="2" fill="#c05868"/>
+							<rect x="20" y="26" width="10" height="10" rx="2" fill="rgba(248,200,210,0.65)" stroke="#c87888" stroke-width="0.5"/>
+							<rect x="32" y="26" width="10" height="10" rx="2" fill="#c05868"/>
+							<rect x="8" y="48" width="40" height="4" rx="2" fill="rgba(200,120,130,0.15)"/>
+							<rect x="8" y="48" width="28" height="4" rx="2" fill="#c05868"/>
+							<text x="50" y="51" fill="#984050" font-size="6">80%</text>
+							<text x="75" y="25" fill="#984050" font-size="9" font-weight="bold">Vul ≥80%</text>
+							<text x="75" y="37" fill="#984050" font-size="9" font-weight="bold">van een blok!</text>
+							<text x="75" y="52" fill="#984050" font-size="8">100% = extra bonus</text>
+						</svg>
+					</div>
+					<p>Rood heeft meerdere <strong>losse blokken</strong>. Vul een blok voor minstens <strong>80%</strong> om punten te krijgen. Bij <strong>100%</strong> krijg je een extra bonus!</p>
+				`
+			},
+			{
+				icon: '💜',
+				title: 'Paars — Verbindingen Maken',
+				body: `
+					<div class="mp-tutorial-zone-illustration">
+						<svg viewBox="0 0 120 80" class="mp-tutorial-svg">
+							<rect x="20" y="20" width="12" height="12" rx="2" fill="#8068b0" stroke="#604898" stroke-width="2"/>
+							<rect x="50" y="15" width="12" height="12" rx="2" fill="#8068b0" stroke="#604898" stroke-width="2"/>
+							<rect x="80" y="25" width="12" height="12" rx="2" fill="#8068b0" stroke="#604898" stroke-width="2"/>
+							<rect x="35" y="20" width="12" height="12" rx="2" fill="#8068b0"/>
+							<rect x="65" y="20" width="12" height="12" rx="2" fill="#8068b0"/>
+							<line x1="32" y1="26" x2="35" y2="26" stroke="#a88de0" stroke-width="2"/>
+							<line x1="47" y1="26" x2="50" y2="21" stroke="#a88de0" stroke-width="2"/>
+							<line x1="62" y1="21" x2="65" y2="26" stroke="#a88de0" stroke-width="2"/>
+							<line x1="77" y1="26" x2="80" y2="31" stroke="#a88de0" stroke-width="2"/>
+							<text x="23" y="17" fill="#5a3890" font-size="6" font-weight="bold">BOLD</text>
+							<text x="53" y="12" fill="#5a3890" font-size="6" font-weight="bold">BOLD</text>
+							<text x="83" y="22" fill="#5a3890" font-size="6" font-weight="bold">BOLD</text>
+							<text x="60" y="55" fill="#5a3890" font-size="9" font-weight="bold" text-anchor="middle">Verbind bold-cellen!</text>
+							<text x="60" y="67" fill="#5a3890" font-size="8" text-anchor="middle">Meer verbindingen = meer punten</text>
+							<text x="60" y="77" fill="#5a3890" font-size="7" text-anchor="middle">2=6pt • 3=8pt • 4=10pt • ... • 8+=30pt</text>
+						</svg>
+					</div>
+					<p>Verbind <strong>bold-cellen</strong> (dikke rand) door tussenliggende cellen te vullen. Elke nieuwe verbinding geeft punten — hoe meer verbindingen, hoe meer!</p>
 				`
 			},
 			{
@@ -7353,24 +7479,7 @@ class LocusLobbyUI {
 				body: `
 					<p><strong>Sleep</strong> een kaart vanuit je hand naar het bord.</p>
 					<p>Op desktop: klik en sleep. Op mobiel: tik en sleep.</p>
-					<p>De kaart wordt geplaatst waar je hem loslaat.</p>
-				`
-			},
-			{
-				icon: '🔄',
-				title: 'Draaien & Spiegelen',
-				body: `
-					<p>Voordat je een kaart plaatst kun je deze <strong>draaien</strong> (R-toets of draai-knop) en <strong>spiegelen</strong> (F-toets of spiegel-knop).</p>
-					<p>Zo pas je de kaart perfect in!</p>
-				`
-			},
-			{
-				icon: '⭐',
-				title: 'Punten Scoren',
-				body: `
-					<p>Je scoort <strong>1 punt per cel</strong> voor elke kaart die je op de matching kleurzone plaatst.</p>
-					<p>Kaarten overlappen met <strong>bestaande cellen</strong> op het bord? Die tellen ook mee!</p>
-					<p>Grotere kaarten = meer punten! 🏆</p>
+					<p>Gebruik <strong>R</strong> om te draaien en <strong>F</strong> om te spiegelen.</p>
 				`
 			},
 			{
