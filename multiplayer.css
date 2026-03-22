@@ -703,6 +703,114 @@ html.theme-classic .mp-cell.preview-denied {
 	box-shadow: inset 0 0 0 2px rgba(244,67,54,0.5);
 }
 
+/* ── Classic theme: bonus/coin/symbol styling (singleplayer matching) ── */
+
+/* Bonus dot — singleplayer-style colored symbol on cell */
+html.theme-classic .mp-cell-bonus-dot {
+	width: calc(var(--mp-cell-size, 20px) * 0.52);
+	height: calc(var(--mp-cell-size, 20px) * 0.52);
+	border-radius: calc(var(--mp-cell-size, 20px) * 0.12);
+	border: calc(var(--mp-cell-size, 20px) * 0.08) solid #444;
+	box-shadow: none;
+	opacity: 1;
+}
+html.theme-classic .mp-zone-yellow .mp-cell-bonus-dot { background-color: #fff48f !important; }
+html.theme-classic .mp-zone-green .mp-cell-bonus-dot { background-color: #69cf57 !important; }
+html.theme-classic .mp-zone-blue .mp-cell-bonus-dot { background-color: #76a0e3 !important; }
+html.theme-classic .mp-zone-red .mp-cell-bonus-dot { background-color: #ed7e89 !important; }
+html.theme-classic .mp-zone-purple .mp-cell-bonus-dot { background-color: #ae7eed !important; }
+html.theme-classic .mp-cell.bonus-any .mp-cell-bonus-dot {
+	background: linear-gradient(135deg, #fff48f 0%, #69cf57 24%, #76a0e3 48%, #ed7e89 72%, #ae7eed 100%) !important;
+	border-color: #444;
+	box-shadow: none;
+}
+
+/* Gold coin dot — singleplayer style with dark border */
+html.theme-classic .mp-cell-gold-dot {
+	width: 12px;
+	height: 12px;
+	background: #ffea63;
+	border: 2px solid #171615;
+	box-shadow: none;
+}
+html.theme-classic .mp-cell.active .mp-cell-gold-dot {
+	background: #edcd21;
+}
+
+/* Pearl dot — brighter shimmer on pastel */
+html.theme-classic .mp-cell-pearl-dot {
+	background: radial-gradient(circle at 35% 35%, #ffffff, #e8eef7 58%, #b8c2d6 100%);
+	box-shadow: 0 1px 3px rgba(0,0,0,0.25), inset 0 1px 2px rgba(255,255,255,0.7);
+}
+
+/* Purple outer ring cells — singleplayer darker tinted background */
+html.theme-classic .mp-zone-purple .mp-cell.outer-ring-0:not(.active) {
+	background: #d3c3ea;
+	filter: brightness(0.97);
+	border-color: rgba(160, 140, 200, 0.45);
+}
+html.theme-classic .mp-zone-purple .mp-cell.outer-ring-1:not(.active) {
+	background: #d9ccec;
+	filter: brightness(0.97);
+	border-color: rgba(160, 140, 200, 0.40);
+}
+
+/* Classic cell placement animation — singleplayer grow effect */
+html.theme-classic .mp-cell.active {
+	animation: classic-cell-grow 0.3s forwards;
+}
+@keyframes classic-cell-grow {
+	from { opacity: 0; transform: scale(0.5); }
+	to { opacity: 1; transform: scale(1); }
+}
+
+/* Classic floating score — singleplayer exact style */
+html.theme-classic .mp-float-score {
+	font-size: 1.2rem;
+	font-weight: 700;
+	color: white;
+	text-shadow: 0 0 6px rgba(0,0,0,0.7), 0 0 12px rgba(255,255,255,0.5);
+}
+
+/* Classic score popup — high visibility */
+html.theme-classic .mp-score-popup {
+	color: #2e7d32;
+	font-size: 1rem;
+	font-weight: 800;
+	text-shadow: 0 1px 2px rgba(255,255,255,0.8), 0 0 6px rgba(0,0,0,0.25);
+}
+
+/* Classic sparkle — singleplayer gold sparkle */
+html.theme-classic .mp-sparkle {
+	width: 16px;
+	height: 16px;
+	border-radius: 70%;
+	background: gold;
+	opacity: 0.5;
+	box-shadow: none;
+}
+
+/* Classic confetti — solid pastel petals */
+html.theme-classic .mp-confetti {
+	border-radius: 50% 50% 50% 0;
+}
+
+/* Classic coin bounce — keep emoji style */
+html.theme-classic .mp-coin-bounce {
+	font-size: 1.6rem;
+}
+
+/* Classic bonus spawn pulse — softer for pastel */
+html.theme-classic .mp-cell.bonus-just-spawned {
+	animation: classic-bonus-spawn 1.5s ease-out;
+}
+@keyframes classic-bonus-spawn {
+	0% { transform: scale(0.8); box-shadow: 0 0 0 rgba(245, 215, 110, 0); }
+	25% { transform: scale(1.15); box-shadow: 0 0 12px rgba(245, 215, 110, 0.6); }
+	50% { transform: scale(1.03); box-shadow: 0 0 6px rgba(180, 140, 220, 0.35); }
+	100% { transform: scale(1); box-shadow: 0 0 0 rgba(245, 215, 110, 0); }
+}
+
 /* When split layout is present, allow goal container to be wider */
 .mp-goal-container:has(.mp-goal-split-layout) {
 	max-width: 860px;
