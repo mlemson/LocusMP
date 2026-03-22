@@ -1484,22 +1484,12 @@ function planTurnHard(gameState, playerId) {
 	}
 
 	// 4. Bonuses — prioritize objective-relevant zones
-	//    Hard AI: only play bonuses that yield immediate value (bonus chains, gold, objectives)
-	//    Save others for later when they might be more useful
+	//    Hard AI: always play all bonuses (never waste them)
 	const bonusOrder = _getBonusPlayOrder(player);
 	for (const color of bonusOrder) {
 		const charges = player.bonusInventory?.[color] || 0;
 		for (let i = 0; i < charges; i++) {
-			// Evaluate the best bonus placement to decide if it's worth playing now
-			const bestBonus = _evaluateBestBonus(gameState, playerId, color);
-			if (bestBonus && bestBonus.score >= 10) {
-				// Good placement available — play it
-				actions.push({ type: 'playBonus', bonusColor: color });
-			} else if (bestBonus && bestBonus.score >= 5) {
-				// Mediocre placement — play it but lower priority (still in queue)
-				actions.push({ type: 'playBonus', bonusColor: color });
-			}
-			// If score < 5: skip (save bonus for later)
+			actions.push({ type: 'playBonus', bonusColor: color });
 		}
 	}
 
