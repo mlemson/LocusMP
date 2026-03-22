@@ -3532,7 +3532,7 @@ body.mp-loading .mp-btn {
 	text-shadow: 0 0 8px rgba(0,0,0,0.7), 0 0 14px rgba(255,255,255,0.4);
 	pointer-events: none;
 	animation: floatUp 1.2s ease-out forwards;
-	z-index: 1050;
+	z-index: 10050;
 	white-space: nowrap;
 	transform: translateX(-50%);
 }
@@ -3552,7 +3552,7 @@ body.mp-loading .mp-btn {
 	opacity: 0.8;
 	animation: sparkle 0.8s ease-out forwards;
 	pointer-events: none;
-	z-index: 1050;
+	z-index: 10050;
 	box-shadow: 0 0 6px rgba(245, 215, 110, 0.6);
 }
 
@@ -9678,7 +9678,7 @@ html.theme-bloom .mp-sparkle {
 	border-radius: 50% 50% 50% 0;
 	opacity: 0;
 	pointer-events: none;
-	z-index: 1060;
+	z-index: 10060;
 	animation: bloom-confetti-fly 1.1s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
 }
 @keyframes bloom-confetti-fly {
@@ -9692,7 +9692,7 @@ html.theme-bloom .mp-sparkle {
 	position: fixed;
 	font-size: 1.6rem;
 	pointer-events: none;
-	z-index: 1060;
+	z-index: 10060;
 	animation: bloom-coin-drop 1s cubic-bezier(0.22, 1, 0.36, 1) forwards;
 }
 @keyframes bloom-coin-drop {
