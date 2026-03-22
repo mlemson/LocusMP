@@ -354,12 +354,135 @@ html.theme-classic .mp-level-popup {
 	backdrop-filter: none;
 }
 html.theme-classic .mp-opponent-panel {
-	background: rgba(255,255,255,0.03);
-	border-color: rgba(255,255,255,0.08);
+	background: rgba(30, 35, 50, 0.85);
+	border: 1px solid rgba(120, 130, 160, 0.18);
+	border-radius: 10px;
 }
 html.theme-classic .mp-opponent-panel.is-active {
-	background: rgba(61,117,181,0.08);
-	box-shadow: 0 0 8px rgba(61,117,181,0.15);
+	background: rgba(40, 55, 80, 0.9);
+	border-color: rgba(100, 160, 220, 0.35);
+	box-shadow: 0 0 10px rgba(100, 160, 220, 0.15);
+}
+
+/* Classic panel — rank numbers instead of emoji medals */
+html.theme-classic .mp-rank-num {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 18px;
+	height: 18px;
+	border-radius: 50%;
+	background: rgba(255, 255, 255, 0.1);
+	border: 1px solid rgba(255, 255, 255, 0.2);
+	font-size: 0.65rem;
+	font-weight: 700;
+	color: var(--mp-gold);
+	margin-right: 4px;
+	flex-shrink: 0;
+}
+
+/* Classic panel — objective icons (no emoji) */
+html.theme-classic .mp-obj-icon-check,
+html.theme-classic .mp-obj-icon-target,
+html.theme-classic .mp-obj-icon-fail {
+	display: inline-block;
+	width: 14px;
+	height: 14px;
+	border-radius: 50%;
+	border: 2px solid currentColor;
+	flex-shrink: 0;
+}
+html.theme-classic .mp-obj-icon-check {
+	background: #4caf50;
+	border-color: #388e3c;
+	box-shadow: 0 0 4px rgba(76, 175, 80, 0.4);
+}
+html.theme-classic .mp-obj-icon-target {
+	background: transparent;
+	border-color: var(--mp-gold);
+	position: relative;
+}
+html.theme-classic .mp-obj-icon-target::after {
+	content: '';
+	position: absolute;
+	top: 50%;
+	left: 50%;
+	width: 5px;
+	height: 5px;
+	border-radius: 50%;
+	background: var(--mp-gold);
+	transform: translate(-50%, -50%);
+}
+html.theme-classic .mp-obj-icon-fail {
+	background: transparent;
+	border-color: #e57373;
+	position: relative;
+}
+html.theme-classic .mp-obj-icon-fail::after {
+	content: '×';
+	position: absolute;
+	top: 50%;
+	left: 50%;
+	transform: translate(-50%, -50%);
+	color: #e57373;
+	font-size: 12px;
+	font-weight: 700;
+	line-height: 1;
+}
+
+/* Classic panel — turn icon (no emoji) */
+html.theme-classic .mp-turn-icon {
+	display: inline-block;
+	width: 10px;
+	height: 10px;
+	border-radius: 50%;
+	background: var(--mp-gold);
+	margin-right: 4px;
+	vertical-align: middle;
+	box-shadow: 0 0 6px rgba(245, 215, 110, 0.5);
+}
+
+/* Classic panel — bonus dots in opponent stats */
+.mp-opp-bonuses {
+	display: inline-flex;
+	gap: 3px;
+	align-items: center;
+}
+.mp-opp-bonus-dot {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 14px;
+	height: 14px;
+	border-radius: 3px;
+	border: 1.5px solid rgba(255,255,255,0.3);
+	font-size: 0.5rem;
+	font-weight: 700;
+	color: #fff;
+	text-shadow: 0 1px 1px rgba(0,0,0,0.5);
+}
+
+/* Classic gold counter — coin icon style */
+html.theme-classic .mp-gold-counter {
+	background: rgba(245, 215, 110, 0.15);
+	border: 1px solid rgba(245, 215, 110, 0.35);
+	border-radius: 12px;
+	padding: 2px 10px;
+	font-weight: 700;
+	font-size: 0.82rem;
+	color: var(--mp-gold);
+	gap: 4px;
+}
+html.theme-classic .mp-gold-coin-icon {
+	font-size: 0.9rem;
+}
+
+/* Classic pass button — no trash emoji */
+html.theme-classic .mp-pass-icon {
+	display: none;
+}
+html.theme-classic .mp-btn-emoji {
+	display: none;
 }
 html.theme-classic .mp-taunt-menu-panel {
 	background: rgba(20,25,34,0.96);
