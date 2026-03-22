@@ -2329,7 +2329,8 @@ class LocusLobbyUI {
 		this._objectivesRevealed = true;
 		this._playRevealSound();
 		setTimeout(() => this._playRevealSound(), 220);
-		this._showToast('🎯 Geheime doelstellingen onthuld!', 'info');
+		const isClassicReveal = document.documentElement.classList.contains('theme-classic');
+		this._showToast(isClassicReveal ? 'Geheime doelstellingen onthuld!' : '🎯 Geheime doelstellingen onthuld!', 'info');
 		this._renderOpponentPanels();
 		this._showObjectiveRevealOverlay();
 
@@ -2342,10 +2343,12 @@ class LocusLobbyUI {
 	}
 
 	_showObjectiveRevealOverlay() {
+		const isClassicOv = document.documentElement.classList.contains('theme-classic');
+		const revealIcon = isClassicOv ? '<span class="mp-obj-icon-target" style="width:48px;height:48px;border-width:4px;"></span>' : '🎯';
 		const overlay = document.createElement('div');
 		overlay.className = 'mp-objective-reveal-overlay';
 		overlay.innerHTML = `
-			<div class="mp-objective-reveal-icon">🎯</div>
+			<div class="mp-objective-reveal-icon">${revealIcon}</div>
 			<div class="mp-objective-reveal-title">GEHEIME DOELSTELLINGEN ONTHULD</div>
 			<div class="mp-objective-reveal-sub">Iedereen ziet nu elkaars doel</div>
 		`;
@@ -5200,12 +5203,7 @@ class LocusLobbyUI {
 
 		let inner = '';
 		if (cell.bonusSymbol && !cell.active) {
-			const bonusColors = {
-				yellow: '#cfba51', green: '#92c28c', blue: '#5689b0',
-				red: '#b56069', purple: '#8f76b8',
-				any: 'linear-gradient(135deg, #cfba51 0%, #92c28c 24%, #5689b0 48%, #b56069 72%, #8f76b8 100%)'
-			};
-			inner = `<span class="mp-cell-bonus-dot" style="background:${bonusColors[cell.bonusSymbol] || '#888'}"></span>`;
+			inner = `<span class="mp-cell-bonus-dot"></span>`;
 		}
 		if (cell.flags.includes('gold') && !cell.active) {
 			inner += `<span class="mp-cell-gold-dot"></span>`;
@@ -5223,7 +5221,8 @@ class LocusLobbyUI {
 			}
 		}
 		if (zoneName === 'green' && cell.flags.includes('end') && cell.active) {
-			inner += `<span class="mp-green-end-check">✓</span>`;
+			const checkChar = document.documentElement.classList.contains('theme-classic') ? '' : '✓';
+			inner += `<span class="mp-green-end-check">${checkChar}</span>`;
 		}
 		// portal indicators disabled (unlock later)
 		// if (cell.flags.includes('portal') && !cell.active) { ... }
@@ -6957,8 +6956,34 @@ class LocusLobbyUI {
 		const zoneEl = document.querySelector(`.mp-zone-${zoneName}`);
 		if (!zoneEl) return;
 		const rect = zoneEl.getBoundingClientRect();
-		const cx = rect.left + rect.width / 2;
-		const cy = rect.top + rect.height / 2;
+		let cx = rect.left + rect.width / 2;
+		let cy = rect.top + rect.height / 2;
+
+		// Bereken animatiepositie op basis van geplaatste cellen (ipv zone-centrum)
+		if (Array.isArray(data.matrix) && Number.isFinite(data.baseX) && Number.isFinite(data.baseY)) {
+			let sumX = 0, sumY = 0, count = 0;
+			for (let r = 0; r < data.matrix.length; r++) {
+				for (let c = 0; c < (data.matrix[r]?.length || 0); c++) {
+					if (!data.matrix[r][c]) continue;
+					const cellX = data.baseX + c;
+					const cellY = data.baseY + r;
+					const sel = data.subgridId
+						? `.mp-cell[data-zone="${zoneName}"][data-subgrid="${data.subgridId}"][data-x="${cellX}"][data-y="${cellY}"]`
+						: `.mp-cell[data-zone="${zoneName}"][data-x="${cellX}"][data-y="${cellY}"]`;
+					const cellEl = document.querySelector(sel);
+					if (cellEl) {
+						const cr = cellEl.getBoundingClientRect();
+						sumX += cr.left + cr.width / 2;
+						sumY += cr.top + cr.height / 2;
+						count++;
+					}
+				}
+			}
+			if (count > 0) {
+				cx = sumX / count;
+				cy = sumY / count;
+			}
+		}
 
 		// Play placement sound
 		this._playPlaceSound();
