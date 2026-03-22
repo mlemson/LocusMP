@@ -802,6 +802,19 @@ html.theme-classic .mp-red-progress-fill { background: #c05868; }
 .mp-tutorial-body strong {
 	color: #c8b8ff;
 }
+.mp-tutorial-zone-illustration {
+	margin: 8px 0 12px;
+	background: rgba(0, 0, 0, 0.25);
+	border-radius: 8px;
+	padding: 8px;
+	display: flex;
+	justify-content: center;
+}
+.mp-tutorial-svg {
+	width: 100%;
+	max-width: 260px;
+	height: auto;
+}
 .mp-tutorial-progress {
 	display: flex;
 	gap: 6px;
