@@ -884,31 +884,32 @@ function generateLevel1Board(rng, level, playerCount) {
 	//  Breedte begint smal, +1 per playerTier
 	//  Rivier-achtige vorm met meanderende void cellen
 	// ══════════════════════════════════════════
-	// Helper: genereer void cellen die een rivier-achtig patroon creëren
-	function generateBlueRiverVoids(width, height, rng) {
+	// Helper: genereer void cellen die een onregelmatig rivier-achtig profiel creëren
+	// Voids zitten ALLEEN aan de randen (links of rechts), zodat het grid altijd
+	// aaneengesloten (connected) blijft en je het einde kunt bereiken.
+	function generateBlueRiverVoids(width, height, rng, boldRows) {
 		const voids = [];
-		// De rivier "meandert" door het grid: op elke rij is er 1 void cel die
-		// van links naar rechts beweegt (en terug) om een kronkelend pad te maken.
-		// Dit maakt het moeilijker om rechte kolommen te vullen.
-		let pos = 0; // huidige void-positie (0 = links, width-1 = rechts)
-		let dir = 1; // richting van de meander
+		const boldRowSet = new Set(boldRows || []);
+		let side = rng() < 0.5 ? 0 : 1; // 0 = links, 1 = rechts
+		let streakLeft = 3 + Math.floor(rng() * 5); // rijen voor we wisselen van kant
 		for (let y = 0; y < height; y++) {
-			// Voeg void toe op de huidige positie
-			voids.push({ x: pos, y });
-			// Soms ook een tweede void ernaast voor een bredere rivier
-			if (width >= 6 && rng() < 0.3) {
-				const extra = pos + dir;
-				if (extra >= 0 && extra < width) {
-					voids.push({ x: extra, y });
+			// Nooit voids op bold-rijen — die moeten volledig zijn
+			if (boldRowSet.has(y)) continue;
+			// ~60% kans op een void op niet-bold rijen
+			if (rng() < 0.6) {
+				const x = side === 0 ? 0 : width - 1;
+				voids.push({ x, y });
+				// Soms diepere inkeping (2e cel ook void) bij brede grids
+				if (width >= 7 && rng() < 0.2) {
+					const x2 = side === 0 ? 1 : width - 2;
+					voids.push({ x: x2, y });
 				}
 			}
-			// Beweeg de void-positie
-			if (rng() < 0.65) {
-				pos += dir;
+			streakLeft--;
+			if (streakLeft <= 0) {
+				side = 1 - side;
+				streakLeft = 3 + Math.floor(rng() * 5);
 			}
-			// Keer om bij de randen (houd minimaal 3 cellen over)
-			if (pos >= width - 1) { pos = width - 1; dir = -1; }
-			if (pos <= 0) { pos = 0; dir = 1; }
 		}
 		return voids;
 	}
