@@ -3048,11 +3048,12 @@ class LocusP2PHost {
 					if (!cell || cell.active) continue;
 					if (cell.flags?.includes('void')) continue;
 					let score = 1;
-					if (cell.flags?.includes('bonus')) score += 18;
+					if (cell.bonusSymbol) score += 18;
 					if (cell.flags?.includes('gold')) score += 12;
 					if (cell.flags?.includes('bold')) score += 9;
 					if (cell.flags?.includes('end')) score += 8;
 					if (cell.flags?.includes('portal')) score += 6;
+					if (cell.treasureCoins > 0) score += 6;
 					if (this._hasAdjacentActive(zoneData, x, y)) score += 5;
 					score += Math.random() * 3;
 					candidates.push({ zoneName, cellX: x, cellY: y, score });
@@ -3131,7 +3132,7 @@ class LocusP2PHost {
 					for (const c of cells) {
 						const cell = this.Rules.getDataCell(zoneData, c.x, c.y);
 						if (cell?.flags?.includes('gold')) { score += prioritizeCoins ? 16 : 8; goldCount++; valueCount++; }
-						if (cell?.flags?.includes('bonus')) { bonusCount++; score += 25; valueCount++; }
+						if (cell?.bonusSymbol) { bonusCount++; score += 25; valueCount++; }
 						if (cell?.flags?.includes('bold')) {
 							boldCount++;
 							if (isBlueZone && blueBoldSet?.has(c.y)) {
@@ -3344,8 +3345,8 @@ class LocusP2PHost {
 			for (const c of cells) {
 				const cell = this.Rules.getDataCell(zoneData, c.x, c.y);
 				if (cell?.flags?.includes('gold')) bonus += 5;
-				else if (cell?.flags?.includes('bonus')) bonus += 4;
-				else if (cell?.flags?.includes('pearl')) bonus += 4;
+				else if (cell?.bonusSymbol) bonus += 4;
+				else if (cell?.treasureCoins > 0) bonus += 4;
 			}
 			// Favor going upward (already scored new tiers in base scoring)
 			const minY = Math.min(...cells.map(c => c.y));
@@ -3559,9 +3560,9 @@ class LocusP2PHost {
 				if (!cell || cell.active || cell.flags?.includes('void')) continue;
 
 				let weight = 0;
-				if (cell.flags?.includes('bonus')) weight += 16;
+				if (cell.bonusSymbol) weight += 16;
 				if (cell.flags?.includes('gold')) weight += prioritizeCoins ? 16 : 7;
-				if (cell.flags?.includes('pearl')) weight += prioritizeCoins ? 14 : 6;
+				if (cell.treasureCoins > 0) weight += prioritizeCoins ? 14 : 6;
 				if (cell.flags?.includes('end')) weight += 10;
 				if (cell.flags?.includes('portal')) weight += 6;
 
