@@ -2748,16 +2748,22 @@ class LocusLobbyUI {
 			const progressText = progress ? `${progress.current}/${progress.target}` : '';
 			const pts = player.objectiveAchievedPoints || (progress ? progress.points : '');
 
+			const isClassicDeck = document.documentElement.classList.contains('theme-classic');
+			const dObjOk = isClassicDeck ? '<span class="mp-obj-icon-check"></span>' : '✅';
+			const dObjTarget = isClassicDeck ? '<span class="mp-obj-icon-target"></span>' : '🎯';
+			const dObjFail = isClassicDeck ? '<span class="mp-obj-icon-fail"></span>' : '❌';
+			const dTrophy = isClassicDeck ? '' : '🏆 ';
+
 			objectiveHtml = `
 				<div class="mp-deck-objective-panel">
-					<h4 class="mp-deck-section-title">🎯 Jouw Doelstelling</h4>
+					<h4 class="mp-deck-section-title">${dObjTarget} Jouw Doelstelling</h4>
 					<div class="mp-deck-objective-card ${achieved ? 'achieved' : ''} ${failed ? 'failed' : ''}">
-						<div class="mp-deck-obj-name">${achieved ? '✅' : (failed ? '❌' : '🎯')} ${this._escapeHtml(obj.name)}</div>
+						<div class="mp-deck-obj-name">${achieved ? dObjOk : (failed ? dObjFail : dObjTarget)} ${this._escapeHtml(obj.name)}</div>
 						<div class="mp-deck-obj-desc">${this._escapeHtml(this._stripObjectiveRewardText(obj.description))}</div>
 						${this._renderObjectiveRewardBadges(progress || obj, { wrapperClass: 'mp-objective-rewards', includeFallbackPoints: true, fallbackPoints: pts || 15 })}
 						${failed
-							? '<div class="mp-deck-obj-progress failed">❌ Niet meer haalbaar</div>'
-							: (progressText ? `<div class="mp-deck-obj-progress ${achieved ? 'achieved' : ''}">${achieved ? `🏆 Behaald! +${pts}pt` : `Voortgang: ${progressText}`}</div>` : '')}
+							? `<div class="mp-deck-obj-progress failed">${dObjFail} Niet meer haalbaar</div>`
+							: (progressText ? `<div class="mp-deck-obj-progress ${achieved ? 'achieved' : ''}">${achieved ? `${dTrophy}Behaald! +${pts}pt` : `Voortgang: ${progressText}`}</div>` : '')}
 					</div>
 
 					<h4 class="mp-deck-section-title" style="margin-top: 16px;">📊 Zone Scores</h4>
@@ -5408,14 +5414,20 @@ class LocusLobbyUI {
 		const pts = player.objectiveAchievedPoints || (progress ? progress.points : '');
 		const obj = player.chosenObjective;
 
+		const isClassicObj = document.documentElement.classList.contains('theme-classic');
+		const objIconOk = isClassicObj ? '<span class="mp-obj-icon-check"></span>' : '✅';
+		const objIconTarget = isClassicObj ? '<span class="mp-obj-icon-target"></span>' : '🎯';
+		const objIconFail = isClassicObj ? '<span class="mp-obj-icon-fail"></span>' : '❌';
+		const trophyIcon = isClassicObj ? '' : '🏆 ';
+
 		container.innerHTML = `
 			<div class="mp-objective-badge ${achieved ? 'objective-achieved' : ''} ${failed ? 'objective-failed' : ''}">
-				<div class="mp-objective-title">${achieved ? '✅' : (failed ? '❌' : '🎯')} ${this._escapeHtml(obj.name)} ${pts ? `<span style="color: var(--mp-gold); font-size: 0.8rem;">(${pts}pt)</span>` : ''}</div>
+				<div class="mp-objective-title">${achieved ? objIconOk : (failed ? objIconFail : objIconTarget)} ${this._escapeHtml(obj.name)} ${pts ? `<span style="color: var(--mp-gold); font-size: 0.8rem;">(${pts}pt)</span>` : ''}</div>
 				<div class="mp-objective-desc">${this._escapeHtml(this._stripObjectiveRewardText(obj.description))}</div>
 				${this._renderObjectiveRewardBadges(progress || obj, { wrapperClass: 'mp-objective-rewards' })}
 				${failed
-					? `<div class="mp-objective-progress objective-progress-failed">❌ Niet meer haalbaar</div>`
-					: (progressText ? `<div class="mp-objective-progress">${achieved ? `🏆 Behaald! +${pts}pt` : `Voortgang: ${progressText}`}</div>` : '')}
+					? `<div class="mp-objective-progress objective-progress-failed">${objIconFail} Niet meer haalbaar</div>`
+					: (progressText ? `<div class="mp-objective-progress">${achieved ? `${trophyIcon}Behaald! +${pts}pt` : `Voortgang: ${progressText}`}</div>` : '')}
 			</div>
 		`;
 	}
@@ -5440,7 +5452,8 @@ class LocusLobbyUI {
 
 				if (isMe) {
 					// Big celebration for own objective
-					this._showToast(`🏆 Doelstelling behaald! +${pts} punten!`, 'success');
+					const isClassicAch = document.documentElement.classList.contains('theme-classic');
+					this._showToast(`${isClassicAch ? '' : '🏆 '}Doelstelling behaald! +${pts} punten!`, 'success');
 					this._playRevealSound();
 					// Flash the objective badge
 					const badge = document.querySelector('.mp-objective-badge');

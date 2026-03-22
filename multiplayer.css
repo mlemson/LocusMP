@@ -814,13 +814,13 @@ html.theme-classic .mp-cell-bonus-dot {
 	box-shadow: none;
 	opacity: 1;
 }
-html.theme-classic .mp-cell.bonus-yellow .mp-cell-bonus-dot { background-color: #fff48f !important; }
-html.theme-classic .mp-cell.bonus-green .mp-cell-bonus-dot { background-color: #69cf57 !important; }
-html.theme-classic .mp-cell.bonus-blue .mp-cell-bonus-dot { background-color: #76a0e3 !important; }
-html.theme-classic .mp-cell.bonus-red .mp-cell-bonus-dot { background-color: #ed7e89 !important; }
-html.theme-classic .mp-cell.bonus-purple .mp-cell-bonus-dot { background-color: #ae7eed !important; }
+html.theme-classic .mp-cell.bonus-yellow .mp-cell-bonus-dot { background-color: #FF8C00 !important; }
+html.theme-classic .mp-cell.bonus-green .mp-cell-bonus-dot { background-color: #00A86B !important; }
+html.theme-classic .mp-cell.bonus-blue .mp-cell-bonus-dot { background-color: #1E90FF !important; }
+html.theme-classic .mp-cell.bonus-red .mp-cell-bonus-dot { background-color: #DC143C !important; }
+html.theme-classic .mp-cell.bonus-purple .mp-cell-bonus-dot { background-color: #9B30FF !important; }
 html.theme-classic .mp-cell.bonus-any .mp-cell-bonus-dot {
-	background: linear-gradient(135deg, #fff48f 0%, #69cf57 24%, #76a0e3 48%, #ed7e89 72%, #ae7eed 100%) !important;
+	background: linear-gradient(135deg, #FF8C00 0%, #00A86B 24%, #1E90FF 48%, #DC143C 72%, #9B30FF 100%) !important;
 	border: calc(var(--mp-cell-size, 20px) * 0.08) solid #444 !important;
 	box-shadow: none;
 }
@@ -2962,6 +2962,13 @@ html.theme-classic .mp-cell.bonus-just-spawned {
 	border: 1.2px solid rgba(255,255,255,0.55);
 	box-shadow: 0 0 6px rgba(255,255,255,0.4), 0 0 8px rgba(143, 118, 184, 0.35);
 }
+
+/* Base bonus dot colors (default / neon theme) */
+.mp-cell.bonus-yellow .mp-cell-bonus-dot { background: #cfba51; }
+.mp-cell.bonus-green .mp-cell-bonus-dot { background: #92c28c; }
+.mp-cell.bonus-blue .mp-cell-bonus-dot { background: #5689b0; }
+.mp-cell.bonus-red .mp-cell-bonus-dot { background: #b56069; }
+.mp-cell.bonus-purple .mp-cell-bonus-dot { background: #8f76b8; }
 
 .mp-cell.bonus-just-spawned {
 	animation: mpBonusSpawnPulse 1.7s ease-out;
