@@ -6816,14 +6816,18 @@ class LocusLobbyUI {
 	}
 
 	/** Floating score text op een zone element (zoals index.html showScoreAnimation) */
-	_showFloatingScore(zoneEl, text, color = '#fff') {
-		const rect = zoneEl.getBoundingClientRect();
+	_showFloatingScore(zoneEl, text, color = '#fff', cx, cy) {
+		if (!Number.isFinite(cx) || !Number.isFinite(cy)) {
+			const rect = zoneEl.getBoundingClientRect();
+			cx = rect.left + rect.width / 2;
+			cy = rect.top + rect.height / 2;
+		}
 		const el = document.createElement('div');
 		el.className = 'mp-float-score';
 		el.textContent = text;
 		el.style.color = color;
-		el.style.left = `${rect.left + rect.width / 2}px`;
-		el.style.top = `${rect.top + rect.height / 2}px`;
+		el.style.left = `${cx}px`;
+		el.style.top = `${cy}px`;
 		document.body.appendChild(el);
 		setTimeout(() => el.remove(), 1300);
 	}
@@ -6926,7 +6930,7 @@ class LocusLobbyUI {
 		// Floating text
 		const zoneEl = document.querySelector('.mp-zone-yellow');
 		if (zoneEl) {
-			this._showFloatingScore(zoneEl, `🫧 Parel! +${count * 5} goud`, '#e0f7fa');
+			this._showFloatingScore(zoneEl, `🫧 Parel! +${count * 5} goud`, '#e0f7fa', x, y);
 		}
 	}
 
@@ -7032,7 +7036,7 @@ class LocusLobbyUI {
 			const sparkleCount = isBloom ? 14 : (isReef ? 16 : (isClassicHere ? 10 : 8));
 			this._showSparkle(cx, cy, sparkleCount);
 			const goldLabel = isClassicHere ? `🪙 +${goldCollected}` : `💰 +${goldCollected} goud`;
-			this._showFloatingScore(zoneEl, goldLabel, '#f5d76e');
+			this._showFloatingScore(zoneEl, goldLabel, '#f5d76e', cx, cy);
 			this._playGoldSound();
 			// Bloom / Classic: coin bounce + geel spray/confetti op coin pickup
 			if (isBloom || isClassicHere) {
@@ -7062,7 +7066,7 @@ class LocusLobbyUI {
 			for (let i = 0; i < bonusesCollected.length; i++) {
 				const bc = bonusesCollected[i];
 				setTimeout(() => {
-					this._showFloatingScore(zoneEl, '↙ BONUS', bonusColors[bc] || '#fff');
+					this._showFloatingScore(zoneEl, '↙ BONUS', bonusColors[bc] || '#fff', cx, cy);
 					if (isClassicBonus || isBloom) {
 						this._showSparkle(cx, cy, 6);
 						this._showConfetti(cx, cy, 6, [bonusColors[bc] || '#c47bd7', '#fff3a1', '#f5d76e']);
