@@ -167,6 +167,7 @@ class LocusLobbyUI {
 	handleReconnect() {
 		const state = this.mp.gameState;
 		if (!state) return;
+		this._tutorialEnabled = !!state?.settings?.tutorialEnabled;
 
 		switch (state.phase) {
 			case 'waiting':
@@ -1923,6 +1924,7 @@ class LocusLobbyUI {
 	}
 
 	_startOpponentTimerTicker() {
+		if (this.mp?.gameState?.settings?.timerEnabled === false) return;
 		if (this._oppTimerInterval) return;
 		this._oppTimerLastPid = null;
 		this._oppTimerCachedNodes = null;
@@ -1982,6 +1984,7 @@ class LocusLobbyUI {
 		const goldCoins = myPlayer?.goldCoins || 0;
 		const level = this.mp.gameState?.level || 1;
 
+		const timerEnabled = this.mp.gameState?.settings?.timerEnabled !== false;
 		indicator.innerHTML = `
 			<div class="mp-turn-label">Level ${level} — Ronde ${turnCount}</div>
 			<div class="mp-turn-player">
@@ -1993,10 +1996,12 @@ class LocusLobbyUI {
 			</div>
 			${!isPaused ? `
 				<div class="mp-turn-meta-row">
-					<div class="mp-turn-inline-timer">
-						<div class="mp-timer-bar"><div class="mp-timer-fill"></div></div>
-						<span class="mp-timer-text">40s</span>
-					</div>
+					${timerEnabled ? `
+						<div class="mp-turn-inline-timer">
+							<div class="mp-timer-bar"><div class="mp-timer-fill"></div></div>
+							<span class="mp-timer-text">40s</span>
+						</div>
+					` : ''}
 					${goldCoins > 0 ? `<div class="mp-gold-counter">💰 ${goldCoins} goud</div>` : ''}
 				</div>
 			` : ''}
@@ -2260,7 +2265,7 @@ class LocusLobbyUI {
 					<div class="mp-opp-header">
 						<div class="mp-opp-head-main">
 							<span class="mp-opp-name">${opp.rank === 0 ? '🥇 ' : opp.rank === 1 ? '🥈 ' : opp.rank === 2 ? '🥉 ' : ''}${isCurrentTurn ? '▶ ' : ''}${this._escapeHtml(opp.name)}${opp.isMe ? ' (jij)' : ''}</span>
-							${isCurrentTurn ? `<span class="mp-opp-timer" data-player-id="${opp.id}">⏱ 40s</span>` : ''}
+							${isCurrentTurn && this.mp.gameState?.settings?.timerEnabled !== false ? `<span class="mp-opp-timer" data-player-id="${opp.id}">⏱ 40s</span>` : ''}
 						</div>
 						<span class="mp-opp-score">${opp.score || 0}pt</span>
 					</div>
@@ -6038,8 +6043,15 @@ class LocusLobbyUI {
 			}
 			this._playGoldSound();
 			this._showToast(`${result.perk?.icon || '🎯'} ${result.perk?.name || 'Perk'} ontgrendeld!`, 'success');
-			// Re-open perk popup with updated state (pass onClose through)
-			this._openPerkPopup(onClose);
+			// Auto-close if no perk points remain, otherwise re-open with updated state
+			const remainingPoints = this.mp.getMyPlayer?.()?.perks?.perkPoints || 0;
+			if (remainingPoints <= 0) {
+				const popupOverlay = document.getElementById('mp-perk-popup-overlay');
+				if (popupOverlay) popupOverlay.remove();
+				if (onClose) onClose();
+			} else {
+				this._openPerkPopup(onClose);
+			}
 			// Re-render bonus bar and hand in case of stone/mine perks
 			try { this._renderBonusBar(); } catch (e) {}
 			try { this._renderHand(); } catch (e) {}
@@ -6397,6 +6409,10 @@ class LocusLobbyUI {
 	// ──────────────────────────────────────────
 
 	_onGameStateChanged(state, prevState) {
+		// Sync tutorial flag from state so guest players get it before phase handlers
+		if (state?.settings?.tutorialEnabled !== undefined) {
+			this._tutorialEnabled = !!state.settings.tutorialEnabled;
+		}
 		// ── TV Cast: forward state to TV display ──
 		try { this._broadcastTVState(); } catch (e) { console.warn('[Locus TV] broadcast error:', e); }
 
