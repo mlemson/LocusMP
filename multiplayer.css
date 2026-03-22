@@ -95,42 +95,46 @@ html.theme-classic {
 	--mp-blue: #5a9ec4;
 	--mp-red: #c47080;
 	--mp-purple: #9a82c8;
-	--mp-radius: 14px;
-	--mp-shadow: 0 4px 20px rgba(0,0,0,0.35);
+	--mp-radius: 10px;
+	--mp-shadow: 0 2px 6px rgba(0,0,0,0.12);
 	--mp-transition: 0.2s ease;
 
-	--zone-yellow-bg: #e8dca0;
-	--zone-green-bg: #b2d8ac;
-	--zone-blue-bg: #a8d0ee;
-	--zone-red-bg: #eaacb4;
-	--zone-purple-bg: #c8b8e2;
+	/* Zone backgrounds — match singleplayer pastel */
+	--zone-yellow-bg: #f0dc7d;
+	--zone-green-bg: #a8d5a2;
+	--zone-blue-bg: #6ba8d8;
+	--zone-red-bg: #de838c;
+	--zone-purple-bg: #a48dcc;
 
-	--cell-yellow-bg: rgba(232, 220, 160, 0.50);
-	--cell-yellow-border: rgba(200, 180, 80, 0.35);
-	--cell-yellow-active: #c8a820;
-	--cell-yellow-active-border: #a08018;
+	/* Cell colors — match singleplayer */
+	--cell-yellow-bg: #fff3b0;
+	--cell-yellow-border: #fffba8;
+	--cell-yellow-active: #cfba51;
+	--cell-yellow-active-border: #f7dc54;
 
-	--cell-green-bg: rgba(178, 216, 172, 0.50);
-	--cell-green-border: rgba(120, 180, 110, 0.35);
-	--cell-green-active: #5a9e50;
-	--cell-green-active-border: #408038;
-	--cell-green-end: #3d8848;
-	--cell-green-end-border: #2a6830;
+	--cell-green-bg: #d6f5d6;
+	--cell-green-border: #c1ffa8;
+	--cell-green-active: #92c28c;
+	--cell-green-active-border: #c1ffa8;
+	--cell-green-end: #7bba7b;
+	--cell-green-end-border: #7bb57f;
+	--cell-green-end-active: #5da35d;
+	--cell-green-end-active-border: #518755;
 
-	--cell-blue-bg: rgba(168, 208, 238, 0.50);
-	--cell-blue-border: rgba(100, 160, 210, 0.35);
-	--cell-blue-active: #4888b8;
-	--cell-blue-active-border: #306898;
+	--cell-blue-bg: #d6eaff;
+	--cell-blue-border: #a8d8ff;
+	--cell-blue-active: #5689b0;
+	--cell-blue-active-border: #a8d8ff;
 
-	--cell-red-bg: rgba(234, 172, 180, 0.50);
-	--cell-red-border: rgba(200, 120, 130, 0.35);
-	--cell-red-active: #c05868;
-	--cell-red-active-border: #a04050;
+	--cell-red-bg: #ffd6d1;
+	--cell-red-border: #ff7b73;
+	--cell-red-active: #b56069;
+	--cell-red-active-border: #ff7b73;
 
-	--cell-purple-bg: rgba(200, 184, 226, 0.50);
-	--cell-purple-border: rgba(160, 140, 200, 0.35);
-	--cell-purple-active: #8068b0;
-	--cell-purple-active-border: #604898;
+	--cell-purple-bg: #f3e8fa;
+	--cell-purple-border: #e6a8ff;
+	--cell-purple-active: #8f76b8;
+	--cell-purple-active-border: #e6a8ff;
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -437,105 +441,267 @@ html.theme-classic .mp-deck-overlay {
 	backdrop-filter: none;
 }
 
-/* ── Classic theme: pastel zone overrides ── */
+/* ── Classic theme: singleplayer-matching zone overrides ── */
+html.theme-classic .mp-zone {
+	border-radius: 10px;
+	border: 1px solid #e3e6ea;
+	box-shadow: 0 2px 6px rgba(0,0,0,0.12);
+	padding: 10px;
+	padding-top: 28px;
+}
+
 html.theme-classic .mp-zone-yellow {
-	background: #e8dca0 !important;
+	background: var(--zone-yellow-bg) !important;
 	border-color: #c8b050 !important;
-	box-shadow: 0 3px 12px rgba(0,0,0,0.18);
+	box-shadow: 0 2px 6px rgba(0,0,0,0.12);
 }
 html.theme-classic .mp-zone-green {
-	background: #b2d8ac !important;
+	background: var(--zone-green-bg) !important;
 	border-color: #78b070 !important;
-	box-shadow: 0 3px 12px rgba(0,0,0,0.18);
+	box-shadow: 0 2px 6px rgba(0,0,0,0.12);
 }
 html.theme-classic .mp-zone-blue {
-	background: #a8d0ee !important;
+	background: var(--zone-blue-bg) !important;
 	border-color: #6aa0d0 !important;
-	box-shadow: 0 3px 12px rgba(0,0,0,0.18);
+	box-shadow: 0 2px 6px rgba(0,0,0,0.12);
 }
 html.theme-classic .mp-zone-red {
-	background: #eaacb4 !important;
+	background: var(--zone-red-bg) !important;
 	border-color: #c87888 !important;
-	box-shadow: 0 3px 12px rgba(0,0,0,0.18);
+	box-shadow: 0 2px 6px rgba(0,0,0,0.12);
 }
 html.theme-classic .mp-zone-purple {
-	background: #c8b8e2 !important;
+	background: var(--zone-purple-bg) !important;
 	border-color: #9880c0 !important;
-	box-shadow: 0 3px 12px rgba(0,0,0,0.18);
+	box-shadow: 0 2px 6px rgba(0,0,0,0.12);
 }
 
-/* Classic zone cells — pastel style with rounded look */
-html.theme-classic .mp-zone-yellow .mp-cell { background: rgba(255, 248, 200, 0.65); border-color: rgba(200, 176, 80, 0.30); border-radius: 4px; }
-html.theme-classic .mp-zone-yellow .mp-cell.active { background: #c8a820 !important; border-color: #a08018 !important; box-shadow: 0 1px 4px rgba(0,0,0,0.2) !important; }
-html.theme-classic .mp-zone-green .mp-cell { background: rgba(200, 238, 195, 0.65); border-color: rgba(120, 180, 110, 0.30); border-radius: 4px; }
-html.theme-classic .mp-zone-green .mp-cell.active { background: #5a9e50 !important; border-color: #408038 !important; box-shadow: 0 1px 4px rgba(0,0,0,0.2) !important; }
-html.theme-classic .mp-zone-green .mp-cell.end:not(.active),
-html.theme-classic .mp-zone-green .mp-cell.green-end:not(.active) { background: rgba(61, 136, 72, 0.35); border-color: rgba(61, 136, 72, 0.6); }
-html.theme-classic .mp-zone-green .mp-cell.end.active,
-html.theme-classic .mp-zone-green .mp-cell.green-end.green-end-claimed { background: #2d7840 !important; border-color: #1e5830 !important; }
-html.theme-classic .mp-zone-blue .mp-cell { background: rgba(195, 225, 250, 0.65); border-color: rgba(100, 160, 210, 0.30); border-radius: 4px; }
-html.theme-classic .mp-zone-blue .mp-cell.active { background: #4888b8 !important; border-color: #306898 !important; box-shadow: 0 1px 4px rgba(0,0,0,0.2) !important; }
-html.theme-classic .mp-zone-red .mp-cell { background: rgba(248, 200, 210, 0.65); border-color: rgba(200, 120, 130, 0.30); border-radius: 4px; }
-html.theme-classic .mp-zone-red .mp-cell.active { background: #c05868 !important; border-color: #a04050 !important; box-shadow: 0 1px 4px rgba(0,0,0,0.2) !important; }
-html.theme-classic .mp-zone-purple .mp-cell { background: rgba(218, 205, 245, 0.65); border-color: rgba(160, 140, 200, 0.30); border-radius: 4px; }
-html.theme-classic .mp-zone-purple .mp-cell.active { background: #8068b0 !important; border-color: #604898 !important; box-shadow: 0 1px 4px rgba(0,0,0,0.2) !important; }
+/* Classic zone cells — singleplayer pastel cells */
+html.theme-classic .mp-cell {
+	background: #f9fafc;
+	border: 1px solid #d8dee9;
+	border-radius: 6px;
+	box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+}
 
-/* Classic bold cells — solid white border instead of glow */
+html.theme-classic .mp-cell.void {
+	background: transparent;
+	border-color: transparent;
+	box-shadow: none;
+}
+
+html.theme-classic .mp-cell.active {
+	box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+	transform: scale(1.02);
+}
+
+html.theme-classic .mp-zone-yellow .mp-cell { background: var(--cell-yellow-bg); border-color: var(--cell-yellow-border); }
+html.theme-classic .mp-zone-yellow .mp-cell.active { background: var(--cell-yellow-active) !important; border-color: var(--cell-yellow-active-border) !important; box-shadow: 0 1px 4px rgba(0,0,0,0.2) !important; }
+
+html.theme-classic .mp-zone-green .mp-cell { background: var(--cell-green-bg); border-color: var(--cell-green-border); }
+html.theme-classic .mp-zone-green .mp-cell.active { background: var(--cell-green-active) !important; border-color: var(--cell-green-active-border) !important; box-shadow: 0 1px 4px rgba(0,0,0,0.2) !important; }
+html.theme-classic .mp-zone-green .mp-cell.end:not(.active),
+html.theme-classic .mp-zone-green .mp-cell.green-end:not(.active) { background: var(--cell-green-end); border-color: var(--cell-green-end-border); }
+html.theme-classic .mp-zone-green .mp-cell.end.active,
+html.theme-classic .mp-zone-green .mp-cell.green-end.end-claimed { background: var(--cell-green-end-active) !important; border-color: var(--cell-green-end-active-border) !important; }
+
+html.theme-classic .mp-zone-blue .mp-cell { background: var(--cell-blue-bg); border-color: var(--cell-blue-border); }
+html.theme-classic .mp-zone-blue .mp-cell.active { background: var(--cell-blue-active) !important; border-color: var(--cell-blue-active-border) !important; box-shadow: 0 1px 4px rgba(0,0,0,0.2) !important; }
+
+html.theme-classic .mp-zone-red .mp-cell { background: var(--cell-red-bg); border-color: var(--cell-red-border); }
+html.theme-classic .mp-zone-red .mp-cell.active { background: var(--cell-red-active) !important; border-color: var(--cell-red-active-border) !important; box-shadow: 0 1px 4px rgba(0,0,0,0.2) !important; }
+
+html.theme-classic .mp-zone-purple .mp-cell { background: var(--cell-purple-bg); border-color: var(--cell-purple-border); }
+html.theme-classic .mp-zone-purple .mp-cell.active { background: var(--cell-purple-active) !important; border-color: var(--cell-purple-active-border) !important; box-shadow: 0 1px 4px rgba(0,0,0,0.2) !important; }
+
+/* Classic bold cells — dark border like singleplayer */
 html.theme-classic .mp-cell.bold {
-	border-color: rgba(60, 60, 80, 0.7) !important;
+	border: 2px solid #2c3333 !important;
 }
 html.theme-classic .mp-cell.bold::before {
-	border-color: rgba(60, 60, 80, 0.4);
+	border-color: rgba(44, 51, 51, 0.4);
 }
 
-/* Classic stone cells — lighter grey */
+/* Classic stone cells — singleplayer grey */
 html.theme-classic .mp-cell.stone {
 	background: linear-gradient(135deg, #b8b8b8, #9a9a9a, #888) !important;
 	border-color: #777 !important;
 	box-shadow: inset 0 1px 3px rgba(0,0,0,0.25) !important;
 }
 
-/* Classic zone labels — dark text for pastel backgrounds */
-html.theme-classic .mp-zone-yellow .mp-zone-label { color: #8a7820; }
-html.theme-classic .mp-zone-green .mp-zone-label { color: #3a7835; }
-html.theme-classic .mp-zone-blue .mp-zone-label { color: #2a6898; }
-html.theme-classic .mp-zone-red .mp-zone-label { color: #984050; }
-html.theme-classic .mp-zone-purple .mp-zone-label { color: #5a3890; }
+/* Classic zone labels — dark text on pastel, matching singleplayer */
+html.theme-classic .mp-zone-label {
+	opacity: 0.9;
+	font-weight: 800;
+}
+html.theme-classic .mp-zone-yellow .mp-zone-label { color: #3e2f00; }
+html.theme-classic .mp-zone-green .mp-zone-label { color: #003300; }
+html.theme-classic .mp-zone-blue .mp-zone-label { color: #001f3f; }
+html.theme-classic .mp-zone-red .mp-zone-label { color: #4b0000; }
+html.theme-classic .mp-zone-purple .mp-zone-label { color: #33004b; }
 
-/* Classic zone guide text — darker for readability on pastel */
+/* Classic zone guide text — dark text for pastel backgrounds */
 html.theme-classic .mp-green-points-guide {
-	color: #2e6830;
-	background: rgba(46, 104, 48, 0.12);
-	border-color: rgba(46, 104, 48, 0.3);
+	color: #003300;
+	background: rgba(0, 51, 0, 0.10);
+	border-color: rgba(0, 51, 0, 0.25);
 }
 html.theme-classic .mp-purple-points-guide {
-	color: #5a3890;
-	background: rgba(90, 56, 144, 0.10);
-	border-color: rgba(90, 56, 144, 0.25);
+	color: #33004b;
+	background: rgba(51, 0, 75, 0.08);
+	border-color: rgba(51, 0, 75, 0.20);
 }
 html.theme-classic .mp-yellow-col-point {
-	color: #8a7820;
-	background: rgba(138, 120, 32, 0.10);
-	border-color: rgba(138, 120, 32, 0.25);
+	color: #3e2f00;
+	background: rgba(62, 47, 0, 0.10);
+	border-color: rgba(62, 47, 0, 0.25);
 }
 html.theme-classic .mp-yellow-col-point.is-complete {
-	color: #5a5010;
-	background: rgba(200, 168, 32, 0.25);
+	color: #3e2f00;
+	background: rgba(207, 186, 81, 0.35);
+	border-color: rgba(207, 186, 81, 0.6);
 }
 html.theme-classic .mp-blue-row-point {
-	color: #2a6898;
-	background: rgba(42, 104, 152, 0.10);
-	border-color: rgba(42, 104, 152, 0.25);
+	color: #001f3f;
+	background: rgba(0, 31, 63, 0.08);
+	border-color: rgba(0, 31, 63, 0.20);
 }
 html.theme-classic .mp-blue-row-point.is-claimed {
-	color: #1a4870;
-	background: rgba(72, 136, 184, 0.25);
+	color: #001f3f;
+	background: rgba(86, 137, 176, 0.30);
+	border-color: rgba(86, 137, 176, 0.6);
 }
 
-/* Classic red subgrid styling */
-html.theme-classic .mp-red-subgrid { background: rgba(248, 200, 210, 0.30); border-color: rgba(200, 120, 130, 0.35); }
+/* Classic red subgrid styling — singleplayer matching */
+html.theme-classic .mp-red-group {
+	display: grid;
+	grid-template-columns: repeat(2, max-content);
+	justify-content: center;
+	gap: 12px;
+}
+html.theme-classic .mp-red-subgrid-wrap {
+	background: rgba(222, 131, 140, 0.15);
+	border-radius: 8px;
+}
+html.theme-classic .mp-red-subgrid-wrap.is-partial {
+	background: rgba(245, 215, 110, 0.12);
+	box-shadow: inset 0 0 0 1px rgba(245, 215, 110, 0.3);
+}
+html.theme-classic .mp-red-subgrid-wrap.is-full {
+	background: rgba(76, 175, 80, 0.15);
+	box-shadow: inset 0 0 0 1px rgba(76, 175, 80, 0.4);
+}
+html.theme-classic .mp-red-subgrid-label {
+	color: #4b0000;
+	background: rgba(75, 0, 0, 0.08);
+}
+html.theme-classic .mp-red-subgrid-wrap.is-full .mp-red-subgrid-label {
+	color: #1b5e20;
+	background: rgba(76, 175, 80, 0.12);
+}
 html.theme-classic .mp-red-progress-bar { background: rgba(200, 120, 130, 0.15); }
-html.theme-classic .mp-red-progress-fill { background: #c05868; }
+html.theme-classic .mp-red-progress-fill { background: #b56069; }
+
+/* Classic green end check — dark on pastel */
+html.theme-classic .mp-green-end-check {
+	color: #003300;
+	text-shadow: none;
+	font-weight: 900;
+}
+
+/* Classic zone info button — singleplayer style */
+html.theme-classic .mp-zone-info-btn {
+	border: 1px solid rgba(0,0,0,0.18);
+	background: rgba(255,255,255,0.7);
+	color: rgba(0,0,0,0.75);
+}
+
+/* Classic blue claimed row — softer on pastel */
+html.theme-classic .mp-zone-blue .mp-cell.blue-row-claimed.bold:not(.active) {
+	background: rgba(86, 137, 176, 0.12);
+	border-color: rgba(86, 137, 176, 0.35) !important;
+	opacity: 0.75;
+}
+
+/* Classic score popup — high contrast for visibility */
+html.theme-classic .mp-score-popup {
+	color: #2e7d32;
+	font-size: 1rem;
+	font-weight: 800;
+	text-shadow: 0 1px 2px rgba(255,255,255,0.8), 0 0 6px rgba(0,0,0,0.25);
+}
+
+/* Classic floating score — large, visible on pastel zones */
+html.theme-classic .mp-float-score {
+	font-size: 1.4rem;
+	font-weight: 800;
+	color: #fff;
+	text-shadow: 0 0 6px rgba(0,0,0,0.7), 0 0 12px rgba(255,255,255,0.5), 0 2px 4px rgba(0,0,0,0.5);
+	-webkit-text-stroke: 0.5px rgba(0,0,0,0.3);
+}
+
+/* Classic sparkle — gold particles */
+html.theme-classic .mp-sparkle {
+	background: gold;
+	box-shadow: 0 0 6px rgba(255,215,0,0.6);
+}
+
+/* Classic board layout — singleplayer alignment */
+html.theme-classic .mp-board {
+	gap: 12px;
+	padding: 8px;
+	align-items: flex-start;
+}
+html.theme-classic .mp-board-col {
+	gap: 12px;
+}
+html.theme-classic .mp-grid {
+	margin: 0;
+}
+html.theme-classic .mp-zone .mp-grid {
+	gap: 2px;
+}
+
+/* Classic bonus dot — darker for pastel contrast */
+html.theme-classic .mp-cell-bonus-dot {
+	box-shadow: 0 0 2px rgba(0,0,0,0.3);
+}
+
+/* Classic gold dot — high contrast */
+html.theme-classic .mp-cell-gold-dot {
+	box-shadow: 0 0 4px rgba(245,215,110,0.5);
+}
+
+/* Classic red subgrid progress bar */
+html.theme-classic .mp-red-subgrid-progress {
+	background: rgba(0,0,0,0.08);
+}
+html.theme-classic .mp-red-subgrid-progress span {
+	background: linear-gradient(90deg, rgba(181,96,105,0.6), rgba(181,96,105,0.95));
+}
+html.theme-classic .mp-red-subgrid-wrap.is-full .mp-red-subgrid-progress span {
+	background: linear-gradient(90deg, rgba(76,175,80,0.65), rgba(76,175,80,0.95));
+}
+
+/* Classic drag ghost — softer shadow */
+html.theme-classic .mp-drag-ghost {
+	filter: drop-shadow(0 2px 8px rgba(0,0,0,0.3));
+}
+html.theme-classic .mp-drag-ghost.preview-ok {
+	filter: drop-shadow(0 1px 6px rgba(0,0,0,0.25));
+}
+html.theme-classic .mp-drag-ghost .mp-mini-cell.filled {
+	border: 1.5px solid rgba(0,0,0,0.25);
+	box-shadow: inset 0 1px 2px rgba(0,0,0,0.15), 0 1px 3px rgba(0,0,0,0.2);
+}
+
+/* Classic preview cells — darker outlines for pastel zones */
+html.theme-classic .mp-cell.preview-valid {
+	box-shadow: inset 0 0 0 2px rgba(76,175,80,0.6);
+}
+html.theme-classic .mp-cell.preview-denied {
+	box-shadow: inset 0 0 0 2px rgba(244,67,54,0.5);
+}
 
 /* When split layout is present, allow goal container to be wider */
 .mp-goal-container:has(.mp-goal-split-layout) {
