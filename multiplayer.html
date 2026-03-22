@@ -24,6 +24,7 @@
 	     ═══════════════════════════════════ -->
 	<div id="mp-theme-switcher" class="mp-theme-switcher">
 		<div class="mp-theme-pill" title="Kies een thema">
+			<button class="mp-theme-btn" data-theme="neon">Neon</button>
 			<button class="mp-theme-btn" data-theme="aurora">Aurora</button>
 			<button class="mp-theme-btn" data-theme="bloom">Bloom</button>
 			<button class="mp-theme-btn" data-theme="reef">Reef</button>
@@ -395,10 +396,12 @@
 
 		// ── Theme switcher logic ──
 		function _applyTheme(theme) {
-			document.documentElement.classList.remove('theme-aurora', 'theme-bloom', 'theme-reef');
+			document.documentElement.classList.remove('theme-aurora', 'theme-bloom', 'theme-reef', 'theme-classic');
 			if (theme === 'aurora') document.documentElement.classList.add('theme-aurora');
 			else if (theme === 'bloom') document.documentElement.classList.add('theme-bloom');
 			else if (theme === 'reef') document.documentElement.classList.add('theme-reef');
+			else if (theme === 'classic') document.documentElement.classList.add('theme-classic');
+			// 'neon' = no class (default :root)
 		}
 
 		function _initThemeSwitcher() {
@@ -406,7 +409,7 @@
 			if (!pill) return;
 			const btns = pill.querySelectorAll('.mp-theme-btn');
 			const indicator = pill.querySelector('.mp-theme-indicator');
-			const saved = localStorage.getItem('locus-theme') || 'reef';
+			const saved = localStorage.getItem('locus-theme') || 'neon';
 
 			function setActive(theme) {
 				btns.forEach((btn, i) => {
@@ -432,11 +435,12 @@
 
 		// Apply theme immediately to avoid flash
 		(function() {
-			const saved = localStorage.getItem('locus-theme') || 'reef';
+			const saved = localStorage.getItem('locus-theme') || 'neon';
 			if (saved === 'aurora') document.documentElement.classList.add('theme-aurora');
 			else if (saved === 'bloom') document.documentElement.classList.add('theme-bloom');
 			else if (saved === 'reef') document.documentElement.classList.add('theme-reef');
-			else localStorage.setItem('locus-theme', 'reef');
+			else if (saved === 'classic') document.documentElement.classList.add('theme-classic');
+			// 'neon' = no class needed
 		})();
 
 		const LOBBY_NAME_STORAGE_KEY = 'locus_last_user_name';
