@@ -1563,17 +1563,12 @@ class LocusP2PHost {
 			actions.push({ type: 'playCard', move: bestMove });
 		}
 
-		// 4. Play bonuses — only queue them if a good placement exists; save otherwise
+		// 4. Play bonuses — always play all bonuses (never waste them)
 		const bonusColors = ['yellow', 'red', 'green', 'purple', 'blue', 'any'];
 		for (const color of bonusColors) {
 			const charges = player.bonusInventory?.[color] || 0;
 			for (let i = 0; i < charges; i++) {
-				// Pre-check: does a worthwhile placement exist?
-				const preCheck = this._aiBonusBestScore(playerId, color);
-				if (preCheck !== null && preCheck >= 5) {
-					actions.push({ type: 'playBonus', bonusColor: color });
-				}
-				// Otherwise save the bonus for a better moment
+				actions.push({ type: 'playBonus', bonusColor: color });
 			}
 		}
 
@@ -2840,7 +2835,7 @@ class LocusP2PHost {
 			}
 		}
 
-		if (!bestPlacement || bestScore < 5) return null; // Save bonus if no good placement
+		if (!bestPlacement) return null; // No valid placement
 
 		// ── ML-ready bonus logging ──
 		try {

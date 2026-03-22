@@ -814,11 +814,11 @@ html.theme-classic .mp-cell-bonus-dot {
 	box-shadow: none;
 	opacity: 1;
 }
-html.theme-classic .mp-zone-yellow .mp-cell-bonus-dot { background-color: #fff48f !important; }
-html.theme-classic .mp-zone-green .mp-cell-bonus-dot { background-color: #69cf57 !important; }
-html.theme-classic .mp-zone-blue .mp-cell-bonus-dot { background-color: #76a0e3 !important; }
-html.theme-classic .mp-zone-red .mp-cell-bonus-dot { background-color: #ed7e89 !important; }
-html.theme-classic .mp-zone-purple .mp-cell-bonus-dot { background-color: #ae7eed !important; }
+html.theme-classic .mp-cell.bonus-yellow .mp-cell-bonus-dot { background-color: #fff48f !important; }
+html.theme-classic .mp-cell.bonus-green .mp-cell-bonus-dot { background-color: #69cf57 !important; }
+html.theme-classic .mp-cell.bonus-blue .mp-cell-bonus-dot { background-color: #76a0e3 !important; }
+html.theme-classic .mp-cell.bonus-red .mp-cell-bonus-dot { background-color: #ed7e89 !important; }
+html.theme-classic .mp-cell.bonus-purple .mp-cell-bonus-dot { background-color: #ae7eed !important; }
 html.theme-classic .mp-cell.bonus-any .mp-cell-bonus-dot {
 	background: linear-gradient(135deg, #fff48f 0%, #69cf57 24%, #76a0e3 48%, #ed7e89 72%, #ae7eed 100%) !important;
 	border: calc(var(--mp-cell-size, 20px) * 0.08) solid #444 !important;
