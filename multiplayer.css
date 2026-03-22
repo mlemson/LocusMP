@@ -698,7 +698,7 @@ html.theme-classic .mp-zone-red .mp-cell-bonus-dot { background-color: #ed7e89 !
 html.theme-classic .mp-zone-purple .mp-cell-bonus-dot { background-color: #ae7eed !important; }
 html.theme-classic .mp-cell.bonus-any .mp-cell-bonus-dot {
 	background: linear-gradient(135deg, #fff48f 0%, #69cf57 24%, #76a0e3 48%, #ed7e89 72%, #ae7eed 100%) !important;
-	border-color: #444;
+	border: calc(var(--mp-cell-size, 20px) * 0.08) solid #444 !important;
 	box-shadow: none;
 }
 

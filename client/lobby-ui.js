@@ -1983,16 +1983,20 @@ class LocusLobbyUI {
 		const myPlayer = this.mp.getMyPlayer();
 		const goldCoins = myPlayer?.goldCoins || 0;
 		const level = this.mp.gameState?.level || 1;
+		const isClassicUI = document.documentElement.classList.contains('theme-classic');
 
 		const timerEnabled = this.mp.gameState?.settings?.timerEnabled !== false;
+		const turnIcon = isClassicUI ? '<span class="mp-turn-icon"></span>' : '🎯';
+		const pauseIcon = isClassicUI ? '' : '⏸ ';
+		const waitIcon = isClassicUI ? '' : '⏳ ';
 		indicator.innerHTML = `
 			<div class="mp-turn-label">Level ${level} — Ronde ${turnCount}</div>
 			<div class="mp-turn-player">
 				${isPaused
-					? `⏸ Gepauzeerd door ${this._escapeHtml(pausedByName)}`
+					? `${pauseIcon}Gepauzeerd door ${this._escapeHtml(pausedByName)}`
 					: (isMyTurn
-					? (cardPlayed ? '🎯 Speel bonussen of beëindig beurt!' : '🎯 Jouw beurt!')
-					: `⏳ ${this._escapeHtml(current?.name || '???')} is aan zet`)}
+					? (cardPlayed ? `${turnIcon} Speel bonussen of beëindig beurt!` : `${turnIcon} Jouw beurt!`)
+					: `${waitIcon}${this._escapeHtml(current?.name || '???')} is aan zet`)}
 			</div>
 			${!isPaused ? `
 				<div class="mp-turn-meta-row">
@@ -2002,7 +2006,7 @@ class LocusLobbyUI {
 							<span class="mp-timer-text">40s</span>
 						</div>
 					` : ''}
-					${goldCoins > 0 ? `<div class="mp-gold-counter">💰 ${goldCoins} goud</div>` : ''}
+					${goldCoins > 0 ? `<div class="mp-gold-counter"><span class="mp-gold-coin-icon">🪙</span> ${goldCoins}</div>` : ''}
 				</div>
 			` : ''}
 		`;
@@ -2103,6 +2107,7 @@ class LocusLobbyUI {
 		const scoreboard = this.mp.getScoreboard();
 		const sorted = [...scoreboard];
 
+		const isClassicSB = document.documentElement.classList.contains('theme-classic');
 		container.innerHTML = sorted.map((p, rank) => {
 			const bd = p.scoreBreakdown || {};
 			const inv = p.bonusInventory || {};
@@ -2123,10 +2128,16 @@ class LocusLobbyUI {
 				}).join('')
 				: '';
 
+			const rankIcon = isClassicSB
+				? `<span class="mp-rank-num">${rank + 1}</span>`
+				: (rank === 0 ? '🥇' : rank === 1 ? '🥈' : rank === 2 ? '🥉' : rank + 1);
+			const cardsIcon = isClassicSB ? '' : '🃏 ';
+			const discardIcon = isClassicSB ? '' : '🗑 ';
+
 			return `
 				<div class="mp-score-row ${p.isMe ? 'is-me' : ''} ${p.isCurrentTurn ? 'is-active' : ''} ${!p.connected ? 'disconnected' : ''}">
 					<div class="mp-score-header">
-						<span class="mp-score-rank">${rank === 0 ? '🥇' : rank === 1 ? '🥈' : rank === 2 ? '🥉' : rank + 1}</span>
+						<span class="mp-score-rank">${rankIcon}</span>
 						<span class="mp-score-name">
 							${p.isCurrentTurn ? '▶ ' : ''}${this._escapeHtml(p.name)}
 							${p.isMe ? ' <small>(jij)</small>' : ''}
@@ -2143,8 +2154,8 @@ class LocusLobbyUI {
 							<span class="mp-sz" style="background:#8f76b8" title="Paars">${bd.purple || 0}</span>
 						</div>
 						<div class="mp-score-meta">
-							<span class="mp-score-cards" title="Kaarten over" data-count="${cardsRemaining}">🃏 ${cardsRemaining}</span>
-							${discardCount > 0 ? `<span class="mp-score-discard" title="Aflegstapel" data-count="${discardCount}">🗑 ${discardCount}</span>` : ''}
+							<span class="mp-score-cards" title="Kaarten over" data-count="${cardsRemaining}">${cardsIcon}${cardsRemaining}</span>
+							${discardCount > 0 ? `<span class="mp-score-discard" title="Aflegstapel" data-count="${discardCount}">${discardIcon}${discardCount}</span>` : ''}
 							${totalBonuses > 0 ? `<span class="mp-score-bonuses" title="Bonussen">${bonusDots}</span>` : ''}
 						</div>
 					</div>
@@ -2197,6 +2208,7 @@ class LocusLobbyUI {
 			});
 
 		const objectivesRevealed = this.mp.gameState._objectivesRevealed || false;
+		const isClassicPanel = document.documentElement.classList.contains('theme-classic');
 
 		container.innerHTML = unifiedPlayers.map(opp => {
 			const hand = Array.isArray(opp.hand) ? opp.hand : [];
@@ -2209,6 +2221,10 @@ class LocusLobbyUI {
 			const selectedCardId = (selection && selection.mode === 'card') ? (selection.cardId || null) : null;
 			const selectedCardName = (selection && selection.mode === 'card') ? (selection.cardName || null) : null;
 
+			// Bonus inventory for this player
+			const inv = opp.bonusInventory || {};
+			const totalBonuses = Object.values(inv).reduce((sum, v) => sum + v, 0);
+
 			// Hand kaarten als mini-cards met vorm
 			const handCards = hand.map(c => {
 				const colorCode = c.colorCode || c.color?.code || '#555';
@@ -2216,15 +2232,30 @@ class LocusLobbyUI {
 					? c.id === selectedCardId
 					: (selectedCardName ? c.shapeName === selectedCardName : false);
 				if (c.matrix) {
-					// Toon de vorm als mini-grid
+					// Toon de vorm als mini-grid (no label in Classic)
 					const miniGrid = this._renderMiniGrid(c.matrix, { code: colorCode });
 					return `<div class="mp-opp-card-detail ${isSelected ? 'is-selected-by-player' : ''}" title="${this._escapeHtml(c.shapeName || c.category || '?')}">
 						<div class="mp-opp-card-shape">${miniGrid}</div>
-						${c.shapeName ? `<div class="mp-opp-card-label">${this._escapeHtml(c.shapeName)}</div>` : ''}
+						${!isClassicPanel && c.shapeName ? `<div class="mp-opp-card-label">${this._escapeHtml(c.shapeName)}</div>` : ''}
 					</div>`;
 				}
 				return `<div class="mp-opp-card-mini ${isSelected ? 'is-selected-by-player' : ''}" style="background:${colorCode}" title="${c.category || '?'}"></div>`;
 			}).join('');
+
+			// Bonus dots row
+			const bonusColors = {
+				yellow: '#cfba51', green: '#92c28c', blue: '#5689b0',
+				red: '#b56069', purple: '#8f76b8', any: '#c47bd7'
+			};
+			const bonusDots = totalBonuses > 0
+				? Object.entries(inv).filter(([,v]) => v > 0).map(([c, v]) => {
+					const isAny = c === 'any';
+					const dotBg = isAny
+						? 'background: linear-gradient(135deg, #cfba51 0%, #92c28c 24%, #5689b0 48%, #b56069 72%, #8f76b8 100%)'
+						: `background:${bonusColors[c] || '#888'}`;
+					return `<span class="mp-opp-bonus-dot" style="${dotBg}" title="${c}">${v > 1 ? v : ''}</span>`;
+				}).join('')
+				: '';
 
 			// Objective
 			let objectiveHtml = '';
@@ -2232,26 +2263,28 @@ class LocusLobbyUI {
 				const achieved = opp.objectiveAchieved || false;
 				const failed = !achieved && !!opp.objectiveFailed;
 				const progress = opp.objectiveProgress || null;
+				const objAchievedIcon = isClassicPanel ? '<span class="mp-obj-icon-check"></span>' : '✅';
+				const objHiddenIcon = isClassicPanel ? '<span class="mp-obj-icon-target"></span>' : '🎯';
+				const objFailedIcon = isClassicPanel ? '<span class="mp-obj-icon-fail"></span>' : '❌';
 				if (achieved) {
-					// Objective behaald — altijd zichtbaar
 					const obj = opp.chosenObjective.hidden ? null : opp.chosenObjective;
 					const objName = obj ? this._escapeHtml(obj.name || '???') : 'Doel behaald';
 					const pts = progress ? progress.points : '';
 					objectiveHtml = `<div class="mp-opp-objective mp-opp-objective-achieved">
-						<span class="mp-opp-obj-icon">✅</span>
+						<span class="mp-opp-obj-icon">${objAchievedIcon}</span>
 						<span class="mp-opp-obj-text">${objName}</span>
 						${pts ? `<span class="mp-opp-obj-points">+${pts}pt</span>` : ''}
 					</div>`;
 				} else if (opp.chosenObjective.hidden && !objectivesRevealed) {
 					objectiveHtml = `<div class="mp-opp-objective mp-opp-objective-hidden">
-						<span class="mp-opp-obj-icon">🎯</span>
+						<span class="mp-opp-obj-icon">${objHiddenIcon}</span>
 						<span class="mp-opp-obj-text">Geheim doel</span>
 					</div>`;
 				} else {
 					const obj = opp.chosenObjective;
 					const progressText = progress ? `${progress.current}/${progress.target}` : '';
 					objectiveHtml = `<div class="mp-opp-objective ${failed ? 'mp-opp-objective-failed' : 'mp-opp-objective-revealed'} ${obj._revealed ? 'just-revealed' : ''}">
-						<span class="mp-opp-obj-icon">${failed ? '❌' : '🎯'}</span>
+						<span class="mp-opp-obj-icon">${failed ? objFailedIcon : objHiddenIcon}</span>
 						<span class="mp-opp-obj-text">${this._escapeHtml(obj.name || '???')}</span>
 						${failed
 							? `<span class="mp-opp-obj-cards">Niet haalbaar</span>`
@@ -2260,12 +2293,19 @@ class LocusLobbyUI {
 				}
 			}
 
+			const rankIcon = isClassicPanel
+				? `<span class="mp-rank-num">${opp.rank + 1}</span>`
+				: (opp.rank === 0 ? '🥇 ' : opp.rank === 1 ? '🥈 ' : opp.rank === 2 ? '🥉 ' : '');
+			const timerIcon = isClassicPanel ? '' : '⏱ ';
+			const cardsIcon = isClassicPanel ? '' : '🃏 ';
+			const playedIcon = isClassicPanel ? '' : '✅ ';
+
 			return `
 				<div class="mp-opponent-panel ${isCurrentTurn ? 'is-active' : ''} ${!opp.connected ? 'disconnected' : ''}">
 					<div class="mp-opp-header">
 						<div class="mp-opp-head-main">
-							<span class="mp-opp-name">${opp.rank === 0 ? '🥇 ' : opp.rank === 1 ? '🥈 ' : opp.rank === 2 ? '🥉 ' : ''}${isCurrentTurn ? '▶ ' : ''}${this._escapeHtml(opp.name)}${opp.isMe ? ' (jij)' : ''}</span>
-							${isCurrentTurn && this.mp.gameState?.settings?.timerEnabled !== false ? `<span class="mp-opp-timer" data-player-id="${opp.id}">⏱ 40s</span>` : ''}
+							<span class="mp-opp-name">${rankIcon}${isCurrentTurn ? '▶ ' : ''}${this._escapeHtml(opp.name)}${opp.isMe ? ' (jij)' : ''}</span>
+							${isCurrentTurn && this.mp.gameState?.settings?.timerEnabled !== false ? `<span class="mp-opp-timer" data-player-id="${opp.id}">${timerIcon}40s</span>` : ''}
 						</div>
 						<span class="mp-opp-score">${opp.score || 0}pt</span>
 					</div>
@@ -2274,8 +2314,9 @@ class LocusLobbyUI {
 						<div class="mp-opp-hand-cards">${handCards || '<span class="mp-opp-no-cards">leeg</span>'}</div>
 					</div>
 					<div class="mp-opp-stats">
-						<span class="mp-opp-cards-left" title="Totaal kaarten over" data-count="${totalCards}">🃏 ${totalCards}</span>
-						<span title="Kaarten gespeeld">✅ ${cardsPlayed} gespeeld</span>
+						<span class="mp-opp-cards-left" title="Totaal kaarten over" data-count="${totalCards}">${cardsIcon}${totalCards}</span>
+						<span title="Kaarten gespeeld">${playedIcon}${cardsPlayed} gespeeld</span>
+						${totalBonuses > 0 ? `<span class="mp-opp-bonuses" title="Bonussen over">${bonusDots}</span>` : ''}
 					</div>
 					${objectiveHtml}
 				</div>
@@ -6952,7 +6993,8 @@ class LocusLobbyUI {
 			const isClassicHere = document.documentElement.classList.contains('theme-classic');
 			const sparkleCount = isBloom ? 14 : (isReef ? 16 : (isClassicHere ? 10 : 8));
 			this._showSparkle(cx, cy, sparkleCount);
-			this._showFloatingScore(zoneEl, `💰 +${goldCollected} goud`, '#f5d76e');
+			const goldLabel = isClassicHere ? `🪙 +${goldCollected}` : `💰 +${goldCollected} goud`;
+			this._showFloatingScore(zoneEl, goldLabel, '#f5d76e');
 			this._playGoldSound();
 			// Bloom / Classic: coin bounce + geel spray/confetti op coin pickup
 			if (isBloom || isClassicHere) {
@@ -6972,8 +7014,9 @@ class LocusLobbyUI {
 			}, goldCollected > 0 ? 400 : 0);
 		}
 
-		// Bonus collectie tekst
+		// Bonus collectie tekst + sparkle
 		if (bonusesCollected && bonusesCollected.length > 0) {
+			const isClassicBonus = document.documentElement.classList.contains('theme-classic');
 			const bonusColors = {
 				yellow: '#cfba51', green: '#92c28c', blue: '#5689b0',
 				red: '#b56069', purple: '#8f76b8', any: '#c47bd7'
@@ -6982,6 +7025,10 @@ class LocusLobbyUI {
 				const bc = bonusesCollected[i];
 				setTimeout(() => {
 					this._showFloatingScore(zoneEl, '↙ BONUS', bonusColors[bc] || '#fff');
+					if (isClassicBonus || isBloom) {
+						this._showSparkle(cx, cy, 6);
+						this._showConfetti(cx, cy, 6, [bonusColors[bc] || '#c47bd7', '#fff3a1', '#f5d76e']);
+					}
 				}, 200 + i * 300);
 			}
 		}
