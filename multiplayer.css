@@ -190,7 +190,6 @@ html.theme-classic *::-webkit-scrollbar-thumb:hover {
 html.theme-classic * {
 	scrollbar-color: rgba(113, 146, 219, 0.72) rgba(255, 255, 255, 0.08);
 }
-}
 
 /* ── SCREENS ── */
 .mp-screen {
