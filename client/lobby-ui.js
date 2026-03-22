@@ -1535,6 +1535,7 @@ class LocusLobbyUI {
 			};
 
 			showGoals();
+			this._showGoalTutorial();
 		} catch (err) {
 			console.error('[Locus UI] _onGoalPhase ERROR:', err);
 		}
@@ -1898,6 +1899,7 @@ class LocusLobbyUI {
 		this._renderMyObjective();
 		this._renderBonusBar();
 		this._renderOpponentPanels();
+		this._showBoardTutorial();
 	}
 
 	_onTurnChanged(currentPlayerId, turnCount) {
@@ -5570,6 +5572,7 @@ class LocusLobbyUI {
 		overlay.className = 'mp-level-overlay';
 		document.body.appendChild(overlay);
 		this.elements['level-complete-overlay'] = overlay;
+		this._showLevelCompleteTutorial();
 
 		const players = this.mp.gameState.playerOrder.map(pid => ({
 			id: pid,
@@ -5681,6 +5684,7 @@ class LocusLobbyUI {
 		this.elements['level-complete-overlay'] = null;
 		this._showScreen('shop-screen');
 		this._renderShop();
+		this._showShopTutorial();
 	}
 
 	_renderShop() {
@@ -7225,6 +7229,182 @@ class LocusLobbyUI {
 				osc.stop(now + i * 0.08 + 0.6);
 			});
 		} catch (_) {}
+	}
+
+	// ──────────────────────────────────────────
+	//  TUTORIAL SYSTEM
+	// ──────────────────────────────────────────
+
+	_shouldShowTutorial(phase) {
+		return this._tutorialEnabled && !this._tutorialShown[phase];
+	}
+
+	_showTutorial(phase, steps) {
+		if (!this._shouldShowTutorial(phase)) return;
+		this._tutorialShown[phase] = true;
+
+		let currentStep = 0;
+		const overlay = document.createElement('div');
+		overlay.className = 'mp-tutorial-overlay';
+		overlay.id = 'mp-tutorial-overlay';
+
+		const render = () => {
+			const step = steps[currentStep];
+			const isLast = currentStep === steps.length - 1;
+			const isFirst = currentStep === 0;
+			overlay.innerHTML = `
+				<div class="mp-tutorial-backdrop"></div>
+				<div class="mp-tutorial-popup">
+					<div class="mp-tutorial-header">
+						<span class="mp-tutorial-icon">${step.icon || '📖'}</span>
+						<span class="mp-tutorial-title">${step.title}</span>
+						<span class="mp-tutorial-step-count">${currentStep + 1}/${steps.length}</span>
+					</div>
+					<div class="mp-tutorial-body">${step.body}</div>
+					<div class="mp-tutorial-progress">
+						${steps.map((_, i) => `<span class="mp-tutorial-dot ${i === currentStep ? 'active' : i < currentStep ? 'done' : ''}"></span>`).join('')}
+					</div>
+					<div class="mp-tutorial-actions">
+						${!isFirst ? '<button class="mp-tutorial-btn mp-tutorial-prev">← Vorige</button>' : '<span></span>'}
+						<button class="mp-tutorial-btn mp-tutorial-next mp-btn-primary">${isLast ? '✓ Begrepen!' : 'Volgende →'}</button>
+					</div>
+				</div>
+			`;
+
+			overlay.querySelector('.mp-tutorial-next').addEventListener('click', () => {
+				if (isLast) {
+					overlay.classList.add('mp-tutorial-closing');
+					setTimeout(() => overlay.remove(), 300);
+				} else {
+					currentStep++;
+					render();
+				}
+			});
+
+			const prevBtn = overlay.querySelector('.mp-tutorial-prev');
+			if (prevBtn) {
+				prevBtn.addEventListener('click', () => {
+					currentStep--;
+					render();
+				});
+			}
+
+			overlay.querySelector('.mp-tutorial-backdrop').addEventListener('click', () => {
+				overlay.classList.add('mp-tutorial-closing');
+				setTimeout(() => overlay.remove(), 300);
+			});
+		};
+
+		render();
+		document.body.appendChild(overlay);
+		requestAnimationFrame(() => overlay.classList.add('mp-tutorial-visible'));
+	}
+
+	_showGoalTutorial() {
+		this._showTutorial('goals', [
+			{
+				icon: '🎯',
+				title: 'Doelstellingen',
+				body: `
+					<p>Elk level kies je een <strong>geheim doel</strong>. Andere spelers zien niet welk doel jij kiest!</p>
+					<p>Als je je doel behaalt, krijg je <strong>bonuspunten</strong> en soms <strong>goudmunten</strong> 🪙.</p>
+				`
+			},
+			{
+				icon: '🃏',
+				title: 'Je kaarten',
+				body: `
+					<p>Eerst zie je welke <strong>kaarten</strong> je hebt — dit zijn de vormen die je op het bord kunt plaatsen.</p>
+					<p>Kies een doel dat past bij je kaarten. Heb je veel <span style="color:#ff6b6b">rode</span> kaarten? Kies dan een rood doel!</p>
+				`
+			}
+		]);
+	}
+
+	_showBoardTutorial() {
+		this._showTutorial('board', [
+			{
+				icon: '🗺️',
+				title: 'Het Speelbord',
+				body: `
+					<p>Het bord heeft meerdere <strong>gekleurde zones</strong>. Elke zone heeft een eigen kleur.</p>
+					<p>Je scoort punten door kaarten in de <strong>juiste kleurzone</strong> te plaatsen.</p>
+				`
+			},
+			{
+				icon: '👆',
+				title: 'Kaarten Plaatsen',
+				body: `
+					<p><strong>Sleep</strong> een kaart vanuit je hand naar het bord.</p>
+					<p>Op desktop: klik en sleep. Op mobiel: tik en sleep.</p>
+					<p>De kaart wordt geplaatst waar je hem loslaat.</p>
+				`
+			},
+			{
+				icon: '🔄',
+				title: 'Draaien & Spiegelen',
+				body: `
+					<p>Voordat je een kaart plaatst kun je deze <strong>draaien</strong> (R-toets of draai-knop) en <strong>spiegelen</strong> (F-toets of spiegel-knop).</p>
+					<p>Zo pas je de kaart perfect in!</p>
+				`
+			},
+			{
+				icon: '⭐',
+				title: 'Punten Scoren',
+				body: `
+					<p>Je scoort <strong>1 punt per cel</strong> voor elke kaart die je op de matching kleurzone plaatst.</p>
+					<p>Kaarten overlappen met <strong>bestaande cellen</strong> op het bord? Die tellen ook mee!</p>
+					<p>Grotere kaarten = meer punten! 🏆</p>
+				`
+			},
+			{
+				icon: '⏱️',
+				title: 'Beurten',
+				body: `
+					<p>Elke beurt heb je <strong>3 kaarten</strong> in je hand. Kies welke je speelt.</p>
+					${this.mp?.gameState?.settings?.timerEnabled !== false
+						? '<p>Let op de <strong>timer</strong> — als de tijd op is wordt je beurt automatisch overgeslagen!</p>'
+						: '<p>Neem de tijd — er is geen timer ingesteld.</p>'}
+					<p>Kun je niets meer plaatsen? Gebruik de <strong>Pass</strong>-knop.</p>
+				`
+			}
+		]);
+	}
+
+	_showShopTutorial() {
+		this._showTutorial('shop', [
+			{
+				icon: '🛒',
+				title: 'De Shop',
+				body: `
+					<p>Na elk level kun je in de shop <strong>nieuwe kaarten kopen</strong> met goudmunten 🪙.</p>
+					<p>Goudmunten verdien je door levels te winnen en doelen te behalen.</p>
+				`
+			},
+			{
+				icon: '🃏',
+				title: 'Kaarten Kopen',
+				body: `
+					<p>Elke kaart heeft een <strong>prijs</strong>. Grotere en krachtigere kaarten kosten meer.</p>
+					<p>Gekochte kaarten worden aan je deck toegevoegd voor het volgende level!</p>
+					<p>Klik op <strong>"Klaar"</strong> als je klaar bent met winkelen.</p>
+				`
+			}
+		]);
+	}
+
+	_showLevelCompleteTutorial() {
+		this._showTutorial('levelComplete', [
+			{
+				icon: '🏆',
+				title: 'Level Afgerond!',
+				body: `
+					<p>Na elk level zie je de <strong>scores</strong> van alle spelers.</p>
+					<p>Punten komen van: gebiedscellen, doelstelling-bonussen, en eventuele perks.</p>
+					<p>De speler met de meeste level-winsten wint het spel!</p>
+				`
+			}
+		]);
 	}
 
 	_escapeHtml(str) {

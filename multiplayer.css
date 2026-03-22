@@ -626,6 +626,131 @@ html.theme-classic .mp-deck-overlay {
 	transform: translateX(18px);
 }
 
+/* ── TUTORIAL OVERLAY ── */
+.mp-tutorial-overlay {
+	position: fixed;
+	inset: 0;
+	z-index: 9999;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	opacity: 0;
+	transition: opacity 0.3s ease;
+}
+.mp-tutorial-overlay.mp-tutorial-visible {
+	opacity: 1;
+}
+.mp-tutorial-overlay.mp-tutorial-closing {
+	opacity: 0;
+	pointer-events: none;
+}
+.mp-tutorial-backdrop {
+	position: absolute;
+	inset: 0;
+	background: rgba(0, 0, 0, 0.6);
+	backdrop-filter: blur(4px);
+}
+.mp-tutorial-popup {
+	position: relative;
+	width: 90%;
+	max-width: 420px;
+	background: linear-gradient(160deg, rgba(30, 25, 55, 0.97), rgba(20, 16, 40, 0.98));
+	border: 1px solid rgba(166, 140, 255, 0.3);
+	border-radius: 1.2rem;
+	padding: 24px 28px;
+	box-shadow: 0 8px 40px rgba(0, 0, 0, 0.5), 0 0 60px rgba(166, 140, 255, 0.12);
+	animation: mp-tutorial-pop-in 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+@keyframes mp-tutorial-pop-in {
+	0% { transform: scale(0.85) translateY(20px); opacity: 0; }
+	100% { transform: scale(1) translateY(0); opacity: 1; }
+}
+.mp-tutorial-header {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	margin-bottom: 16px;
+}
+.mp-tutorial-icon {
+	font-size: 1.6rem;
+}
+.mp-tutorial-title {
+	font-size: 1.15rem;
+	font-weight: 700;
+	color: #fff;
+	flex: 1;
+}
+.mp-tutorial-step-count {
+	font-size: 0.75rem;
+	color: rgba(166, 140, 255, 0.7);
+	font-weight: 600;
+	background: rgba(166, 140, 255, 0.1);
+	padding: 3px 8px;
+	border-radius: 10px;
+}
+.mp-tutorial-body {
+	color: rgba(255, 255, 255, 0.85);
+	font-size: 0.92rem;
+	line-height: 1.55;
+}
+.mp-tutorial-body p {
+	margin: 0 0 8px;
+}
+.mp-tutorial-body p:last-child {
+	margin-bottom: 0;
+}
+.mp-tutorial-body strong {
+	color: #c8b8ff;
+}
+.mp-tutorial-progress {
+	display: flex;
+	gap: 6px;
+	justify-content: center;
+	margin: 18px 0 14px;
+}
+.mp-tutorial-dot {
+	width: 8px;
+	height: 8px;
+	border-radius: 50%;
+	background: rgba(255, 255, 255, 0.15);
+	transition: background 0.3s, transform 0.3s;
+}
+.mp-tutorial-dot.active {
+	background: var(--mp-accent, #a68cff);
+	transform: scale(1.3);
+}
+.mp-tutorial-dot.done {
+	background: rgba(166, 140, 255, 0.5);
+}
+.mp-tutorial-actions {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	gap: 12px;
+}
+.mp-tutorial-btn {
+	padding: 8px 18px;
+	border: none;
+	border-radius: 0.6rem;
+	font-size: 0.85rem;
+	font-weight: 600;
+	cursor: pointer;
+	transition: background 0.2s, transform 0.15s;
+	color: #fff;
+	background: rgba(255, 255, 255, 0.08);
+}
+.mp-tutorial-btn:hover {
+	background: rgba(255, 255, 255, 0.15);
+	transform: translateY(-1px);
+}
+.mp-tutorial-btn.mp-btn-primary {
+	background: var(--mp-accent, #a68cff);
+	color: #1a1528;
+}
+.mp-tutorial-btn.mp-btn-primary:hover {
+	background: #b89dff;
+}
+
 .mp-half { flex: 1; }
 .mp-third { flex: 1; min-width: 0; }
 
