@@ -915,13 +915,13 @@ function generateLevel1Board(rng, level, playerCount) {
 	}
 
 	if (world === 1) {
-		const blueWidth = 5 + playerTier; // 1 breder dan voorheen voor de rivier
-		const blueHeight = 21;
-		const blueVoid = generateBlueRiverVoids(blueWidth, blueHeight, rng);
-		const blueVoidSet = new Set(blueVoid.map(v => `${v.x},${v.y}`));
-		const blueBold = [];
+		const blueWidth = 5 + playerTier;
+		const blueHeight = 26; // +5 rijen (was 21)
 		const blueBoldRows = [];
 		for (let r = 0; r < blueHeight; r += 5) { blueBoldRows.push(r); }
+		const blueVoid = generateBlueRiverVoids(blueWidth, blueHeight, rng, blueBoldRows);
+		const blueVoidSet = new Set(blueVoid.map(v => `${v.x},${v.y}`));
+		const blueBold = [];
 		for (const by of blueBoldRows) {
 			for (let x = 0; x < blueWidth; x++) {
 				if (!blueVoidSet.has(`${x},${by}`)) blueBold.push({ x, y: by });
@@ -939,13 +939,13 @@ function generateLevel1Board(rng, level, playerCount) {
 		placeGoldFlags(zones.blue, rng, 2);
 		placeBonusSymbols(zones.blue, rng, 3);
 	} else if (world === 2) {
-		const blueWidth = 6 + playerTier; // 1 breder dan voorheen
-		const blueHeight = 30;
-		const blueVoid = generateBlueRiverVoids(blueWidth, blueHeight, rng);
-		const blueVoidSet = new Set(blueVoid.map(v => `${v.x},${v.y}`));
-		const blueBold = [];
+		const blueWidth = 6 + playerTier;
+		const blueHeight = 35; // +5 rijen (was 30)
 		const blueBoldRows = [];
 		for (let r = 0; r < blueHeight; r += 6) { blueBoldRows.push(r); }
+		const blueVoid = generateBlueRiverVoids(blueWidth, blueHeight, rng, blueBoldRows);
+		const blueVoidSet = new Set(blueVoid.map(v => `${v.x},${v.y}`));
+		const blueBold = [];
 		for (const by of blueBoldRows) {
 			for (let x = 0; x < blueWidth; x++) {
 				if (!blueVoidSet.has(`${x},${by}`)) blueBold.push({ x, y: by });
@@ -963,13 +963,13 @@ function generateLevel1Board(rng, level, playerCount) {
 		placeGoldFlags(zones.blue, rng, 4);
 		placeBonusSymbols(zones.blue, rng, 5);
 	} else {
-		const blueWidth = 7 + playerTier; // 1 breder dan voorheen
-		const blueHeight = 40;
-		const blueVoid = generateBlueRiverVoids(blueWidth, blueHeight, rng);
-		const blueVoidSet = new Set(blueVoid.map(v => `${v.x},${v.y}`));
-		const blueBold = [];
+		const blueWidth = 7 + playerTier;
+		const blueHeight = 45; // +5 rijen (was 40)
 		const blueBoldRows = [];
 		for (let r = 0; r < blueHeight; r += 7) { blueBoldRows.push(r); }
+		const blueVoid = generateBlueRiverVoids(blueWidth, blueHeight, rng, blueBoldRows);
+		const blueVoidSet = new Set(blueVoid.map(v => `${v.x},${v.y}`));
+		const blueBold = [];
 		for (const by of blueBoldRows) {
 			for (let x = 0; x < blueWidth; x++) {
 				if (!blueVoidSet.has(`${x},${by}`)) blueBold.push({ x, y: by });
@@ -1797,8 +1797,8 @@ function scoreGreenData(zoneData) {
  * Eerste scorende bold-rij = 6pt
  * Volgende rijen: 8 + (n-1) * 2 (dus 8, 10, 12, 14, ...)
  */
-// Blue scoring tiers (onder → boven): +10, +15, +20, +25, top +40
-const BLUE_ROW_POINTS = [10, 15, 20, 25, 40];
+// Blue scoring tiers (onder → boven): +10, +15, +20, +25, +30, +35, top +40
+const BLUE_ROW_POINTS = [10, 15, 20, 25, 30, 35, 40];
 
 function getBlueTierPoints(tierIndex, totalTiers) {
 	const fallback = [10, 15, 20, 25, 40];
@@ -4334,6 +4334,27 @@ function checkGameEnd(gameState) {
 		const p = gameState.players[pid];
 		if (p?.perks) {
 			p.perks.perkPoints = (p.perks.perkPoints || 0) + 1;
+		}
+	}
+
+	// ── Catch-up perk: als een speler op 3+ wins staat en anderen op 0-1,
+	//    krijgen die achterlopers een extra perkpunt ──
+	{
+		const winsTarget = Math.max(1, Number(gameState.winsToEnd) || MATCH_WINS_TARGET);
+		const threshold = Math.max(2, winsTarget - 1); // 3 bij 4 wins target
+		const maxWins = Math.max(...gameState.playerOrder.map(pid =>
+			gameState.players[pid]?.matchWins || 0
+		));
+		if (maxWins >= threshold) {
+			for (const pid of gameState.playerOrder) {
+				const p = gameState.players[pid];
+				if (!p?.perks) continue;
+				const myWins = p.matchWins || 0;
+				if (myWins <= Math.floor(threshold / 2)) {
+					// Achterloper: extra perkpunt
+					p.perks.perkPoints = (p.perks.perkPoints || 0) + 1;
+				}
+			}
 		}
 	}
 

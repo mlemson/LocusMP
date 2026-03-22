@@ -159,8 +159,8 @@ function _tryPlacementsOnZone(card, zoneData, zoneName, rotations, mirrors, perk
 					for (const c of cells) {
 						const cell = GameRules.getDataCell(zoneData, c.x, c.y);
 						if (cell?.flags?.includes('gold')) score += 8;
-						else if (cell?.flags?.includes('bonus')) score += 12;
-						else if (cell?.flags?.includes('pearl')) score += 6;
+						else if (cell?.bonusSymbol) score += 12;
+						else if (cell?.treasureCoins > 0) score += 6;
 						else if (cell?.flags?.includes('end')) score += 5;
 						else if (cell?.flags?.includes('bold')) score += 3;
 						else score += 1;
@@ -228,12 +228,12 @@ function _tryBonusPlacements(bonusMatrix, zoneData, zoneName, rotations, subgrid
 				for (const c of cells) {
 					const cell = GameRules.getDataCell(zoneData, c.x, c.y);
 					if (cell?.flags?.includes('gold')) { score += 10; goldCount++; }
-					if (cell?.flags?.includes('bonus')) {
+					if (cell?.bonusSymbol) {
 						// Heavily reward bonus chaining: picking up a same-color bonus with a bonus = free extra placement
 						bonusCount++;
 						score += 25;
 					}
-					if (cell?.flags?.includes('pearl')) score += 6;
+					if (cell?.treasureCoins > 0) score += 6;
 					if (cell?.flags?.includes('bold')) score += 3;
 					if (cell?.flags?.includes('end')) score += 5;
 				}
@@ -364,11 +364,12 @@ function _findMineCandidates(zoneData, zoneName, result) {
 			if (!cell || cell.active) continue;
 			if (cell.flags?.includes('void')) continue;
 			let score = 1;
-			if (cell.flags?.includes('bonus')) score += 18;
+			if (cell.bonusSymbol) score += 18;
 			if (cell.flags?.includes('gold')) score += 12;
 			if (cell.flags?.includes('bold')) score += 9;
 			if (cell.flags?.includes('end')) score += 8;
 			if (cell.flags?.includes('portal')) score += 6;
+			if (cell.treasureCoins > 0) score += 6;
 			if (GameRules.hasAdjacentActive(zoneData, x, y)) score += 5;
 			score += Math.random() * 3;
 			result.push({ zoneName, x, y, score });
@@ -821,13 +822,13 @@ function _evaluatePlacementImpact(gameState, playerId, card, placement) {
 			const coinValue = player.perks?.doubleCoins ? 20 : 10;
 			impactScore += coinValue;
 		}
-		if (cell?.flags?.includes('bonus')) {
+		if (cell?.bonusSymbol) {
 			bonusFlagsCollected++;
 			hasAnyValueFlag = true;
 			// Bonuses are extremely valuable: they chain into more bonuses and points
 			impactScore += 35;
 		}
-		if (cell?.flags?.includes('pearl')) { impactScore += 8; hasAnyValueFlag = true; }
+		if (cell?.treasureCoins > 0) { impactScore += 8; hasAnyValueFlag = true; }
 		if (cell?.flags?.includes('bold')) { boldHit++; hasAnyValueFlag = true; }
 		if (cell?.flags?.includes('end')) { endHit++; hasAnyValueFlag = true; }
 	}
@@ -883,16 +884,41 @@ function _evaluatePlacementImpact(gameState, playerId, card, placement) {
 	}
 
 	// ── Zone-specific scoring simulation ──
+	let zoneScoreExhausted = false;
 	if (zoneName === 'yellow') {
 		impactScore += _scoreYellowImpact(zoneData, cells);
 	} else if (zoneName === 'green') {
 		impactScore += _scoreGreenImpact(zoneData, cells);
 	} else if (zoneName === 'blue') {
 		impactScore += _scoreBlueImpact(zoneData, cells);
+		// Detecteer of alle bold rows al gescoord zijn
+		const blueBoldYs = [...new Set(zoneData.boldRows || [])];
+		const blueReached = _getReachedBoldRows(zoneData);
+		if (blueBoldYs.length > 0 && blueReached.size >= blueBoldYs.length) {
+			zoneScoreExhausted = true;
+		}
 	} else if (zoneName === 'red') {
 		impactScore += _scoreRedImpact(board, placement, cells);
 	} else if (zoneName === 'purple') {
 		impactScore += _scorePurpleImpact(zoneData, cells);
+	}
+
+	// ── Resource hunting mode: als zone-punten uitgeput zijn, jaag actief op bonussen/coins ──
+	if (zoneScoreExhausted) {
+		let resourceValue = 0;
+		for (const c of cells) {
+			const cell = GameRules.getDataCell(zoneData, c.x, c.y);
+			if (cell?.flags?.includes('gold')) resourceValue += 25;
+			if (cell?.bonusSymbol) resourceValue += 40;
+			if (cell?.flags?.includes('pearl')) resourceValue += 15;
+		}
+		if (resourceValue > 0) {
+			// Sterk boosten — bonussen/coins zijn nu het enige doel op deze zone
+			impactScore += resourceValue;
+		} else {
+			// Geen resources meer te halen → zware straf om zinloze plaatsing te vermijden
+			impactScore -= 40;
+		}
 	}
 
 	// ── Objective awareness — HEAVY weighting ──
@@ -935,7 +961,7 @@ function _evaluatePlacementImpact(gameState, playerId, card, placement) {
 	// ── STRONG penalize isolated placements with no strategic value ──
 	const hasAnyFlag = cells.some(c => {
 		const cell = GameRules.getDataCell(zoneData, c.x, c.y);
-		return cell?.flags?.some(f => ['gold', 'bonus', 'pearl', 'end', 'bold'].includes(f));
+		return cell?.bonusSymbol || cell?.treasureCoins > 0 || cell?.flags?.some(f => ['gold', 'end', 'bold'].includes(f));
 	});
 	if (adjacentCount === 0 && totalActiveCells > 0) {
 		// There ARE active cells on the zone but we're not adjacent to any — strongly penalize
@@ -1050,7 +1076,7 @@ function _scoreBlueImpact(zoneData, placedCells) {
 	let impact = 0;
 	const boldYs = [...new Set(zoneData.boldRows || [])].sort((a, b) => b - a);
 	const reachedBoldRows = _getReachedBoldRows(zoneData);
-	const tierPoints = [10, 15, 20, 25, 40];
+	const tierPoints = [10, 15, 20, 25, 30, 35, 40];
 
 	for (const c of placedCells) {
 		const cell = GameRules.getDataCell(zoneData, c.x, c.y);
@@ -1074,7 +1100,7 @@ function _scoreBlueImpact(zoneData, placedCells) {
 		// All bold rows already reached, placements here give diminishing returns
 		const hitsBonus = placedCells.some(c => {
 			const cell = GameRules.getDataCell(zoneData, c.x, c.y);
-			return cell?.flags?.some(f => ['gold', 'bonus', 'pearl'].includes(f));
+			return cell?.bonusSymbol || cell?.treasureCoins > 0 || cell?.flags?.includes('gold');
 		});
 		if (!hitsBonus) impact -= 20; // Strong penalty if no bonus/gold either
 	}
@@ -1087,7 +1113,7 @@ function _scoreBlueImpact(zoneData, placedCells) {
 	if (minY > blueRows * 0.55) {
 		const hasBoldOrBonus = placedCells.some(c => {
 			const cell = GameRules.getDataCell(zoneData, c.x, c.y);
-			return cell?.flags?.some(f => ['bold', 'bonus', 'gold', 'pearl'].includes(f));
+			return cell?.bonusSymbol || cell?.treasureCoins > 0 || cell?.flags?.some(f => ['bold', 'gold'].includes(f));
 		});
 		if (!hasBoldOrBonus) impact -= Math.round((minY - blueRows * 0.55) * 3);
 	}
@@ -1104,7 +1130,7 @@ function _scoreBlueImpact(zoneData, placedCells) {
 		let hasValuable = false;
 		for (const c of placedCells) {
 			const cell = GameRules.getDataCell(zoneData, c.x, c.y);
-			if (cell?.flags?.some(f => ['gold', 'bonus', 'pearl', 'bold'].includes(f))) {
+			if (cell?.bonusSymbol || cell?.treasureCoins > 0 || cell?.flags?.some(f => ['gold', 'bold'].includes(f))) {
 				hasValuable = true;
 				break;
 			}
