@@ -910,7 +910,7 @@ function _evaluatePlacementImpact(gameState, playerId, card, placement) {
 			const cell = GameRules.getDataCell(zoneData, c.x, c.y);
 			if (cell?.flags?.includes('gold')) resourceValue += 25;
 			if (cell?.bonusSymbol) resourceValue += 40;
-			if (cell?.flags?.includes('pearl')) resourceValue += 15;
+			if (cell?.treasureCoins > 0) resourceValue += 15;
 		}
 		if (resourceValue > 0) {
 			// Sterk boosten — bonussen/coins zijn nu het enige doel op deze zone
