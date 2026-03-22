@@ -6672,6 +6672,7 @@ class LocusLobbyUI {
 	_showScoreAnimations() {
 		const scoreboard = this.mp.getScoreboard();
 		const isReef = document.documentElement.classList.contains('theme-reef');
+		const isClassic = document.documentElement.classList.contains('theme-classic');
 		const zoneColors = {
 			yellow: '#cfba51', green: '#92c28c', blue: '#5689b0',
 			red: '#b56069', purple: '#8f76b8'
@@ -6728,7 +6729,7 @@ class LocusLobbyUI {
 					if (nameEl.textContent.includes(p.name)) {
 						this._createScorePopup(row, `+${totalDelta} pt`);
 						const isBloom = document.documentElement.classList.contains('theme-bloom');
-						if (isBloom) {
+						if (isBloom || isClassic) {
 							const rr = row.getBoundingClientRect();
 							this._showConfetti(rr.left + rr.width / 2, rr.top + rr.height / 2, 8);
 						}
@@ -6745,7 +6746,7 @@ class LocusLobbyUI {
 		}
 
 		// Dramatic scoring: screen shake + extra particles when big delta (>= 15)
-		if (biggestDelta >= 15 && (isReef || document.documentElement.classList.contains('theme-aurora'))) {
+		if (biggestDelta >= 15 && (isReef || isClassic || document.documentElement.classList.contains('theme-aurora'))) {
 			this._triggerScreenShake();
 			// Extra particle burst in center of screen
 			const cx = window.innerWidth / 2;
@@ -6777,18 +6778,20 @@ class LocusLobbyUI {
 	/** Sparkle burst effect (bij goud) */
 	_showSparkle(x, y, count = 6) {
 		const isBloom = document.documentElement.classList.contains('theme-bloom');
+		const isClassicSp = document.documentElement.classList.contains('theme-classic');
+		const enhanced = isBloom || isClassicSp;
 		for (let i = 0; i < count; i++) {
 			const s = document.createElement('div');
 			s.className = 'mp-sparkle';
 			const angle = Math.random() * 2 * Math.PI;
-			const dist = isBloom ? (35 + Math.random() * 30) : (30 + Math.random() * 20);
+			const dist = enhanced ? (35 + Math.random() * 30) : (30 + Math.random() * 20);
 			s.style.left = `${x}px`;
 			s.style.top = `${y}px`;
 			s.style.setProperty('--dx', `${Math.cos(angle) * dist}px`);
 			s.style.setProperty('--dy', `${Math.sin(angle) * dist}px`);
-			if (isBloom) s.style.animationDelay = `${i * 40}ms`;
+			if (enhanced) s.style.animationDelay = `${i * 40}ms`;
 			document.body.appendChild(s);
-			setTimeout(() => s.remove(), isBloom ? 1100 : 900);
+			setTimeout(() => s.remove(), enhanced ? 1100 : 900);
 		}
 	}
 
@@ -6946,12 +6949,13 @@ class LocusLobbyUI {
 
 		// Goud sparkle + tekst
 		if (goldCollected > 0) {
-			const sparkleCount = isBloom ? 14 : (isReef ? 16 : 8);
+			const isClassicHere = document.documentElement.classList.contains('theme-classic');
+			const sparkleCount = isBloom ? 14 : (isReef ? 16 : (isClassicHere ? 10 : 8));
 			this._showSparkle(cx, cy, sparkleCount);
 			this._showFloatingScore(zoneEl, `💰 +${goldCollected} goud`, '#f5d76e');
 			this._playGoldSound();
-			// Bloom: coin bounce + geel spray/confetti op coin pickup
-			if (isBloom) {
+			// Bloom / Classic: coin bounce + geel spray/confetti op coin pickup
+			if (isBloom || isClassicHere) {
 				this._showCoinBounce(cx, cy);
 				this._showConfetti(cx, cy, 10, ['#fff3a1', '#f5d76e', '#e8c547', '#d4a820']);
 			}
