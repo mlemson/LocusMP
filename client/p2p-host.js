@@ -2042,7 +2042,7 @@ class LocusP2PHost {
 										hasFlaggedCell = true;
 										score += 14;
 									}
-									if (cell?.flags?.includes('bonus')) {
+									if (cell?.bonusSymbol) {
 										bonusFlagsHit++;
 										hasFlaggedCell = true;
 										score += 35;
@@ -2052,7 +2052,7 @@ class LocusP2PHost {
 										hasFlaggedCell = true;
 										score += prioritizeCoins ? 17 : (player.perks?.doubleCoins ? 14 : 8);
 									}
-									if (cell?.flags?.includes('pearl')) {
+									if (cell?.treasureCoins > 0) {
 										hasFlaggedCell = true;
 										score += prioritizeCoins ? 14 : 6;
 									}
