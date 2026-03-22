@@ -362,6 +362,9 @@ class LocusP2PHost {
 						mirrored: !!msg.mirrored,
 						subgridId: msg.subgridId || null,
 						matrix: transformedMatrix,
+						goldCollected: result.goldCollected || 0,
+						bonusesCollected: result.bonusesCollected || [],
+						pearlsCollected: result.pearlsCollected || 0,
 						objectivesRevealed: this._shouldRevealObjectives(),
 						mineTriggered: result.mineTriggered || null
 					});
@@ -701,6 +704,9 @@ class LocusP2PHost {
 						mirrored: !!data.mirrored,
 						subgridId: data.subgridId || null,
 						matrix: transformedMatrix,
+						goldCollected: result.goldCollected || 0,
+						bonusesCollected: result.bonusesCollected || [],
+						pearlsCollected: result.pearlsCollected || 0,
 						objectivesRevealed: this._shouldRevealObjectives(),
 						mineTriggered: result.mineTriggered || null
 					});
