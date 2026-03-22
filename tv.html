@@ -1249,10 +1249,11 @@
 
 		// ── Apply theme from host ──
 		function applyTheme(theme) {
-			document.documentElement.classList.remove('theme-aurora', 'theme-bloom', 'theme-reef');
+			document.documentElement.classList.remove('theme-aurora', 'theme-bloom', 'theme-reef', 'theme-classic');
 			if (theme === 'aurora') document.documentElement.classList.add('theme-aurora');
 			else if (theme === 'bloom') document.documentElement.classList.add('theme-bloom');
 			else if (theme === 'reef') document.documentElement.classList.add('theme-reef');
+			else if (theme === 'classic') document.documentElement.classList.add('theme-classic');
 		}
 
 		// ── State Update ──
