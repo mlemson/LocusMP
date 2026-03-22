@@ -725,10 +725,16 @@ html.theme-classic .mp-red-subgrid-wrap.is-full .mp-red-subgrid-label {
 html.theme-classic .mp-red-progress-bar { background: rgba(200, 120, 130, 0.15); }
 html.theme-classic .mp-red-progress-fill { background: #b56069; }
 
-/* Classic green end check — dark on pastel */
+/* Classic green end check — CSS checkmark on pastel */
 html.theme-classic .mp-green-end-check {
-	color: #003300;
+	color: transparent;
 	text-shadow: none;
+	font-weight: 900;
+}
+html.theme-classic .mp-green-end-check::after {
+	content: '✓';
+	color: #003300;
+	font-size: 0.7rem;
 	font-weight: 900;
 }
 
