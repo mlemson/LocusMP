@@ -73,6 +73,8 @@ class LocusLobbyUI {
 		this._ignoreNextBonusClickUntil = 0;
 		this._cardTransforms = {};
 		this._goalPerkPromptShown = false;
+		this._tutorialEnabled = false;
+		this._tutorialShown = {};
 
 		// TV Cast / BroadcastChannel + Presentation API
 		this._tvChannel = null;
