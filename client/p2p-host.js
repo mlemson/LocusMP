@@ -3154,7 +3154,7 @@ class LocusP2PHost {
 							}
 							valueCount++;
 						}
-						if (cell?.flags?.includes('pearl')) { score += prioritizeCoins ? 13 : 5; valueCount++; }
+						if (cell?.treasureCoins > 0) { score += prioritizeCoins ? 13 : 5; valueCount++; }
 						if (cell?.flags?.includes('end')) { score += 14; endCount++; valueCount++; }
 						if (this._hasAdjacentActive(zoneData, c.x, c.y)) adjacentCount++;
 					}
