@@ -5884,10 +5884,12 @@ class LocusLobbyUI {
 					}
 				};
 
-				// Beloningsmodus: toon eerst rewards overlay, dan perk choice, dan shop
+				// Beloningsmodus: toon eerst rewards overlay, dan unlock card choices, dan perk choice, dan shop
 				if (this._isRewardingMode() && !isMatchFinished) {
 					this._showRoundRewardsOverlay(scores, winner, currentLevel, () => {
-						this._showRewardingPerkChoice(() => proceedToShop());
+						this._processRewardUnlockQueue(() => {
+							this._showRewardingPerkChoice(() => proceedToShop());
+						});
 					});
 				} else {
 					await proceedToShop();

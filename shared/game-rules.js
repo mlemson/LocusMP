@@ -4738,6 +4738,65 @@ function checkGameEnd(gameState) {
 		}
 	}
 
+	// ── Rewarding mode: auto-grant shop unlocks at milestones ──
+	if (gameState.settings?.rewardingMode) {
+		const lvl = gameState.level || 1;
+		for (const pid of gameState.playerOrder) {
+			const p = gameState.players[pid];
+			if (!p) continue;
+			const granted = [];
+			// Level 3+ → golden cards
+			if (lvl >= 3 && !p.unlockedGolden) {
+				p.unlockedGolden = true;
+				const rng = createRNG(Date.now() + hashStringToInt(pid) + 111);
+				const choices = [];
+				for (let i = 0; i < 3; i++) {
+					const deck = buildDeck(1, rng, { enableGolden: true, goldenChance: 1.0 });
+					choices[i] = deck[0];
+					choices[i].shopPrice = 0;
+				}
+				granted.push({ type: 'unlock-golden', choices });
+			}
+			// Level 5+ → multikleur cards
+			if (lvl >= 5 && !p.unlockedMultikleur) {
+				p.unlockedMultikleur = true;
+				const rng = createRNG(Date.now() + hashStringToInt(pid) + 222);
+				const choices = [];
+				for (let i = 0; i < 3; i++) {
+					const deck = buildDeck(1, rng, { enableMultikleur: true, multikleurChance: 1.0 });
+					choices[i] = deck[0];
+					choices[i].shopPrice = 0;
+				}
+				granted.push({ type: 'unlock-multikleur', choices });
+			}
+			// Level 7+ → stone shapes
+			if (lvl >= 7 && !p.unlockedSteen) {
+				p.unlockedSteen = true;
+				const rng = createRNG(Date.now() + hashStringToInt(pid) + 333);
+				const pick2 = STONE_SHAPES_2[Math.floor(rng() * STONE_SHAPES_2.length)];
+				const pick3 = STONE_SHAPES_3[Math.floor(rng() * STONE_SHAPES_3.length)];
+				const pick4 = STONE_SHAPES_4[Math.floor(rng() * STONE_SHAPES_4.length)];
+				const choices = [pick2, pick3, pick4].map((shape, i) => ({
+					id: `stone-reward-${i}-${Math.floor(rng() * 100000)}`,
+					shapeName: shape.name,
+					matrix: cloneMatrix(shape.matrix),
+					category: 'stone',
+					color: { ...STONE_COLOR },
+					isStone: true,
+					rotation: 0,
+					mirrored: false,
+					shopPrice: 0
+				}));
+				granted.push({ type: 'unlock-steen', choices });
+			}
+			if (granted.length > 0) {
+				p._rewardUnlockQueue = granted;
+				// Set the first unlock's choices as pending
+				p._pendingFreeChoices = granted[0].choices;
+			}
+		}
+	}
+
 	const winsToEnd = Math.max(1, Number(gameState.winsToEnd) || MATCH_WINS_TARGET);
 	const maxLevels = Math.max(1, Number(gameState.maxLevels) || DEFAULT_MAX_LEVELS);
 	const matchWinnerEntry = gameState.playerOrder
@@ -5013,7 +5072,9 @@ function buyShopItem(gameState, playerId, itemId, extra) {
 
 /** Claim a free card from the unlock popup (player picks 1 of 3) */
 function claimFreeCard(gameState, playerId, cardId) {
-	if (gameState.phase !== 'shopping') return { error: 'Niet in shop fase' };
+	const rewardingMode = !!gameState.settings?.rewardingMode;
+	const validPhase = gameState.phase === 'shopping' || (rewardingMode && gameState.phase === 'levelComplete');
+	if (!validPhase) return { error: 'Niet in shop fase' };
 	const player = gameState.players[playerId];
 	if (!player) return { error: 'Speler niet gevonden' };
 
@@ -5029,6 +5090,16 @@ function claimFreeCard(gameState, playerId, cardId) {
 	player.permanentShopCards.push(card);
 	// Clear pending choices
 	delete player._pendingFreeChoices;
+
+	// Advance reward unlock queue if present
+	if (player._rewardUnlockQueue && player._rewardUnlockQueue.length > 0) {
+		player._rewardUnlockQueue.shift();
+		if (player._rewardUnlockQueue.length > 0) {
+			player._pendingFreeChoices = player._rewardUnlockQueue[0].choices;
+		} else {
+			delete player._rewardUnlockQueue;
+		}
+	}
 
 	gameState.updatedAt = Date.now();
 	return { success: true, card };
