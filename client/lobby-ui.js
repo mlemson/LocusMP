@@ -7828,17 +7828,6 @@ class LocusLobbyUI {
 		]);
 	}
 
-				icon: '🏆',
-				title: 'Level Afgerond!',
-				body: `
-					<p>Na elk level zie je de <strong>scores</strong> van alle spelers.</p>
-					<p>Punten komen van: gebiedscellen, doelstelling-bonussen, en eventuele perks.</p>
-					<p>De speler met de meeste level-winsten wint het spel!</p>
-				`
-			}
-		]);
-	}
-
 	// ──────────────────────────────────────────────
 	//  BELONINGSMODUS — 3-Perk Keuze na Level
 	// ──────────────────────────────────────────────
