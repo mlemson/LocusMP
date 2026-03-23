@@ -984,6 +984,63 @@ function _evaluatePlacementImpact(gameState, playerId, card, placement) {
 
 /** Yellow: simulate column completion. Complete columns = 10/14/20/28/38 per pair slot. */
 function _scoreYellowImpact(zoneData, placedCells) {
+	if (!zoneData || !placedCells?.length) return 0;
+
+	// Diagonal mode: prefer placing along diagonals
+	if (zoneData.scoreMode === 'diagonal') {
+		let impact = 0;
+		for (const pc of placedCells) {
+			// Check both diagonal directions from this cell
+			for (const [dx, dy] of [[1,1],[1,-1]]) {
+				let len = 1, activeCount = 1;
+				// Walk forward
+				let x = pc.x + dx, y = pc.y + dy;
+				while (GameRules.getDataCell(zoneData, x, y)) { len++; const c = GameRules.getDataCell(zoneData, x, y); if (c.active) activeCount++; x += dx; y += dy; }
+				// Walk backward
+				x = pc.x - dx; y = pc.y - dy;
+				while (GameRules.getDataCell(zoneData, x, y)) { len++; const c = GameRules.getDataCell(zoneData, x, y); if (c.active) activeCount++; x -= dx; y -= dy; }
+				if (len >= 4) {
+					const remaining = len - activeCount;
+					if (remaining <= 1) impact += 16;
+					else if (remaining <= 3) impact += 8;
+					else impact += 2;
+				}
+			}
+		}
+		return impact;
+	}
+
+	// Ring mode: prefer inner cells (higher ring depth = more points)
+	if (zoneData.scoreMode === 'rings') {
+		let impact = 0;
+		const cellByCoord = {};
+		for (const key in zoneData.cells) { if (zoneData.cells[key]) cellByCoord[key] = zoneData.cells[key]; }
+		const tryGet = (x, y) => cellByCoord[`${x},${y}`] || null;
+		// Quick BFS for depth
+		const boundary = [];
+		for (const c of Object.values(cellByCoord)) {
+			if (!tryGet(c.x-1,c.y) || !tryGet(c.x+1,c.y) || !tryGet(c.x,c.y-1) || !tryGet(c.x,c.y+1)) boundary.push(c);
+		}
+		const depthByKey = new Map();
+		const queue = [...boundary];
+		for (const c of boundary) depthByKey.set(`${c.x},${c.y}`, 0);
+		let qi = 0;
+		while (qi < queue.length) {
+			const cur = queue[qi++];
+			const d = depthByKey.get(`${cur.x},${cur.y}`);
+			for (const [ddx,ddy] of [[1,0],[-1,0],[0,1],[0,-1]]) {
+				const n = tryGet(cur.x+ddx, cur.y+ddy);
+				if (n && !depthByKey.has(`${n.x},${n.y}`)) { depthByKey.set(`${n.x},${n.y}`, d+1); queue.push(n); }
+			}
+		}
+		for (const pc of placedCells) {
+			const depth = depthByKey.get(`${pc.x},${pc.y}`) || 0;
+			impact += 3 + depth * 2; // inner cells more valuable
+		}
+		return impact;
+	}
+
+	// Default: column-based
 	let impact = 0;
 	const columnsAffected = new Set(placedCells.map(c => c.x));
 
@@ -999,16 +1056,13 @@ function _scoreYellowImpact(zoneData, placedCells) {
 			if (!cell.active) emptyCount++;
 		}
 
-		// After placement, remaining empty = emptyCount - placedInCol
 		const remainingEmpty = Math.max(0, emptyCount - placedInCol);
 
 		if (remainingEmpty === 0 && totalCells > 0) {
-			// Column will be complete! Award the actual column pair points.
 			const pairIndex = Math.min(Math.floor(colX / 2), 4);
 			const pairPoints = [10, 14, 20, 28, 38];
-			impact += pairPoints[pairIndex] * 2; // Double because scoring is huge
+			impact += pairPoints[pairIndex] * 2;
 		} else if (remainingEmpty <= 2) {
-			// Nearly complete — high value
 			impact += 12;
 		} else if (remainingEmpty <= 4) {
 			impact += 4;

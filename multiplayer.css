@@ -686,6 +686,11 @@ html.theme-classic .mp-yellow-col-point.is-complete {
 	background: rgba(207, 186, 81, 0.35);
 	border-color: rgba(207, 186, 81, 0.6);
 }
+html.theme-classic .mp-yellow-scoring-guide {
+	color: #3e2f00;
+	background: rgba(62, 47, 0, 0.10);
+	border-color: rgba(62, 47, 0, 0.25);
+}
 html.theme-classic .mp-blue-row-point {
 	color: #001f3f;
 	background: rgba(0, 31, 63, 0.08);
