@@ -1143,8 +1143,8 @@ class LocusLobbyUI {
 		});
 		if (cardId === undefined) return;
 
-		// Beloningsmodus: animatie voor aflegstapel
-		if (this._isRewardingMode() && cardId) {
+		// Animatie voor aflegstapel
+		if (cardId) {
 			const cardEl = document.querySelector(`[data-card-id="${cardId}"]`);
 			if (cardEl) this._animateCardToDiscard(cardEl);
 		}
@@ -1172,22 +1172,12 @@ class LocusLobbyUI {
 			if (discardCardId === undefined) return;
 		}
 
-		// Beloningsmodus: animatie voor aflegstapel
-		if (this._isRewardingMode()) {
+		// Animatie voor aflegstapel
+		{
 			const animateId = discardCardId || (cardPlayedThisTurn ? this.mp.gameState?._cardPlayedThisTurn : null);
 			if (animateId) {
 				const cardEl = document.querySelector(`[data-card-id="${animateId}"]`);
 				if (cardEl) this._animateCardToDiscard(cardEl);
-			}
-			// Also animate all played hand cards going to discard
-			if (cardPlayedThisTurn) {
-				const handContainer = document.getElementById('mp-hand-container');
-				if (handContainer) {
-					handContainer.querySelectorAll('.mp-hand-card').forEach(el => {
-						if (!el.classList.contains('mp-hand-card-spent')) return;
-						this._animateCardToDiscard(el);
-					});
-				}
 			}
 		}
 
@@ -7944,7 +7934,6 @@ class LocusLobbyUI {
 	// ──────────────────────────────────────────────
 
 	_updateDiscardPileIndicator() {
-		if (!this._isRewardingMode()) return;
 		const indicator = document.getElementById('mp-discard-pile-indicator');
 		const countEl = document.getElementById('mp-discard-pile-count');
 		if (!indicator || !countEl) return;
@@ -7962,7 +7951,6 @@ class LocusLobbyUI {
 	 * cardEl is het DOM element van de kaart die weggegooid wordt.
 	 */
 	_animateCardToDiscard(cardEl) {
-		if (!this._isRewardingMode()) return;
 		if (!cardEl) return;
 		const indicator = document.getElementById('mp-discard-pile-indicator');
 		if (!indicator) return;

@@ -3945,6 +3945,10 @@ function playMove(gameState, playerId, cardId, zoneName, baseX, baseY, rotation,
 	// Verwijder kaart uit hand
 	player.hand.splice(cardIndex, 1);
 
+	// Voeg gespeelde kaart toe aan aflegstapel
+	if (!Array.isArray(player.discardPile)) player.discardPile = [];
+	player.discardPile.push(card);
+
 	// Tijdelijk gestolen kaart: geef terug aan oorspronkelijke eigenaar na spelen
 	if (card.isStolenTemp && card.originalOwnerId) {
 		const originalOwner = gameState.players[card.originalOwnerId];
