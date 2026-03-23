@@ -91,6 +91,7 @@ function _startTurnTimer(gameId, playerId, durationMs = TURN_TIMER_MS) {
 		turnTimers.delete(gameId);
 		const gameState = games.get(gameId);
 		if (!gameState || gameState.phase !== 'playing') return;
+		if (gameState.settings?.timerEnabled === false) return;
 		if (gameState.paused) return;
 		const currentPid = gameState.playerOrder[gameState.currentTurnIndex];
 		if (currentPid !== playerId) return; // beurt al gewisseld

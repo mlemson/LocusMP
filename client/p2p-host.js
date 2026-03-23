@@ -3738,6 +3738,8 @@ class LocusP2PHost {
 		this.gameState._turnTimerRemainingMs = duration;
 
 		this._turnTimer = setTimeout(() => {
+			// Re-check: timer may have been disabled while this timeout was queued
+			if (this.gameState?.settings?.timerEnabled === false) return;
 			// Running AI chain is stale once the timer forces a turn end.
 			this._aiTurnInProgress = false;
 			this._aiTurnPlayerId = null;

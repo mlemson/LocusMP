@@ -3320,7 +3320,8 @@ function createGameState(gameId, hostPlayerId, settings = {}) {
 			mapSize: settings.mapSize || 4,
 			cardsPerPlayer: settings.cardsPerPlayer || 10,
 			handSize: settings.handSize || 3,
-			turnTimeLimit: settings.turnTimeLimit || 0
+			turnTimeLimit: settings.turnTimeLimit || 0,
+			timerEnabled: settings.timerEnabled !== false
 		},
 		players: {},
 		playerOrder: [],
