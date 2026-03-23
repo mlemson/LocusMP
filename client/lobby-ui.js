@@ -1172,13 +1172,10 @@ class LocusLobbyUI {
 			if (discardCardId === undefined) return;
 		}
 
-		// Animatie voor aflegstapel
-		{
-			const animateId = discardCardId || (cardPlayedThisTurn ? this.mp.gameState?._cardPlayedThisTurn : null);
-			if (animateId) {
-				const cardEl = document.querySelector(`[data-card-id="${animateId}"]`);
-				if (cardEl) this._animateCardToDiscard(cardEl);
-			}
+		// Animatie voor aflegstapel (alleen voor discardCard, gespeelde kaart is al geanimeerd)
+		if (discardCardId) {
+			const cardEl = document.querySelector(`[data-card-id="${discardCardId}"]`);
+			if (cardEl) this._animateCardToDiscard(cardEl);
 		}
 
 		this._cancelDrag();
@@ -3500,8 +3497,10 @@ class LocusLobbyUI {
 		}
 
 		try {
+			const playedCardId = this._dragState.card.id;
+			const playedCardEl = document.querySelector(`[data-card-id="${playedCardId}"]`);
 			const result = await this.mp.playCard(
-				this._dragState.card.id,
+				playedCardId,
 				zoneName, baseX, baseY,
 				this._dragState.rotation,
 				this._dragState.mirrored,
@@ -3510,6 +3509,8 @@ class LocusLobbyUI {
 
 			this._cancelDrag();
 			if (result.success) {
+				// Animate played card to discard pile
+				if (playedCardEl) this._animateCardToDiscard(playedCardEl);
 				// Mine getriggerd: toon explosie-effect aan de plaatser
 				if (result.mineTriggered) {
 					this._onMineTriggered(result.mineTriggered, this.mp.userId);
