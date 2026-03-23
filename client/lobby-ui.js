@@ -225,7 +225,7 @@ class LocusLobbyUI {
 			'game-screen', 'results-screen', 'shop-screen',
 			'level-complete-overlay',
 			'player-name-input', 'create-game-btn', 'join-game-btn',
-			'invite-code-input', 'max-players-select', 'cards-per-player-select', 'map-size-select', 'timer-toggle', 'tutorial-toggle',
+			'invite-code-input', 'max-players-select', 'cards-per-player-select', 'map-size-select', 'timer-toggle', 'tutorial-toggle', 'rewarding-mode-toggle',
 			'invite-code-display', 'player-list', 'start-game-btn',
 			'waiting-status',
 			'goal-choices-container',
@@ -1099,9 +1099,10 @@ class LocusLobbyUI {
 		const mapSize = Number(this.elements['map-size-select']?.value) || 4;
 		const timerEnabled = this.elements['timer-toggle']?.checked !== false;
 		const tutorialEnabled = !!this.elements['tutorial-toggle']?.checked;
+		const rewardingMode = !!this.elements['rewarding-mode-toggle']?.checked;
 		this._tutorialEnabled = tutorialEnabled;
 		this._setLoading(true);
-		try { await this.mp.startGame({ cardsPerPlayer, mapSize, timerEnabled, tutorialEnabled }); }
+		try { await this.mp.startGame({ cardsPerPlayer, mapSize, timerEnabled, tutorialEnabled, rewardingMode }); }
 		catch (err) { this._showToast('Kan spel niet starten: ' + (err.message || err), 'error'); }
 		this._setLoading(false);
 	}
@@ -1141,6 +1142,13 @@ class LocusLobbyUI {
 			filterFn: () => true
 		});
 		if (cardId === undefined) return;
+
+		// Beloningsmodus: animatie voor aflegstapel
+		if (this._isRewardingMode() && cardId) {
+			const cardEl = document.querySelector(`[data-card-id="${cardId}"]`);
+			if (cardEl) this._animateCardToDiscard(cardEl);
+		}
+
 		this._cancelDrag();
 		this._cancelBonusMode();
 		this._stopTurnTimer();
@@ -1163,6 +1171,26 @@ class LocusLobbyUI {
 			});
 			if (discardCardId === undefined) return;
 		}
+
+		// Beloningsmodus: animatie voor aflegstapel
+		if (this._isRewardingMode()) {
+			const animateId = discardCardId || (cardPlayedThisTurn ? this.mp.gameState?._cardPlayedThisTurn : null);
+			if (animateId) {
+				const cardEl = document.querySelector(`[data-card-id="${animateId}"]`);
+				if (cardEl) this._animateCardToDiscard(cardEl);
+			}
+			// Also animate all played hand cards going to discard
+			if (cardPlayedThisTurn) {
+				const handContainer = document.getElementById('mp-hand-container');
+				if (handContainer) {
+					handContainer.querySelectorAll('.mp-hand-card').forEach(el => {
+						if (!el.classList.contains('mp-hand-card-spent')) return;
+						this._animateCardToDiscard(el);
+					});
+				}
+			}
+		}
+
 		this._cancelDrag();
 		this._cancelBonusMode();
 		this._stopTurnTimer();
@@ -1901,6 +1929,7 @@ class LocusLobbyUI {
 		this._renderBonusBar();
 		this._renderOpponentPanels();
 		this._showBoardTutorial();
+		this._updateDiscardPileIndicator();
 	}
 
 	_onTurnChanged(currentPlayerId, turnCount) {
@@ -1916,6 +1945,7 @@ class LocusLobbyUI {
 		this._cancelDrag();
 		this._cancelBonusMode();
 		if (this._mineMode) this._cancelMineMode();
+		this._updateDiscardPileIndicator();
 
 		if (currentPlayerId === this.mp.userId) {
 			this._showToast('Jouw beurt!', 'info');
@@ -5837,15 +5867,26 @@ class LocusLobbyUI {
 		if (shopBtn) {
 			shopBtn.addEventListener('click', async () => {
 				shopBtn.disabled = true;
-				try {
-					// Any player can trigger the shop phase — first one wins, rest get error (that's fine)
-					if (!isMatchFinished) {
-						try { await this.mp.startShopPhase(); } catch (_) { /* already started, fine */ }
+
+				const proceedToShop = async () => {
+					try {
+						if (!isMatchFinished) {
+							try { await this.mp.startShopPhase(); } catch (_) { /* already started, fine */ }
+						}
+						this._onShopPhase();
+					} catch (err) {
+						console.warn('[Locus UI] startShopPhase waarschuwing, open shop lokaal:', err);
+						this._onShopPhase();
 					}
-					this._onShopPhase();
-				} catch (err) {
-					console.warn('[Locus UI] startShopPhase waarschuwing, open shop lokaal:', err);
-					this._onShopPhase();
+				};
+
+				// Beloningsmodus: toon eerst rewards overlay, dan perk choice, dan shop
+				if (this._isRewardingMode() && !isMatchFinished) {
+					this._showRoundRewardsOverlay(scores, winner, currentLevel, () => {
+						this._showRewardingPerkChoice(() => proceedToShop());
+					});
+				} else {
+					await proceedToShop();
 				}
 			});
 		}
@@ -7785,6 +7826,302 @@ class LocusLobbyUI {
 				`
 			}
 		]);
+	}
+
+				icon: '🏆',
+				title: 'Level Afgerond!',
+				body: `
+					<p>Na elk level zie je de <strong>scores</strong> van alle spelers.</p>
+					<p>Punten komen van: gebiedscellen, doelstelling-bonussen, en eventuele perks.</p>
+					<p>De speler met de meeste level-winsten wint het spel!</p>
+				`
+			}
+		]);
+	}
+
+	// ──────────────────────────────────────────────
+	//  BELONINGSMODUS — 3-Perk Keuze na Level
+	// ──────────────────────────────────────────────
+
+	_isRewardingMode() {
+		return !!this.mp?.gameState?.settings?.rewardingMode;
+	}
+
+	/**
+	 * Na level complete: toon een overlay waar de speler 1 uit 3 perks kiest.
+	 * Wordt aangeroepen vanuit _onLevelComplete als rewardingMode aan staat.
+	 */
+	_showRewardingPerkChoice(onDone) {
+		const Rules = window.LocusGameRules;
+		if (!Rules || !Rules.getAvailablePerks) { if (onDone) onDone(); return; }
+
+		const myPlayer = this.mp.getMyPlayer();
+		if (!myPlayer?.perks) { if (onDone) onDone(); return; }
+
+		const available = Rules.getAvailablePerks(myPlayer) || [];
+		if (available.length === 0) { if (onDone) onDone(); return; }
+
+		// Pick 3 random perks (or fewer if less available)
+		const shuffled = [...available].sort(() => Math.random() - 0.5);
+		const choices = shuffled.slice(0, 3);
+
+		const overlay = document.createElement('div');
+		overlay.id = 'mp-rewarding-perk-overlay';
+		overlay.className = 'mp-rewarding-overlay';
+		overlay.innerHTML = `
+			<div class="mp-rewarding-popup">
+				<div class="mp-rewarding-icon">🎁</div>
+				<h2 class="mp-rewarding-title">Kies een Perk!</h2>
+				<p class="mp-rewarding-subtitle">Je hebt ${myPlayer.perks.perkPoints || 0} perkpunt${(myPlayer.perks.perkPoints || 0) !== 1 ? 'en' : ''} — kies 1 van ${choices.length} perks.</p>
+				<div class="mp-rewarding-choices">
+					${choices.map(perk => {
+						const canAfford = (myPlayer.perks.perkPoints || 0) >= perk.cost;
+						return `
+						<div class="mp-rewarding-card ${canAfford ? '' : 'cant-afford'}" data-perk-id="${perk.id}">
+							<div class="mp-rewarding-card-icon">${perk.icon}</div>
+							<div class="mp-rewarding-card-name">${this._escapeHtml(perk.name)}</div>
+							<div class="mp-rewarding-card-desc">${this._escapeHtml(perk.description)}</div>
+							<div class="mp-rewarding-card-cost">${perk.cost} punt${perk.cost !== 1 ? 'en' : ''}</div>
+							<div class="mp-rewarding-card-branch">${perk.branchIcon || ''} ${this._escapeHtml(perk.branchName || '')}</div>
+						</div>`;
+					}).join('')}
+				</div>
+				<button class="mp-btn mp-btn-secondary mp-rewarding-skip-btn">Overslaan</button>
+			</div>
+		`;
+		document.body.appendChild(overlay);
+		requestAnimationFrame(() => overlay.classList.add('show'));
+
+		const finish = () => {
+			overlay.classList.remove('show');
+			setTimeout(() => overlay.remove(), 350);
+			if (onDone) onDone();
+		};
+
+		// Bind perk cards
+		overlay.querySelectorAll('.mp-rewarding-card:not(.cant-afford)').forEach(card => {
+			card.addEventListener('click', async () => {
+				const perkId = card.dataset.perkId;
+				card.classList.add('selected');
+				overlay.querySelectorAll('.mp-rewarding-card').forEach(c => { c.style.pointerEvents = 'none'; });
+				try {
+					const result = await this.mp.choosePerk(perkId);
+					if (result?.success) {
+						const m = this.mp.getMyPlayer?.();
+						if (m?.perks) {
+							if (!m.perks.unlockedPerks.includes(perkId)) m.perks.unlockedPerks.push(perkId);
+							if (result.perk?.cost) m.perks.perkPoints = Math.max(0, (m.perks.perkPoints || 0) - (result.perk.cost || 0));
+						}
+						this._playGoldSound();
+						this._showToast(`${result.perk?.icon || '🎯'} ${result.perk?.name || 'Perk'} ontgrendeld!`, 'success');
+						try { this._renderBonusBar(); } catch (e) {}
+						try { this._renderHand(); } catch (e) {}
+					} else {
+						this._showToast(result?.error || 'Perk ontgrendelen mislukt', 'error');
+					}
+				} catch (err) {
+					this._showToast('Perk ontgrendelen mislukt', 'error');
+				}
+				setTimeout(finish, 800);
+			});
+		});
+
+		// Skip button
+		overlay.querySelector('.mp-rewarding-skip-btn')?.addEventListener('click', finish);
+	}
+
+	// ──────────────────────────────────────────────
+	//  BELONINGSMODUS — Aflegstapel Animatie
+	// ──────────────────────────────────────────────
+
+	_updateDiscardPileIndicator() {
+		if (!this._isRewardingMode()) return;
+		const indicator = document.getElementById('mp-discard-pile-indicator');
+		const countEl = document.getElementById('mp-discard-pile-count');
+		if (!indicator || !countEl) return;
+
+		const myPlayer = this.mp.getMyPlayer();
+		const discardSize = Array.isArray(myPlayer?.discardPile) ? myPlayer.discardPile.length
+			: (typeof myPlayer?.discardPile === 'number' ? myPlayer.discardPile : 0);
+
+		indicator.style.display = discardSize > 0 ? 'flex' : 'none';
+		countEl.textContent = discardSize;
+	}
+
+	/**
+	 * Animatie: kaart vliegt vanuit de hand naar de aflegstapel.
+	 * cardEl is het DOM element van de kaart die weggegooid wordt.
+	 */
+	_animateCardToDiscard(cardEl) {
+		if (!this._isRewardingMode()) return;
+		if (!cardEl) return;
+		const indicator = document.getElementById('mp-discard-pile-indicator');
+		if (!indicator) return;
+
+		const cardRect = cardEl.getBoundingClientRect();
+		const indicatorRect = indicator.getBoundingClientRect();
+
+		const ghost = cardEl.cloneNode(true);
+		ghost.className = 'mp-discard-fly-card';
+		ghost.style.position = 'fixed';
+		ghost.style.left = cardRect.left + 'px';
+		ghost.style.top = cardRect.top + 'px';
+		ghost.style.width = cardRect.width + 'px';
+		ghost.style.height = cardRect.height + 'px';
+		ghost.style.zIndex = '99999';
+		ghost.style.pointerEvents = 'none';
+		ghost.style.transition = 'all 0.5s cubic-bezier(0.4, 0, 0.2, 1)';
+		document.body.appendChild(ghost);
+
+		requestAnimationFrame(() => {
+			ghost.style.left = (indicatorRect.left + indicatorRect.width / 2 - cardRect.width / 4) + 'px';
+			ghost.style.top = (indicatorRect.top + indicatorRect.height / 2 - cardRect.height / 4) + 'px';
+			ghost.style.transform = 'scale(0.3) rotate(8deg)';
+			ghost.style.opacity = '0.4';
+		});
+
+		setTimeout(() => {
+			ghost.remove();
+			// Pulse the indicator
+			indicator.classList.add('mp-discard-pulse');
+			setTimeout(() => indicator.classList.remove('mp-discard-pulse'), 600);
+			this._updateDiscardPileIndicator();
+		}, 550);
+	}
+
+	// ──────────────────────────────────────────────
+	//  BELONINGSMODUS — Unlock Overlay na Ronde
+	// ──────────────────────────────────────────────
+
+	/**
+	 * Toon een unlock-overlay die de beloningen van de afgelopen ronde samenvat.
+	 * Geïnspireerd op de singleplayer unlock-modal.
+	 */
+	_showRoundRewardsOverlay(levelScores, levelWinner, level, onDone) {
+		if (!this._isRewardingMode()) { if (onDone) onDone(); return; }
+
+		const myPid = this.mp.userId;
+		const myScores = levelScores?.[myPid];
+		const myPlayer = this.mp.getMyPlayer();
+		if (!myScores) { if (onDone) onDone(); return; }
+
+		const isWinner = levelWinner === myPid;
+		const items = [];
+
+		// Zone scores
+		const zones = [
+			{ key: 'yellow', icon: '🟡', name: 'Geel' },
+			{ key: 'green', icon: '🟢', name: 'Groen' },
+			{ key: 'blue', icon: '🔵', name: 'Blauw' },
+			{ key: 'red', icon: '🔴', name: 'Rood' },
+			{ key: 'purple', icon: '🟣', name: 'Paars' }
+		];
+		const topZones = zones
+			.map(z => ({ ...z, score: myScores[z.key] || 0 }))
+			.filter(z => z.score > 0)
+			.sort((a, b) => b.score - a.score)
+			.slice(0, 3);
+
+		if (topZones.length > 0) {
+			items.push({
+				icon: '📊',
+				name: 'Topscore zones',
+				description: topZones.map(z => `${z.icon} ${z.name}: ${z.score} pt`).join(' • ')
+			});
+		}
+
+		// Objective reward
+		if (myScores.objectiveAchieved) {
+			items.push({
+				icon: '🎯',
+				name: 'Doelstelling behaald!',
+				description: `+${myScores.objectiveBonus || 0} punten${myScores.objectiveCoins ? ` • +${myScores.objectiveCoins} 🪙` : ''}${myScores.objectiveRandomBonuses ? ` • +${myScores.objectiveRandomBonuses} 🎁` : ''}`
+			});
+		}
+
+		// Gold coins earned
+		const totalGold = myPlayer?.goldCoins || 0;
+		if (totalGold > 0) {
+			items.push({
+				icon: '💰',
+				name: `${totalGold} goudmunten`,
+				description: 'Gespaard voor de shop'
+			});
+		}
+
+		// Level winner bonus
+		if (isWinner) {
+			items.push({
+				icon: '🏆',
+				name: 'Level Winnaar!',
+				description: '+3 goudmunten bonus'
+			});
+		}
+
+		// Perk points earned
+		const perkPts = myPlayer?.perks?.perkPoints || 0;
+		if (perkPts > 0) {
+			items.push({
+				icon: '⚡',
+				name: `${perkPts} perkpunt${perkPts !== 1 ? 'en' : ''} beschikbaar`,
+				description: 'Kies perks om je strategie te versterken'
+			});
+		}
+
+		// Unlocked perks
+		const unlocked = myPlayer?.perks?.unlockedPerks || [];
+		if (unlocked.length > 0) {
+			const allPerks = [];
+			const Rules = window.LocusGameRules;
+			if (Rules?.PERK_BRANCHES) {
+				for (const branch of Object.values(Rules.PERK_BRANCHES)) {
+					for (const p of branch.perks) {
+						if (unlocked.includes(p.id)) allPerks.push(p);
+					}
+				}
+			}
+			if (allPerks.length > 0) {
+				items.push({
+					icon: '🎯',
+					name: 'Ontgrendelde perks',
+					description: allPerks.map(p => `${p.icon} ${p.name}`).join(' • ')
+				});
+			}
+		}
+
+		if (items.length === 0) { if (onDone) onDone(); return; }
+
+		const overlay = document.createElement('div');
+		overlay.id = 'mp-round-rewards-overlay';
+		overlay.className = 'mp-rewards-overlay';
+		overlay.innerHTML = `
+			<div class="mp-rewards-popup">
+				<div class="mp-rewards-icon">${isWinner ? '🏆' : '🎉'}</div>
+				<h2 class="mp-rewards-title">${isWinner ? 'Level Gewonnen!' : 'Level Afgerond!'}</h2>
+				<div class="mp-rewards-items">
+					${items.map((item, i) => `
+						<div class="mp-reward-item" style="animation-delay: ${i * 0.1}s">
+							<div class="mp-reward-item-icon">${item.icon}</div>
+							<div class="mp-reward-item-content">
+								<div class="mp-reward-item-name">${this._escapeHtml(item.name)}</div>
+								<div class="mp-reward-item-desc">${item.description}</div>
+							</div>
+						</div>
+					`).join('')}
+				</div>
+				<button class="mp-btn mp-btn-primary mp-rewards-continue-btn">Doorgaan</button>
+			</div>
+		`;
+		document.body.appendChild(overlay);
+		requestAnimationFrame(() => overlay.classList.add('show'));
+
+		const close = () => {
+			overlay.classList.remove('show');
+			setTimeout(() => overlay.remove(), 350);
+			if (onDone) onDone();
+		};
+
+		overlay.querySelector('.mp-rewards-continue-btn')?.addEventListener('click', close);
 	}
 
 	_escapeHtml(str) {

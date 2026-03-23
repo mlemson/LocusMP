@@ -13158,3 +13158,324 @@ html.theme-reef .mp-zone-yellow .mp-cell.active.yellow-col-complete {
 		border-top-color: rgba(255,126,179,0.15);
 	}
 }
+
+/* ============================================================
+   BELONINGSMODUS — Rewarding Mode UI
+   ============================================================ */
+
+/* ── Discard Pile Indicator ── */
+.mp-discard-pile-indicator {
+	display: flex;
+	align-items: center;
+	gap: 4px;
+	padding: 6px 10px;
+	border-radius: 12px;
+	background: var(--mp-panel);
+	border: 1px solid rgba(255,255,255,0.1);
+	font-size: 0.85rem;
+	color: var(--mp-text-dim);
+	cursor: default;
+	transition: transform 0.2s ease, box-shadow 0.2s ease;
+	flex-shrink: 0;
+}
+
+.mp-discard-pile-icon {
+	font-size: 1.1rem;
+}
+
+.mp-discard-pile-count {
+	font-weight: 700;
+	color: var(--mp-text);
+	min-width: 16px;
+	text-align: center;
+}
+
+.mp-discard-pile-indicator.mp-discard-pulse {
+	animation: discardPulse 0.6s ease;
+}
+
+@keyframes discardPulse {
+	0% { transform: scale(1); box-shadow: none; }
+	40% { transform: scale(1.15); box-shadow: 0 0 12px rgba(166,140,255,0.4); }
+	100% { transform: scale(1); box-shadow: none; }
+}
+
+/* Flying card ghost */
+.mp-discard-fly-card {
+	border-radius: 8px;
+	overflow: hidden;
+	box-shadow: 0 4px 16px rgba(0,0,0,0.5);
+}
+
+/* ── Rewarding Perk Choice Overlay ── */
+.mp-rewarding-overlay {
+	position: fixed;
+	inset: 0;
+	z-index: 10050;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	background: rgba(10, 2, 14, 0);
+	backdrop-filter: blur(0px);
+	transition: background 0.35s ease, backdrop-filter 0.35s ease;
+	padding: 16px;
+}
+
+.mp-rewarding-overlay.show {
+	background: rgba(10, 2, 14, 0.75);
+	backdrop-filter: blur(8px);
+}
+
+.mp-rewarding-popup {
+	max-width: 620px;
+	width: 100%;
+	background: linear-gradient(155deg, var(--mp-surface-mid), var(--mp-surface-low));
+	border: 1px solid rgba(166,140,255,0.25);
+	border-radius: var(--mp-radius);
+	padding: 28px 24px;
+	text-align: center;
+	box-shadow: var(--mp-shadow), 0 0 40px rgba(166,140,255,0.1);
+	transform: scale(0.9) translateY(20px);
+	opacity: 0;
+	transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.35s ease;
+}
+
+.mp-rewarding-overlay.show .mp-rewarding-popup {
+	transform: scale(1) translateY(0);
+	opacity: 1;
+}
+
+.mp-rewarding-icon {
+	font-size: 56px;
+	animation: rewardBounce 0.6s ease-out;
+}
+
+@keyframes rewardBounce {
+	0% { transform: scale(0) rotate(-180deg); opacity: 0; }
+	50% { transform: scale(1.2) rotate(10deg); }
+	100% { transform: scale(1) rotate(0deg); opacity: 1; }
+}
+
+.mp-rewarding-title {
+	font-size: 1.6rem;
+	font-weight: 800;
+	margin: 8px 0 4px;
+	background: linear-gradient(135deg, var(--mp-secondary), var(--mp-tertiary));
+	-webkit-background-clip: text;
+	-webkit-text-fill-color: transparent;
+	background-clip: text;
+}
+
+.mp-rewarding-subtitle {
+	font-size: 0.9rem;
+	color: var(--mp-text-dim);
+	margin: 0 0 20px;
+}
+
+.mp-rewarding-choices {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+	gap: 14px;
+	margin-bottom: 20px;
+}
+
+.mp-rewarding-card {
+	background: linear-gradient(155deg, rgba(60,33,70,0.9), rgba(42,20,53,0.95));
+	border: 2px solid rgba(166,140,255,0.2);
+	border-radius: 14px;
+	padding: 18px 14px;
+	cursor: pointer;
+	transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 8px;
+	text-align: center;
+	animation: rewardCardSlide 0.4s ease-out backwards;
+}
+
+.mp-rewarding-card:nth-child(1) { animation-delay: 0.1s; }
+.mp-rewarding-card:nth-child(2) { animation-delay: 0.2s; }
+.mp-rewarding-card:nth-child(3) { animation-delay: 0.3s; }
+
+@keyframes rewardCardSlide {
+	from { opacity: 0; transform: translateY(20px) scale(0.9); }
+	to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.mp-rewarding-card:hover {
+	transform: translateY(-4px) scale(1.03);
+	border-color: var(--mp-secondary);
+	box-shadow: 0 8px 24px rgba(166,140,255,0.2);
+}
+
+.mp-rewarding-card.selected {
+	border-color: var(--mp-success);
+	background: linear-gradient(155deg, rgba(91,232,180,0.15), rgba(42,20,53,0.95));
+	box-shadow: 0 0 20px rgba(91,232,180,0.25);
+	transform: scale(1.05);
+}
+
+.mp-rewarding-card.cant-afford {
+	opacity: 0.4;
+	cursor: not-allowed;
+	pointer-events: none;
+}
+
+.mp-rewarding-card-icon {
+	font-size: 36px;
+}
+
+.mp-rewarding-card-name {
+	font-weight: 700;
+	font-size: 0.95rem;
+	color: var(--mp-text);
+}
+
+.mp-rewarding-card-desc {
+	font-size: 0.8rem;
+	color: var(--mp-text-dim);
+	line-height: 1.35;
+}
+
+.mp-rewarding-card-cost {
+	font-size: 0.8rem;
+	font-weight: 600;
+	color: var(--mp-warning);
+	background: rgba(255,207,85,0.1);
+	padding: 2px 10px;
+	border-radius: 8px;
+}
+
+.mp-rewarding-card-branch {
+	font-size: 0.75rem;
+	color: var(--mp-text-dim);
+	opacity: 0.7;
+}
+
+.mp-rewarding-skip-btn {
+	margin-top: 4px;
+}
+
+/* ── Round Rewards Overlay ── */
+.mp-rewards-overlay {
+	position: fixed;
+	inset: 0;
+	z-index: 10060;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	background: rgba(10, 2, 14, 0);
+	backdrop-filter: blur(0px);
+	transition: background 0.35s ease, backdrop-filter 0.35s ease;
+	padding: 16px;
+}
+
+.mp-rewards-overlay.show {
+	background: rgba(10, 2, 14, 0.8);
+	backdrop-filter: blur(10px);
+}
+
+.mp-rewards-popup {
+	max-width: 520px;
+	width: 100%;
+	background: linear-gradient(155deg, var(--mp-surface-mid), var(--mp-surface-low));
+	border: 1px solid rgba(166,140,255,0.25);
+	border-radius: var(--mp-radius);
+	padding: 28px 24px;
+	text-align: center;
+	box-shadow: var(--mp-shadow), 0 0 40px rgba(166,140,255,0.1);
+	transform: scale(0.9) translateY(20px);
+	opacity: 0;
+	transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.35s ease;
+}
+
+.mp-rewards-overlay.show .mp-rewards-popup {
+	transform: scale(1) translateY(0);
+	opacity: 1;
+}
+
+.mp-rewards-icon {
+	font-size: 56px;
+	animation: rewardBounce 0.6s ease-out;
+}
+
+.mp-rewards-title {
+	font-size: 1.6rem;
+	font-weight: 800;
+	margin: 8px 0 20px;
+	background: linear-gradient(135deg, var(--mp-warning), var(--mp-accent));
+	-webkit-background-clip: text;
+	-webkit-text-fill-color: transparent;
+	background-clip: text;
+}
+
+.mp-rewards-items {
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+	margin-bottom: 24px;
+	text-align: left;
+}
+
+.mp-reward-item {
+	display: flex;
+	align-items: center;
+	gap: 14px;
+	background: linear-gradient(145deg, rgba(166,140,255,0.08), rgba(129,236,255,0.05));
+	border: 1px solid rgba(166,140,255,0.15);
+	border-radius: 12px;
+	padding: 14px 16px;
+	animation: rewardItemSlide 0.4s ease-out backwards;
+}
+
+@keyframes rewardItemSlide {
+	from { opacity: 0; transform: translateX(-24px); }
+	to { opacity: 1; transform: translateX(0); }
+}
+
+.mp-reward-item-icon {
+	font-size: 28px;
+	flex-shrink: 0;
+}
+
+.mp-reward-item-content {
+	flex: 1;
+	min-width: 0;
+}
+
+.mp-reward-item-name {
+	font-weight: 700;
+	font-size: 0.95rem;
+	color: var(--mp-text);
+	margin-bottom: 2px;
+}
+
+.mp-reward-item-desc {
+	font-size: 0.8rem;
+	color: var(--mp-text-dim);
+	line-height: 1.35;
+}
+
+.mp-rewards-continue-btn {
+	min-width: 160px;
+}
+
+/* ── Responsive ── */
+@media (max-width: 600px) {
+	.mp-rewarding-choices {
+		grid-template-columns: 1fr;
+	}
+	.mp-rewarding-popup,
+	.mp-rewards-popup {
+		padding: 20px 16px;
+	}
+	.mp-rewarding-icon,
+	.mp-rewards-icon {
+		font-size: 44px;
+	}
+	.mp-rewarding-title,
+	.mp-rewards-title {
+		font-size: 1.3rem;
+	}
+}

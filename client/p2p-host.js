@@ -688,6 +688,7 @@ class LocusP2PHost {
 					if (data.mapSize) this.gameState.settings.mapSize = Number(data.mapSize);
 					if ('timerEnabled' in data) this.gameState.settings.timerEnabled = !!data.timerEnabled;
 					if ('tutorialEnabled' in data) this.gameState.settings.tutorialEnabled = !!data.tutorialEnabled;
+					if ('rewardingMode' in data) this.gameState.settings.rewardingMode = !!data.rewardingMode;
 				}
 				result = this.Rules.startGame(this.gameState);
 				break;
@@ -3995,7 +3996,7 @@ class LocusP2PGuest {
 	}
 
 	async createGame() { /* Host-only */ }
-	async startGame() { return this._sendCommand('startGame'); }
+	async startGame(settings) { return this._sendCommand('startGame', settings || {}); }
 	async chooseStartingDeck(deckType) { return this._sendCommand('chooseStartingDeck', { deckType }); }
 	async chooseGoal(objectiveIndex) { return this._sendCommand('chooseGoal', { objectiveIndex }); }
 	async playCard(cardId, zoneName, baseX, baseY, rotation, mirrored, subgridId) {

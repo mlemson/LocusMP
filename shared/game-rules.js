@@ -225,16 +225,24 @@ function getAvailablePerks(player) {
  * Ontgrendel een perk voor een speler.
  */
 function choosePerk(gameState, playerId, perkId) {
-	if (gameState.phase !== 'choosingGoals') return { error: 'Perks kunnen alleen tijdens de doelstellingsfase gekozen worden' };
+	const isGoalPhase = gameState.phase === 'choosingGoals';
+	const isLevelComplete = gameState.phase === 'levelComplete';
+	const rewardingMode = !!gameState.settings?.rewardingMode;
+	if (!isGoalPhase && !(isLevelComplete && rewardingMode)) {
+		return { error: 'Perks kunnen alleen tijdens de doelstellingsfase gekozen worden' };
+	}
 	const player = gameState.players[playerId];
 	if (!player) return { error: 'Speler niet gevonden' };
 	if (!player.perks) return { error: 'Perk data niet geïnitialiseerd' };
 	
 	if (perkId === '__skip__') {
-		player.goalPerksDone = true;
-		gameState.updatedAt = Date.now();
-		const startedPlaying = maybeStartPlayingAfterGoalPhase(gameState);
-		return { success: true, skipped: true, startedPlaying };
+		if (isGoalPhase) {
+			player.goalPerksDone = true;
+			gameState.updatedAt = Date.now();
+			const startedPlaying = maybeStartPlayingAfterGoalPhase(gameState);
+			return { success: true, skipped: true, startedPlaying };
+		}
+		return { success: true, skipped: true };
 	}
 
 	const perkPoints = player.perks.perkPoints || 0;
@@ -294,11 +302,14 @@ function choosePerk(gameState, playerId, perkId) {
 		// Trek direct een extra kaart als de speler minder dan 4 kaarten heeft
 		drawHandForPlayer(gameState, player, 4);
 	}
-	player.goalPerksDone = isGoalPerkDone(gameState, playerId);
 
 	gameState.updatedAt = Date.now();
-	const startedPlaying = maybeStartPlayingAfterGoalPhase(gameState);
-	return { success: true, perk: { id: perkId, name: perk.name, icon: perk.icon, cost: perk.cost }, startedPlaying };
+	if (isGoalPhase) {
+		player.goalPerksDone = isGoalPerkDone(gameState, playerId);
+		const startedPlaying = maybeStartPlayingAfterGoalPhase(gameState);
+		return { success: true, perk: { id: perkId, name: perk.name, icon: perk.icon, cost: perk.cost }, startedPlaying };
+	}
+	return { success: true, perk: { id: perkId, name: perk.name, icon: perk.icon, cost: perk.cost } };
 }
 
 function allObjectivesChosen(gameState) {

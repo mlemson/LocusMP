@@ -1175,6 +1175,7 @@ io.on('connection', (socket) => {
 				if (data.mapSize) gameState.settings.mapSize = Math.min(8, Math.max(2, Number(data.mapSize)));
 				if ('timerEnabled' in data) gameState.settings.timerEnabled = !!data.timerEnabled;
 				if ('tutorialEnabled' in data) gameState.settings.tutorialEnabled = !!data.tutorialEnabled;
+				if ('rewardingMode' in data) gameState.settings.rewardingMode = !!data.rewardingMode;
 			}
 
 			const startResult = GameRules.startGame(gameState);
