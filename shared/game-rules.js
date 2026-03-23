@@ -324,6 +324,8 @@ function isGoalPerkDone(gameState, playerId) {
 	if (!player || player.connected === false) return true;
 	if (!player.chosenObjective) return false;
 	if (player.goalPerksDone) return true;
+	// In rewarding mode: human players must choose/skip their free card before being "done"
+	if (gameState.settings?.rewardingMode && !player.isAI && !player._rewardCardChosen) return false;
 	if (!player.perks || (player.perks.perkPoints || 0) < 1) return true;
 	const available = getAvailablePerks(player);
 	return !Array.isArray(available) || available.length === 0;

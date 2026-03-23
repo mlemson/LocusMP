@@ -7864,6 +7864,16 @@ class LocusLobbyUI {
 	 * Speler kiest een type, dan krijgt hij 3 kaarten van dat type te zien, kiest er 1 gratis.
 	 */
 	_showRewardCardTypeChoice() {
+		// Remove any previously open overlay to avoid duplicates
+		const existing = document.getElementById('mp-reward-card-type-overlay');
+		if (existing) existing.remove();
+
+		// If the game already advanced past choosingGoals, skip
+		if (this.mp?.gameState?.phase === 'playing') {
+			this._onGameStarted(this.mp.gameState);
+			return;
+		}
+
 		const overlay = document.createElement('div');
 		overlay.id = 'mp-reward-card-type-overlay';
 		overlay.className = 'mp-rewarding-overlay';
@@ -7927,8 +7937,12 @@ class LocusLobbyUI {
 								const claim = await this.mp.claimFreeCard(cardId);
 								if (claim?.success) {
 									this._showToast(`${typeNames[type]} — kaart gekozen!`, 'success');
+								} else if (claim?.error) {
+									this._showToast(claim.error, 'error');
 								}
-							} catch (_) {}
+							} catch (e) {
+								this._showToast('Fout bij claimen: ' + (e.message || e), 'error');
+							}
 						}
 						this._showChosenGoalWaitingState();
 					});
