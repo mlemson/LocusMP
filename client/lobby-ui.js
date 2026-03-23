@@ -2820,10 +2820,10 @@ class LocusLobbyUI {
 			</div>
 		`;
 
-		// Build active perks HTML
+		// Build active perks HTML (hide in rewarding mode)
 		let perksHtml = '';
 		const Rules = window.LocusGameRules;
-		if (Rules?.PERK_BRANCHES && player.perks?.unlockedPerks?.length > 0) {
+		if (!this._isRewardingMode() && Rules?.PERK_BRANCHES && player.perks?.unlockedPerks?.length > 0) {
 			const allPerks = [];
 			for (const branch of Object.values(Rules.PERK_BRANCHES)) {
 				for (const perk of branch.perks) {
