@@ -614,6 +614,16 @@ class LocusMultiplayer {
 		}
 	}
 
+	/** Choose reward card type (golden/multikleur/steen) in rewarding mode */
+	async chooseRewardCardType(cardType) {
+		try {
+			return await this._emitWithAck('chooseRewardCardType', { cardType });
+		} catch (error) {
+			console.error('[Locus MP] Choose reward card type failed:', error);
+			throw error;
+		}
+	}
+
 	/** Gebruik een tijdbom op de huidige speler */
 	async useTimeBomb() {
 		try {

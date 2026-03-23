@@ -1789,6 +1789,29 @@ io.on('connection', (socket) => {
 		}
 	});
 
+	// ── CHOOSE REWARD CARD TYPE ───────────────────────────
+
+	socket.on('chooseRewardCardType', (data, callback) => {
+		try {
+			const info = socketToPlayer.get(socket.id);
+			if (!info) return callback({ success: false, error: 'Niet in een spel.' });
+
+			const gameState = games.get(info.gameId);
+			if (!gameState) return callback({ success: false, error: 'Spel niet gevonden.' });
+
+			const cardType = String(data.cardType || '');
+			const result = GameRules.chooseRewardCardType(gameState, info.playerId, cardType);
+			if (result.error) return callback({ success: false, error: result.error });
+
+			callback(result);
+			broadcastGameState(io, info.gameId);
+
+		} catch (error) {
+			console.error('[Locus] chooseRewardCardType error:', error);
+			callback({ success: false, error: error.message });
+		}
+	});
+
 	// ── SHOP READY ───────────────────────────
 
 	socket.on('shopReady', (data, callback) => {

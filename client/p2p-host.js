@@ -470,6 +470,14 @@ class LocusP2PHost {
 				break;
 			}
 
+			case 'chooseRewardCardType': {
+				if (!playerId) return;
+				const result = this.Rules.chooseRewardCardType(this.gameState, playerId, msg.cardType);
+				conn.send({ type: 'result', action: 'chooseRewardCardType', ...result });
+				this._broadcastState();
+				break;
+			}
+
 			case 'sellCard': {
 				if (!playerId) return;
 				const result = this.Rules.sellCard(this.gameState, playerId, msg.cardId);
@@ -789,6 +797,9 @@ class LocusP2PHost {
 				break;
 			case 'claimFreeCard':
 				result = this.Rules.claimFreeCard(this.gameState, playerId, data.cardId);
+				break;
+			case 'chooseRewardCardType':
+				result = this.Rules.chooseRewardCardType(this.gameState, playerId, data.cardType);
 				break;
 			case 'sellCard':
 				result = this.Rules.sellCard(this.gameState, playerId, data.cardId);
@@ -4011,6 +4022,7 @@ class LocusP2PGuest {
 	async startShopPhase() { return this._sendCommand('startShopPhase'); }
 	async buyShopItem(itemId, extra) { return this._sendCommand('buyShopItem', { itemId, extra }); }
 	async claimFreeCard(cardId) { return this._sendCommand('claimFreeCard', { cardId }); }
+	async chooseRewardCardType(cardType) { return this._sendCommand('chooseRewardCardType', { cardType }); }
 	async sellCard(cardId) { return this._sendCommand('sellCard', { cardId }); }
 	async choosePerk(perkId) { return this._sendCommand('choosePerk', { perkId }); }
 	async setShopReady() { return this._sendCommand('shopReady'); }
