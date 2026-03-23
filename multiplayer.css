@@ -653,6 +653,15 @@ html.theme-classic .mp-cell.stone {
 	border-color: #777 !important;
 	box-shadow: inset 0 1px 3px rgba(0,0,0,0.25) !important;
 }
+html.theme-classic .mp-zone-yellow .mp-cell.stone.active,
+html.theme-classic .mp-zone-green .mp-cell.stone.active,
+html.theme-classic .mp-zone-blue .mp-cell.stone.active,
+html.theme-classic .mp-zone-red .mp-cell.stone.active,
+html.theme-classic .mp-zone-purple .mp-cell.stone.active {
+	background: linear-gradient(135deg, #b8b8b8, #9a9a9a, #888) !important;
+	border-color: #777 !important;
+	box-shadow: inset 0 1px 3px rgba(0,0,0,0.25), 0 1px 2px rgba(0,0,0,0.1) !important;
+}
 
 /* Classic zone labels — dark text on pastel, matching singleplayer */
 html.theme-classic .mp-zone-label {
@@ -11106,6 +11115,22 @@ html.theme-reef .mp-zone-purple .mp-cell.active {
 	background: linear-gradient(145deg, rgba(190,140,240,0.85), rgba(170,120,220,0.75));
 	border-color: rgba(212,160,255,0.45);
 	box-shadow: inset 0 1px 2px rgba(0,0,0,0.15), 0 0 6px rgba(212,160,255,0.25);
+}
+
+/* ── Stone cells — ocean rock ── */
+html.theme-reef .mp-cell.stone {
+	background: linear-gradient(135deg, #7a8a8c, #667478, #556266) !important;
+	border-color: #506060 !important;
+	box-shadow: inset 0 2px 4px rgba(0,0,0,0.3), inset 0 -1px 2px rgba(255,255,255,0.08) !important;
+}
+html.theme-reef .mp-zone-yellow .mp-cell.stone.active,
+html.theme-reef .mp-zone-green .mp-cell.stone.active,
+html.theme-reef .mp-zone-blue .mp-cell.stone.active,
+html.theme-reef .mp-zone-red .mp-cell.stone.active,
+html.theme-reef .mp-zone-purple .mp-cell.stone.active {
+	background: linear-gradient(135deg, #7a8a8c, #667478, #556266) !important;
+	border-color: #506060 !important;
+	box-shadow: inset 0 2px 4px rgba(0,0,0,0.3), inset 0 -1px 2px rgba(255,255,255,0.08), 0 0 4px rgba(80,96,96,0.2) !important;
 }
 
 /* ── Bonus dots per zone ── */
