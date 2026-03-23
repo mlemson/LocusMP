@@ -5273,6 +5273,7 @@ function startNextLevel(gameState) {
 			player.perks.wildcardsUsedThisLevel = 0;
 			player.perks.activeMines = [];
 		}
+		delete player._rewardCardChosen;
 	}
 
 	// Nieuwe objective keuzes per level
@@ -5555,7 +5556,7 @@ const GameRules = {
 
 	// Shop & Levels
 	SHOP_ITEMS, getShopItems, getCardPrice, generateShopCardOfferings,
-	startShopPhase, buyShopItem, claimFreeCard, sellCard, getCardSellPrice,
+	startShopPhase, buyShopItem, claimFreeCard, chooseRewardCardType, sellCard, getCardSellPrice,
 	shopReady, startNextLevel, endGameFinal, useTimeBomb, useMine, stealCard, getStealableCards,
 
 	// Perks
