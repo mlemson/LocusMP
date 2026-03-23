@@ -5078,11 +5078,52 @@ class LocusLobbyUI {
 		if (zoneName === 'yellow') {
 			for (let x = 0; x < zoneData.cols; x++) {
 				let colComplete = true;
+				let hasCells = false;
 				for (let y = 0; y < zoneData.rows; y++) {
 					const c = zoneData.cells[`${x},${y}`];
-					if (!c?.active) { colComplete = false; break; }
+					if (!c) continue; // void cell — skip
+					hasCells = true;
+					if (!c.active) { colComplete = false; break; }
 				}
-				if (colComplete) yellowCompleteCols.add(x);
+				if (colComplete && hasCells) yellowCompleteCols.add(x);
+			}
+		}
+
+		// Pre-compute purple connected bold cells (union-find on active cells)
+		const purpleConnectedBolds = new Set();
+		if (zoneName === 'purple') {
+			const parent = {};
+			const find = (k) => { while (parent[k] !== k) { parent[k] = parent[parent[k]]; k = parent[k]; } return k; };
+			const unite = (a, b) => { const ra = find(a), rb = find(b); if (ra !== rb) parent[ra] = rb; };
+			// Initialize union-find for all active cells
+			for (const key in zoneData.cells) {
+				const c = zoneData.cells[key];
+				if (c?.active) parent[key] = key;
+			}
+			// Unite adjacent active cells
+			const dirs = [[0,1],[0,-1],[1,0],[-1,0]];
+			for (const key in parent) {
+				const [cx, cy] = key.split(',').map(Number);
+				for (const [dx, dy] of dirs) {
+					const nk = `${cx+dx},${cy+dy}`;
+					if (nk in parent) unite(key, nk);
+				}
+			}
+			// Group bold cells by cluster root
+			const clusterBolds = {};
+			for (const key in zoneData.cells) {
+				const c = zoneData.cells[key];
+				if (c?.active && c.flags?.includes('bold') && key in parent) {
+					const root = find(key);
+					if (!clusterBolds[root]) clusterBolds[root] = [];
+					clusterBolds[root].push(key);
+				}
+			}
+			// Mark bold cells that are connected to at least one other bold cell
+			for (const root in clusterBolds) {
+				if (clusterBolds[root].length >= 2) {
+					for (const k of clusterBolds[root]) purpleConnectedBolds.add(k);
+				}
 			}
 		}
 
@@ -5096,7 +5137,8 @@ class LocusLobbyUI {
 				}
 				gridHtml += this._renderCell(cell, zoneName, null, {
 					isBlueClaimedRow: zoneName === 'blue' && claimedBlueRows.has(cell.y),
-					isYellowColComplete: zoneName === 'yellow' && yellowCompleteCols.has(x)
+					isYellowColComplete: zoneName === 'yellow' && yellowCompleteCols.has(x),
+					isPurpleConnectedBold: zoneName === 'purple' && purpleConnectedBolds.has(`${x},${cell.y}`)
 				});
 			}
 		}
@@ -5134,13 +5176,17 @@ class LocusLobbyUI {
 				const pairIndex = Math.min(Math.floor(x / 2), yellowPairPoints.length - 1);
 				const points = yellowPairPoints[pairIndex];
 				let isComplete = true;
+				let hasCells = false;
 				for (let y = 0; y < zoneData.rows; y++) {
 					const c = zoneData.cells[`${x},${y}`];
-					if (!c?.active) {
+					if (!c) continue; // void
+					hasCells = true;
+					if (!c.active) {
 						isComplete = false;
 						break;
 					}
 				}
+				if (!hasCells) isComplete = false;
 				pointCells.push(`<div class="mp-yellow-col-point ${isComplete ? 'is-complete' : ''}" title="+${points} punten bij volle kolom">+${points}</div>`);
 			}
 			yellowColumnPointsHtml = `
@@ -5183,6 +5229,7 @@ class LocusLobbyUI {
 		if (meta.isYellowColComplete) classes.push('yellow-col-complete');
 		if (cell.flags.includes('bold')) classes.push('bold');
 		if (meta.isBlueClaimedRow && cell.flags.includes('bold')) classes.push('blue-bold-claimed');
+		if (meta.isPurpleConnectedBold) classes.push('purple-bold-connected');
 		if (cell.flags.includes('end')) classes.push('end');
 		// portal visuals disabled (unlock later)
 		// if (cell.flags.includes('portal')) classes.push('portal');
@@ -5229,6 +5276,18 @@ class LocusLobbyUI {
 		if (zoneName === 'green' && cell.flags.includes('end') && cell.active) {
 			const checkChar = document.documentElement.classList.contains('theme-classic') ? '' : '✓';
 			inner += `<span class="mp-green-end-check">${checkChar}</span>`;
+		}
+		if (zoneName === 'blue' && meta.isBlueClaimedRow && cell.flags.includes('bold') && cell.active) {
+			const checkChar = document.documentElement.classList.contains('theme-classic') ? '' : '✓';
+			inner += `<span class="mp-zone-check mp-blue-check">${checkChar}</span>`;
+		}
+		if (zoneName === 'purple' && meta.isPurpleConnectedBold) {
+			const checkChar = document.documentElement.classList.contains('theme-classic') ? '' : '✓';
+			inner += `<span class="mp-zone-check mp-purple-check">${checkChar}</span>`;
+		}
+		if (zoneName === 'yellow' && meta.isYellowColComplete && cell.active) {
+			const checkChar = document.documentElement.classList.contains('theme-classic') ? '' : '✓';
+			inner += `<span class="mp-zone-check mp-yellow-check">${checkChar}</span>`;
 		}
 		// portal indicators disabled (unlock later)
 		// if (cell.flags.includes('portal') && !cell.active) { ... }
@@ -6132,9 +6191,19 @@ class LocusLobbyUI {
 			// Auto-close if no perk points remain, otherwise re-open with updated state
 			const remainingPoints = this.mp.getMyPlayer?.()?.perks?.perkPoints || 0;
 			if (remainingPoints <= 0) {
+				// Re-render popup so user sees the last chosen perk highlighted
+				this._openPerkPopup(onClose);
+				// Disable all interactions during the 2s viewing period
 				const popupOverlay = document.getElementById('mp-perk-popup-overlay');
-				if (popupOverlay) popupOverlay.remove();
-				if (onClose) onClose();
+				if (popupOverlay) {
+					popupOverlay.style.pointerEvents = 'none';
+				}
+				// Keep popup visible for 2 seconds, then close
+				setTimeout(() => {
+					const ol = document.getElementById('mp-perk-popup-overlay');
+					if (ol) ol.remove();
+					if (onClose) onClose();
+				}, 2000);
 			} else {
 				this._openPerkPopup(onClose);
 			}

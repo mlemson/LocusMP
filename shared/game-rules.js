@@ -588,6 +588,42 @@ function generateBranchGrid(rows, cols, steps, splitChance, rng, options = {}) {
 		active.add(frontier[Math.floor(rng() * frontier.length)]);
 	}
 
+	// Enforce minimum spread (bounding box) by extending branches outward
+	const minSpreadX = Math.max(0, Number(options.minSpreadX || 0));
+	const minSpreadY = Math.max(0, Number(options.minSpreadY || 0));
+	if (minSpreadX > 0 || minSpreadY > 0) {
+		for (let attempt = 0; attempt < 300; attempt++) {
+			let minX = cols, maxX = 0, minY = rows, maxY = 0;
+			for (const key of active) {
+				const [ax, ay] = key.split(',').map(Number);
+				if (ax < minX) minX = ax;
+				if (ax > maxX) maxX = ax;
+				if (ay < minY) minY = ay;
+				if (ay > maxY) maxY = ay;
+			}
+			const spreadX = maxX - minX;
+			const spreadY = maxY - minY;
+			if (spreadX >= minSpreadX && spreadY >= minSpreadY) break;
+			// Add cells at frontier in the direction needing expansion
+			const frontier = [];
+			for (const key of active) {
+				const [ax, ay] = key.split(',').map(Number);
+				for (const [dx, dy] of dirs) {
+					const nx = ax + dx, ny = ay + dy;
+					if (nx < 0 || nx >= cols || ny < 0 || ny >= rows) continue;
+					const nkey = `${nx},${ny}`;
+					if (active.has(nkey)) continue;
+					// Prefer expanding in the direction that's too narrow
+					if (spreadX < minSpreadX && (dx !== 0)) frontier.push(nkey);
+					else if (spreadY < minSpreadY && (dy !== 0)) frontier.push(nkey);
+					else frontier.push(nkey);
+				}
+			}
+			if (frontier.length === 0) break;
+			active.add(frontier[Math.floor(rng() * frontier.length)]);
+		}
+	}
+
 	const cells = {};
 	for (const key of active) {
 		const [x, y] = key.split(',').map(Number);
@@ -773,12 +809,30 @@ function generateLevel1Board(rng, level, playerCount) {
 	// ══════════════════════════════════════════
 	//  YELLOW ZONE — Wereldafhankelijk + spelerafhankelijk
 	//  +1 rij per playerTier
+	//  Staircase: per kolommenpaar 1 rij langer (links kort, rechts lang)
 	// ══════════════════════════════════════════
+	function yellowStairVoids(cols, baseRows) {
+		const numPairs = Math.ceil(cols / 2);
+		const totalRows = baseRows + (numPairs - 1);
+		const voids = [];
+		for (let pairIdx = 0; pairIdx < numPairs; pairIdx++) {
+			const pairHeight = baseRows + pairIdx;
+			for (let y = pairHeight; y < totalRows; y++) {
+				voids.push({ x: pairIdx * 2, y });
+				if (pairIdx * 2 + 1 < cols) {
+					voids.push({ x: pairIdx * 2 + 1, y });
+				}
+			}
+		}
+		return { totalRows, voids };
+	}
+
 	if (world === 1) {
 		const yellowCols = 10;
-		const yellowRows = 5 + playerTier;
+		const yellowBaseRows = 5 + playerTier;
+		const { totalRows: yellowRows, voids: stairVoids } = yellowStairVoids(yellowCols, yellowBaseRows);
 		const yellowBold = [];
-		for (let y = 0; y < yellowRows; y++) {
+		for (let y = 0; y < yellowBaseRows; y++) {
 			yellowBold.push({ x: 0, y });
 		}
 		const yellowGold = [];
@@ -790,15 +844,17 @@ function generateLevel1Board(rng, level, playerCount) {
 		}
 		zones.yellow = createZoneGrid(yellowRows, yellowCols, {
 			boldCells: yellowBold,
-			goldCells: yellowGold
+			goldCells: yellowGold,
+			voidCells: stairVoids
 		});
 		placeGoldFlags(zones.yellow, rng, 2);
 		placeBonusSymbols(zones.yellow, rng, 4);
 	} else if (world === 2) {
 		const yellowCols = 13;
-		const yellowRows = 6 + playerTier;
+		const yellowBaseRows = 6 + playerTier;
+		const { totalRows: yellowRows, voids: stairVoids } = yellowStairVoids(yellowCols, yellowBaseRows);
 		const yellowBold = [];
-		for (let y = 0; y < yellowRows; y++) {
+		for (let y = 0; y < yellowBaseRows; y++) {
 			yellowBold.push({ x: 0, y });
 		}
 		const yellowGold = [];
@@ -810,19 +866,21 @@ function generateLevel1Board(rng, level, playerCount) {
 		}
 		zones.yellow = createZoneGrid(yellowRows, yellowCols, {
 			boldCells: yellowBold,
-			goldCells: yellowGold
+			goldCells: yellowGold,
+			voidCells: stairVoids
 		});
 		placeGoldFlags(zones.yellow, rng, 4);
 		placeBonusSymbols(zones.yellow, rng, 6);
 	} else {
 		const yellowCols = 14;
-		const yellowRows = 7 + playerTier;
+		const yellowBaseRows = 7 + playerTier;
+		const { totalRows: yellowRows, voids: stairVoids } = yellowStairVoids(yellowCols, yellowBaseRows);
 		const yellowBold = [];
-		for (let y = 0; y < yellowRows; y++) {
+		for (let y = 0; y < yellowBaseRows; y++) {
 			yellowBold.push({ x: 0, y });
 		}
 		// Bold cluster in midden
-		const midBY = Math.floor(yellowRows / 2);
+		const midBY = Math.floor(yellowBaseRows / 2);
 		yellowBold.push({ x: 5, y: midBY - 1 }, { x: 5, y: midBY }, { x: 6, y: midBY - 1 }, { x: 6, y: midBY });
 		const yellowGold = [];
 		for (let i = 0; i < 5; i++) {
@@ -831,19 +889,10 @@ function generateLevel1Board(rng, level, playerCount) {
 				y: Math.floor(rng() * yellowRows)
 			});
 		}
-		// Void cells in hoeken voor diamond-vorm
-		const yellowVoid = [];
-		const midY = Math.floor(yellowRows / 2);
-		for (let y = 0; y < yellowRows; y++) {
-			const dist = Math.abs(y - midY);
-			if (dist >= 3) {
-				yellowVoid.push({ x: yellowCols - 1, y });
-			}
-		}
 		zones.yellow = createZoneGrid(yellowRows, yellowCols, {
 			boldCells: yellowBold,
 			goldCells: yellowGold,
-			voidCells: yellowVoid
+			voidCells: stairVoids
 		});
 		placeGoldFlags(zones.yellow, rng, 5);
 		placeBonusSymbols(zones.yellow, rng, 7);
@@ -857,27 +906,30 @@ function generateLevel1Board(rng, level, playerCount) {
 	if (world === 1) {
 		const greenSize = 15 + playerTier;
 		const greenCenter = Math.floor(greenSize / 2);
-		zones.green = generateBranchGrid(greenSize, greenSize, 70 + playerTier * 10, 0.45, rng, {
+		zones.green = generateBranchGrid(greenSize, greenSize, 100 + playerTier * 12, 0.45, rng, {
 			endMinDistance: 3,
-			startX: greenCenter, startY: greenCenter, minEndCells: greenEndCells, minActiveCells: 25
+			startX: greenCenter, startY: greenCenter, minEndCells: greenEndCells, minActiveCells: 55,
+			minSpreadX: 7, minSpreadY: 7
 		});
 	} else if (world === 2) {
 		const greenRows = 20 + playerTier;
 		const greenCols = 18 + playerTier;
 		const greenCenterX = Math.floor(greenCols / 2);
 		const greenCenterY = Math.floor(greenRows / 2);
-		zones.green = generateBranchGrid(greenRows, greenCols, 140 + playerTier * 15, 0.35, rng, {
+		zones.green = generateBranchGrid(greenRows, greenCols, 180 + playerTier * 18, 0.35, rng, {
 			endMinDistance: 3,
-			startX: greenCenterX, startY: greenCenterY, minEndCells: greenEndCells, minActiveCells: 25
+			startX: greenCenterX, startY: greenCenterY, minEndCells: greenEndCells, minActiveCells: 80,
+			minSpreadX: 10, minSpreadY: 10
 		});
 	} else {
 		const greenRows = 24 + playerTier;
 		const greenCols = 22 + playerTier;
 		const greenCenterX = Math.floor(greenCols / 2);
 		const greenCenterY = Math.floor(greenRows / 2);
-		zones.green = generateBranchGrid(greenRows, greenCols, 200 + playerTier * 20, 0.55, rng, {
+		zones.green = generateBranchGrid(greenRows, greenCols, 260 + playerTier * 24, 0.55, rng, {
 			endMinDistance: 3,
-			startX: greenCenterX, startY: greenCenterY, minEndCells: greenEndCells, minActiveCells: 25
+			startX: greenCenterX, startY: greenCenterY, minEndCells: greenEndCells, minActiveCells: 120,
+			minSpreadX: 13, minSpreadY: 13
 		});
 	}
 
@@ -1748,11 +1800,14 @@ function scoreYellowData(zoneData) {
 	for (let x = 0; x < zoneData.cols; x++) {
 		if (hasStoneInYellowColumn(zoneData, x)) continue;
 		let colComplete = true;
+		let hasCells = false;
 		for (let y = 0; y < zoneData.rows; y++) {
 			const cell = getDataCell(zoneData, x, y);
-			if (!cell || !cell.active) { colComplete = false; break; }
+			if (!cell) continue; // void cell — skip
+			hasCells = true;
+			if (!cell.active) { colComplete = false; break; }
 		}
-		if (colComplete) {
+		if (colComplete && hasCells) {
 			const pairIndex = Math.min(
 				Math.floor(x / 2),
 				YELLOW_COLUMN_PAIR_POINTS.length - 1
@@ -2681,13 +2736,14 @@ function countPlayerCompletedYellowCols(boardState, playerId) {
 		let complete = true;
 		for (let y = 0; y < zone.rows; y++) {
 			const cell = getDataCell(zone, x, y);
-			if (!cell || !cell.active) {
+			if (!cell) continue; // void cell — skip
+			if (!cell.active) {
 				complete = false;
 				break;
 			}
 			colCells.push(cell);
 		}
-		if (!complete) continue;
+		if (!complete || colCells.length === 0) continue;
 		if (getLatestPlacerOwner(colCells) === playerId) count++;
 	}
 	return count;
