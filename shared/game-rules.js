@@ -5076,10 +5076,60 @@ function buyShopItem(gameState, playerId, itemId, extra) {
 	return { success: true };
 }
 
+/** Choose a reward card type (golden/multikleur/steen) in rewarding mode during goal phase */
+function chooseRewardCardType(gameState, playerId, cardType) {
+	if (!gameState.settings?.rewardingMode) return { error: 'Alleen in beloningsmodus' };
+	if (gameState.phase !== 'choosingGoals') return { error: 'Niet in doelstellingsfase' };
+	const player = gameState.players[playerId];
+	if (!player) return { error: 'Speler niet gevonden' };
+	if (player._pendingFreeChoices) return { error: 'Er is al een keuze actief' };
+	if (player._rewardCardChosen) return { error: 'Je hebt deze ronde al een kaart gekozen' };
+
+	const rng = createRNG(Date.now() + (playerId || '').length + 5555);
+	let choices = [];
+
+	if (cardType === 'golden') {
+		for (let i = 0; i < 3; i++) {
+			const deck = buildDeck(1, rng, { enableGolden: true, goldenChance: 1.0 });
+			deck[0].shopPrice = 0;
+			choices.push(deck[0]);
+		}
+	} else if (cardType === 'multikleur') {
+		for (let i = 0; i < 3; i++) {
+			const deck = buildDeck(1, rng, { enableMultikleur: true, multikleurChance: 1.0 });
+			deck[0].shopPrice = 0;
+			choices.push(deck[0]);
+		}
+	} else if (cardType === 'steen') {
+		const pick2 = STONE_SHAPES_2[Math.floor(rng() * STONE_SHAPES_2.length)];
+		const pick3 = STONE_SHAPES_3[Math.floor(rng() * STONE_SHAPES_3.length)];
+		const pick4 = STONE_SHAPES_4[Math.floor(rng() * STONE_SHAPES_4.length)];
+		[pick2, pick3, pick4].forEach((shape, i) => {
+			choices.push({
+				id: `reward-stone-${i}-${Math.floor(rng() * 100000)}`,
+				shapeName: shape.name,
+				matrix: cloneMatrix(shape.matrix),
+				category: 'stone',
+				color: { ...STONE_COLOR },
+				isStone: true,
+				rotation: 0,
+				mirrored: false,
+				shopPrice: 0
+			});
+		});
+	} else {
+		return { error: 'Ongeldig kaarttype' };
+	}
+
+	player._pendingFreeChoices = choices;
+	gameState.updatedAt = Date.now();
+	return { success: true, freeChoices: choices };
+}
+
 /** Claim a free card from the unlock popup (player picks 1 of 3) */
 function claimFreeCard(gameState, playerId, cardId) {
 	const rewardingMode = !!gameState.settings?.rewardingMode;
-	const validPhase = gameState.phase === 'shopping' || (rewardingMode && gameState.phase === 'levelComplete');
+	const validPhase = gameState.phase === 'shopping' || (rewardingMode && (gameState.phase === 'levelComplete' || gameState.phase === 'choosingGoals'));
 	if (!validPhase) return { error: 'Niet in shop fase' };
 	const player = gameState.players[playerId];
 	if (!player) return { error: 'Speler niet gevonden' };
