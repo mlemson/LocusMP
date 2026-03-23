@@ -122,57 +122,57 @@
 				🚀 Start Spel
 			</button>
 
-			<div class="mp-ai-controls" id="ai-controls" style="display:none;">
-				<div id="host-settings-block">
-					<div class="mp-divider"><span>Instellingen</span></div>
-					<div class="mp-settings-row">
-						<div class="mp-input-group" style="flex:1;">
-							<label for="map-size-select">Kaart</label>
-							<select id="map-size-select">
-								<option value="2">Klein</option>
-								<option value="4" selected>Middel</option>
-								<option value="6">Groot</option>
-								<option value="8">Mega</option>
-							</select>
-						</div>
-						<div class="mp-input-group" style="flex:1;">
-							<label for="cards-per-player-select">Kaarten</label>
-							<select id="cards-per-player-select">
-								<option value="4">4</option>
-								<option value="6">6</option>
-								<option value="8" selected>8</option>
-								<option value="10">10</option>
-								<option value="12">12</option>
-							</select>
-						</div>
+			<div id="host-settings-block" style="display:none;">
+				<div class="mp-divider"><span>Instellingen</span></div>
+				<div class="mp-settings-row">
+					<div class="mp-input-group" style="flex:1;">
+						<label for="map-size-select">Kaart</label>
+						<select id="map-size-select">
+							<option value="2">Klein</option>
+							<option value="4" selected>Middel</option>
+							<option value="6">Groot</option>
+							<option value="8">Mega</option>
+						</select>
 					</div>
-					<div class="mp-settings-row mp-toggle-row">
-						<label class="mp-toggle-label" for="timer-toggle">
-							<span>⏱️ Timer</span>
-							<div class="mp-toggle-switch">
-								<input type="checkbox" id="timer-toggle" checked>
-								<span class="mp-toggle-slider"></span>
-							</div>
-						</label>
-						<label class="mp-toggle-label" for="tutorial-toggle">
-							<span>📖 Tutorial</span>
-							<div class="mp-toggle-switch">
-								<input type="checkbox" id="tutorial-toggle">
-								<span class="mp-toggle-slider"></span>
-							</div>
-						</label>
-					</div>
-					<div class="mp-settings-row mp-toggle-row">
-						<label class="mp-toggle-label" for="rewarding-mode-toggle" title="Kies perks na elke ronde, zie je aflegstapel en ontvang beloningsoverzichten">
-							<span>🎁 Beloningsmodus</span>
-							<div class="mp-toggle-switch">
-								<input type="checkbox" id="rewarding-mode-toggle">
-								<span class="mp-toggle-slider"></span>
-							</div>
-						</label>
+					<div class="mp-input-group" style="flex:1;">
+						<label for="cards-per-player-select">Kaarten</label>
+						<select id="cards-per-player-select">
+							<option value="4">4</option>
+							<option value="6">6</option>
+							<option value="8" selected>8</option>
+							<option value="10">10</option>
+							<option value="12">12</option>
+						</select>
 					</div>
 				</div>
+				<div class="mp-settings-row mp-toggle-row">
+					<label class="mp-toggle-label" for="timer-toggle">
+						<span>⏱️ Timer</span>
+						<div class="mp-toggle-switch">
+							<input type="checkbox" id="timer-toggle" checked>
+							<span class="mp-toggle-slider"></span>
+						</div>
+					</label>
+					<label class="mp-toggle-label" for="tutorial-toggle">
+						<span>📖 Tutorial</span>
+						<div class="mp-toggle-switch">
+							<input type="checkbox" id="tutorial-toggle">
+							<span class="mp-toggle-slider"></span>
+						</div>
+					</label>
+				</div>
+				<div class="mp-settings-row mp-toggle-row">
+					<label class="mp-toggle-label" for="rewarding-mode-toggle" title="Kies perks na elke ronde, zie je aflegstapel en ontvang beloningsoverzichten">
+						<span>🎁 Beloningsmodus</span>
+						<div class="mp-toggle-switch">
+							<input type="checkbox" id="rewarding-mode-toggle">
+							<span class="mp-toggle-slider"></span>
+						</div>
+					</label>
+				</div>
+			</div>
 
+			<div class="mp-ai-controls" id="ai-controls" style="display:none;">
 				<div class="mp-divider"><span>Bots</span></div>
 				<div class="mp-bot-row">
 					<button id="add-ai-btn" class="mp-btn mp-btn-secondary">

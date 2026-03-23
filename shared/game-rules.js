@@ -983,12 +983,12 @@ function generateLevel1Board(rng, level, playerCount, maxWins) {
 		for (let y = 0; y < height; y++) {
 			// Nooit voids op bold-rijen — die moeten volledig zijn
 			if (boldRowSet.has(y)) continue;
-			// ~60% kans op een void op niet-bold rijen
-			if (rng() < 0.6) {
+			// ~70% kans op een void op niet-bold rijen
+			if (rng() < 0.7) {
 				const x = side === 0 ? 0 : width - 1;
 				voids.push({ x, y });
 				// Soms diepere inkeping (2e cel ook void) bij brede grids
-				if (width >= 7 && rng() < 0.2) {
+				if (width >= 5 && rng() < 0.35) {
 					const x2 = side === 0 ? 1 : width - 2;
 					voids.push({ x: x2, y });
 				}
@@ -1003,7 +1003,7 @@ function generateLevel1Board(rng, level, playerCount, maxWins) {
 	}
 
 	if (world === 1) {
-		const blueWidth = 5 + playerTier;
+		const blueWidth = 4 + playerTier;
 		const blueHeight = 26; // +5 rijen (was 21)
 		const blueBoldRows = [];
 		for (let r = 0; r < blueHeight; r += 5) { blueBoldRows.push(r); }
@@ -1027,7 +1027,7 @@ function generateLevel1Board(rng, level, playerCount, maxWins) {
 		placeGoldFlags(zones.blue, rng, 2);
 		placeBonusSymbols(zones.blue, rng, 3, { excludeColor: 'blue' });
 	} else if (world === 2) {
-		const blueWidth = 6 + playerTier;
+		const blueWidth = 5 + playerTier;
 		const blueHeight = 52; // 2x W1 hoogte
 		const blueBoldRows = [];
 		for (let r = 0; r < blueHeight; r += 6) { blueBoldRows.push(r); }
@@ -1051,7 +1051,7 @@ function generateLevel1Board(rng, level, playerCount, maxWins) {
 		placeGoldFlags(zones.blue, rng, 4);
 		placeBonusSymbols(zones.blue, rng, 5, { excludeColor: 'blue' });
 	} else {
-		const blueWidth = 7 + playerTier;
+		const blueWidth = 6 + playerTier;
 		const blueHeight = 78; // 3x W1 hoogte
 		const blueBoldRows = [];
 		for (let r = 0; r < blueHeight; r += 7) { blueBoldRows.push(r); }

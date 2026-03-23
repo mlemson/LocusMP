@@ -239,7 +239,7 @@ class LocusLobbyUI {
 			'results-container', 'play-again-btn',
 			'shop-container', 'shop-ready-btn',
 			'tv-cast-btn', 'tv-cast-game-btn',
-			'add-ai-btn', 'ai-difficulty-select', 'ai-controls'
+			'add-ai-btn', 'ai-difficulty-select', 'ai-controls', 'host-settings-block'
 		];
 		for (const id of ids) {
 			this.elements[id] = document.getElementById(id);
@@ -1415,6 +1415,10 @@ class LocusLobbyUI {
 
 		const startBtn = this.elements['start-game-btn'];
 		if (startBtn) startBtn.style.display = isHost ? 'block' : 'none';
+
+		// Show host settings (map, cards, toggles) for host
+		const hostSettings = this.elements['host-settings-block'];
+		if (hostSettings) hostSettings.style.display = isHost ? 'block' : 'none';
 
 		// Show add-AI controls for host
 		const aiControls = this.elements['ai-controls'];
