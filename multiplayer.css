@@ -13479,3 +13479,427 @@ html.theme-reef .mp-zone-yellow .mp-cell.active.yellow-col-complete {
 		font-size: 1.3rem;
 	}
 }
+
+/* ============================================================
+   SHOP POLISH — Enhanced satisfaction & visuals
+   ============================================================ */
+
+.mp-shop-header {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 10px;
+	margin-bottom: 12px;
+}
+
+.mp-shop-header-icon {
+	font-size: 2rem;
+	animation: shopIconBounce 0.6s ease-out;
+}
+
+@keyframes shopIconBounce {
+	0% { transform: scale(0) rotate(-90deg); }
+	60% { transform: scale(1.15) rotate(5deg); }
+	100% { transform: scale(1) rotate(0); }
+}
+
+.mp-shop-title {
+	font-size: 1.4rem;
+	margin: 0;
+	background: linear-gradient(135deg, var(--mp-gold), var(--mp-secondary));
+	-webkit-background-clip: text;
+	-webkit-text-fill-color: transparent;
+	background-clip: text;
+}
+
+.mp-shop-gold {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 8px;
+	padding: 12px 18px;
+	border-radius: 12px;
+	background: linear-gradient(135deg, rgba(245,215,110,0.12), rgba(255,143,111,0.08));
+	border: 1px solid rgba(245,215,110,0.2);
+	margin-bottom: 24px;
+}
+
+.mp-shop-gold-icon {
+	font-size: 1.5rem;
+	animation: coinSpin 2s ease-in-out infinite;
+}
+
+@keyframes coinSpin {
+	0%, 100% { transform: rotateY(0deg); }
+	50% { transform: rotateY(180deg); }
+}
+
+.mp-shop-gold-amount {
+	font-size: 1.6rem;
+	font-weight: 800;
+	color: var(--mp-gold);
+}
+
+.mp-shop-gold-label {
+	font-size: 0.85rem;
+	color: var(--mp-text-dim);
+}
+
+/* Card offerings enhanced */
+.mp-shop-offering {
+	transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+	animation: shopCardReveal 0.4s ease-out backwards;
+}
+
+.mp-shop-offering:nth-child(1) { animation-delay: 0.05s; }
+.mp-shop-offering:nth-child(2) { animation-delay: 0.1s; }
+.mp-shop-offering:nth-child(3) { animation-delay: 0.15s; }
+
+@keyframes shopCardReveal {
+	from { opacity: 0; transform: translateY(12px) scale(0.92); }
+	to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.mp-shop-offering:not(.sold):not(.cant-afford):hover {
+	transform: translateY(-4px) scale(1.04);
+	box-shadow: 0 12px 28px rgba(245,215,110,0.18);
+}
+
+.mp-shop-offering.sold {
+	position: relative;
+}
+
+.mp-shop-offering-sold-label {
+	animation: soldCheck 0.4s ease-out;
+}
+
+@keyframes soldCheck {
+	0% { transform: scale(0); }
+	60% { transform: scale(1.15); }
+	100% { transform: scale(1); }
+}
+
+/* Shop items enhanced */
+.mp-shop-item {
+	transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+	position: relative;
+	overflow: hidden;
+	animation: shopItemSlide 0.4s ease-out backwards;
+}
+
+.mp-shop-item:nth-child(1) { animation-delay: 0.2s; }
+.mp-shop-item:nth-child(2) { animation-delay: 0.25s; }
+.mp-shop-item:nth-child(3) { animation-delay: 0.3s; }
+.mp-shop-item:nth-child(4) { animation-delay: 0.35s; }
+.mp-shop-item:nth-child(5) { animation-delay: 0.4s; }
+.mp-shop-item:nth-child(6) { animation-delay: 0.45s; }
+
+@keyframes shopItemSlide {
+	from { opacity: 0; transform: translateX(-16px); }
+	to { opacity: 1; transform: translateX(0); }
+}
+
+.mp-shop-item:hover:not(:disabled):not(.cant-afford) {
+	transform: translateY(-2px);
+	box-shadow: 0 8px 24px rgba(245,215,110,0.15);
+}
+
+.mp-shop-item::before {
+	content: '';
+	position: absolute;
+	inset: 0;
+	background: linear-gradient(90deg, transparent, rgba(245,215,110,0.06), transparent);
+	transform: translateX(-100%);
+	transition: transform 0.5s;
+}
+
+.mp-shop-item:hover::before {
+	transform: translateX(100%);
+}
+
+.mp-shop-unlock {
+	border-color: rgba(245,215,110,0.3) !important;
+	background: linear-gradient(145deg, rgba(245,215,110,0.06), rgba(255,143,111,0.04)) !important;
+}
+
+.mp-shop-unlock::after {
+	content: '🔓';
+	position: absolute;
+	top: -6px;
+	right: -4px;
+	font-size: 1.2rem;
+	filter: drop-shadow(0 2px 6px rgba(0,0,0,0.5));
+}
+
+.mp-shop-icon {
+	font-size: 2rem;
+	flex-shrink: 0;
+	transition: transform 0.3s ease;
+}
+
+.mp-shop-item:hover .mp-shop-icon {
+	transform: scale(1.2) rotate(-5deg);
+}
+
+/* Sparkle particles for purchase effects */
+.mp-shop-sparkle {
+	position: fixed;
+	font-size: 1.2rem;
+	pointer-events: none;
+	z-index: 99999;
+	animation: shopSparkle 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+}
+
+@keyframes shopSparkle {
+	0% { transform: translate(0, 0) scale(1); opacity: 1; }
+	100% { transform: translate(var(--dx, 30px), var(--dy, -40px)) scale(0); opacity: 0; }
+}
+
+/* Bought cards section enhanced */
+.mp-shop-bought {
+	margin-bottom: 20px;
+	background: rgba(255,255,255,0.03);
+	border-radius: 12px;
+	padding: 14px;
+	border: 1px solid rgba(255,255,255,0.06);
+}
+
+.mp-shop-bought h3 {
+	font-size: 0.9rem;
+	margin: 0 0 10px;
+	color: var(--mp-text-dim);
+}
+
+.mp-shop-bought-cards {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 6px;
+}
+
+.mp-shop-bought-card {
+	animation: boughtCardPop 0.3s ease-out;
+	padding: 4px 10px;
+	border-radius: 6px;
+	font-size: 0.78rem;
+	font-weight: 600;
+	color: #fff;
+	text-shadow: 0 1px 3px rgba(0,0,0,0.4);
+}
+
+@keyframes boughtCardPop {
+	0% { transform: scale(0); }
+	70% { transform: scale(1.1); }
+	100% { transform: scale(1); }
+}
+
+/* ============================================================
+   GOAL / DECK CHOICE SCREENS — Enhanced visuals
+   ============================================================ */
+
+/* Section titles for goal screen */
+.mp-section-title {
+	font-size: 1.4rem;
+	font-weight: 800;
+	margin-bottom: 6px;
+	background: linear-gradient(135deg, var(--mp-secondary), var(--mp-tertiary));
+	-webkit-background-clip: text;
+	-webkit-text-fill-color: transparent;
+	background-clip: text;
+}
+
+.mp-section-subtitle {
+	font-size: 0.88rem;
+	color: var(--mp-text-dim);
+	margin-bottom: 20px;
+	opacity: 0.8;
+}
+
+/* Goal cards enhanced */
+.mp-goal-card {
+	background: linear-gradient(160deg, rgba(35,15,45,0.8), rgba(24,7,30,0.7));
+	border: 2px solid rgba(166,140,255,0.12);
+	border-radius: 14px;
+	padding: 18px 20px;
+	cursor: pointer;
+	text-align: left;
+	color: var(--mp-text);
+	transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+	position: relative;
+	overflow: hidden;
+	animation: goalCardReveal 0.45s ease-out backwards;
+}
+
+.mp-goal-card:nth-child(1) { animation-delay: 0.05s; }
+.mp-goal-card:nth-child(2) { animation-delay: 0.12s; }
+.mp-goal-card:nth-child(3) { animation-delay: 0.19s; }
+.mp-goal-card:nth-child(4) { animation-delay: 0.26s; }
+
+@keyframes goalCardReveal {
+	from { opacity: 0; transform: translateY(16px) scale(0.96); }
+	to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.mp-goal-card::before {
+	content: '';
+	position: absolute;
+	inset: 0;
+	background: linear-gradient(135deg, transparent 40%, rgba(166,140,255,0.04) 100%);
+	pointer-events: none;
+}
+
+.mp-goal-card:hover:not(:disabled) {
+	border-color: rgba(255,143,111,0.45);
+	transform: translateY(-4px) scale(1.01);
+	box-shadow: 0 12px 32px rgba(255,143,111,0.18), 0 0 0 1px rgba(255,143,111,0.1);
+}
+
+.mp-goal-card.selected {
+	border-color: var(--mp-success);
+	background: linear-gradient(160deg, rgba(91,232,180,0.12), rgba(24,7,30,0.8));
+	box-shadow: 0 0 24px rgba(91,232,180,0.15), inset 0 0 40px rgba(91,232,180,0.04);
+	transform: scale(1.02);
+}
+
+.mp-goal-card.selected::after {
+	content: '✓';
+	position: absolute;
+	top: 10px;
+	right: 14px;
+	font-size: 1.3rem;
+	font-weight: 900;
+	color: var(--mp-success);
+	animation: goalCheckPop 0.35s ease-out;
+}
+
+@keyframes goalCheckPop {
+	0% { transform: scale(0) rotate(-45deg); opacity: 0; }
+	60% { transform: scale(1.2) rotate(5deg); }
+	100% { transform: scale(1) rotate(0deg); opacity: 1; }
+}
+
+.mp-goal-name {
+	font-weight: 800;
+	font-size: 1.08rem;
+	margin-bottom: 6px;
+	letter-spacing: -0.2px;
+}
+
+.mp-goal-desc {
+	font-size: 0.86rem;
+	color: var(--mp-text-dim);
+	line-height: 1.45;
+}
+
+.mp-goal-rewards {
+	margin-top: 10px;
+}
+
+.mp-goal-reward-badge {
+	font-size: 0.84rem;
+	font-weight: 700;
+	padding: 4px 12px;
+	border-radius: 999px;
+	display: inline-flex;
+	align-items: center;
+	gap: 5px;
+	animation: badgePop 0.3s ease-out backwards;
+}
+
+.mp-goal-reward-badge:nth-child(1) { animation-delay: 0.2s; }
+.mp-goal-reward-badge:nth-child(2) { animation-delay: 0.3s; }
+.mp-goal-reward-badge:nth-child(3) { animation-delay: 0.4s; }
+
+@keyframes badgePop {
+	from { transform: scale(0); }
+	to { transform: scale(1); }
+}
+
+/* Startdeck picker enhanced */
+.mp-startdeck-modal {
+	background: linear-gradient(160deg, rgba(60,33,70,0.95), rgba(30,12,40,0.97));
+	border: 1px solid rgba(166,140,255,0.2);
+	box-shadow: 0 24px 64px rgba(0,0,0,0.55), 0 0 40px rgba(166,140,255,0.08);
+}
+
+.mp-startdeck-title {
+	font-size: 1.2rem;
+	font-weight: 800;
+	background: linear-gradient(135deg, var(--mp-secondary), var(--mp-tertiary));
+	-webkit-background-clip: text;
+	-webkit-text-fill-color: transparent;
+	background-clip: text;
+}
+
+.mp-startdeck-card {
+	border: 2px solid rgba(255,255,255,0.1);
+	background: linear-gradient(160deg, rgba(255,255,255,0.05), rgba(255,255,255,0.02));
+	transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+	animation: deckCardReveal 0.4s ease-out backwards;
+	position: relative;
+	overflow: hidden;
+}
+
+.mp-startdeck-card:nth-child(1) { animation-delay: 0.05s; }
+.mp-startdeck-card:nth-child(2) { animation-delay: 0.12s; }
+.mp-startdeck-card:nth-child(3) { animation-delay: 0.19s; }
+
+@keyframes deckCardReveal {
+	from { opacity: 0; transform: translateY(20px) scale(0.92); }
+	to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.mp-startdeck-card:hover {
+	border-color: rgba(113,146,219,0.5);
+	transform: translateY(-5px) scale(1.02);
+	box-shadow: 0 14px 32px rgba(113,146,219,0.2);
+	background: linear-gradient(160deg, rgba(113,146,219,0.12), rgba(113,146,219,0.04));
+}
+
+.mp-startdeck-card.selected {
+	border-color: rgba(113,146,219,0.8);
+	background: linear-gradient(160deg, rgba(113,146,219,0.22), rgba(113,146,219,0.1));
+	box-shadow: 0 12px 28px rgba(113,146,219,0.35), inset 0 0 30px rgba(113,146,219,0.05);
+}
+
+.mp-startdeck-card.selected::after {
+	content: '✓';
+	position: absolute;
+	top: 8px;
+	right: 10px;
+	font-size: 1.1rem;
+	font-weight: 900;
+	color: #7192db;
+	animation: goalCheckPop 0.35s ease-out;
+}
+
+.mp-startdeck-icon {
+	width: 34px;
+	height: 34px;
+	border-radius: 10px;
+	font-size: 1.15rem;
+	background: linear-gradient(135deg, rgba(255,255,255,0.1), rgba(255,255,255,0.04));
+	border: 1px solid rgba(255,255,255,0.15);
+	transition: transform 0.3s ease;
+}
+
+.mp-startdeck-card:hover .mp-startdeck-icon {
+	transform: scale(1.15) rotate(-5deg);
+}
+
+.mp-startdeck-name {
+	font-size: 1rem;
+	font-weight: 800;
+	letter-spacing: -0.2px;
+}
+
+.mp-startdeck-meta {
+	background: linear-gradient(135deg, rgba(113,146,219,0.18), rgba(113,146,219,0.1));
+	border: 1px solid rgba(113,146,219,0.3);
+	font-weight: 700;
+	font-size: 0.74rem;
+	transition: background 0.3s ease;
+}
+
+.mp-startdeck-card:hover .mp-startdeck-meta {
+	background: linear-gradient(135deg, rgba(113,146,219,0.28), rgba(113,146,219,0.15));
+}
