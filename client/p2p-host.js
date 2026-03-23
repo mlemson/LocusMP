@@ -2985,6 +2985,7 @@ class LocusP2PHost {
 			addIfAvailable('flex_gap_red', 8);
 			addIfAvailable('flex_rotate', 8);
 			addIfAvailable('bonus_multi_double', 8);
+			addIfAvailable('flex_extra_card', 9);
 			// Bonus perks at lower weight for aggressive
 			const colorPerks = ['bonus_yellow', 'bonus_red', 'bonus_green', 'bonus_purple', 'bonus_blue'];
 			for (const cp of colorPerks) {
@@ -3016,6 +3017,7 @@ class LocusP2PHost {
 			addIfAvailable('flex_gap_red', 7 + (colorCounts.red >= 2 ? 5 : 0));
 			addIfAvailable('flex_wildcard', 10);
 			addIfAvailable('flex_double_coins', 9);
+			addIfAvailable('flex_extra_card', 10);
 
 			// Aggressive perks at lower weight for normal bots
 			if (Math.random() < 0.35) addIfAvailable('agg_mine', 1);

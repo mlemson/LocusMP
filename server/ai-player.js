@@ -572,6 +572,7 @@ function choosePerk(gameState, playerId, personality) {
 		if (available.find(p => p.id === 'flex_gap_red')) candidates.push({ id: 'flex_gap_red', weight: 7 + (colorProfile.red >= 2 ? 5 : 0) });
 		if (available.find(p => p.id === 'flex_wildcard')) candidates.push({ id: 'flex_wildcard', weight: 10 });
 		if (available.find(p => p.id === 'flex_double_coins')) candidates.push({ id: 'flex_double_coins', weight: 9 });
+		if (available.find(p => p.id === 'flex_extra_card')) candidates.push({ id: 'flex_extra_card', weight: 10 });
 
 		// Aggressive perks (lower weight for normal bots — skip agg_stone entirely)
 		if (available.find(p => p.id === 'agg_mine') && Math.random() < 0.35) candidates.push({ id: 'agg_mine', weight: 1 });
