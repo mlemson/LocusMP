@@ -8084,6 +8084,20 @@ class LocusLobbyUI {
 			}
 		}
 
+		// Reward unlocks (auto-granted in rewarding mode)
+		const rewardQueue = myPlayer?._rewardUnlockQueue || [];
+		const unlockLabels = {
+			'unlock-golden': { icon: '✨', name: 'Gouden Kaarten Ontgrendeld!', desc: 'Wildcards die in elke zone passen — kies straks 1 van 3' },
+			'unlock-multikleur': { icon: '🌈', name: 'Multikleur Kaarten Ontgrendeld!', desc: 'Regenboogkaarten voor elke zone — kies straks 1 van 3' },
+			'unlock-steen': { icon: '🪨', name: 'Steen Vormen Ontgrendeld!', desc: 'Blokkeer tegenstanders met stenen — kies straks 1 van 3' }
+		};
+		for (const entry of rewardQueue) {
+			const lbl = unlockLabels[entry.type];
+			if (lbl) {
+				items.push({ icon: lbl.icon, name: lbl.name, description: lbl.desc });
+			}
+		}
+
 		if (items.length === 0) { if (onDone) onDone(); return; }
 
 		const overlay = document.createElement('div');
