@@ -1577,7 +1577,7 @@ class LocusLobbyUI {
 			const isChoosingGoals = this.mp?.gameState?.phase === 'choosingGoals';
 			const hasChosenObjective = !!this.mp?.getMyPlayer?.()?.chosenObjective;
 			const perkPoints = this.mp?.getMyPlayer?.()?.perks?.perkPoints || 0;
-			const canStillChoosePerks = isChoosingGoals && perkPoints > 0;
+			const canStillChoosePerks = !this._isRewardingMode() && isChoosingGoals && perkPoints > 0;
 			const canFinalizeGoalPhase = isChoosingGoals && hasChosenObjective;
 			container.innerHTML = `
 				<h2 class="mp-section-title">Doelstelling gekozen!</h2>
