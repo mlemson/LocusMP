@@ -1620,9 +1620,14 @@ class LocusLobbyUI {
 		if (currentPhase && currentPhase !== 'choosingGoals') {
 			return;
 		}
-		// In beloningsmodus: skip perks in goal phase (unlocks komen na level complete)
+		// In beloningsmodus: toon kaarttype-keuze i.p.v. perks
 		if (this._isRewardingMode()) {
-			this._showChosenGoalWaitingState();
+			const myPlayer = this.mp.getMyPlayer?.();
+			if (myPlayer?._rewardCardChosen) {
+				this._showChosenGoalWaitingState();
+				return;
+			}
+			this._showRewardCardTypeChoice();
 			return;
 		}
 		const myPlayer = this.mp.getMyPlayer?.();
