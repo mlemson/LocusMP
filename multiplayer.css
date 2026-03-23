@@ -814,13 +814,13 @@ html.theme-classic .mp-cell-bonus-dot {
 	box-shadow: none;
 	opacity: 1;
 }
-html.theme-classic .mp-cell.bonus-yellow .mp-cell-bonus-dot { background-color: #FF8C00 !important; }
-html.theme-classic .mp-cell.bonus-green .mp-cell-bonus-dot { background-color: #00A86B !important; }
-html.theme-classic .mp-cell.bonus-blue .mp-cell-bonus-dot { background-color: #1E90FF !important; }
-html.theme-classic .mp-cell.bonus-red .mp-cell-bonus-dot { background-color: #DC143C !important; }
-html.theme-classic .mp-cell.bonus-purple .mp-cell-bonus-dot { background-color: #9B30FF !important; }
+html.theme-classic .mp-cell.bonus-yellow .mp-cell-bonus-dot { background-color: #cfba51 !important; }
+html.theme-classic .mp-cell.bonus-green .mp-cell-bonus-dot { background-color: #92c28c !important; }
+html.theme-classic .mp-cell.bonus-blue .mp-cell-bonus-dot { background-color: #5689b0 !important; }
+html.theme-classic .mp-cell.bonus-red .mp-cell-bonus-dot { background-color: #b56069 !important; }
+html.theme-classic .mp-cell.bonus-purple .mp-cell-bonus-dot { background-color: #8f76b8 !important; }
 html.theme-classic .mp-cell.bonus-any .mp-cell-bonus-dot {
-	background: linear-gradient(135deg, #FF8C00 0%, #00A86B 24%, #1E90FF 48%, #DC143C 72%, #9B30FF 100%) !important;
+	background: linear-gradient(135deg, #cfba51 0%, #92c28c 24%, #5689b0 48%, #b56069 72%, #8f76b8 100%) !important;
 	border: calc(var(--mp-cell-size, 20px) * 0.08) solid #444 !important;
 	box-shadow: none;
 }

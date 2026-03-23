@@ -375,6 +375,7 @@ class LocusP2PHost {
 
 			case 'playBonus': {
 				if (!playerId) return;
+				const bonusPlayerName = this.gameState?.players?.[playerId]?.name || 'Speler';
 				const result = this.Rules.playBonus(
 					this.gameState, playerId, msg.bonusColor, msg.zoneName,
 					msg.baseX, msg.baseY, msg.subgridId || null, msg.rotation || 0
@@ -382,6 +383,21 @@ class LocusP2PHost {
 				conn.send({ type: 'result', action: 'playBonus', ...result });
 				if (result.success) {
 					this._grantExtraTurnTime(playerId, 5000);
+					this._broadcastEvent('movePlayed', {
+						playerId,
+						playerName: bonusPlayerName,
+						zoneName: msg.zoneName,
+						baseX: msg.baseX,
+						baseY: msg.baseY,
+						rotation: msg.rotation || 0,
+						mirrored: false,
+						subgridId: msg.subgridId || null,
+						matrix: null,
+						goldCollected: result.goldCollected || 0,
+						bonusesCollected: result.bonusesCollected || [],
+						pearlsCollected: 0,
+						isBonusPlay: true
+					});
 				}
 				this._broadcastState();
 				break;
@@ -716,7 +732,24 @@ class LocusP2PHost {
 			case 'playBonus':
 				result = this.Rules.playBonus(this.gameState, playerId, data.bonusColor, data.zoneName,
 					data.baseX, data.baseY, data.subgridId || null, data.rotation || 0);
-				if (result.success) this._grantExtraTurnTime(playerId, 5000);
+				if (result.success) {
+					this._grantExtraTurnTime(playerId, 5000);
+					this._broadcastEvent('movePlayed', {
+						playerId,
+						playerName: this.gameState?.players?.[playerId]?.name || 'Host',
+						zoneName: data.zoneName,
+						baseX: data.baseX,
+						baseY: data.baseY,
+						rotation: data.rotation || 0,
+						mirrored: false,
+						subgridId: data.subgridId || null,
+						matrix: null,
+						goldCollected: result.goldCollected || 0,
+						bonusesCollected: result.bonusesCollected || [],
+						pearlsCollected: 0,
+						isBonusPlay: true
+					});
+				}
 				break;
 			case 'passMove':
 				this._clearTimer();
@@ -1780,6 +1813,19 @@ class LocusP2PHost {
 							if (bonusResult) {
 								const zl = {yellow:'Geel',green:'Groen',blue:'Blauw',red:'Rood',purple:'Paars',any:'Multi'};
 								console.log(`[AI ${playerName}] 🎁 Bonus gespeeld: ${action.bonusColor} op ${bonusResult.zoneName}`);
+								this._broadcastEvent('movePlayed', {
+									playerId,
+									playerName,
+									zoneName: bonusResult.zoneName,
+									baseX: bonusResult.baseX,
+									baseY: bonusResult.baseY,
+									subgridId: bonusResult.subgridId,
+									matrix: null,
+									goldCollected: bonusResult.goldCollected || 0,
+									bonusesCollected: bonusResult.bonusesCollected || [],
+									pearlsCollected: 0,
+									isBonusPlay: true
+								});
 								this._broadcastEvent('botActivity', {
 									playerId, playerName,
 									text: `🎁 Bonus ${zl[action.bonusColor]||action.bonusColor} → ${zl[bonusResult.zoneName]||bonusResult.zoneName}`
@@ -2857,7 +2903,14 @@ class LocusP2PHost {
 			console.log(`[AI] Bonus ${bonusColor} mislukt: ${result.error}`);
 			return null;
 		}
-		return { zoneName: bestPlacement.zoneName };
+		return {
+			zoneName: bestPlacement.zoneName,
+			baseX: bestPlacement.baseX,
+			baseY: bestPlacement.baseY,
+			subgridId: bestPlacement.subgridId || null,
+			goldCollected: result.goldCollected || 0,
+			bonusesCollected: result.bonusesCollected || []
+		};
 	}
 
 	/** Returns preview data for the best bonus placement without executing it */
@@ -3675,6 +3728,7 @@ class LocusP2PHost {
 	_startTimerForPlayer(playerId, durationMs) {
 		this._clearTimer();
 		if (!this.gameState || this.gameState.phase !== 'playing') return;
+		if (this.gameState.settings?.timerEnabled === false) return;
 		if (!playerId) return;
 
 		const duration = Math.max(1, Number(durationMs) || this._turnTimerDuration);

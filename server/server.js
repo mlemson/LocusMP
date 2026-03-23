@@ -78,6 +78,7 @@ function _startTurnTimer(gameId, playerId, durationMs = TURN_TIMER_MS) {
 	_clearTurnTimer(gameId);
 	const gameState = games.get(gameId);
 	if (!gameState) return;
+	if (gameState.settings?.timerEnabled === false) return;
 	const duration = Math.max(1, Number(durationMs) || TURN_TIMER_MS);
 	gameState._turnTimerStart = Date.now();
 	gameState._turnTimerDurationMs = duration;
@@ -808,6 +809,19 @@ function executeAITurn(gameId, aiPlayerId) {
 					console.log(`[Locus AI] ${player.name} bonus mislukt: ${bonusResult.error}`);
 				} else {
 					console.log(`[Locus AI] ${player.name} speelde ${action.bonusColor} bonus op ${best.zoneName}`);
+					io.to(gameId).emit('movePlayed', {
+						playerId: aiPlayerId,
+						playerName: player.name,
+						zoneName: best.zoneName,
+						baseX: best.baseX,
+						baseY: best.baseY,
+						subgridId: best.subgridId || null,
+						matrix: null,
+						goldCollected: bonusResult.goldCollected || 0,
+						bonusesCollected: bonusResult.bonusesCollected || [],
+						pearlsCollected: 0,
+						isBonusPlay: true
+					});
 					// Check for bonus chaining: if placement earned new bonus charges, queue them
 					const invAfter = gs2.players[aiPlayerId]?.bonusInventory || {};
 					const colors = ['yellow', 'red', 'green', 'purple', 'blue', 'any'];
