@@ -8133,6 +8133,100 @@ class LocusLobbyUI {
 		overlay.querySelector('.mp-rewards-continue-btn')?.addEventListener('click', close);
 	}
 
+	/**
+	 * Process the reward unlock queue: show free card choice for each queued unlock.
+	 * After all unlocks are claimed (or if none), calls onDone.
+	 */
+	_processRewardUnlockQueue(onDone) {
+		const myPlayer = this.mp?.getMyPlayer();
+		const queue = myPlayer?._rewardUnlockQueue;
+		if (!queue || queue.length === 0 || !myPlayer._pendingFreeChoices) {
+			if (onDone) onDone();
+			return;
+		}
+
+		const current = queue[0];
+		const unlockNames = {
+			'unlock-golden': '✨ Gouden kaarten',
+			'unlock-multikleur': '🌈 Multikleur kaarten',
+			'unlock-steen': '🪨 Steen vormen'
+		};
+		const title = unlockNames[current.type] || 'Kies een kaart';
+
+		this._showRewardFreeCardChoice(myPlayer._pendingFreeChoices, title, (cardId) => {
+			if (cardId) {
+				this.mp.claimFreeCard(cardId).then(result => {
+					if (result?.success) {
+						this._playRevealSound?.();
+						this._showToast(`${title} — kaart gekozen!`, 'success');
+					}
+					// Recurse for next in queue
+					this._processRewardUnlockQueue(onDone);
+				}).catch(() => {
+					this._processRewardUnlockQueue(onDone);
+				});
+			} else {
+				// Skipped or error — proceed
+				if (onDone) onDone();
+			}
+		});
+	}
+
+	/**
+	 * Show a free card choice popup for reward unlocks (reused from shop but self-contained).
+	 */
+	_showRewardFreeCardChoice(choices, title, onPick) {
+		if (!choices || choices.length === 0) { if (onPick) onPick(null); return; }
+
+		const Rules = window.LocusGameRules;
+		const modal = document.createElement('div');
+		modal.className = 'mp-card-choice-modal';
+		modal.innerHTML = `
+			<div class="mp-card-choice-content">
+				<h3>${this._escapeHtml(title)} — Kies 1 kaart</h3>
+				<div class="mp-free-card-grid">
+					${choices.map(card => {
+						let cells = 0;
+						if (card.matrix) for (const row of card.matrix) for (const c of row) { if (c) cells++; }
+						const colorCode = card.color?.code || '#666';
+						const isStone = card.isStone;
+						const isGolden = card.isGolden;
+						const isRainbow = colorCode === 'rainbow' || card.color?.name === 'multikleur';
+						let bgStyle = `background:${colorCode};`;
+						if (isStone) bgStyle = 'background:linear-gradient(135deg,#a0a0a0,#8a8a8a,#707070);';
+						else if (isGolden) bgStyle = `background:linear-gradient(135deg,${colorCode},#f5d76e,${colorCode});`;
+						else if (isRainbow) bgStyle = 'background:linear-gradient(135deg,#e74c3c,#f39c12,#2ecc71,#3498db,#9b59b6);';
+
+						const gridHtml = card.matrix ? card.matrix.map(row =>
+							`<div class="mp-free-shape-row">${row.map(c =>
+								`<div class="mp-free-shape-cell${c ? ' filled' : ''}" style="${c ? bgStyle : ''}"></div>`
+							).join('')}</div>`
+						).join('') : '';
+
+						return `
+							<div class="mp-free-card-option" data-card-id="${card.id}" style="cursor:pointer;">
+								<div class="mp-free-card-shape">${gridHtml}</div>
+								<div class="mp-free-card-name">${this._escapeHtml(card.shapeName || 'Kaart')}</div>
+								<div class="mp-free-card-info">${cells} cellen • Gratis</div>
+							</div>
+						`;
+					}).join('')}
+				</div>
+			</div>
+		`;
+
+		modal.addEventListener('click', (e) => {
+			const option = e.target.closest('.mp-free-card-option');
+			if (!option) return;
+			const cardId = option.dataset.cardId;
+			if (!cardId) return;
+			modal.remove();
+			if (onPick) onPick(cardId);
+		});
+
+		document.body.appendChild(modal);
+	}
+
 	_escapeHtml(str) {
 		return String(str || '').replace(/[&<>"']/g, c =>
 			({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]);
