@@ -5147,6 +5147,11 @@ function claimFreeCard(gameState, playerId, cardId) {
 	// Clear pending choices
 	delete player._pendingFreeChoices;
 
+	// Mark reward card chosen during goal phase
+	if (gameState.phase === 'choosingGoals') {
+		player._rewardCardChosen = true;
+	}
+
 	// Advance reward unlock queue if present
 	if (player._rewardUnlockQueue && player._rewardUnlockQueue.length > 0) {
 		player._rewardUnlockQueue.shift();
