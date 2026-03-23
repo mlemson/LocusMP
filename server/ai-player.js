@@ -529,6 +529,7 @@ function choosePerk(gameState, playerId, personality) {
 		if (available.find(p => p.id === 'flex_gap_red')) candidates.push({ id: 'flex_gap_red', weight: 8 });
 		if (available.find(p => p.id === 'flex_rotate')) candidates.push({ id: 'flex_rotate', weight: 8 });
 		if (available.find(p => p.id === 'bonus_multi_double')) candidates.push({ id: 'bonus_multi_double', weight: 8 });
+		if (available.find(p => p.id === 'flex_extra_card')) candidates.push({ id: 'flex_extra_card', weight: 9 });
 		if (available.find(p => p.id === 'bonus_yellow')) candidates.push({ id: 'bonus_yellow', weight: 6 });
 		if (available.find(p => p.id === 'bonus_red')) candidates.push({ id: 'bonus_red', weight: 6 });
 		if (available.find(p => p.id === 'bonus_green')) candidates.push({ id: 'bonus_green', weight: 6 });

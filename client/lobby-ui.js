@@ -5908,75 +5908,102 @@ class LocusLobbyUI {
 			const canUnlock = isAvailable && canAfford;
 			let statusClass = isUnlocked ? 'unlocked' : (isAvailable ? 'available' : 'locked');
 			return `
-				<div class="mp-perk-item ${statusClass}">
-					<span class="mp-perk-icon">${perk.icon}</span>
+				<div class="mp-perk-item ${statusClass}" ${canUnlock ? `data-perk-id="${perk.id}"` : ''}>
+					<div class="mp-perk-icon-wrap">
+						<span class="mp-perk-icon">${perk.icon}</span>
+						${isUnlocked ? '<span class="mp-perk-check">&#10003;</span>' : ''}
+					</div>
 					<div class="mp-perk-info">
 						<div class="mp-perk-name">${perk.name}</div>
 						<div class="mp-perk-desc">${perk.description}</div>
 					</div>
-					${isUnlocked ? `
-						<span class="mp-perk-status">✅</span>
-					` : isAvailable ? `
+					${isUnlocked ? '' : isAvailable ? `
 						<button class="mp-perk-unlock-btn ${canUnlock ? '' : 'disabled'}"
 								data-perk-id="${perk.id}"
 								${!canUnlock ? 'disabled' : ''}>
-							🔓 ${perk.cost}
+							${perk.cost} punt
 						</button>
-					` : `
-						<span class="mp-perk-status">🔒</span>
-					`}
+					` : ''}
 				</div>
 			`;
 		};
 
-		// Helper to check if a tier-2 connector should be "active" (any prerequisite unlocked)
-		const isConnectorActive = (perk) => {
-			if (perk.requiresAnyOf) return perk.requiresAnyOf.some(id => unlockedPerks.includes(id));
-			if (perk.requiresAnyCount) return perk.requiresAnyCount.from.filter(id => unlockedPerks.includes(id)).length >= perk.requiresAnyCount.min;
-			if (perk.requiresAll) return perk.requiresAll.every(id => unlockedPerks.includes(id));
-			return true;
+		// Mystery node for hidden tier-2 perks
+		const renderMysteryNode = () => {
+			return `
+				<div class="mp-perk-item mystery">
+					<div class="mp-perk-icon-wrap">
+						<span class="mp-perk-icon">?</span>
+					</div>
+					<div class="mp-perk-info">
+						<div class="mp-perk-name">???</div>
+						<div class="mp-perk-desc">Ontgrendel eerst een basisperk</div>
+					</div>
+				</div>
+			`;
+		};
+
+		// Check if tier-2 perks should be visible for this branch
+		const isTier2Visible = (branch) => {
+			const tier1 = branch.perks.filter(p => !p.tier || p.tier === 1);
+			const tier2 = branch.perks.filter(p => p.tier === 2);
+			if (tier2.length === 0) return false;
+			// Show tier 2 when any tier-1 from this branch is unlocked
+			return tier1.some(p => unlockedPerks.includes(p.id));
+		};
+
+		// Check if any tier-2 perk has been unlocked (to show the connector as active)
+		const hasUnlockedTier2 = (branch) => {
+			return branch.perks.filter(p => p.tier === 2).some(p => unlockedPerks.includes(p.id));
+		};
+
+		// Count unlocked perks in this branch
+		const countUnlocked = (branch) => {
+			return branch.perks.filter(p => unlockedPerks.includes(p.id)).length;
 		};
 
 		// Build each branch as a tree
 		const renderBranch = (branch) => {
 			const tier1 = branch.perks.filter(p => !p.tier || p.tier === 1);
 			const tier2 = branch.perks.filter(p => p.tier === 2);
+			const totalPerks = branch.perks.length;
+			const unlockedCount = countUnlocked(branch);
+			const tier2Visible = isTier2Visible(branch);
+			const t2Active = tier2Visible || hasUnlockedTier2(branch);
 
-			// Determine connector label for tier 2
-			let connectorLabel = '';
-			if (tier2.length > 0) {
-				const t2 = tier2[0];
-				if (t2.requiresAnyCount) {
-					connectorLabel = `Unlock ${t2.requiresAnyCount.min} van ${t2.requiresAnyCount.from.length} hierboven`;
-				} else if (t2.requiresAnyOf) {
-					connectorLabel = 'Unlock 1 hierboven';
-				}
-			}
-
-			const hasAnyT2Active = tier2.some(p => isConnectorActive(p));
-			const hasAnyT2Unlocked = tier2.some(p => unlockedPerks.includes(p.id));
+			// Progress bar width
+			const progressPct = totalPerks > 0 ? Math.round((unlockedCount / totalPerks) * 100) : 0;
 
 			return `
-				<div class="mp-perk-branch">
+				<div class="mp-perk-branch ${unlockedCount === totalPerks ? 'complete' : ''}">
 					<div class="mp-perk-branch-header">
-						<span class="mp-perk-branch-icon">${branch.icon}</span>
-						<div>
+						<div class="mp-perk-branch-icon-wrap">
+							<span class="mp-perk-branch-icon">${branch.icon}</span>
+						</div>
+						<div class="mp-perk-branch-meta">
 							<div class="mp-perk-branch-name">${branch.name}</div>
 							<div class="mp-perk-branch-desc">${branch.description}</div>
+							<div class="mp-perk-branch-progress">
+								<div class="mp-perk-branch-progress-bar" style="width:${progressPct}%"></div>
+							</div>
 						</div>
+						<span class="mp-perk-branch-count">${unlockedCount}/${totalPerks}</span>
 					</div>
 					<div class="mp-perk-tree">
 						<div class="mp-perk-tier mp-perk-tier-1">
 							${tier1.map(p => renderPerkNode(p)).join('')}
 						</div>
 						${tier2.length > 0 ? `
-							<div class="mp-perk-tree-connector ${hasAnyT2Active || hasAnyT2Unlocked ? 'active' : ''}">
+							<div class="mp-perk-tree-connector ${t2Active ? 'active' : ''}">
 								<div class="mp-perk-tree-line"></div>
-								${connectorLabel ? `<div class="mp-perk-tree-connector-label">${connectorLabel}</div>` : ''}
+								${!tier2Visible ? `<div class="mp-perk-tree-connector-label">Ontgrendel een basisperk</div>` : ''}
 								<div class="mp-perk-tree-line"></div>
 							</div>
 							<div class="mp-perk-tier mp-perk-tier-2">
-								${tier2.map(p => renderPerkNode(p)).join('')}
+								${tier2Visible
+									? tier2.map(p => renderPerkNode(p)).join('')
+									: renderMysteryNode()
+								}
 							</div>
 						` : ''}
 					</div>
@@ -5986,7 +6013,10 @@ class LocusLobbyUI {
 
 		return `
 			<div class="mp-perk-section">
-				<h3 class="mp-shop-section-title">🎯 Perks <span class="mp-perk-points-badge">${perkPoints} punt${perkPoints !== 1 ? 'en' : ''}</span></h3>
+				<div class="mp-perk-header-row">
+					<span class="mp-perk-header-title">Perk Boom</span>
+					${perkPoints > 0 ? `<span class="mp-perk-points-badge">${perkPoints} punt${perkPoints !== 1 ? 'en' : ''} beschikbaar</span>` : ''}
+				</div>
 				<div class="mp-perk-branches">
 					${Object.values(Rules.PERK_BRANCHES).map(branch => renderBranch(branch)).join('')}
 				</div>
@@ -6005,8 +6035,8 @@ class LocusLobbyUI {
 		const perkPoints = myPlayer?.perks?.perkPoints || 0;
 		const isChoosingGoals = this.mp.gameState?.phase === 'choosingGoals';
 		const continueLabel = isChoosingGoals
-			? (perkPoints > 0 ? '⏭ Klaar met perks — wacht verder' : '✅ Verder')
-			: '✅ Sluiten';
+			? (perkPoints > 0 ? 'Klaar met perks' : 'Verder')
+			: 'Sluiten';
 
 		// Remove existing popup
 		document.getElementById('mp-perk-popup-overlay')?.remove();
@@ -6017,14 +6047,17 @@ class LocusLobbyUI {
 		overlay.innerHTML = `
 			<div class="mp-perk-popup">
 				<div class="mp-perk-popup-header">
-					<h3>🎯 Perks</h3>
-					<button class="mp-perk-popup-close" id="mp-perk-popup-close">✕</button>
+					<div class="mp-perk-popup-title-row">
+						<span class="mp-perk-popup-title">Perk Boom</span>
+						${perkPoints > 0 ? `<span class="mp-perk-points-badge pulse">${perkPoints} punt${perkPoints !== 1 ? 'en' : ''}</span>` : ''}
+					</div>
+					<button class="mp-perk-popup-close" id="mp-perk-popup-close">&times;</button>
 				</div>
 				<p class="mp-perk-popup-desc">${isChoosingGoals && perkPoints > 0
-					? 'Je doel is gekozen. Besteed nu eventueel je perkpunten voordat het level start.'
-					: 'Ontgrendel perks om je strategie te versterken.'}</p>
+					? 'Besteed je perkpunten om je strategie te versterken.'
+					: 'Bekijk en ontgrendel perks voor je volgende levels.'}</p>
 				${this._renderPerkSectionHTML()}
-				<button class="mp-btn mp-btn-primary" id="mp-perk-popup-continue" style="margin-top:12px;width:100%;">
+				<button class="mp-btn mp-btn-primary mp-perk-popup-continue" id="mp-perk-popup-continue">
 					${continueLabel}
 				</button>
 			</div>

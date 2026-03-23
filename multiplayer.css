@@ -9814,64 +9814,128 @@ html.theme-bloom .mp-sparkle {
    ══════════════════════════════════════════════════════════════════ */
 
 .mp-perk-section {
-	margin-top: 16px;
-	padding-top: 12px;
-	border-top: 1px solid rgba(255, 255, 255, 0.08);
+	margin-top: 8px;
+}
+
+.mp-perk-header-row {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	margin-bottom: 12px;
+}
+
+.mp-perk-header-title {
+	font-weight: 700;
+	font-size: 1rem;
+	color: #e0dcf0;
+	letter-spacing: 0.3px;
 }
 
 .mp-perk-points-badge {
 	display: inline-block;
 	background: linear-gradient(135deg, #7c5cbf, #9b7de0);
 	color: #fff;
-	font-size: 0.7rem;
-	padding: 2px 8px;
-	border-radius: 10px;
-	margin-left: 8px;
+	font-size: 0.72rem;
+	padding: 3px 10px;
+	border-radius: 12px;
 	font-weight: 700;
-	vertical-align: middle;
+	letter-spacing: 0.2px;
+}
+
+.mp-perk-points-badge.pulse {
+	animation: mp-perk-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes mp-perk-pulse {
+	0%, 100% { box-shadow: 0 0 0 0 rgba(124, 92, 191, 0.4); }
+	50% { box-shadow: 0 0 0 6px rgba(124, 92, 191, 0); }
 }
 
 .mp-perk-branches {
 	display: flex;
 	flex-direction: column;
-	gap: 12px;
-	margin-top: 10px;
+	gap: 10px;
 }
 
 .mp-perk-branch {
-	background: rgba(255, 255, 255, 0.03);
-	border: 1px solid rgba(255, 255, 255, 0.08);
-	border-radius: 12px;
-	padding: 12px;
+	background: rgba(255, 255, 255, 0.025);
+	border: 1px solid rgba(255, 255, 255, 0.07);
+	border-radius: 14px;
+	padding: 14px;
+	transition: border-color 0.3s;
+}
+
+.mp-perk-branch.complete {
+	border-color: rgba(100, 200, 120, 0.3);
 }
 
 .mp-perk-branch-header {
 	display: flex;
 	align-items: center;
 	gap: 10px;
-	margin-bottom: 10px;
+	margin-bottom: 12px;
 }
 
-.mp-perk-branch-icon {
-	font-size: 1.5rem;
-	width: 36px;
-	height: 36px;
+.mp-perk-branch-icon-wrap {
+	width: 40px;
+	height: 40px;
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	background: rgba(255, 255, 255, 0.06);
-	border-radius: 8px;
+	background: rgba(255, 255, 255, 0.05);
+	border-radius: 10px;
+	flex-shrink: 0;
+}
+
+.mp-perk-branch-icon {
+	font-size: 1.4rem;
+}
+
+.mp-perk-branch-meta {
+	flex: 1;
+	min-width: 0;
 }
 
 .mp-perk-branch-name {
 	font-weight: 700;
-	font-size: 0.95rem;
+	font-size: 0.9rem;
 	color: #e0dcf0;
 }
 
 .mp-perk-branch-desc {
-	font-size: 0.75rem;
-	color: rgba(255, 255, 255, 0.45);
+	font-size: 0.7rem;
+	color: rgba(255, 255, 255, 0.4);
+	margin-top: 1px;
+}
+
+.mp-perk-branch-progress {
+	height: 3px;
+	background: rgba(255, 255, 255, 0.06);
+	border-radius: 2px;
+	margin-top: 6px;
+	overflow: hidden;
+}
+
+.mp-perk-branch-progress-bar {
+	height: 100%;
+	background: linear-gradient(90deg, #7c5cbf, #b59cf0);
+	border-radius: 2px;
+	transition: width 0.4s ease;
+}
+
+.mp-perk-branch-count {
+	font-size: 0.7rem;
+	color: rgba(255, 255, 255, 0.35);
+	font-weight: 600;
+	flex-shrink: 0;
+}
+
+.mp-perk-branch.complete .mp-perk-branch-progress-bar {
+	background: linear-gradient(90deg, #5cb85c, #7cd87c);
+}
+
+.mp-perk-branch.complete .mp-perk-branch-count {
+	color: rgba(100, 200, 120, 0.7);
 }
 
 .mp-perk-list {
@@ -9967,33 +10031,79 @@ html.theme-bloom .mp-sparkle {
 .mp-perk-item {
 	display: flex;
 	align-items: center;
-	gap: 8px;
-	padding: 8px 10px;
-	border-radius: 8px;
+	gap: 10px;
+	padding: 10px 12px;
+	border-radius: 10px;
 	background: rgba(255, 255, 255, 0.03);
 	border: 1px solid rgba(255, 255, 255, 0.06);
-	transition: all 0.2s;
+	transition: all 0.25s ease;
+	cursor: default;
+}
+
+.mp-perk-item[data-perk-id] {
+	cursor: pointer;
+}
+
+.mp-perk-item[data-perk-id]:hover {
+	background: rgba(124, 92, 191, 0.12);
+	border-color: rgba(124, 92, 191, 0.35);
+	transform: translateY(-1px);
 }
 
 .mp-perk-item.unlocked {
-	background: rgba(100, 200, 120, 0.08);
-	border-color: rgba(100, 200, 120, 0.25);
+	background: rgba(100, 200, 120, 0.06);
+	border-color: rgba(100, 200, 120, 0.2);
 }
 
 .mp-perk-item.available {
-	background: rgba(124, 92, 191, 0.08);
-	border-color: rgba(124, 92, 191, 0.25);
+	background: rgba(124, 92, 191, 0.06);
+	border-color: rgba(124, 92, 191, 0.2);
 }
 
 .mp-perk-item.locked {
-	opacity: 0.45;
+	opacity: 0.4;
+}
+
+.mp-perk-item.mystery {
+	opacity: 0.3;
+	border-style: dashed;
+}
+
+.mp-perk-icon-wrap {
+	position: relative;
+	width: 32px;
+	height: 32px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	flex-shrink: 0;
 }
 
 .mp-perk-icon {
-	font-size: 1.2rem;
-	width: 28px;
-	text-align: center;
-	flex-shrink: 0;
+	font-size: 1.15rem;
+}
+
+.mp-perk-item.mystery .mp-perk-icon {
+	font-size: 1rem;
+	color: rgba(255, 255, 255, 0.3);
+	font-weight: 700;
+	font-style: normal;
+}
+
+.mp-perk-check {
+	position: absolute;
+	bottom: -2px;
+	right: -4px;
+	font-size: 0.6rem;
+	color: #5cb85c;
+	background: rgba(30, 30, 50, 0.9);
+	border-radius: 50%;
+	width: 14px;
+	height: 14px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	font-weight: 700;
 }
 
 .mp-perk-info {
@@ -10047,42 +10157,61 @@ html.theme-bloom .mp-sparkle {
 .mp-perk-popup {
 	background: var(--bg, #1a1a2e);
 	border: 1px solid var(--border, #3a3a5c);
-	border-radius: 16px;
-	padding: 24px;
-	max-width: 600px;
+	border-radius: 18px;
+	padding: 24px 20px;
+	max-width: 520px;
 	width: 92%;
 	max-height: 85vh;
 	overflow-y: auto;
-	box-shadow: 0 8px 40px rgba(0,0,0,0.5);
+	box-shadow: 0 12px 48px rgba(0,0,0,0.6);
 	animation: mp-popup-slide 0.25s ease;
 }
 .mp-perk-popup-header {
 	display: flex;
-	align-items: center;
+	align-items: flex-start;
 	justify-content: space-between;
-	margin-bottom: 8px;
+	margin-bottom: 4px;
 }
-.mp-perk-popup-header h3 {
-	margin: 0;
-	font-size: 1.15rem;
+.mp-perk-popup-title-row {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+}
+.mp-perk-popup-title {
+	font-size: 1.2rem;
+	font-weight: 800;
+	color: #e0dcf0;
+	letter-spacing: 0.3px;
 }
 .mp-perk-popup-close {
 	background: none;
 	border: none;
 	color: var(--fg, #ccc);
-	font-size: 1.3rem;
+	font-size: 1.5rem;
 	cursor: pointer;
-	padding: 4px 8px;
+	padding: 2px 8px;
 	border-radius: 8px;
 	transition: background 0.15s;
+	line-height: 1;
 }
 .mp-perk-popup-close:hover {
 	background: rgba(255,255,255,0.1);
 }
 .mp-perk-popup-desc {
 	color: var(--fg-dim, #aaa);
-	font-size: 0.85rem;
-	margin: 0 0 12px 0;
+	font-size: 0.8rem;
+	margin: 0 0 14px 0;
+	line-height: 1.4;
+}
+
+.mp-perk-popup-continue {
+	margin-top: 14px;
+	width: 100%;
+	padding: 12px;
+	border-radius: 12px;
+	font-weight: 700;
+	font-size: 0.9rem;
+	letter-spacing: 0.3px;
 }
 
 /* Perk button in shop */

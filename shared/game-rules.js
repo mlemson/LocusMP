@@ -139,6 +139,8 @@ const PERK_BRANCHES = {
 			{ id: 'flex_wildcard', name: 'Wildcardkleur', icon: '🎨', description: 'Eén kaart per ronde op elke zone plaatsen, ongeacht kleur', cost: 1, tier: 2,
 				requiresAnyOf: ['flex_gap', 'flex_rotate'] },
 			{ id: 'flex_double_coins', name: 'Bankier', icon: '🏦', description: 'Goudmunten zijn dubbel zoveel waard', cost: 1, tier: 2,
+				requiresAnyOf: ['flex_gap', 'flex_rotate'] },
+			{ id: 'flex_extra_card', name: 'Brede Hand', icon: '🃑', description: 'Je hand bevat 4 kaarten in plaats van 3', cost: 1, tier: 2,
 				requiresAnyOf: ['flex_gap', 'flex_rotate'] }
 		]
 	}
@@ -286,6 +288,11 @@ function choosePerk(gameState, playerId, perkId) {
 	}
 	if (perkId === 'flex_double_coins') {
 		player.perks.doubleCoins = true;
+	}
+	if (perkId === 'flex_extra_card') {
+		player.perks.extraCard = true;
+		// Trek direct een extra kaart als de speler minder dan 4 kaarten heeft
+		drawHandForPlayer(gameState, player, 4);
 	}
 	player.goalPerksDone = isGoalPerkDone(gameState, playerId);
 
@@ -3476,9 +3483,19 @@ function chooseObjective(gameState, playerId, objectiveIndex) {
 function drawHand(gameState, playerId) {
 	const player = gameState.players[playerId];
 	if (!player) return;
-	// Altijd aanvullen tot 3 kaarten (of minder als drawPile leeg is)
-	const targetHandSize = 3;
+	// Aanvullen tot 3 kaarten, of 4 als speler de Brede Hand perk heeft
+	const targetHandSize = player.perks?.extraCard ? 4 : 3;
 	const drawCount = Math.max(0, Math.min(targetHandSize - player.hand.length, player.drawPile.length));
+	if (drawCount > 0) {
+		const drawn = player.drawPile.splice(0, drawCount);
+		player.hand.push(...drawn);
+	}
+}
+
+// Helper voor choosePerk: trek kaarten aan tot een specifiek maximum
+function drawHandForPlayer(gameState, player, targetSize) {
+	if (!player) return;
+	const drawCount = Math.max(0, Math.min(targetSize - player.hand.length, player.drawPile.length));
 	if (drawCount > 0) {
 		const drawn = player.drawPile.splice(0, drawCount);
 		player.hand.push(...drawn);
