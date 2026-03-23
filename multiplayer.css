@@ -2635,10 +2635,14 @@ html.theme-classic .mp-cell.bonus-just-spawned {
 
 .mp-board-col-middle {
 	align-self: stretch;
+	overflow-y: auto;
+	overflow-x: hidden;
+	scrollbar-width: thin;
+	scrollbar-color: rgba(129,236,255,0.3) rgba(0,0,0,0.1);
 }
 
 .mp-board-col-middle .mp-zone-blue {
-	height: 100%;
+	height: max-content;
 }
 
 .mp-zone-yellow { grid-area: yellow; }

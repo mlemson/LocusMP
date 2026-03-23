@@ -1003,7 +1003,7 @@ function generateLevel1Board(rng, level, playerCount, maxWins) {
 	}
 
 	if (world === 1) {
-		const blueWidth = 4 + playerTier;
+		const blueWidth = 3 + playerTier;
 		const blueHeight = 26; // +5 rijen (was 21)
 		const blueBoldRows = [];
 		for (let r = 0; r < blueHeight; r += 5) { blueBoldRows.push(r); }
@@ -1027,7 +1027,7 @@ function generateLevel1Board(rng, level, playerCount, maxWins) {
 		placeGoldFlags(zones.blue, rng, 2);
 		placeBonusSymbols(zones.blue, rng, 3, { excludeColor: 'blue' });
 	} else if (world === 2) {
-		const blueWidth = 5 + playerTier;
+		const blueWidth = 4 + playerTier;
 		const blueHeight = 52; // 2x W1 hoogte
 		const blueBoldRows = [];
 		for (let r = 0; r < blueHeight; r += 6) { blueBoldRows.push(r); }
@@ -1051,7 +1051,7 @@ function generateLevel1Board(rng, level, playerCount, maxWins) {
 		placeGoldFlags(zones.blue, rng, 4);
 		placeBonusSymbols(zones.blue, rng, 5, { excludeColor: 'blue' });
 	} else {
-		const blueWidth = 6 + playerTier;
+		const blueWidth = 5 + playerTier;
 		const blueHeight = 78; // 3x W1 hoogte
 		const blueBoldRows = [];
 		for (let r = 0; r < blueHeight; r += 7) { blueBoldRows.push(r); }
