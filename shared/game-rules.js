@@ -4703,30 +4703,32 @@ function checkGameEnd(gameState) {
 		}
 	}
 
-	// ── Perk point: elke speler krijgt 1 perkpunt na elke ronde ──
-	for (const pid of gameState.playerOrder) {
-		const p = gameState.players[pid];
-		if (p?.perks) {
-			p.perks.perkPoints = (p.perks.perkPoints || 0) + 1;
+	// ── Perk point: elke speler krijgt 1 perkpunt na elke ronde (niet in beloningsmodus) ──
+	if (!gameState.settings?.rewardingMode) {
+		for (const pid of gameState.playerOrder) {
+			const p = gameState.players[pid];
+			if (p?.perks) {
+				p.perks.perkPoints = (p.perks.perkPoints || 0) + 1;
+			}
 		}
-	}
 
-	// ── Catch-up perk: als een speler op 3+ wins staat en anderen op 0-1,
-	//    krijgen die achterlopers een extra perkpunt ──
-	{
-		const winsTarget = Math.max(1, Number(gameState.winsToEnd) || MATCH_WINS_TARGET);
-		const threshold = Math.max(2, winsTarget - 1); // 3 bij 4 wins target
-		const maxWins = Math.max(...gameState.playerOrder.map(pid =>
-			gameState.players[pid]?.matchWins || 0
-		));
-		if (maxWins >= threshold) {
-			for (const pid of gameState.playerOrder) {
-				const p = gameState.players[pid];
-				if (!p?.perks) continue;
-				const myWins = p.matchWins || 0;
-				if (myWins <= Math.floor(threshold / 2)) {
-					// Achterloper: extra perkpunt
-					p.perks.perkPoints = (p.perks.perkPoints || 0) + 1;
+		// ── Catch-up perk: als een speler op 3+ wins staat en anderen op 0-1,
+		//    krijgen die achterlopers een extra perkpunt ──
+		{
+			const winsTarget = Math.max(1, Number(gameState.winsToEnd) || MATCH_WINS_TARGET);
+			const threshold = Math.max(2, winsTarget - 1); // 3 bij 4 wins target
+			const maxWins = Math.max(...gameState.playerOrder.map(pid =>
+				gameState.players[pid]?.matchWins || 0
+			));
+			if (maxWins >= threshold) {
+				for (const pid of gameState.playerOrder) {
+					const p = gameState.players[pid];
+					if (!p?.perks) continue;
+					const myWins = p.matchWins || 0;
+					if (myWins <= Math.floor(threshold / 2)) {
+						// Achterloper: extra perkpunt
+						p.perks.perkPoints = (p.perks.perkPoints || 0) + 1;
+					}
 				}
 			}
 		}

@@ -1633,6 +1633,11 @@ class LocusLobbyUI {
 		if (currentPhase && currentPhase !== 'choosingGoals') {
 			return;
 		}
+		// In beloningsmodus: skip perks in goal phase (unlocks komen na level complete)
+		if (this._isRewardingMode()) {
+			this._showChosenGoalWaitingState();
+			return;
+		}
 		const myPlayer = this.mp.getMyPlayer?.();
 		const perkPoints = myPlayer?.perks?.perkPoints || 0;
 		if (perkPoints <= 0) {
@@ -5884,12 +5889,10 @@ class LocusLobbyUI {
 					}
 				};
 
-				// Beloningsmodus: toon eerst rewards overlay, dan unlock card choices, dan perk choice, dan shop
+				// Beloningsmodus: toon eerst rewards overlay, dan unlock card choices, dan shop
 				if (this._isRewardingMode() && !isMatchFinished) {
 					this._showRoundRewardsOverlay(scores, winner, currentLevel, () => {
-						this._processRewardUnlockQueue(() => {
-							this._showRewardingPerkChoice(() => proceedToShop());
-						});
+						this._processRewardUnlockQueue(() => proceedToShop());
 					});
 				} else {
 					await proceedToShop();
@@ -5933,9 +5936,14 @@ class LocusLobbyUI {
 
 		container.innerHTML = `
 			<div class="mp-shop-card">
-				<h2 class="mp-shop-title">🛒 Shop — Level ${level}</h2>
+				<div class="mp-shop-header">
+					<div class="mp-shop-header-icon">🛒</div>
+					<h2 class="mp-shop-title">Shop — Level ${level}</h2>
+				</div>
 				<div class="mp-shop-gold">
-					💰 <strong>${goldCoins}</strong> goudmunten beschikbaar
+					<span class="mp-shop-gold-icon">💰</span>
+					<span class="mp-shop-gold-amount">${goldCoins}</span>
+					<span class="mp-shop-gold-label">goudmunten</span>
 				</div>
 
 				<div class="mp-shop-offerings">
@@ -6461,6 +6469,8 @@ class LocusLobbyUI {
 					'unlock-steen': '🪨 Steen vormen ontgrendeld!'
 				};
 				this._showToast(unlockNames[itemId] || 'Ontgrendeld!', 'success');
+				this._spawnShopSparkles(sourceEl);
+				this._playGoldSound();
 				this._showFreeCardChoice(result.freeChoices);
 				return;
 			}
@@ -6468,6 +6478,7 @@ class LocusLobbyUI {
 			if (itemId === 'random-card' && result.card) {
 				this._showShopRandomCardReveal(result.card, sourceEl);
 				this._showToast('🎲 Random kaart gekocht!', 'success');
+				this._spawnShopSparkles(sourceEl);
 				setTimeout(() => this._renderShop(), 220);
 				return;
 			}
@@ -6475,11 +6486,14 @@ class LocusLobbyUI {
 			if (itemId.startsWith('shop-card-') && sourceEl?.closest('.mp-shop-offering.mystery') && result.card) {
 				this._showShopRandomCardReveal(result.card, sourceEl);
 				this._showToast('🎲 Gesloten kaart onthuld!', 'success');
+				this._spawnShopSparkles(sourceEl);
 				setTimeout(() => this._renderShop(), 220);
 				return;
 			}
 
 			this._showToast('Gekocht! ✓', 'success');
+			this._spawnShopSparkles(sourceEl);
+			this._playGoldSound();
 			this._renderShop();
 		} catch (err) {
 			this._showToast('Fout: ' + (err.message || err), 'error');
@@ -8053,37 +8067,6 @@ class LocusLobbyUI {
 			});
 		}
 
-		// Perk points earned
-		const perkPts = myPlayer?.perks?.perkPoints || 0;
-		if (perkPts > 0) {
-			items.push({
-				icon: '⚡',
-				name: `${perkPts} perkpunt${perkPts !== 1 ? 'en' : ''} beschikbaar`,
-				description: 'Kies perks om je strategie te versterken'
-			});
-		}
-
-		// Unlocked perks
-		const unlocked = myPlayer?.perks?.unlockedPerks || [];
-		if (unlocked.length > 0) {
-			const allPerks = [];
-			const Rules = window.LocusGameRules;
-			if (Rules?.PERK_BRANCHES) {
-				for (const branch of Object.values(Rules.PERK_BRANCHES)) {
-					for (const p of branch.perks) {
-						if (unlocked.includes(p.id)) allPerks.push(p);
-					}
-				}
-			}
-			if (allPerks.length > 0) {
-				items.push({
-					icon: '🎯',
-					name: 'Ontgrendelde perks',
-					description: allPerks.map(p => `${p.icon} ${p.name}`).join(' • ')
-				});
-			}
-		}
-
 		// Reward unlocks (auto-granted in rewarding mode)
 		const rewardQueue = myPlayer?._rewardUnlockQueue || [];
 		const unlockLabels = {
@@ -8225,6 +8208,27 @@ class LocusLobbyUI {
 		});
 
 		document.body.appendChild(modal);
+	}
+
+	/** Spawn sparkle/confetti particles from an element */
+	_spawnShopSparkles(el) {
+		const rect = el ? el.getBoundingClientRect() : { left: window.innerWidth / 2, top: window.innerHeight / 2, width: 0, height: 0 };
+		const cx = rect.left + rect.width / 2;
+		const cy = rect.top + rect.height / 2;
+		const emojis = ['✨', '⭐', '🪙', '💫', '🌟'];
+		for (let i = 0; i < 8; i++) {
+			const span = document.createElement('span');
+			span.className = 'mp-shop-sparkle';
+			span.textContent = emojis[Math.floor(Math.random() * emojis.length)];
+			span.style.left = cx + 'px';
+			span.style.top = cy + 'px';
+			const angle = (Math.PI * 2 * i) / 8 + (Math.random() - 0.5) * 0.5;
+			const dist = 40 + Math.random() * 60;
+			span.style.setProperty('--dx', Math.cos(angle) * dist + 'px');
+			span.style.setProperty('--dy', Math.sin(angle) * dist - 20 + 'px');
+			document.body.appendChild(span);
+			setTimeout(() => span.remove(), 900);
+		}
 	}
 
 	_escapeHtml(str) {
