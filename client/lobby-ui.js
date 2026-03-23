@@ -7853,6 +7853,88 @@ class LocusLobbyUI {
 	}
 
 	/**
+	 * Beloningsmodus: toon kaarttype-keuze (gouden / multikleur / steen) na doelstelling.
+	 * Speler kiest een type, dan krijgt hij 3 kaarten van dat type te zien, kiest er 1 gratis.
+	 */
+	_showRewardCardTypeChoice() {
+		const overlay = document.createElement('div');
+		overlay.id = 'mp-reward-card-type-overlay';
+		overlay.className = 'mp-rewarding-overlay';
+		overlay.innerHTML = `
+			<div class="mp-rewarding-popup">
+				<div class="mp-rewarding-icon">🎁</div>
+				<h2 class="mp-rewarding-title">Kies een gratis kaart!</h2>
+				<p class="mp-rewarding-subtitle">Kies een kaarttype — je krijgt 1 kaart gratis bij je deck.</p>
+				<div class="mp-reward-type-choices">
+					<button class="mp-reward-type-card" data-type="golden">
+						<span class="mp-reward-type-icon">✨</span>
+						<span class="mp-reward-type-name">Gouden kaart</span>
+						<span class="mp-reward-type-desc">Kan extra gespeeld worden naast je normale beurt</span>
+					</button>
+					<button class="mp-reward-type-card" data-type="multikleur">
+						<span class="mp-reward-type-icon">🌈</span>
+						<span class="mp-reward-type-name">Multikleur kaart</span>
+						<span class="mp-reward-type-desc">Past in elke zone — uiterst flexibel</span>
+					</button>
+					<button class="mp-reward-type-card" data-type="steen">
+						<span class="mp-reward-type-icon">🪨</span>
+						<span class="mp-reward-type-name">Stenen kaart</span>
+						<span class="mp-reward-type-desc">Blokkeert tegenstanders — strategisch wapen</span>
+					</button>
+				</div>
+				<button class="mp-btn mp-btn-secondary mp-rewarding-skip-btn" id="mp-reward-type-skip">Overslaan</button>
+			</div>
+		`;
+		document.body.appendChild(overlay);
+		requestAnimationFrame(() => overlay.classList.add('visible'));
+
+		overlay.querySelector('#mp-reward-type-skip').addEventListener('click', () => {
+			overlay.classList.remove('visible');
+			setTimeout(() => { overlay.remove(); this._showChosenGoalWaitingState(); }, 300);
+		});
+
+		overlay.querySelectorAll('.mp-reward-type-card').forEach(btn => {
+			btn.addEventListener('click', async () => {
+				const type = btn.dataset.type;
+				overlay.querySelectorAll('.mp-reward-type-card').forEach(b => b.disabled = true);
+				btn.classList.add('selected');
+
+				try {
+					const result = await this.mp.chooseRewardCardType(type);
+					if (!result?.success) {
+						this._showToast(result?.error || 'Kon type niet kiezen', 'error');
+						overlay.querySelectorAll('.mp-reward-type-card').forEach(b => b.disabled = false);
+						btn.classList.remove('selected');
+						return;
+					}
+					// Remove type choice overlay
+					overlay.classList.remove('visible');
+					setTimeout(() => overlay.remove(), 300);
+
+					// Show the 3 card choices using existing free card picker
+					const typeNames = { golden: '✨ Gouden kaart', multikleur: '🌈 Multikleur kaart', steen: '🪨 Stenen kaart' };
+					const choices = result.freeChoices || this.mp.getMyPlayer()?._pendingFreeChoices || [];
+					this._showRewardFreeCardChoice(choices, typeNames[type] || 'Gratis kaart', async (cardId) => {
+						if (cardId) {
+							try {
+								const claim = await this.mp.claimFreeCard(cardId);
+								if (claim?.success) {
+									this._showToast(`${typeNames[type]} — kaart gekozen!`, 'success');
+								}
+							} catch (_) {}
+						}
+						this._showChosenGoalWaitingState();
+					});
+				} catch (err) {
+					this._showToast('Fout: ' + (err.message || err), 'error');
+					overlay.querySelectorAll('.mp-reward-type-card').forEach(b => b.disabled = false);
+					btn.classList.remove('selected');
+				}
+			});
+		});
+	}
+
+	/**
 	 * Na level complete: toon een overlay waar de speler 1 uit 3 perks kiest.
 	 * Wordt aangeroepen vanuit _onLevelComplete als rewardingMode aan staat.
 	 */
