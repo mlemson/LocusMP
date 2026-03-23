@@ -5073,19 +5073,71 @@ class LocusLobbyUI {
 			}
 		}
 
-		// Pre-compute completed yellow columns
+		// Pre-compute completed yellow columns/diagonals/rings
 		const yellowCompleteCols = new Set();
+		const yellowCompleteCells = new Set();
 		if (zoneName === 'yellow') {
-			for (let x = 0; x < zoneData.cols; x++) {
-				let colComplete = true;
-				let hasCells = false;
-				for (let y = 0; y < zoneData.rows; y++) {
-					const c = zoneData.cells[`${x},${y}`];
-					if (!c) continue; // void cell — skip
-					hasCells = true;
-					if (!c.active) { colComplete = false; break; }
+			if (zoneData.scoreMode === 'diagonal') {
+				// Mark cells in completed diagonal segments
+				const minLen = Math.max(1, Number(zoneData.minDiagonalLength) || 4);
+				const cellByCoord = {};
+				for (const key in zoneData.cells) { if (zoneData.cells[key]) cellByCoord[key] = zoneData.cells[key]; }
+				const tryGet = (x, y) => cellByCoord[`${x},${y}`] || null;
+				const checkDir = (dx, dy) => {
+					for (const c of Object.values(cellByCoord)) {
+						if (tryGet(c.x - dx, c.y - dy)) continue;
+						const seg = [];
+						let cx = c.x, cy = c.y;
+						while (tryGet(cx, cy)) { seg.push(tryGet(cx, cy)); cx += dx; cy += dy; }
+						if (seg.length >= minLen && seg.every(s => s.active)) {
+							for (const s of seg) yellowCompleteCells.add(`${s.x},${s.y}`);
+						}
+					}
+				};
+				checkDir(1, 1); checkDir(1, -1);
+			} else if (zoneData.scoreMode === 'rings') {
+				// Mark cells in completed rings (BFS ring depth)
+				const cellByCoord = {};
+				for (const key in zoneData.cells) { if (zoneData.cells[key]) cellByCoord[key] = zoneData.cells[key]; }
+				const tryGet = (x, y) => cellByCoord[`${x},${y}`] || null;
+				const boundary = [];
+				for (const c of Object.values(cellByCoord)) {
+					if (!tryGet(c.x-1,c.y) || !tryGet(c.x+1,c.y) || !tryGet(c.x,c.y-1) || !tryGet(c.x,c.y+1)) boundary.push(c);
 				}
-				if (colComplete && hasCells) yellowCompleteCols.add(x);
+				const depthByKey = new Map();
+				const queue = [...boundary];
+				for (const c of boundary) depthByKey.set(`${c.x},${c.y}`, 0);
+				let qi = 0;
+				while (qi < queue.length) {
+					const cur = queue[qi++];
+					const d = depthByKey.get(`${cur.x},${cur.y}`);
+					for (const [dx,dy] of [[1,0],[-1,0],[0,1],[0,-1]]) {
+						const n = tryGet(cur.x+dx, cur.y+dy);
+						if (n && !depthByKey.has(`${n.x},${n.y}`)) { depthByKey.set(`${n.x},${n.y}`, d+1); queue.push(n); }
+					}
+				}
+				const rings = new Map();
+				for (const [key, depth] of depthByKey.entries()) {
+					if (!rings.has(depth)) rings.set(depth, []);
+					rings.get(depth).push(key);
+				}
+				for (const [, keys] of rings.entries()) {
+					if (keys.every(k => cellByCoord[k]?.active)) {
+						for (const k of keys) yellowCompleteCells.add(k);
+					}
+				}
+			} else {
+				for (let x = 0; x < zoneData.cols; x++) {
+					let colComplete = true;
+					let hasCells = false;
+					for (let y = 0; y < zoneData.rows; y++) {
+						const c = zoneData.cells[`${x},${y}`];
+						if (!c) continue;
+						hasCells = true;
+						if (!c.active) { colComplete = false; break; }
+					}
+					if (colComplete && hasCells) yellowCompleteCols.add(x);
+				}
 			}
 		}
 
@@ -5137,7 +5189,7 @@ class LocusLobbyUI {
 				}
 				gridHtml += this._renderCell(cell, zoneName, null, {
 					isBlueClaimedRow: zoneName === 'blue' && claimedBlueRows.has(cell.y),
-					isYellowColComplete: zoneName === 'yellow' && yellowCompleteCols.has(x),
+					isYellowColComplete: zoneName === 'yellow' && (yellowCompleteCols.has(x) || yellowCompleteCells.has(`${x},${y}`)),
 					isPurpleConnectedBold: zoneName === 'purple' && purpleConnectedBolds.has(`${x},${cell.y}`)
 				});
 			}
@@ -5171,29 +5223,36 @@ class LocusLobbyUI {
 
 		let yellowColumnPointsHtml = '';
 		if (zoneName === 'yellow') {
-			const pointCells = [];
-			for (let x = 0; x < zoneData.cols; x++) {
-				const pairIndex = Math.min(Math.floor(x / 2), yellowPairPoints.length - 1);
-				const points = yellowPairPoints[pairIndex];
-				let isComplete = true;
-				let hasCells = false;
-				for (let y = 0; y < zoneData.rows; y++) {
-					const c = zoneData.cells[`${x},${y}`];
-					if (!c) continue; // void
-					hasCells = true;
-					if (!c.active) {
-						isComplete = false;
-						break;
+			if (zoneData.scoreMode === 'diagonal') {
+				yellowColumnPointsHtml = `
+					<div class="mp-yellow-scoring-guide">Diagonaal vullen: 4=4pt • 5=8pt • 6=8pt • 7=16pt • 8+=16pt+</div>
+				`;
+			} else if (zoneData.scoreMode === 'rings') {
+				yellowColumnPointsHtml = `
+					<div class="mp-yellow-scoring-guide">Ringen vullen: buiten=${zoneData.ringMinPoints || 12}pt → binnen=${zoneData.ringMaxPoints || 64}pt</div>
+				`;
+			} else {
+				const pointCells = [];
+				for (let x = 0; x < zoneData.cols; x++) {
+					const pairIndex = Math.min(Math.floor(x / 2), yellowPairPoints.length - 1);
+					const points = yellowPairPoints[pairIndex];
+					let isComplete = true;
+					let hasCells = false;
+					for (let y = 0; y < zoneData.rows; y++) {
+						const c = zoneData.cells[`${x},${y}`];
+						if (!c) continue;
+						hasCells = true;
+						if (!c.active) { isComplete = false; break; }
 					}
+					if (!hasCells) isComplete = false;
+					pointCells.push(`<div class="mp-yellow-col-point ${isComplete ? 'is-complete' : ''}" title="+${points} punten bij volle kolom">+${points}</div>`);
 				}
-				if (!hasCells) isComplete = false;
-				pointCells.push(`<div class="mp-yellow-col-point ${isComplete ? 'is-complete' : ''}" title="+${points} punten bij volle kolom">+${points}</div>`);
+				yellowColumnPointsHtml = `
+					<div class="mp-yellow-col-points" style="grid-template-columns: repeat(${zoneData.cols}, var(--mp-cell-size));">
+						${pointCells.join('')}
+					</div>
+				`;
 			}
-			yellowColumnPointsHtml = `
-				<div class="mp-yellow-col-points" style="grid-template-columns: repeat(${zoneData.cols}, var(--mp-cell-size));">
-					${pointCells.join('')}
-				</div>
-			`;
 		}
 
 		let greenPointsGuideHtml = '';
@@ -5203,9 +5262,10 @@ class LocusLobbyUI {
 
 		let purplePointsGuideHtml = '';
 		if (zoneName === 'purple') {
+			const cornerInfo = zoneData.cornerBoldBonus ? ` • Hoek-bold=+${zoneData.cornerBoldBonus}` : '';
 			purplePointsGuideHtml = `
 				<div class="mp-purple-points-guide" title="Punten per verbonden bold-cellen">
-					2=6 • 3=8 • 4=10 • 5=12 • 6=18 • 7=24 • 8+=30
+					2=6 • 3=8 • 4=10 • 5=12 • 6=18 • 7=24 • 8+=30${cornerInfo}
 				</div>
 			`;
 		}

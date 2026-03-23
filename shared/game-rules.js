@@ -794,15 +794,16 @@ function generateHoleySubgrid(rows, cols, targetCount, rng) {
  * Zones gebaseerd op de originele index.html grids.
  * Level 1-3 = World 1 (klein), Level 4-7 = World 2 (medium), Level 8-10 = World 3 (groot)
  */
-function generateLevel1Board(rng, level, playerCount) {
+function generateLevel1Board(rng, level, playerCount, maxWins) {
 	const lvl = level || 1;
 	const pc = Math.max(2, Math.min(8, playerCount || 4));
 	// playerTier: 0 (2p), 1 (3-4p), 2 (5-6p), 3 (7-8p)
 	const playerTier = Math.floor((pc - 1) / 2);
-	// Bepaal wereld op basis van level
+	// Bepaal wereld op basis van maxWins (hoeveel wins de leider heeft)
+	const mw = maxWins || 0;
 	let world = 1;
-	if (lvl >= 4 && lvl <= 7) world = 2;
-	else if (lvl >= 8) world = 3;
+	if (mw >= 3) world = 3;
+	else if (mw >= 2) world = 2;
 
 	const zones = {};
 
@@ -836,28 +837,6 @@ function generateLevel1Board(rng, level, playerCount) {
 			yellowBold.push({ x: 0, y });
 		}
 		const yellowGold = [];
-		for (let i = 0; i < 2; i++) {
-			yellowGold.push({
-				x: 1 + Math.floor(rng() * (yellowCols - 2)),
-				y: Math.floor(rng() * yellowRows)
-			});
-		}
-		zones.yellow = createZoneGrid(yellowRows, yellowCols, {
-			boldCells: yellowBold,
-			goldCells: yellowGold,
-			voidCells: stairVoids
-		});
-		placeGoldFlags(zones.yellow, rng, 2);
-		placeBonusSymbols(zones.yellow, rng, 4);
-	} else if (world === 2) {
-		const yellowCols = 13;
-		const yellowBaseRows = 6 + playerTier;
-		const { totalRows: yellowRows, voids: stairVoids } = yellowStairVoids(yellowCols, yellowBaseRows);
-		const yellowBold = [];
-		for (let y = 0; y < yellowBaseRows; y++) {
-			yellowBold.push({ x: 0, y });
-		}
-		const yellowGold = [];
 		for (let i = 0; i < 4; i++) {
 			yellowGold.push({
 				x: 1 + Math.floor(rng() * (yellowCols - 2)),
@@ -870,32 +849,71 @@ function generateLevel1Board(rng, level, playerCount) {
 			voidCells: stairVoids
 		});
 		placeGoldFlags(zones.yellow, rng, 4);
-		placeBonusSymbols(zones.yellow, rng, 6);
-	} else {
-		const yellowCols = 14;
-		const yellowBaseRows = 7 + playerTier;
-		const { totalRows: yellowRows, voids: stairVoids } = yellowStairVoids(yellowCols, yellowBaseRows);
+		placeBonusSymbols(zones.yellow, rng, 4, { excludeColor: 'yellow' });
+	} else if (world === 2) {
+		// World 2: vierkant grid met diagonale scoring
+		const yellowSize = 11 + playerTier;
 		const yellowBold = [];
-		for (let y = 0; y < yellowBaseRows; y++) {
-			yellowBold.push({ x: 0, y });
-		}
-		// Bold cluster in midden
-		const midBY = Math.floor(yellowBaseRows / 2);
-		yellowBold.push({ x: 5, y: midBY - 1 }, { x: 5, y: midBY }, { x: 6, y: midBY - 1 }, { x: 6, y: midBY });
+		// Bold cellen op de 4 hoeken + midden
+		yellowBold.push({ x: 0, y: 0 }, { x: yellowSize - 1, y: 0 });
+		yellowBold.push({ x: 0, y: yellowSize - 1 }, { x: yellowSize - 1, y: yellowSize - 1 });
+		const mid = Math.floor(yellowSize / 2);
+		yellowBold.push({ x: mid, y: mid });
 		const yellowGold = [];
-		for (let i = 0; i < 5; i++) {
+		for (let i = 0; i < 6; i++) {
 			yellowGold.push({
-				x: 1 + Math.floor(rng() * (yellowCols - 2)),
-				y: Math.floor(rng() * yellowRows)
+				x: Math.floor(rng() * yellowSize),
+				y: Math.floor(rng() * yellowSize)
 			});
+		}
+		zones.yellow = createZoneGrid(yellowSize, yellowSize, {
+			boldCells: yellowBold,
+			goldCells: yellowGold
+		});
+		zones.yellow.scoreMode = 'diagonal';
+		zones.yellow.minDiagonalLength = 4;
+		placeGoldFlags(zones.yellow, rng, 6);
+		placeBonusSymbols(zones.yellow, rng, 6, { excludeColor: 'yellow' });
+	} else {
+		// World 3: ruitvorm (diamond) met ring scoring
+		const diamondPattern = [4, 6, 8, 10, 12, 12, 12, 12, 10, 8, 6, 4];
+		const diamondOffsets = [4, 3, 2, 1, 0, 0, 0, 0, 1, 2, 3, 4];
+		const yellowRows = diamondPattern.length;
+		const yellowCols = Math.max(...diamondPattern.map((len, i) => len + diamondOffsets[i]));
+		// Maak voids voor niet-diamond cellen
+		const diamondVoids = [];
+		for (let y = 0; y < yellowRows; y++) {
+			const off = diamondOffsets[y];
+			const width = diamondPattern[y];
+			for (let x = 0; x < yellowCols; x++) {
+				if (x < off || x >= off + width) {
+					diamondVoids.push({ x, y });
+				}
+			}
+		}
+		// Bold cluster in het midden van de ruit
+		const yellowBold = [];
+		const midY = Math.floor(yellowRows / 2);
+		const midX = Math.floor(yellowCols / 2);
+		yellowBold.push({ x: midX - 1, y: midY - 1 }, { x: midX, y: midY - 1 });
+		yellowBold.push({ x: midX - 1, y: midY }, { x: midX, y: midY });
+		const yellowGold = [];
+		for (let i = 0; i < 8; i++) {
+			const y = Math.floor(rng() * yellowRows);
+			const off = diamondOffsets[y];
+			const width = diamondPattern[y];
+			yellowGold.push({ x: off + Math.floor(rng() * width), y });
 		}
 		zones.yellow = createZoneGrid(yellowRows, yellowCols, {
 			boldCells: yellowBold,
 			goldCells: yellowGold,
-			voidCells: stairVoids
+			voidCells: diamondVoids
 		});
-		placeGoldFlags(zones.yellow, rng, 5);
-		placeBonusSymbols(zones.yellow, rng, 7);
+		zones.yellow.scoreMode = 'rings';
+		zones.yellow.ringMinPoints = 12;
+		zones.yellow.ringMaxPoints = 64;
+		placeGoldFlags(zones.yellow, rng, 8);
+		placeBonusSymbols(zones.yellow, rng, 7, { excludeColor: 'yellow' });
 	}
 
 	// ══════════════════════════════════════════
@@ -922,21 +940,21 @@ function generateLevel1Board(rng, level, playerCount) {
 			minSpreadX: 10, minSpreadY: 10
 		});
 	} else {
-		const greenRows = 24 + playerTier;
-		const greenCols = 22 + playerTier;
+		const greenRows = 30 + playerTier;
+		const greenCols = 26 + playerTier;
 		const greenCenterX = Math.floor(greenCols / 2);
 		const greenCenterY = Math.floor(greenRows / 2);
-		zones.green = generateBranchGrid(greenRows, greenCols, 260 + playerTier * 24, 0.55, rng, {
+		zones.green = generateBranchGrid(greenRows, greenCols, 320 + playerTier * 28, 0.55, rng, {
 			endMinDistance: 3,
-			startX: greenCenterX, startY: greenCenterY, minEndCells: greenEndCells, minActiveCells: 120,
-			minSpreadX: 13, minSpreadY: 13
+			startX: greenCenterX, startY: greenCenterY, minEndCells: greenEndCells, minActiveCells: 160,
+			minSpreadX: 15, minSpreadY: 15
 		});
 	}
 
 	// Gold en bonus in green zone
 	const greenGoldCount = world === 1 ? 3 : (world === 2 ? 5 : 7);
 	placeGoldFlags(zones.green, rng, greenGoldCount);
-	placeBonusSymbols(zones.green, rng, world === 1 ? 3 : (world === 2 ? 5 : 7));
+	placeBonusSymbols(zones.green, rng, world === 1 ? 3 : (world === 2 ? 5 : 7), { excludeColor: 'green' });
 
 	// ══════════════════════════════════════════
 	//  BLUE ZONE — Wereldafhankelijk + spelerafhankelijk
@@ -996,10 +1014,10 @@ function generateLevel1Board(rng, level, playerCount) {
 		zones.blue = createZoneGrid(blueHeight, blueWidth, { boldCells: blueBold, goldCells: blueGold, voidCells: blueVoid });
 		zones.blue.boldRows = blueBoldRows;
 		placeGoldFlags(zones.blue, rng, 2);
-		placeBonusSymbols(zones.blue, rng, 3);
+		placeBonusSymbols(zones.blue, rng, 3, { excludeColor: 'blue' });
 	} else if (world === 2) {
 		const blueWidth = 6 + playerTier;
-		const blueHeight = 35; // +5 rijen (was 30)
+		const blueHeight = 52; // 2x W1 hoogte
 		const blueBoldRows = [];
 		for (let r = 0; r < blueHeight; r += 6) { blueBoldRows.push(r); }
 		const blueVoid = generateBlueRiverVoids(blueWidth, blueHeight, rng, blueBoldRows);
@@ -1020,10 +1038,10 @@ function generateLevel1Board(rng, level, playerCount) {
 		zones.blue = createZoneGrid(blueHeight, blueWidth, { boldCells: blueBold, goldCells: blueGold, voidCells: blueVoid });
 		zones.blue.boldRows = blueBoldRows;
 		placeGoldFlags(zones.blue, rng, 4);
-		placeBonusSymbols(zones.blue, rng, 5);
+		placeBonusSymbols(zones.blue, rng, 5, { excludeColor: 'blue' });
 	} else {
 		const blueWidth = 7 + playerTier;
-		const blueHeight = 45; // +5 rijen (was 40)
+		const blueHeight = 78; // 3x W1 hoogte
 		const blueBoldRows = [];
 		for (let r = 0; r < blueHeight; r += 7) { blueBoldRows.push(r); }
 		const blueVoid = generateBlueRiverVoids(blueWidth, blueHeight, rng, blueBoldRows);
@@ -1044,15 +1062,16 @@ function generateLevel1Board(rng, level, playerCount) {
 		zones.blue = createZoneGrid(blueHeight, blueWidth, { boldCells: blueBold, goldCells: blueGold, voidCells: blueVoid });
 		zones.blue.boldRows = blueBoldRows;
 		placeGoldFlags(zones.blue, rng, 6);
-		placeBonusSymbols(zones.blue, rng, 7);
+		placeBonusSymbols(zones.blue, rng, 7, { excludeColor: 'blue' });
 	}
 
 	// ══════════════════════════════════════════
 	//  RED ZONE — Wereldafhankelijk + spelerafhankelijk
 	//  Minimum 3 subgrids vanaf level 3 (world>=1, lvl>=3)
 	// ══════════════════════════════════════════
-	const redBaseCount = lvl >= 3 ? 3 : 2;  // 3 grids from level 3+
-	const redSubgridCount = Math.min(redBaseCount + playerTier, 5);
+	const redBaseCount = lvl >= 3 ? 3 : 2;
+	const redMaxCount = world === 3 ? 6 : 5; // W3: 6 subgrids
+	const redSubgridCount = Math.min(redBaseCount + playerTier, redMaxCount);
 	{
 		// Pool van beschikbare subgrids per wereld (van klein naar groot)
 		const redPool = world === 1
@@ -1076,6 +1095,7 @@ function generateLevel1Board(rng, level, playerCount) {
 				{ r: 5, c: 7, t: 22, pts: 45 },
 				{ r: 6, c: 7, t: 26, pts: 60 },
 				{ r: 6, c: 7, t: 30, pts: 75 },
+				{ r: 7, c: 7, t: 32, pts: 85 },
 				{ r: 8, c: 10, t: 34, pts: 90 }
 			];
 		const subgrids = [];
@@ -1094,20 +1114,20 @@ function generateLevel1Board(rng, level, playerCount) {
 	for (const sg of zones.red.subgrids) {
 		placeGoldFlags(sg, rng, 1);
 		const redBonusBase = world === 1 ? 3 : (world === 2 ? 4 : 5);
-		placeBonusSymbols(sg, rng, redBonusBase * 0.55);
+		placeBonusSymbols(sg, rng, redBonusBase * 0.55, { excludeColor: 'red' });
 	}
 
 	// ══════════════════════════════════════════
 	//  PURPLE ZONE — Wereldafhankelijk + spelerafhankelijk
 	//  Groter grid en meer bolds per playerTier
 	// ══════════════════════════════════════════
-	const purpleBaseSize = world === 1 ? 11 : (world === 2 ? 13 : 14);
+	const purpleBaseSize = world === 1 ? 11 : (world === 2 ? 13 : 16);
 	const purpleSize = purpleBaseSize + playerTier;
 	const purpleCenter = Math.floor(purpleSize / 2);
 	const purpleBold = [];
 	// Meer bolds bij grotere grids: base + extra per world + level scaling
-	const levelBonus = Math.max(0, lvl - 3);  // extra bolds vanaf level 4
-	const purpleBaseBoldCount = world === 1 ? 8 : (world === 2 ? 12 : 16);
+	const levelBonus = Math.max(0, lvl - 3);
+	const purpleBaseBoldCount = world === 1 ? 8 : (world === 2 ? 12 : 20);
 	const purpleBoldCount = purpleBaseBoldCount + playerTier * 2 + levelBonus;
 
 	const allPurpleCoords = [];
@@ -1162,6 +1182,10 @@ function generateLevel1Board(rng, level, playerCount) {
 		boldCells: purpleBold,
 		goldCells: purpleGold
 	});
+	// Corner bold bonus punten voor W2/W3
+	if (world >= 2) {
+		zones.purple.cornerBoldBonus = world === 2 ? 20 : 25;
+	}
 	placeGoldFlags(zones.purple, rng, purpleGoldCount);
 
 	// Tag outer ring cellen
@@ -1178,12 +1202,12 @@ function generateLevel1Board(rng, level, playerCount) {
 		tagCellFlag(zones.purple, purpleSize - 2, i, 'outer-ring-1');
 	}
 
-	placeBonusSymbols(zones.purple, rng, world === 1 ? 3 : (world === 2 ? 5 : 7));
+	placeBonusSymbols(zones.purple, rng, world === 1 ? 3 : (world === 2 ? 5 : 7), { excludeColor: 'purple' });
 	ensureAnyBonusSymbolOnBoard(zones, rng);
 
-	// Vanaf level 5: plaats parel-schatten (wit/ronde marker) die 5 munten geven
-	if (lvl >= 5 && zones.yellow) {
-		const pearlCount = lvl >= 8 ? 2 : 1;
+	// Plaats parel-schatten in gele zone (meer coins)
+	if (zones.yellow) {
+		const pearlCount = world === 3 ? 3 : (world === 2 ? 2 : 1);
 		placeTreasurePearls(zones.yellow, rng, pearlCount, 5);
 	}
 
@@ -1233,7 +1257,10 @@ function placeGoldFlags(zoneData, rng, count) {
  * voor de aangegeven kleur.
  */
 function placeBonusSymbols(zoneData, rng, count, options = {}) {
-	const bonusColors = ['yellow', 'red', 'green', 'purple', 'blue'];
+	const allBonusColors = ['yellow', 'red', 'green', 'purple', 'blue'];
+	// excludeColor: vermijd dezelfde kleur als de zone zelf
+	const excludeColor = options.excludeColor || null;
+	const bonusColors = excludeColor ? allBonusColors.filter(c => c !== excludeColor) : allBonusColors;
 	const preferredColor = bonusColors.includes(options.preferredColor) ? options.preferredColor : null;
 	const preferredChance = Math.max(0, Math.min(1, Number(options.preferredChance || 0)));
 	const multicolorChance = Math.max(0, Math.min(1, Number(options.multicolorChance || 0.08)));
@@ -1795,15 +1822,24 @@ function hasStoneInYellowColumn(zoneData, x) {
 
 function scoreYellowData(zoneData) {
 	if (!zoneData) return 0;
-	let score = 0;
 
+	// Branch op scoreMode
+	if (zoneData.scoreMode === 'diagonal') {
+		return scoreYellowDiagonal(zoneData);
+	}
+	if (zoneData.scoreMode === 'rings') {
+		return scoreYellowRings(zoneData);
+	}
+
+	// Default: kolom-gebaseerd
+	let score = 0;
 	for (let x = 0; x < zoneData.cols; x++) {
 		if (hasStoneInYellowColumn(zoneData, x)) continue;
 		let colComplete = true;
 		let hasCells = false;
 		for (let y = 0; y < zoneData.rows; y++) {
 			const cell = getDataCell(zoneData, x, y);
-			if (!cell) continue; // void cell — skip
+			if (!cell) continue;
 			hasCells = true;
 			if (!cell.active) { colComplete = false; break; }
 		}
@@ -1815,8 +1851,177 @@ function scoreYellowData(zoneData) {
 			score += YELLOW_COLUMN_PAIR_POINTS[pairIndex];
 		}
 	}
-
 	return score;
+}
+
+/** YELLOW DIAGONAL SCORING (World 2) */
+function scoreYellowDiagonal(zoneData) {
+	const minLen = Math.max(1, Number(zoneData.minDiagonalLength) || 4);
+	const computeSegmentPoints = (len) => {
+		if (len < minLen) return 0;
+		return Math.pow(2, Math.floor(len / 2) + 1);
+	};
+	const cellByCoord = new Map();
+	for (const key in zoneData.cells) {
+		const c = zoneData.cells[key];
+		if (c) cellByCoord.set(key, c);
+	}
+	const tryGet = (x, y) => cellByCoord.get(`${x},${y}`) || null;
+
+	const collectSegments = (dx, dy) => {
+		const segments = [];
+		for (const c of cellByCoord.values()) {
+			const x0 = c.x, y0 = c.y;
+			if (tryGet(x0 - dx, y0 - dy)) continue; // niet het begin van segment
+			const segCells = [];
+			let x = x0, y = y0;
+			while (tryGet(x, y)) { segCells.push(tryGet(x, y)); x += dx; y += dy; }
+			if (segCells.length >= minLen) {
+				const allActive = segCells.every(sc => sc.active);
+				if (allActive) segments.push(segCells);
+			}
+		}
+		return segments;
+	};
+
+	let score = 0;
+	const allSegments = [...collectSegments(1, 1), ...collectSegments(1, -1)];
+	for (const seg of allSegments) {
+		score += computeSegmentPoints(seg.length);
+	}
+	return score;
+}
+
+/** Aantal voltooide diagonale segmenten (voor objectives) */
+function countYellowCompletedDiagonals(zoneData) {
+	const minLen = Math.max(1, Number(zoneData?.minDiagonalLength) || 4);
+	if (!zoneData?.cells) return 0;
+	const cellByCoord = new Map();
+	for (const key in zoneData.cells) {
+		const c = zoneData.cells[key];
+		if (c) cellByCoord.set(key, c);
+	}
+	const tryGet = (x, y) => cellByCoord.get(`${x},${y}`) || null;
+	let count = 0;
+	const check = (dx, dy) => {
+		for (const c of cellByCoord.values()) {
+			const x0 = c.x, y0 = c.y;
+			if (tryGet(x0 - dx, y0 - dy)) continue;
+			const segCells = [];
+			let x = x0, y = y0;
+			while (tryGet(x, y)) { segCells.push(tryGet(x, y)); x += dx; y += dy; }
+			if (segCells.length >= minLen && segCells.every(sc => sc.active)) count++;
+		}
+	};
+	check(1, 1);
+	check(1, -1);
+	return count;
+}
+
+/** YELLOW RING SCORING (World 3) */
+function scoreYellowRings(zoneData) {
+	const ringMinPts = Math.max(0, Number(zoneData.ringMinPoints) || 12);
+	const ringMaxPts = Math.max(ringMinPts, Number(zoneData.ringMaxPoints) || 64);
+
+	// BFS van boundary cellen om ring-diepte te bepalen
+	const cellByCoord = new Map();
+	for (const key in zoneData.cells) {
+		const c = zoneData.cells[key];
+		if (c) cellByCoord.set(key, c);
+	}
+	const tryGet = (x, y) => cellByCoord.get(`${x},${y}`) || null;
+
+	// Boundary: cellen die minstens één ontbrekende buur hebben
+	const boundary = [];
+	for (const c of cellByCoord.values()) {
+		if (!tryGet(c.x - 1, c.y) || !tryGet(c.x + 1, c.y) ||
+			!tryGet(c.x, c.y - 1) || !tryGet(c.x, c.y + 1)) {
+			boundary.push(c);
+		}
+	}
+
+	// BFS
+	const depthByKey = new Map();
+	const queue = [];
+	for (const c of boundary) {
+		depthByKey.set(`${c.x},${c.y}`, 0);
+		queue.push(c);
+	}
+	let qi = 0;
+	while (qi < queue.length) {
+		const cur = queue[qi++];
+		const curDepth = depthByKey.get(`${cur.x},${cur.y}`);
+		for (const [dx, dy] of [[1,0],[-1,0],[0,1],[0,-1]]) {
+			const n = tryGet(cur.x + dx, cur.y + dy);
+			if (n && !depthByKey.has(`${n.x},${n.y}`)) {
+				depthByKey.set(`${n.x},${n.y}`, curDepth + 1);
+				queue.push(n);
+			}
+		}
+	}
+
+	// Groepeer per ring diepte
+	let maxDepth = 0;
+	const rings = new Map();
+	for (const [key, depth] of depthByKey.entries()) {
+		if (depth > maxDepth) maxDepth = depth;
+		if (!rings.has(depth)) rings.set(depth, []);
+		rings.get(depth).push(cellByCoord.get(key));
+	}
+
+	let score = 0;
+	for (const [depth, cells] of rings.entries()) {
+		const denom = Math.max(1, maxDepth);
+		const t = (denom - depth) / denom;
+		const points = Math.round(ringMinPts + t * (ringMaxPts - ringMinPts));
+		if (cells.every(c => c.active)) {
+			score += points;
+		}
+	}
+	return score;
+}
+
+/** Aantal voltooide ringen (voor objectives) */
+function countYellowCompletedRings(zoneData) {
+	if (!zoneData?.cells) return 0;
+	const cellByCoord = new Map();
+	for (const key in zoneData.cells) {
+		const c = zoneData.cells[key];
+		if (c) cellByCoord.set(key, c);
+	}
+	const tryGet = (x, y) => cellByCoord.get(`${x},${y}`) || null;
+	const boundary = [];
+	for (const c of cellByCoord.values()) {
+		if (!tryGet(c.x - 1, c.y) || !tryGet(c.x + 1, c.y) ||
+			!tryGet(c.x, c.y - 1) || !tryGet(c.x, c.y + 1)) {
+			boundary.push(c);
+		}
+	}
+	const depthByKey = new Map();
+	const queue = [];
+	for (const c of boundary) { depthByKey.set(`${c.x},${c.y}`, 0); queue.push(c); }
+	let qi = 0;
+	while (qi < queue.length) {
+		const cur = queue[qi++];
+		const curDepth = depthByKey.get(`${cur.x},${cur.y}`);
+		for (const [dx, dy] of [[1,0],[-1,0],[0,1],[0,-1]]) {
+			const n = tryGet(cur.x + dx, cur.y + dy);
+			if (n && !depthByKey.has(`${n.x},${n.y}`)) {
+				depthByKey.set(`${n.x},${n.y}`, curDepth + 1);
+				queue.push(n);
+			}
+		}
+	}
+	const rings = new Map();
+	for (const [key, depth] of depthByKey.entries()) {
+		if (!rings.has(depth)) rings.set(depth, []);
+		rings.get(depth).push(cellByCoord.get(key));
+	}
+	let count = 0;
+	for (const cells of rings.values()) {
+		if (cells.every(c => c.active)) count++;
+	}
+	return count;
 }
 
 /**
@@ -2106,7 +2311,23 @@ function buildPurpleConnectionEvents(zoneData) {
 function scorePurpleData(zoneData) {
 	if (!zoneData) return 0;
 	const events = buildPurpleConnectionEvents(zoneData);
-	return getPurpleTotalPointsForConnectionCount(events.length);
+	let score = getPurpleTotalPointsForConnectionCount(events.length);
+	// Corner cell bonus: 4 hoeken geven extra punten als ze actief bold zijn
+	if (zoneData.cornerBoldBonus) {
+		const size = zoneData.rows || 0;
+		const corners = [
+			getDataCell(zoneData, 0, 0),
+			getDataCell(zoneData, size - 1, 0),
+			getDataCell(zoneData, 0, size - 1),
+			getDataCell(zoneData, size - 1, size - 1)
+		];
+		for (const c of corners) {
+			if (c && c.active && c.flags.includes('bold')) {
+				score += zoneData.cornerBoldBonus;
+			}
+		}
+	}
+	return score;
 }
 
 function getBlueHighestReachedTier(zoneData) {
@@ -2729,6 +2950,11 @@ function materializeObjectiveForPlayer(baseObjective, gameState, playerId, rng) 
 function countPlayerCompletedYellowCols(boardState, playerId) {
 	const zone = boardState?.zones?.yellow;
 	if (!zone || !playerId) return 0;
+	// Voor diagonal mode: tel voltooide diagonale segmenten
+	if (zone.scoreMode === 'diagonal') return countYellowCompletedDiagonals(zone);
+	// Voor rings mode: tel voltooide ringen
+	if (zone.scoreMode === 'rings') return countYellowCompletedRings(zone);
+	// Default: kolommen
 	let count = 0;
 	for (let x = 0; x < zone.cols; x++) {
 		if (hasStoneInYellowColumn(zone, x)) continue;
@@ -2736,11 +2962,8 @@ function countPlayerCompletedYellowCols(boardState, playerId) {
 		let complete = true;
 		for (let y = 0; y < zone.rows; y++) {
 			const cell = getDataCell(zone, x, y);
-			if (!cell) continue; // void cell — skip
-			if (!cell.active) {
-				complete = false;
-				break;
-			}
+			if (!cell) continue;
+			if (!cell.active) { complete = false; break; }
 			colCells.push(cell);
 		}
 		if (!complete || colCells.length === 0) continue;
@@ -3011,13 +3234,70 @@ const LEVEL_OBJECTIVES = {
 			if (!targetPlayer?.chosenObjective) return false;
 			return !!targetPlayer.objectiveAchieved;
 		  }},
+	],
+	// Level 4+: Ultra moeilijke doelstellingen (vanaf 3/4 wins)
+	4: [
+		{ id: 'fill_8_yellow_units', name: 'Gele Meester', description: 'Vul minstens 8 gele eenheden (kolommen/diagonalen/ringen).', target: 8, points: 70, coins: 5,
+		  useContext: true, check: (ctx) => countPlayerCompletedYellowCols(ctx.boardState, ctx.playerId)},
+		{ id: 'reach_8_green_ends_l4', name: 'Groene Legende', description: 'Bereik minstens 8 eindpunten in de groene zone.', target: 8, points: 70, coins: 6,
+		  useContext: true, check: (ctx) => countPlayerGreenEnds(ctx.boardState, ctx.playerId)},
+		{ id: 'fill_5_blue_rows', name: 'Blauwe Toren', description: 'Bereik minstens 5 rijen in de blauwe zone.', target: 5, points: 70, randomBonuses: 4,
+		  useContext: true, check: (ctx) => getPlayerBlueHighestTier(ctx.boardState, ctx.playerId)},
+		{ id: 'fill_3_red_grids_l4', name: 'Rode Storm', description: 'Vul minstens 3 rode subgrids volledig.', target: 3, points: 0, coins: 12, randomBonuses: 3,
+		  useContext: true, check: (ctx) => countPlayerCompletedRedSubgrids(ctx.boardState, ctx.playerId)},
+		{ id: 'connect_8_purple', name: 'Paars Koninkrijk', description: 'Verbind minstens 8 bold-cellen in één paars cluster.', target: 8, points: 60, randomBonuses: 4,
+		  useContext: true, check: (ctx) => getPlayerPurpleMaxBoldCluster(ctx.boardState, ctx.playerId)},
+		{ id: 'connect_purple_corners', name: 'Paarse Hoeken', description: 'Activeer alle 4 hoek-bold-cellen in de paarse zone.', target: 4, points: 80, coins: 6, useContext: true,
+		  check: (ctx) => {
+			const zone = ctx?.boardState?.zones?.purple;
+			if (!zone) return 0;
+			const size = zone.rows || 0;
+			const corners = [
+				zone.cells[`0,0`], zone.cells[`${size-1},0`],
+				zone.cells[`0,${size-1}`], zone.cells[`${size-1},${size-1}`]
+			];
+			return corners.filter(c => c && c.active && c.flags.includes('bold')).length;
+		  }},
+		{ id: 'balance_20', name: 'Ultieme Balans', description: 'Behaal overal tenminste 20 punten.', target: 5, points: 80, coins: 10,
+		  useContext: true, check: (ctx) => countPlayerZonesAtLeast(ctx?.playerScore, 20) },
+		{ id: 'collect_12_gold', name: 'Gouden Imperium', description: 'Verzamel minstens 12 munten.', target: 12, points: 60,
+		  useContext: true, check: (ctx) => countPlayerGoldCells(ctx.boardState, ctx.playerId)},
+		{ id: 'combo_red2_blue4', name: 'Rode Blauw Combo', description: 'Vul 2 rode grids én bereik 4 blauwe rijen.', target: 2, points: 80, coins: 8, useContext: true,
+		  check: (ctx) => {
+			let done = 0;
+			if (countPlayerCompletedRedSubgrids(ctx.boardState, ctx.playerId) >= 2) done++;
+			if (getPlayerBlueHighestTier(ctx.boardState, ctx.playerId) >= 4) done++;
+			return done;
+		  }},
+		{ id: 'deny_named_l4', name: 'Ultieme Sabotage', description: 'Zorg dat een gekozen speler zijn/haar doel niet haalt.', target: 1, points: 70, coins: 8, randomBonuses: 3, useContext: true, endOnly: true, dynamicType: 'deny_named_objective',
+		  check: (ctx, objective) => {
+			const player = ctx?.gameState?.players?.[ctx?.playerId];
+			if (player?._mutualSabotageFailed) return 0;
+			const targetPid = objective?.targetPlayerId;
+			if (!targetPid || targetPid === ctx?.playerId) return 0;
+			const targetPlayer = ctx?.gameState?.players?.[targetPid];
+			if (!targetPlayer?.chosenObjective) return 0;
+			return targetPlayer.objectiveAchieved ? 0 : 1;
+		  },
+		  failCheck: (ctx, objective) => {
+			const player = ctx?.gameState?.players?.[ctx?.playerId];
+			if (player?._mutualSabotageFailed) return true;
+			const targetPid = objective?.targetPlayerId;
+			if (!targetPid || targetPid === ctx?.playerId) return true;
+			const targetPlayer = ctx?.gameState?.players?.[targetPid];
+			if (!targetPlayer?.chosenObjective) return false;
+			return !!targetPlayer.objectiveAchieved;
+		  }},
 	]
 };
 
 /** Genereer 3 objectives voor een level (level-afhankelijk) */
 function generateObjectiveChoices(rng, level, gameState = null, playerId = null) {
-	const lvl = Math.min(level || 1, 3);
-	const pool = LEVEL_OBJECTIVES[lvl] || LEVEL_OBJECTIVES[1];
+	// Objective moeilijkheid schaalt mee met maxWins
+	const mw = gameState ? _getMaxWins(gameState) : 0;
+	const effectiveLevel = Math.max(level || 1, mw >= 3 ? 4 : (mw >= 2 ? 3 : 1));
+	const lvl = Math.min(effectiveLevel, 4);
+	const pool = LEVEL_OBJECTIVES[lvl] || LEVEL_OBJECTIVES[3];
 	const shuffled = shuffleWithRNG([...pool], rng);
 	return shuffled.slice(0, 3).map(obj => {
 		const materialized = materializeObjectiveForPlayer(obj, gameState, playerId, rng);
@@ -3412,12 +3692,21 @@ function removePlayer(gameState, playerId) {
 	return { success: true };
 }
 
+function _getMaxWins(gameState) {
+	let mw = 0;
+	for (const pid of (gameState.playerOrder || [])) {
+		const w = (gameState.players?.[pid]?.matchWins) || 0;
+		if (w > mw) mw = w;
+	}
+	return mw;
+}
+
 function initializeLevelOneAfterDeckChoice(gameState) {
 	const rng = createRNG(gameState.seed);
 
 	// 1. Genereer bord voor level 1
 	const mapSize = gameState.settings?.mapSize || 4;
-	gameState.boardState = generateLevel1Board(rng, 1, mapSize);
+	gameState.boardState = generateLevel1Board(rng, 1, mapSize, _getMaxWins(gameState));
 
 	// 2. Genereer startdecks per speler op basis van keuze
 	for (const playerId of gameState.playerOrder) {
@@ -4798,7 +5087,7 @@ function startNextLevel(gameState) {
 
 	// Nieuw bord genereren (level-afhankelijk)
 	const mapSize = gameState.settings?.mapSize || 4;
-	gameState.boardState = generateLevel1Board(rng, gameState.level, mapSize);
+	gameState.boardState = generateLevel1Board(rng, gameState.level, mapSize, _getMaxWins(gameState));
 
 	// Nieuwe decks per speler (+ shop cards)
 	for (const pid of gameState.playerOrder) {

@@ -2754,6 +2754,18 @@ html.theme-classic .mp-cell.bonus-just-spawned {
 	border-color: rgba(245, 215, 110, 0.5);
 }
 
+.mp-yellow-scoring-guide {
+	text-align: center;
+	font-size: 0.65rem;
+	font-weight: 600;
+	color: rgba(245, 215, 110, 0.75);
+	padding: 4px 8px;
+	margin-bottom: 4px;
+	background: rgba(245, 215, 110, 0.08);
+	border: 1px solid rgba(245, 215, 110, 0.2);
+	border-radius: 6px;
+}
+
 .mp-grid {
 	display: grid;
 	gap: 2px;
