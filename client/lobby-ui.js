@@ -1577,15 +1577,13 @@ class LocusLobbyUI {
 			const isChoosingGoals = this.mp?.gameState?.phase === 'choosingGoals';
 			const hasChosenObjective = !!this.mp?.getMyPlayer?.()?.chosenObjective;
 			const perkPoints = this.mp?.getMyPlayer?.()?.perks?.perkPoints || 0;
-			const canStillChoosePerks = !this._isRewardingMode() && isChoosingGoals && perkPoints > 0;
+			const canStillChoosePerks = isChoosingGoals && perkPoints > 0;
 			const canFinalizeGoalPhase = isChoosingGoals && hasChosenObjective;
-			const canChooseRewardCard = this._isRewardingMode() && isChoosingGoals && !this.mp?.getMyPlayer()?._rewardCardChosen;
 			container.innerHTML = `
 				<h2 class="mp-section-title">Doelstelling gekozen!</h2>
 				<p class="mp-section-subtitle">Wachten op andere spelers...</p>
 				${canFinalizeGoalPhase ? '<button class="mp-btn mp-btn-primary" id="mp-goal-phase-continue" style="margin-top:10px;">✅ Klaar — ga verder</button>' : ''}
 				${canStillChoosePerks ? '<button class="mp-btn mp-btn-secondary" id="mp-open-perks-again" style="margin-top:10px;">🎯 Open perks opnieuw</button>' : ''}
-				${canChooseRewardCard ? '<button class="mp-btn mp-btn-secondary" id="mp-open-reward-card" style="margin-top:10px;">🎁 Kies je gratis kaart</button>' : ''}
 			`;
 			if (canFinalizeGoalPhase) {
 				container.querySelector('#mp-goal-phase-continue')?.addEventListener('click', async (e) => {
@@ -1609,11 +1607,6 @@ class LocusLobbyUI {
 					this._openPerkPopup(() => this._showChosenGoalWaitingState());
 				});
 			}
-			if (canChooseRewardCard) {
-				container.querySelector('#mp-open-reward-card')?.addEventListener('click', () => {
-					this._showRewardCardTypeChoice();
-				});
-			}
 		}
 	}
 
@@ -1625,16 +1618,6 @@ class LocusLobbyUI {
 			return;
 		}
 		if (currentPhase && currentPhase !== 'choosingGoals') {
-			return;
-		}
-		// In beloningsmodus: toon kaarttype-keuze i.p.v. perks
-		if (this._isRewardingMode()) {
-			const myPlayer = this.mp.getMyPlayer?.();
-			if (myPlayer?._rewardCardChosen) {
-				this._showChosenGoalWaitingState();
-				return;
-			}
-			this._showRewardCardTypeChoice();
 			return;
 		}
 		const myPlayer = this.mp.getMyPlayer?.();
