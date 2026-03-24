@@ -2019,6 +2019,56 @@ html.theme-classic .mp-cell.bonus-just-spawned {
 	backdrop-filter: blur(12px) saturate(1.3);
 }
 
+/* Perk icons in top-left */
+.mp-perk-icons {
+	display: none;
+	align-items: center;
+	gap: 4px;
+	flex-shrink: 0;
+}
+.mp-perk-icon-badge {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 28px;
+	height: 28px;
+	font-size: 0.95rem;
+	background: rgba(166, 140, 255, 0.12);
+	border: 1px solid rgba(166, 140, 255, 0.25);
+	border-radius: 6px;
+	cursor: default;
+	position: relative;
+	transition: background 0.15s;
+}
+.mp-perk-icon-badge:hover {
+	background: rgba(166, 140, 255, 0.25);
+}
+.mp-perk-icon-badge::after {
+	content: attr(title);
+	position: absolute;
+	left: 50%;
+	top: calc(100% + 6px);
+	transform: translateX(-50%);
+	background: var(--mp-surface, #1f0e28);
+	color: var(--mp-text, #e8e0ff);
+	border: 1px solid rgba(166, 140, 255, 0.3);
+	border-radius: 6px;
+	padding: 4px 8px;
+	font-size: 0.7rem;
+	white-space: nowrap;
+	pointer-events: none;
+	opacity: 0;
+	transition: opacity 0.15s;
+	z-index: 100;
+	max-width: 220px;
+	white-space: normal;
+	text-align: center;
+	line-height: 1.3;
+}
+.mp-perk-icon-badge:hover::after {
+	opacity: 1;
+}
+
 .mp-top-right {
 	display: flex;
 	flex-direction: column;
@@ -4733,22 +4783,22 @@ body.mp-loading .mp-btn {
 
 .mp-shop-offering-grid {
 	display: flex;
-	gap: 12px;
+	gap: 16px;
 	flex-wrap: wrap;
 	justify-content: center;
 }
 
 .mp-shop-offering {
-	width: 130px;
+	width: 170px;
 	background: rgba(24,7,30,0.5);
 	border: 1px solid rgba(166,140,255,0.12);
-	border-radius: 12px;
-	padding: 12px;
+	border-radius: 14px;
+	padding: 16px;
 	display: flex;
 	flex-direction: column;
 	align-items: center;
 	justify-content: center;
-	gap: 8px;
+	gap: 10px;
 	transition: all 0.2s;
 }
 

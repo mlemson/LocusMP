@@ -1576,14 +1576,11 @@ class LocusLobbyUI {
 		if (container) {
 			const isChoosingGoals = this.mp?.gameState?.phase === 'choosingGoals';
 			const hasChosenObjective = !!this.mp?.getMyPlayer?.()?.chosenObjective;
-			const perkPoints = this.mp?.getMyPlayer?.()?.perks?.perkPoints || 0;
-			const canStillChoosePerks = isChoosingGoals && perkPoints > 0;
 			const canFinalizeGoalPhase = isChoosingGoals && hasChosenObjective;
 			container.innerHTML = `
 				<h2 class="mp-section-title">Doelstelling gekozen!</h2>
 				<p class="mp-section-subtitle">Wachten op andere spelers...</p>
 				${canFinalizeGoalPhase ? '<button class="mp-btn mp-btn-primary" id="mp-goal-phase-continue" style="margin-top:10px;">✅ Klaar — ga verder</button>' : ''}
-				${canStillChoosePerks ? '<button class="mp-btn mp-btn-secondary" id="mp-open-perks-again" style="margin-top:10px;">🎯 Open perks opnieuw</button>' : ''}
 			`;
 			if (canFinalizeGoalPhase) {
 				container.querySelector('#mp-goal-phase-continue')?.addEventListener('click', async (e) => {
@@ -1600,11 +1597,6 @@ class LocusLobbyUI {
 						btn.disabled = false;
 						this._showToast('Kon niet doorgaan', 'error');
 					}
-				});
-			}
-			if (canStillChoosePerks) {
-				container.querySelector('#mp-open-perks-again')?.addEventListener('click', () => {
-					this._openPerkPopup(() => this._showChosenGoalWaitingState());
 				});
 			}
 		}
@@ -1630,11 +1622,15 @@ class LocusLobbyUI {
 		this._showScreen('goal-screen');
 		const container = this.elements['goal-choices-container'];
 		if (container) {
-			container.innerHTML = '<h2 class="mp-section-title">Doelstelling gekozen!</h2><p class="mp-section-subtitle">Kies nu eventueel nog perks voordat het level start.</p>';
+			container.innerHTML = '<h2 class="mp-section-title">Doelstelling gekozen!</h2><p class="mp-section-subtitle">Kies nu een perk voordat het level start.</p>';
 		}
 		setTimeout(() => {
-			if (!document.getElementById('mp-perk-popup-overlay')) {
-				this._openPerkPopup(() => this._showChosenGoalWaitingState());
+			if (!document.getElementById('mp-rewarding-perk-overlay')) {
+				this._showRewardingPerkChoice(async () => {
+					// Finaliseer goal perks zodat het spel kan starten
+					try { await this.mp.choosePerk('__skip__'); } catch (_) {}
+					this._showChosenGoalWaitingState();
+				});
 			}
 		}, 50);
 	}
@@ -1918,6 +1914,7 @@ class LocusLobbyUI {
 		this._updateTurnIndicator();
 		this._renderMyObjective();
 		this._renderBonusBar();
+		this._renderPerkIcons();
 		this._renderOpponentPanels();
 		this._showBoardTutorial();
 		this._updateDiscardPileIndicator();
@@ -1932,6 +1929,7 @@ class LocusLobbyUI {
 		this._renderHand();
 		this._renderScoreboard();
 		this._renderBonusBar();
+		this._renderPerkIcons();
 		this._renderOpponentPanels();
 		this._cancelDrag();
 		this._cancelBonusMode();
@@ -3764,6 +3762,36 @@ class LocusLobbyUI {
 	//  BONUS BAR
 	// ──────────────────────────────────────────
 
+	_renderPerkIcons() {
+		const container = document.getElementById('mp-perk-icons');
+		if (!container) return;
+
+		const Rules = window.LocusGameRules;
+		const player = this.mp.getMyPlayer();
+		const unlocked = player?.perks?.unlockedPerks || [];
+
+		if (unlocked.length === 0 || !Rules?.PERK_BRANCHES) {
+			container.innerHTML = '';
+			container.style.display = 'none';
+			return;
+		}
+
+		// Build flat lookup of all perks
+		const allPerks = {};
+		for (const branch of Object.values(Rules.PERK_BRANCHES)) {
+			for (const perk of (branch.perks || [])) {
+				allPerks[perk.id] = perk;
+			}
+		}
+
+		container.style.display = 'flex';
+		container.innerHTML = unlocked.map(id => {
+			const perk = allPerks[id];
+			if (!perk) return '';
+			return `<span class="mp-perk-icon-badge" title="${this._escapeHtml(perk.name)}: ${this._escapeHtml(perk.description)}">${perk.icon}</span>`;
+		}).join('');
+	}
+
 	_renderBonusBar(prevState) {
 		const container = this.elements['mp-bonus-bar'];
 		if (!container) return;
@@ -5362,15 +5390,13 @@ class LocusLobbyUI {
 			const checkChar = document.documentElement.classList.contains('theme-classic') ? '' : '✓';
 			inner += `<span class="mp-green-end-check">${checkChar}</span>`;
 		}
-		if (zoneName === 'blue' && meta.isBlueClaimedRow && cell.flags.includes('bold') && cell.active) {
+		// Vinkje op elke actieve bold-cel
+		if (cell.flags.includes('bold') && cell.active) {
 			const checkChar = document.documentElement.classList.contains('theme-classic') ? '' : '✓';
-			inner += `<span class="mp-zone-check mp-blue-check">${checkChar}</span>`;
+			const zoneCheckClass = zoneName === 'blue' ? 'mp-blue-check' : zoneName === 'purple' ? 'mp-purple-check' : zoneName === 'yellow' ? 'mp-yellow-check' : '';
+			inner += `<span class="mp-zone-check ${zoneCheckClass}">${checkChar}</span>`;
 		}
-		if (zoneName === 'purple' && meta.isPurpleConnectedBold) {
-			const checkChar = document.documentElement.classList.contains('theme-classic') ? '' : '✓';
-			inner += `<span class="mp-zone-check mp-purple-check">${checkChar}</span>`;
-		}
-		if (zoneName === 'yellow' && meta.isYellowColComplete && cell.active) {
+		if (zoneName === 'yellow' && meta.isYellowColComplete && cell.active && !cell.flags.includes('bold')) {
 			const checkChar = document.documentElement.classList.contains('theme-classic') ? '' : '✓';
 			inner += `<span class="mp-zone-check mp-yellow-check">${checkChar}</span>`;
 		}
@@ -5909,7 +5935,7 @@ class LocusLobbyUI {
 
 		const Rules = window.LocusGameRules;
 		const myPlayer = this.mp.getMyPlayer();
-		const shopItems = Rules ? Rules.getShopItems(this.mp.gameState?.level, myPlayer) : [];
+		const shopItems = Rules ? Rules.getShopItems(this.mp.gameState?.level, myPlayer, this.mp.gameState?.seed) : [];
 		const goldCoins = myPlayer?.goldCoins || 0;
 		const isReady = myPlayer?.shopReady || false;
 		const level = this.mp.gameState?.level || 1;

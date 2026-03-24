@@ -4338,12 +4338,12 @@ function endTurn(gameState, playerId, discardCardId = null) {
 	if (!Array.isArray(player.discardPile)) player.discardPile = [];
 
 	// ── TURN-END DISCARD MECHANIC ──
-	// Als er GEEN kaart gespeeld is: discard 1 niet-gouden kaart (pass-achtig).
-	// Als er WEL een kaart gespeeld is: laat resterende handkaarten actief in de hand.
+	// Alle niet-gouden kaarten in de hand gaan naar de aflegstapel.
+	// Gouden kaarten blijven in de hand (bonus cards).
 
 	const nonGoldenCards = player.hand.filter(c => !c.isGolden);
 	if (!gameState._cardPlayedThisTurn && nonGoldenCards.length > 0) {
-		// Geen kaart gespeeld: discard een kaart als pass
+		// Geen kaart gespeeld: discard een specifieke kaart als pass
 		let discardIndex = -1;
 		if (discardCardId) {
 			discardIndex = player.hand.findIndex(c => c.id === discardCardId && !c.isGolden);
@@ -4367,7 +4367,22 @@ function endTurn(gameState, playerId, discardCardId = null) {
 		}
 	}
 
-	// Resterende hand blijft actief (niet automatisch sacrificen of terugstorten)
+	// Resterende niet-gouden kaarten naar de aflegstapel
+	{
+		const remaining = [];
+		const kept = [];
+		for (const card of player.hand) {
+			if (card.isGolden) {
+				kept.push(card);
+			} else {
+				remaining.push(card);
+			}
+		}
+		if (remaining.length > 0) {
+			player.discardPile.push(...remaining);
+			player.hand = kept;
+		}
+	}
 
 	// Als bonus-only beurt en geen bonusmoves gedaan: forfeit alle bonussen
 	if (player.hand.length === 0 && player.drawPile.length === 0) {
@@ -4833,8 +4848,8 @@ const SHOP_ITEMS = [
 	{ id: 'unlock-steen', name: 'Steen Vormen', description: 'Kies 1 van 3 steen vormen die aangrenzende plaatsing blokkeren', cost: 5, icon: '🪨', unlockOnly: true, minLevel: 3, reappearLevel: 8 },
 ];
 
-function getShopItems(level, player) {
-	return SHOP_ITEMS
+function getShopItems(level, player, seed) {
+	const all = SHOP_ITEMS
 		.filter(item => {
 			if (item.minLevel && (level || 1) < item.minLevel) return false;
 			if (item.oneTimePerLevel && player?.shopPurchasesThisLevel?.[item.id]) return false;
@@ -4851,6 +4866,18 @@ function getShopItems(level, player) {
 			return true;
 		})
 		.map(item => ({ ...item }));
+
+	// Show max 2 random items per shop visit (seeded for consistency)
+	if (all.length > 2) {
+		const rng = createRNG((seed || 0) ^ ((level || 1) * 313));
+		// Shuffle deterministically
+		for (let i = all.length - 1; i > 0; i--) {
+			const j = Math.floor(rng() * (i + 1));
+			[all[i], all[j]] = [all[j], all[i]];
+		}
+		return all.slice(0, 2);
+	}
+	return all;
 }
 
 /** Calculate shop card price based on cell count */
@@ -4871,7 +4898,7 @@ function generateShopCardOfferings(gameState, playerId) {
 	const enableGolden = player?.unlockedGolden || false;
 	const enableMultikleur = player?.unlockedMultikleur || false;
 	const offerings = [];
-	for (let i = 0; i < 2; i++) {
+	for (let i = 0; i < 3; i++) {
 		const deck = buildDeck(1, rng, {
 			enableGolden,
 			enableMultikleur,
@@ -4887,16 +4914,6 @@ function generateShopCardOfferings(gameState, playerId) {
 		card.shopPrice = price;
 		offerings.push(card);
 	}
-
-	offerings.push({
-		id: `shop-random-${Math.floor(rng() * 100000)}`,
-		shapeName: 'Gesloten Random Kaart',
-		matrix: [[1]],
-		category: 'mystery',
-		color: { name: 'mysterie', code: '#4a4f6d', zone: 'any' },
-		isRandomOffer: true,
-		shopPrice: 3
-	});
 	return offerings;
 }
 
