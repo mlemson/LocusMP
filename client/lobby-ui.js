@@ -6857,6 +6857,7 @@ class LocusLobbyUI {
 		}
 		if (state.phase !== 'choosingGoals') {
 			this._goalPerkPromptShown = false;
+			this._rewardTypeSkipped = false;
 		}
 		if (state.phase === 'playing') {
 			if (prevState?.phase !== 'playing') {
