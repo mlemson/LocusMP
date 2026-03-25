@@ -440,6 +440,7 @@ class LocusP2PHost {
 			if ('timerEnabled' in data) this.gameState.settings.timerEnabled = !!data.timerEnabled;
 			if ('tutorialEnabled' in data) this.gameState.settings.tutorialEnabled = !!data.tutorialEnabled;
 			if ('rewardingMode' in data) this.gameState.settings.rewardingMode = !!data.rewardingMode;
+			if ('coinMode' in data) this.gameState.settings.coinMode = !!data.coinMode;
 		}
 
 		const result = this._executeAction(playerId, type, data);

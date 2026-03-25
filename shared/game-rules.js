@@ -3605,6 +3605,76 @@ function buildRewardingDeck(rng, isBot) {
 	return deck;
 }
 
+/** Build starting deck for coin mode: 9 multikleur 2×1 + 6 colored 3-4 cell cards */
+function buildCoinModeDeck(rng) {
+	const deck = [];
+	const multikleurColor = COLORS.find(c => c.name === 'multikleur');
+	const playableColors = COLORS.filter(c => c.name !== 'multikleur');
+	const dominoMatrix = [[1, 1]]; // 2×1 blok
+
+	// 9 multikleur 2×1 kaarten (gratis te spelen)
+	for (let i = 0; i < 9; i++) {
+		deck.push({
+			id: `cm-mk-${i}-${Math.floor(rng() * 100000)}`,
+			shapeName: 'Domino',
+			matrix: cloneMatrix(dominoMatrix),
+			category: 'mini',
+			color: { ...multikleurColor },
+			isGolden: false,
+			rotation: 0,
+			mirrored: false
+		});
+	}
+
+	// 6 gekleurde kaarten (3-4 cellen, kosten 1 coin om te spelen)
+	const mediumShapes = [];
+	for (const cat of ['mini', 'standard']) {
+		for (const shape of (BASE_SHAPES[cat] || [])) {
+			const cellCount = shape.matrix.flat().filter(Boolean).length;
+			if (cellCount >= 3 && cellCount <= 4) {
+				mediumShapes.push({ name: shape.name, matrix: shape.matrix, category: cat });
+			}
+		}
+	}
+	const shapePool = mediumShapes.length > 0 ? mediumShapes : (BASE_SHAPES.standard || []);
+
+	for (let i = 0; i < 6; i++) {
+		const shape = shapePool[Math.floor(rng() * shapePool.length)];
+		const color = playableColors[Math.floor(rng() * playableColors.length)];
+		deck.push({
+			id: `cm-std-${i}-${Math.floor(rng() * 100000)}`,
+			shapeName: shape.name,
+			matrix: cloneMatrix(shape.matrix),
+			category: shape.category || 'standard',
+			color: { ...color },
+			isGolden: false,
+			rotation: 0,
+			mirrored: false
+		});
+	}
+
+	return deck;
+}
+
+/** Calculate coin cost to play a card in coin mode */
+function getCardPlayCost(card) {
+	if (!card) return 0;
+	// Gouden kaarten: gratis
+	if (card.isGolden) return 0;
+	// Standaard 2×1 multikleur: gratis
+	if ((card.color?.name === 'multikleur' || card.color?.code === 'rainbow') && !card.isStone) {
+		const cells = card.matrix ? card.matrix.flat().filter(Boolean).length : 0;
+		if (cells <= 2) return 0;
+	}
+	// Steen, multikleur >2 cellen, of kaarten >4 cellen: 2 coins
+	if (card.isStone) return 2;
+	if (card.color?.name === 'multikleur' || card.color?.code === 'rainbow') return 2;
+	const cellCount = card.matrix ? card.matrix.flat().filter(Boolean).length : 0;
+	if (cellCount > 4) return 2;
+	// Normale gekleurde kaarten: 1 coin
+	return 1;
+}
+
 function normalizeStartingDeckType(deckType) {
 	const value = String(deckType || '').trim().toLowerCase();
 	if (STARTING_DECK_TYPES.includes(value)) return value;
@@ -3859,13 +3929,17 @@ function initializeLevelOneAfterDeckChoice(gameState) {
 
 	// 2. Genereer startdecks per speler op basis van keuze
 	const isRewarding = !!gameState.settings?.rewardingMode;
+	const isCoinMode = !!gameState.settings?.coinMode;
 	for (const playerId of gameState.playerOrder) {
 		const player = gameState.players[playerId];
 		const baseDeckRng = createRNG((gameState.seed | 0) ^ hashStringToInt(`${playerId}-level-1-base-${player.startingDeckType || 'random'}`));
 
 		let initialDeck;
-		if (isRewarding) {
-			// Beloningsmodus: 10 multikleur 2×1 + 5 standaard (3-4 cellen) + optioneel stenen kaart
+		if (isCoinMode) {
+			// Coin mode: 9 multikleur 2×1 + 6 gekleurde kaarten (vast)
+			initialDeck = buildCoinModeDeck(baseDeckRng);
+		} else if (isRewarding) {
+			// Beloningsmodus: 15 gekleurde kaarten (3-4 cellen)
 			initialDeck = buildRewardingDeck(baseDeckRng, !!player.isAI);
 		} else {
 			const deckType = normalizeStartingDeckType(player.startingDeckType) || 'random';
@@ -3931,6 +4005,15 @@ function startGame(gameState) {
 		};
 	}
 	gameState.matchWinner = null;
+
+	// Coin mode en rewarding mode: vast deck, skip deck-keuze
+	if (gameState.settings?.coinMode || gameState.settings?.rewardingMode) {
+		for (const pid of gameState.playerOrder) {
+			gameState.players[pid].startingDeckType = 'random';
+		}
+		initializeLevelOneAfterDeckChoice(gameState);
+		return { success: true };
+	}
 
 	gameState.phase = 'choosingStartDeck';
 	gameState.updatedAt = Date.now();
@@ -4018,6 +4101,15 @@ function playMove(gameState, playerId, cardId, zoneName, baseX, baseY, rotation,
 	if (cardIndex === -1) return { error: 'Kaart niet in je hand' };
 
 	const card = player.hand[cardIndex];
+
+	// Coin mode: controleer of speler genoeg coins heeft om deze kaart te spelen
+	if (gameState.settings?.coinMode) {
+		const playCost = getCardPlayCost(card);
+		if (playCost > 0 && (player.goldCoins || 0) < playCost) {
+			return { error: `Niet genoeg goudmunten (nodig: ${playCost}, beschikbaar: ${player.goldCoins || 0})` };
+		}
+	}
+
 	const objectiveSnapshot = {
 		objectiveAchieved: !!player.objectiveAchieved,
 		objectiveAchievedPoints: player.objectiveAchievedPoints || 0,
@@ -4090,6 +4182,14 @@ function playMove(gameState, playerId, cardId, zoneName, baseX, baseY, rotation,
 
 	// Verwijder kaart uit hand
 	player.hand.splice(cardIndex, 1);
+
+	// Coin mode: trek speelkosten af
+	if (gameState.settings?.coinMode) {
+		const playCost = getCardPlayCost(card);
+		if (playCost > 0) {
+			player.goldCoins = (player.goldCoins || 0) - playCost;
+		}
+	}
 
 	// Voeg gespeelde kaart toe aan aflegstapel
 	if (!Array.isArray(player.discardPile)) player.discardPile = [];
@@ -5038,7 +5138,6 @@ function checkGameEnd(gameState) {
 
 const SHOP_ITEMS = [
 	{ id: 'extra-bonus', name: 'Bonus Charge', description: 'Krijg een bonus charge naar keuze (eenmalig)', cost: 2, icon: '⚡', oneTimePerLevel: true },
-	{ id: 'random-card', name: 'Random Kaart', description: 'Ontvang direct 1 willekeurige kaart voor je volgende level (eenmalig)', cost: 1, icon: '🎲', oneTimePerLevel: true },
 	{ id: 'time-bomb', name: 'Tijdbom', description: 'Stop de beurt van een andere speler direct! (eenmalig)', cost: 2, icon: '💣', oneTimePerLevel: true },
 ];
 
@@ -5082,7 +5181,7 @@ function generateShopCardOfferings(gameState, playerId) {
 	const enableGolden = player?.unlockedGolden || false;
 	const enableMultikleur = player?.unlockedMultikleur || false;
 	const offerings = [];
-	for (let i = 0; i < 3; i++) {
+	for (let i = 0; i < 2; i++) {
 		const deck = buildDeck(1, rng, {
 			enableGolden,
 			enableMultikleur,
@@ -5143,18 +5242,6 @@ function buyShopItem(gameState, playerId, itemId, extra) {
 		if ((player.goldCoins || 0) < price) return { error: 'Niet genoeg goud' };
 
 		let boughtCard = card;
-		if (card.isRandomOffer) {
-			const seedEntropy = (gameState.updatedAt || Date.now()) + ((gameState.moveHistory?.length || 0) * 71);
-			const seed = (gameState.seed | 0) ^ ((gameState.level || 1) * 1777) ^ hashStringToInt(`${playerId}-shop-random-${seedEntropy}`);
-			const rngRandomOffer = createRNG(seed);
-			const deck = buildDeck(1, rngRandomOffer, {
-				enableGolden: true,
-				enableMultikleur: true,
-				goldenChance: 0.10,
-				multikleurChance: 0.10,
-			});
-			boughtCard = deck[0];
-		}
 
 		player.shopCards.push(boughtCard);
 		player.permanentShopCards = player.permanentShopCards || [];
@@ -5180,27 +5267,6 @@ function buyShopItem(gameState, playerId, itemId, extra) {
 			player.bonusInventory[bonusColor] = (player.bonusInventory[bonusColor] || 0) + 1;
 			player.goldCoins -= item.cost;
 			break;
-		}
-		case 'random-card': {
-			const seedEntropy = (gameState.updatedAt || Date.now()) + ((gameState.moveHistory?.length || 0) * 37);
-			const seed = (gameState.seed | 0) ^ ((gameState.level || 1) * 1291) ^ hashStringToInt(`${playerId}-${seedEntropy}`);
-			const rngRandomCard = createRNG(seed);
-			const deck = buildDeck(1, rngRandomCard, {
-				enableGolden: true,
-				enableMultikleur: true,
-				goldenChance: 0.10,
-				multikleurChance: 0.10,
-			});
-			const randomCard = deck[0];
-			randomCard.isTemporary = true; // Tijdelijke kaart — verdwijnt na de ronde
-			player.shopCards.push(randomCard);
-			// NIET toevoegen aan permanentShopCards — tijdelijke kaart verdwijnt na dit level
-			player.goldCoins -= item.cost;
-			if (item.oneTimePerLevel) {
-				player.shopPurchasesThisLevel = player.shopPurchasesThisLevel || {};
-				player.shopPurchasesThisLevel[itemId] = true;
-			}
-			return { success: true, card: randomCard };
 		}
 		case 'time-bomb': {
 			player.timeBombs = (player.timeBombs || 0) + 1;
@@ -5695,7 +5761,7 @@ const GameRules = {
 	OBJECTIVE_TEMPLATES, LEVEL_OBJECTIVES, generateObjectiveChoices, checkObjective,
 
 	// Deck
-	buildDeck, buildShapePool,
+	buildDeck, buildShapePool, buildCoinModeDeck, getCardPlayCost,
 
 	// Game state
 	createGameState, addPlayer, removePlayer, startGame, chooseStartingDeck, chooseObjective,

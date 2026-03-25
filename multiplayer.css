@@ -2568,6 +2568,28 @@ html.theme-classic .mp-cell.bonus-just-spawned {
 	letter-spacing: 0.3px;
 }
 
+.mp-card-coin-cost {
+	position: absolute;
+	bottom: 3px;
+	left: 50%;
+	transform: translateX(-50%);
+	background: rgba(245, 215, 110, 0.20);
+	color: var(--mp-gold);
+	font-size: 0.55rem;
+	font-weight: 700;
+	padding: 1px 6px;
+	border-radius: 6px;
+	white-space: nowrap;
+}
+.mp-card-coin-cost.free {
+	background: rgba(100, 220, 120, 0.20);
+	color: var(--mp-success);
+}
+.mp-card-coin-cost.cant-afford {
+	background: rgba(255, 80, 80, 0.25);
+	color: #ff6b6b;
+}
+
 .mp-card-color {
 	width: 100%;
 	height: 6px;
@@ -4806,28 +4828,32 @@ body.mp-loading .mp-btn {
 
 .mp-shop-offering-grid {
 	display: flex;
-	gap: 16px;
+	gap: 20px;
 	flex-wrap: wrap;
 	justify-content: center;
 }
 
 .mp-shop-offering {
-	width: 170px;
-	background: rgba(24,7,30,0.5);
-	border: 1px solid rgba(166,140,255,0.12);
-	border-radius: 14px;
-	padding: 16px;
+	flex: 1 1 200px;
+	max-width: 240px;
+	background: rgba(24,7,30,0.55);
+	border: 1.5px solid rgba(166,140,255,0.15);
+	border-radius: 16px;
+	padding: 20px 16px;
 	display: flex;
 	flex-direction: column;
 	align-items: center;
 	justify-content: center;
-	gap: 10px;
-	transition: all 0.2s;
+	gap: 12px;
+	transition: all 0.25s ease;
+	box-shadow: 0 2px 12px rgba(0,0,0,0.2);
 }
 
 .mp-shop-offering:not(.sold):not(.cant-afford):hover {
 	border-color: var(--mp-gold);
-	background: rgba(255,143,111,0.10);
+	background: rgba(255,143,111,0.12);
+	box-shadow: 0 4px 20px rgba(255,143,111,0.15);
+	transform: translateY(-2px);
 }
 
 .mp-shop-offering.sold {
@@ -4848,16 +4874,26 @@ body.mp-loading .mp-btn {
 
 .mp-shop-offering-color {
 	width: 100%;
-	height: 5px;
-	border-radius: 3px;
+	height: 6px;
+	border-radius: 4px;
+}
+
+.mp-shop-offering-type {
+	font-size: 0.7rem;
+	font-weight: 700;
+	text-transform: uppercase;
+	letter-spacing: 0.5px;
+	color: var(--mp-text-dim);
+	text-align: center;
 }
 
 .mp-shop-offering .mp-card-shape {
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	min-height: 66px;
+	min-height: 80px;
 	margin: 4px 0 2px;
+	transform: scale(1.15);
 }
 
 .mp-shop-offering-name {
@@ -4875,9 +4911,9 @@ body.mp-loading .mp-btn {
 
 .mp-shop-buy-btn {
 	width: 100%;
-	padding: 6px 10px;
-	border-radius: 8px;
-	border: 1px solid var(--mp-gold);
+	padding: 8px 12px;
+	border-radius: 10px;
+	border: 1.5px solid var(--mp-gold);
 	background: rgba(255,143,111,0.12);
 	color: var(--mp-gold);
 	font-weight: 700;

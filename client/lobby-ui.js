@@ -285,7 +285,7 @@ class LocusLobbyUI {
 			'game-screen', 'results-screen', 'shop-screen',
 			'level-complete-overlay',
 			'player-name-input', 'create-game-btn', 'join-game-btn',
-			'invite-code-input', 'max-players-select', 'cards-per-player-select', 'map-size-select', 'timer-toggle', 'tutorial-toggle', 'rewarding-mode-toggle',
+			'invite-code-input', 'max-players-select', 'cards-per-player-select', 'map-size-select', 'timer-toggle', 'tutorial-toggle', 'rewarding-mode-toggle', 'coin-mode-toggle',
 			'invite-code-display', 'player-list', 'start-game-btn',
 			'waiting-status',
 			'goal-choices-container',
@@ -380,6 +380,10 @@ class LocusLobbyUI {
 			const cardsSelect = this.elements['cards-per-player-select'];
 			if (!cardsSelect) return;
 			const isRewarding = this.elements['rewarding-mode-toggle'].checked;
+			// Mutual exclusion: coin mode uit als rewarding aan
+			if (isRewarding && this.elements['coin-mode-toggle']) {
+				this.elements['coin-mode-toggle'].checked = false;
+			}
 			// Toggle visibility of standard vs rewarding options
 			for (const opt of cardsSelect.options) {
 				const isRewardingOpt = opt.classList.contains('rewarding-only');
@@ -390,6 +394,22 @@ class LocusLobbyUI {
 				cardsSelect.value = '9';
 			} else {
 				cardsSelect.value = this._cardsBeforeRewarding || '6';
+			}
+		});
+
+		// Coin modus toggle: mutual exclusion met rewarding
+		this.elements['coin-mode-toggle']?.addEventListener('change', () => {
+			const isCoin = this.elements['coin-mode-toggle'].checked;
+			if (isCoin && this.elements['rewarding-mode-toggle']) {
+				this.elements['rewarding-mode-toggle'].checked = false;
+				// Reset cards select back to normal
+				const cardsSelect = this.elements['cards-per-player-select'];
+				if (cardsSelect) {
+					for (const opt of cardsSelect.options) {
+						opt.style.display = opt.classList.contains('rewarding-only') ? 'none' : '';
+					}
+					cardsSelect.value = this._cardsBeforeRewarding || '6';
+				}
 			}
 		});
 
@@ -1185,9 +1205,10 @@ class LocusLobbyUI {
 		const timerEnabled = this.elements['timer-toggle']?.checked !== false;
 		const tutorialEnabled = !!this.elements['tutorial-toggle']?.checked;
 		const rewardingMode = !!this.elements['rewarding-mode-toggle']?.checked;
+		const coinMode = !!this.elements['coin-mode-toggle']?.checked;
 		this._tutorialEnabled = tutorialEnabled;
 		this._setLoading(true);
-		try { await this.mp.startGame({ cardsPerPlayer, mapSize, timerEnabled, tutorialEnabled, rewardingMode }); }
+		try { await this.mp.startGame({ cardsPerPlayer, mapSize, timerEnabled, tutorialEnabled, rewardingMode, coinMode }); }
 		catch (err) { this._showToast('Kan spel niet starten: ' + (err.message || err), 'error'); }
 		this._setLoading(false);
 	}
@@ -2116,7 +2137,7 @@ class LocusLobbyUI {
 							<span class="mp-timer-text">40s</span>
 						</div>
 					` : ''}
-					${goldCoins > 0 ? `<div class="mp-gold-counter"><span class="mp-gold-coin-icon">🪙</span> ${goldCoins}</div>` : ''}
+					${goldCoins > 0 || this.mp.gameState?.settings?.coinMode ? `<div class="mp-gold-counter"><span class="mp-gold-coin-icon">🪙</span> ${goldCoins}</div>` : ''}
 				</div>
 			` : ''}
 		`;
@@ -2742,9 +2763,14 @@ class LocusLobbyUI {
 			// Na het plaatsen van 1 kaart: overige kaarten worden 'spent' (transparant, niet speelbaar)
 			// Gouden kaarten blijven speelbaar (extra play)
 			let cardClass = 'mp-card';
+			const isCoinMode = !!this.mp.gameState?.settings?.coinMode;
+			const coinCost = isCoinMode && Rules?.getCardPlayCost ? Rules.getCardPlayCost(card) : 0;
+			const canAffordCard = !isCoinMode || coinCost === 0 || (myPlayer?.goldCoins || 0) >= coinCost;
 			if (!isMyTurn) {
 				cardClass += ' disabled';
 			} else if (cardPlayed && !card.isGolden) {
+				cardClass += ' card-spent';
+			} else if (isCoinMode && !canAffordCard) {
 				cardClass += ' card-spent';
 			} else {
 				cardClass += ' playable';
@@ -2764,6 +2790,8 @@ class LocusLobbyUI {
 					</div>
 					${card.isGolden ? '<div class="mp-card-extra-badge">⭐ EXTRA</div>' : ''}
 					${card.isStolenTemp ? '<div class="mp-card-extra-badge" style="background:rgba(255,100,100,0.85);">🃏 TIJDELIJK</div>' : ''}
+					${isCoinMode && coinCost > 0 ? `<div class="mp-card-coin-cost ${canAffordCard ? '' : 'cant-afford'}">💰 ${coinCost}</div>` : ''}
+					${isCoinMode && coinCost === 0 ? '<div class="mp-card-coin-cost free">GRATIS</div>' : ''}
 				</div>
 			`;
 		}).join('');
@@ -6068,30 +6096,18 @@ class LocusLobbyUI {
 							if (!card) return `<div class="mp-shop-offering sold"><div class="mp-shop-offering-sold-label">Gekocht ✓</div></div>`;
 							const price = card.shopPrice || (Rules ? Rules.getCardPrice(card) : 4);
 							const canAfford = goldCoins >= price;
-							if (card.isRandomOffer) {
-								return `
-									<div class="mp-shop-offering mystery ${canAfford && !isReady ? '' : 'cant-afford'}">
-										<div class="mp-shop-offering-color" style="background: linear-gradient(135deg, #2f3448, #4a4f6d, #2f3448)"></div>
-										<div class="mp-card-shape" style="display:flex;align-items:center;justify-content:center;min-height:54px;font-size:1.25rem;">🎲</div>
-										<button class="mp-shop-buy-btn ${canAfford && !isReady ? '' : 'disabled'}"
-												data-item-id="shop-card-${i}"
-												${(!canAfford || isReady) ? 'disabled' : ''}>
-											💰 ${price} kopen
-										</button>
-									</div>
-								`;
-							}
 							const colorStyle = card.isGolden
 								? `background: linear-gradient(135deg, ${card.color?.code || '#f5d76e'}, #f5d76e, ${card.color?.code || '#f5d76e'})`
 								: card.color?.code === 'rainbow'
 									? 'background: linear-gradient(135deg, #b56069, #cfba51, #92c28c, #5689b0, #8f76b8)'
 									: `background: ${card.color?.code || '#666'}`;
-							// Count cells for display
 							let cells = 0;
 							if (card.matrix) for (const row of card.matrix) for (const c of row) { if (c) cells++; }
+							const typeLabel = card.isGolden ? '✨ Gouden' : card.isStone ? '🪨 Steen' : (card.color?.code === 'rainbow' || card.color?.name === 'multikleur') ? '🌈 Multikleur' : `${cells} cellen`;
 							return `
 								<div class="mp-shop-offering ${canAfford && !isReady ? '' : 'cant-afford'}">
 									<div class="mp-shop-offering-color" style="${colorStyle}"></div>
+									<div class="mp-shop-offering-type">${typeLabel}</div>
 									<div class="mp-card-shape">${this._renderMiniGrid(card.matrix, card.color)}</div>
 									<button class="mp-shop-buy-btn ${canAfford && !isReady ? '' : 'disabled'}"
 											data-item-id="shop-card-${i}"
