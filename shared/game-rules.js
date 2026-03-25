@@ -4721,6 +4721,55 @@ function undoMove(gameState, playerId) {
 }
 
 /** Ga naar de volgende beurt — sla spelers zonder kaarten EN zonder bonussen over */
+/**
+ * Beloningsmodus: na elke ronde krijgt elke speler een willekeurige bonuskaart.
+ * Kaart wordt bovenop de drawPile gelegd zodat hij als volgende getrokken wordt.
+ */
+function _rewardingRoundBonusCards(gameState) {
+	const playableColors = COLORS.filter(c => c.name !== 'multikleur');
+	const mediumShapes = [];
+	for (const cat of ['mini', 'standard']) {
+		for (const shape of (BASE_SHAPES[cat] || [])) {
+			const cellCount = shape.matrix.flat().filter(Boolean).length;
+			if (cellCount >= 3 && cellCount <= 4) {
+				mediumShapes.push(shape);
+			}
+		}
+	}
+	const shapePool = mediumShapes.length > 0 ? mediumShapes : (BASE_SHAPES.standard || []);
+
+	for (const pid of gameState.playerOrder) {
+		const player = gameState.players[pid];
+		if (!player || player.connected === false) continue;
+		const rng = createRNG(Date.now() ^ hashStringToInt(`${pid}-round-${gameState.turnCount}`));
+		const shape = shapePool[Math.floor(rng() * shapePool.length)];
+		const color = playableColors[Math.floor(rng() * playableColors.length)];
+		const biggerCards = !!player.perks?.biggerCards;
+		let pickedShape = shape;
+		if (biggerCards) {
+			const largePool = (BASE_SHAPES.large || []).filter(s => s.matrix.flat().filter(Boolean).length <= 5);
+			if (largePool.length > 0 && rng() < 0.5) {
+				pickedShape = largePool[Math.floor(rng() * largePool.length)];
+			}
+		}
+		const bonusCard = {
+			id: `rw-bonus-${pid}-r${gameState.turnCount}-${Math.floor(rng() * 100000)}`,
+			shapeName: pickedShape.name,
+			matrix: cloneMatrix(pickedShape.matrix),
+			category: pickedShape.category || 'standard',
+			color: { ...color },
+			isGolden: false,
+			rotation: 0,
+			mirrored: false,
+			_roundBonus: true
+		};
+		player.drawPile.unshift(bonusCard);
+		// Markeer voor animatie op de client
+		if (!gameState._roundBonusCards) gameState._roundBonusCards = {};
+		gameState._roundBonusCards[pid] = bonusCard;
+	}
+}
+
 function advanceTurn(gameState) {
 	const playerCount = gameState.playerOrder.length;
 	let attempts = 0;
@@ -4738,6 +4787,11 @@ function advanceTurn(gameState) {
 		if (gameState.currentTurnIndex === 0) {
 			gameState.turnCount++;
 			spawnBonusesAfterRoundFour(gameState, { isRoundStart: true });
+
+			// Beloningsmodus: na elke ronde krijgt elke speler een bonuskaart
+			if (gameState.settings?.rewardingMode) {
+				_rewardingRoundBonusCards(gameState);
+			}
 		}
 
 		const nextPid = gameState.playerOrder[gameState.currentTurnIndex];
