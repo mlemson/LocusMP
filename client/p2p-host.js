@@ -222,7 +222,7 @@ class LocusP2PHost {
 		switch (msg.type) {
 			case 'addAIPlayer':
 			case 'removeAIPlayer': {
-				if (playerId !== this.hostPlayerId && playerId) {
+				if (!playerId || playerId !== this.hostPlayerId) {
 					conn.send({ type: 'result', action: msg.type, success: false, error: 'Alleen de host kan AI beheren.' });
 					return;
 				}
@@ -233,7 +233,7 @@ class LocusP2PHost {
 			}
 
 			case 'startGame': {
-				if (playerId !== this.hostPlayerId && playerId) {
+				if (!playerId || playerId !== this.hostPlayerId) {
 					conn.send({ type: 'result', action: 'startGame', success: false, error: 'Alleen de host kan starten.' });
 					return;
 				}
@@ -308,260 +308,28 @@ class LocusP2PHost {
 				break;
 			}
 
-			case 'startGame': {
-				if (playerId !== this.hostPlayerId && playerId) {
-					conn.send({ type: 'result', action: 'startGame', success: false, error: 'Alleen de host kan starten.' });
-					return;
-				}
-				const result = this.Rules.startGame(this.gameState);
-				conn.send({ type: 'result', action: 'startGame', ...result });
-				this._broadcastState();
-				break;
-			}
-
-			case 'chooseStartingDeck': {
-				if (!playerId) return;
-				const result = this.Rules.chooseStartingDeck(this.gameState, playerId, msg.deckType);
-				conn.send({ type: 'result', action: 'chooseStartingDeck', ...result });
-				this._broadcastState();
-				break;
-			}
-
-			case 'chooseGoal': {
-				if (!playerId) return;
-				const result = this.Rules.chooseObjective(this.gameState, playerId, msg.objectiveIndex);
-				conn.send({ type: 'result', action: 'chooseGoal', ...result });
-				if (result.startedPlaying) this._startTimerForCurrentPlayer(true);
-				this._broadcastState();
-				break;
-			}
-
-			case 'playMove': {
-				if (!playerId) return;
-				const movePlayerName = this.gameState?.players?.[playerId]?.name || 'Speler';
-				const transformedMatrix = this._getTransformedMoveMatrix(
-					playerId,
-					msg.cardId,
-					msg.zoneName,
-					msg.rotation || 0,
-					!!msg.mirrored
-				);
-				const result = this.Rules.playMove(
-					this.gameState, playerId, msg.cardId, msg.zoneName,
-					msg.baseX, msg.baseY, msg.rotation || 0, !!msg.mirrored, msg.subgridId || null
-				);
-				conn.send({ type: 'result', action: 'playMove', ...result });
-				if (result.success) {
-					this._grantExtraTurnTime(playerId, 5000);
-					this._broadcastEvent('movePlayed', {
-						playerId,
-						playerName: movePlayerName,
-						zoneName: msg.zoneName,
-						baseX: msg.baseX,
-						baseY: msg.baseY,
-						rotation: msg.rotation || 0,
-						mirrored: !!msg.mirrored,
-						subgridId: msg.subgridId || null,
-						matrix: transformedMatrix,
-						goldCollected: result.goldCollected || 0,
-						bonusesCollected: result.bonusesCollected || [],
-						pearlsCollected: result.pearlsCollected || 0,
-						objectivesRevealed: this._shouldRevealObjectives(),
-						mineTriggered: result.mineTriggered || null
-					});
-				}
-				this._broadcastState();
-				break;
-			}
-
-			case 'playBonus': {
-				if (!playerId) return;
-				const bonusPlayerName = this.gameState?.players?.[playerId]?.name || 'Speler';
-				const result = this.Rules.playBonus(
-					this.gameState, playerId, msg.bonusColor, msg.zoneName,
-					msg.baseX, msg.baseY, msg.subgridId || null, msg.rotation || 0
-				);
-				conn.send({ type: 'result', action: 'playBonus', ...result });
-				if (result.success) {
-					this._grantExtraTurnTime(playerId, 5000);
-					this._broadcastEvent('movePlayed', {
-						playerId,
-						playerName: bonusPlayerName,
-						zoneName: msg.zoneName,
-						baseX: msg.baseX,
-						baseY: msg.baseY,
-						rotation: msg.rotation || 0,
-						mirrored: false,
-						subgridId: msg.subgridId || null,
-						matrix: null,
-						goldCollected: result.goldCollected || 0,
-						bonusesCollected: result.bonusesCollected || [],
-						pearlsCollected: 0,
-						isBonusPlay: true
-					});
-				}
-				this._broadcastState();
-				break;
-			}
-
-			case 'passMove': {
-				if (!playerId) return;
-				this._clearTimer();
-				const result = this.Rules.passMove(this.gameState, playerId, msg.cardId || null);
-				conn.send({ type: 'result', action: 'passMove', ...result });
-				this._broadcastState();
-				if (result.gameEnded) {
-					this._broadcastEvent('levelComplete', {
-						levelScores: this.gameState.levelScores,
-						levelWinner: this.gameState.levelWinner,
-						level: this.gameState.level
-					});
-				} else {
-					this._startTimerForCurrentPlayer(true);
-				}
-				break;
-			}
-
-			case 'endTurn': {
-				if (!playerId) return;
-				this._clearTimer();
-				const result = this.Rules.endTurn(this.gameState, playerId, msg.cardId || null);
-				conn.send({ type: 'result', action: 'endTurn', ...result });
-				this._broadcastState();
-				if (result.gameEnded) {
-					this._broadcastEvent('levelComplete', {
-						levelScores: this.gameState.levelScores,
-						levelWinner: this.gameState.levelWinner,
-						level: this.gameState.level
-					});
-				} else {
-					this._startTimerForCurrentPlayer(true);
-				}
-				break;
-			}
-
-			case 'undoMove': {
-				if (!playerId) return;
-				const result = this.Rules.undoMove(this.gameState, playerId);
-				conn.send({ type: 'result', action: 'undoMove', ...result });
-				this._broadcastState();
-				break;
-			}
-
-			case 'startShopPhase': {
-				const result = this.Rules.startShopPhase(this.gameState);
-				conn.send({ type: 'result', action: 'startShopPhase', ...result });
-				this._broadcastState();
-				break;
-			}
-
-			case 'buyShopItem': {
-				if (!playerId) return;
-				const result = this.Rules.buyShopItem(this.gameState, playerId, msg.itemId, msg.extra);
-				conn.send({ type: 'result', action: 'buyShopItem', ...result });
-				this._broadcastState();
-				break;
-			}
-
-			case 'claimFreeCard': {
-				if (!playerId) return;
-				const result = this.Rules.claimFreeCard(this.gameState, playerId, msg.cardId);
-				conn.send({ type: 'result', action: 'claimFreeCard', ...result });
-				this._broadcastState();
-				break;
-			}
-
-			case 'chooseRewardCardType': {
-				if (!playerId) return;
-				const result = this.Rules.chooseRewardCardType(this.gameState, playerId, msg.cardType);
-				conn.send({ type: 'result', action: 'chooseRewardCardType', ...result });
-				this._broadcastState();
-				break;
-			}
-
-			case 'sellCard': {
-				if (!playerId) return;
-				const result = this.Rules.sellCard(this.gameState, playerId, msg.cardId);
-				conn.send({ type: 'result', action: 'sellCard', ...result });
-				this._broadcastState();
-				break;
-			}
-
-			case 'choosePerk': {
-				if (!playerId) return;
-				const result = this.Rules.choosePerk(this.gameState, playerId, msg.perkId);
-				conn.send({ type: 'result', action: 'choosePerk', ...result });
-				if (result.startedPlaying) this._startTimerForCurrentPlayer(true);
-				this._broadcastState();
-				break;
-			}
-
-			case 'shopReady': {
-				if (!playerId) return;
-				const result = this.Rules.shopReady(this.gameState, playerId);
-				conn.send({ type: 'result', action: 'shopReady', ...result });
-				if (result.allReady) {
-					const levelResult = this.Rules.startNextLevel(this.gameState);
-					this._broadcastEvent('nextLevelStarted', { level: this.gameState.level });
-				}
-				this._broadcastState();
-				if (result.allReady && this.gameState.phase === 'playing') {
-					this._startTimerForCurrentPlayer(true);
-				}
-				break;
-			}
-
-			case 'useTimeBomb': {
-				if (!playerId) return;
-				this._clearTimer();
-				const result = this.Rules.useTimeBomb(this.gameState, playerId);
-				conn.send({ type: 'result', action: 'useTimeBomb', ...result });
-				if (result.success) {
-					this._broadcastEvent('timeBombUsed', {
-						bomberPlayerId: result.bomberPlayerId,
-						bombedPlayerId: result.bombedPlayerId,
-						bomberPlayerName: result.bomberPlayerName,
-						bombedPlayerName: result.bombedPlayerName
-					});
-				}
-				this._broadcastState();
-				if (!result.gameEnded) this._startTimerForCurrentPlayer(true);
-				break;
-			}
-
-			case 'useMine': {
-				if (!playerId) return;
-				const result = this.Rules.useMine(this.gameState, playerId, msg.zoneName, msg.cellX, msg.cellY);
-				conn.send({ type: 'result', action: 'useMine', ...result });
-				if (result.success) {
-					this._broadcastState();
-				}
-				break;
-			}
-
-			case 'stealCard': {
-				if (!playerId) return;
-				const result = this.Rules.stealCard(this.gameState, playerId, msg.targetPlayerId, msg.cardId);
-				conn.send({ type: 'result', action: 'stealCard', ...result });
-				if (result.success) {
-					const thiefName = (this.gameState.players[playerId] || {}).name || 'Speler';
-					const victimName = (this.gameState.players[msg.targetPlayerId] || {}).name || 'Speler';
-					this._broadcastEvent('cardStolen', {
-						thiefId: playerId,
-						thiefName,
-						victimId: msg.targetPlayerId,
-						victimName,
-						cardId: msg.cardId
-					});
-					this._broadcastState();
-				}
-				break;
-			}
-
+			case 'chooseStartingDeck':
+			case 'chooseGoal':
+			case 'playMove':
+			case 'playBonus':
+			case 'passMove':
+			case 'endTurn':
+			case 'undoMove':
+			case 'startShopPhase':
+			case 'buyShopItem':
+			case 'claimFreeCard':
+			case 'chooseRewardCardType':
+			case 'sellCard':
+			case 'choosePerk':
+			case 'shopReady':
+			case 'useTimeBomb':
+			case 'useMine':
+			case 'stealCard':
 			case 'getStealableCards': {
 				if (!playerId) return;
-				const result = this.Rules.getStealableCards(this.gameState, playerId, msg.targetPlayerId);
-				conn.send({ type: 'result', action: 'getStealableCards', ...result });
+				const result = this._executeAction(playerId, msg.type, msg);
+				conn.send({ type: 'result', action: msg.type, ...result });
+				this._broadcastState();
 				break;
 			}
 
@@ -605,29 +373,12 @@ class LocusP2PHost {
 
 			case 'togglePause': {
 				if (!playerId) return;
-				// Alleen host mag pauzeren (of configureerbaar)
 				if (playerId !== this.hostPlayerId) {
 					conn.send({ type: 'result', action: 'togglePause', success: false, error: 'Alleen de host kan pauzeren.' });
 					return;
 				}
-				if (this.gameState.paused) {
-					this.gameState.paused = false;
-					this.gameState.pausedBy = null;
-					this.gameState.pausedAt = null;
-					// Herstart timer met de opgeslagen resterende tijd
-					if (this.gameState.phase === 'playing') this._startTimerForCurrentPlayer(false);
-				} else {
-					// Sla resterende tijd op vóór pauzeren
-					const _pauseElapsed = Math.max(0, Date.now() - (this._turnTimerStart || 0));
-					const _pauseDuration = Math.max(1, Number(this.gameState._turnTimerDurationMs) || this._turnTimerDuration);
-					this.gameState._turnTimerRemainingMs = Math.max(1, _pauseDuration - _pauseElapsed);
-					this.gameState.paused = true;
-					this.gameState.pausedBy = playerId;
-					this.gameState.pausedAt = Date.now();
-					this._clearTimer();
-				}
-				this._broadcastEvent('pauseChanged', { paused: this.gameState.paused, pausedBy: playerId });
-				conn.send({ type: 'result', action: 'togglePause', success: true, paused: this.gameState.paused });
+				const result = this._executeAction(playerId, 'togglePause', msg);
+				conn.send({ type: 'result', action: 'togglePause', ...result });
 				this._broadcastState();
 				break;
 			}

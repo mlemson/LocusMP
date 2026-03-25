@@ -12,6 +12,11 @@
  */
 
 class LocusLobbyUI {
+	static BONUS_COLORS = {
+		yellow: '#cfba51', green: '#92c28c', blue: '#5689b0',
+		red: '#b56069', purple: '#8f76b8', any: '#c47bd7'
+	};
+
 	constructor(mp) {
 		/** @type {LocusMultiplayer} */
 		this.mp = mp;
@@ -2146,15 +2151,11 @@ class LocusLobbyUI {
 			const cardsRemaining = p.cardsLeft + p.handSize;
 			const discardCount = typeof p.discardPileSize === 'number' ? p.discardPileSize : (Array.isArray(p.discardPile) ? p.discardPile.length : 0);
 
-			const bonusColors = {
-				yellow: '#cfba51', green: '#92c28c', blue: '#5689b0',
-				red: '#b56069', purple: '#8f76b8', any: '#c47bd7'
-			};
 			const bonusDots = totalBonuses > 0
 				? Object.entries(inv).filter(([,v]) => v > 0).map(([c, v]) => {
 					const dotStyle = c === 'any'
 						? 'background: linear-gradient(135deg, #cfba51 0%, #92c28c 24%, #5689b0 48%, #b56069 72%, #8f76b8 100%); border: 1px solid rgba(255,255,255,0.45);'
-						: `background:${bonusColors[c] || '#888'}`;
+						: `background:${LocusLobbyUI.BONUS_COLORS[c] || '#888'}`;
 					return `<span class="mp-sb-bonus-dot" style="${dotStyle}" title="${c}: ${v}">x${v}</span>`;
 				}).join('')
 				: '';
@@ -2274,16 +2275,12 @@ class LocusLobbyUI {
 			}).join('');
 
 			// Bonus dots row
-			const bonusColors = {
-				yellow: '#cfba51', green: '#92c28c', blue: '#5689b0',
-				red: '#b56069', purple: '#8f76b8', any: '#c47bd7'
-			};
 			const bonusDots = totalBonuses > 0
 				? Object.entries(inv).filter(([,v]) => v > 0).map(([c, v]) => {
 					const isAny = c === 'any';
 					const dotBg = isAny
 						? 'background: linear-gradient(135deg, #cfba51 0%, #92c28c 24%, #5689b0 48%, #b56069 72%, #8f76b8 100%)'
-						: `background:${bonusColors[c] || '#888'}`;
+						: `background:${LocusLobbyUI.BONUS_COLORS[c] || '#888'}`;
 					return `<span class="mp-opp-bonus-dot" style="${dotBg}" title="${c}">${v > 1 ? v : ''}</span>`;
 				}).join('')
 				: '';
@@ -4567,8 +4564,7 @@ class LocusLobbyUI {
 
 	_updateBonusGhost() {
 		if (!this._bonusMode?.ghostEl) return;
-		const bonusColors = { yellow: '#cfba51', green: '#92c28c', blue: '#5689b0', red: '#b56069', purple: '#8f76b8', any: 'rainbow' };
-		const colorCode = bonusColors[this._bonusMode.color] || '#888';
+		const colorCode = ({ ...LocusLobbyUI.BONUS_COLORS, any: 'rainbow' })[this._bonusMode.color] || '#888';
 		this._bonusMode.ghostEl.innerHTML = this._renderMiniGrid(this._bonusMode.matrix, { code: colorCode }, true, true);
 		this._computeBonusGhostOffsets();
 	}
@@ -6930,11 +6926,6 @@ class LocusLobbyUI {
 		if (pending.length === 0) return;
 		this._pendingBonusSpawnCells = [];
 
-		const bonusColors = {
-			yellow: '#cfba51', green: '#92c28c', blue: '#5689b0',
-			red: '#b56069', purple: '#8f76b8', any: '#c47bd7'
-		};
-
 		pending.forEach((entry, idx) => {
 			const selector = entry.subgridId
 				? `.mp-cell[data-zone="${entry.zoneName}"][data-subgrid="${entry.subgridId}"][data-x="${entry.x}"][data-y="${entry.y}"]`
@@ -6950,7 +6941,7 @@ class LocusLobbyUI {
 				const cx = rect.left + rect.width / 2;
 				const cy = rect.top + rect.height / 2;
 				this._showSparkle(cx, cy, 4);
-				this._showConfetti(cx, cy, 6, [bonusColors[entry.bonusSymbol] || '#ffffff', '#ffffff']);
+				this._showConfetti(cx, cy, 6, [LocusLobbyUI.BONUS_COLORS[entry.bonusSymbol] || '#ffffff', '#ffffff']);
 			}
 		});
 	}
@@ -7306,17 +7297,13 @@ class LocusLobbyUI {
 		// Bonus collectie tekst + sparkle
 		if (bonusesCollected && bonusesCollected.length > 0) {
 			const isClassicBonus = document.documentElement.classList.contains('theme-classic');
-			const bonusColors = {
-				yellow: '#cfba51', green: '#92c28c', blue: '#5689b0',
-				red: '#b56069', purple: '#8f76b8', any: '#c47bd7'
-			};
 			for (let i = 0; i < bonusesCollected.length; i++) {
 				const bc = bonusesCollected[i];
 				setTimeout(() => {
-					this._showFloatingScore(zoneEl, '↙ BONUS', bonusColors[bc] || '#fff', cx, cy);
+					this._showFloatingScore(zoneEl, '↙ BONUS', LocusLobbyUI.BONUS_COLORS[bc] || '#fff', cx, cy);
 					if (isClassicBonus || isBloom) {
 						this._showSparkle(cx, cy, 6);
-						this._showConfetti(cx, cy, 6, [bonusColors[bc] || '#c47bd7', '#fff3a1', '#f5d76e']);
+						this._showConfetti(cx, cy, 6, [LocusLobbyUI.BONUS_COLORS[bc] || '#c47bd7', '#fff3a1', '#f5d76e']);
 					}
 				}, 200 + i * 300);
 			}
