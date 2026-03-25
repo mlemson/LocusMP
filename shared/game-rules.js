@@ -2409,24 +2409,117 @@ function calculatePlayerScores(boardState, playerIds) {
 		};
 	}
 
-	// ── YELLOW: kolom scoring ──
+	// ── YELLOW: scoring per scoreMode ──
 	const yellowZone = boardState.zones.yellow;
 	if (yellowZone) {
-		for (let x = 0; x < yellowZone.cols; x++) {
-			if (hasStoneInYellowColumn(yellowZone, x)) continue;
-			let colComplete = true;
-			const colCells = [];
-			for (let y = 0; y < yellowZone.rows; y++) {
-				const cell = getDataCell(yellowZone, x, y);
-				if (!cell || !cell.active) { colComplete = false; break; }
-				colCells.push(cell);
+		if (yellowZone.scoreMode === 'diagonal') {
+			// Diagonal scoring (World 2) — punten naar latest placer per segment
+			const minLen = Math.max(1, Number(yellowZone.minDiagonalLength) || 4);
+			const computeSegmentPoints = (len) => {
+				if (len < minLen) return 0;
+				return Math.pow(2, Math.floor(len / 2) + 1);
+			};
+			const cellByCoord = new Map();
+			for (const key in yellowZone.cells) {
+				const c = yellowZone.cells[key];
+				if (c) cellByCoord.set(key, c);
 			}
-			if (colComplete && colCells.length > 0) {
-				const pairIndex = Math.min(Math.floor(x / 2), YELLOW_COLUMN_PAIR_POINTS.length - 1);
-				const points = YELLOW_COLUMN_PAIR_POINTS[pairIndex];
-				const winner = getLatestPlacerOwner(colCells);
-				if (winner && playerScores[winner]) {
-					playerScores[winner].yellow += points;
+			const tryGet = (x, y) => cellByCoord.get(`${x},${y}`) || null;
+			const collectSegments = (dx, dy) => {
+				const segments = [];
+				for (const c of cellByCoord.values()) {
+					const x0 = c.x, y0 = c.y;
+					if (tryGet(x0 - dx, y0 - dy)) continue;
+					const segCells = [];
+					let x = x0, y = y0;
+					while (tryGet(x, y)) { segCells.push(tryGet(x, y)); x += dx; y += dy; }
+					if (segCells.length >= minLen && segCells.every(sc => sc.active)) {
+						segments.push(segCells);
+					}
+				}
+				return segments;
+			};
+			const allSegments = [...collectSegments(1, 1), ...collectSegments(1, -1)];
+			for (const seg of allSegments) {
+				const points = computeSegmentPoints(seg.length);
+				if (points > 0) {
+					const winner = getLatestPlacerOwner(seg);
+					if (winner && playerScores[winner]) {
+						playerScores[winner].yellow += points;
+					}
+				}
+			}
+		} else if (yellowZone.scoreMode === 'rings') {
+			// Ring scoring (World 3) — punten naar majority owner per ring
+			const ringMinPts = Math.max(0, Number(yellowZone.ringMinPoints) || 12);
+			const ringMaxPts = Math.max(ringMinPts, Number(yellowZone.ringMaxPoints) || 64);
+			const cellByCoord = new Map();
+			for (const key in yellowZone.cells) {
+				const c = yellowZone.cells[key];
+				if (c) cellByCoord.set(key, c);
+			}
+			const tryGet = (x, y) => cellByCoord.get(`${x},${y}`) || null;
+			const boundary = [];
+			for (const c of cellByCoord.values()) {
+				if (!tryGet(c.x - 1, c.y) || !tryGet(c.x + 1, c.y) ||
+					!tryGet(c.x, c.y - 1) || !tryGet(c.x, c.y + 1)) {
+					boundary.push(c);
+				}
+			}
+			const depthByKey = new Map();
+			const queue = [];
+			for (const c of boundary) { depthByKey.set(`${c.x},${c.y}`, 0); queue.push(c); }
+			let qi = 0;
+			while (qi < queue.length) {
+				const cur = queue[qi++];
+				const curDepth = depthByKey.get(`${cur.x},${cur.y}`);
+				for (const [dx, dy] of [[1,0],[-1,0],[0,1],[0,-1]]) {
+					const n = tryGet(cur.x + dx, cur.y + dy);
+					if (n && !depthByKey.has(`${n.x},${n.y}`)) {
+						depthByKey.set(`${n.x},${n.y}`, curDepth + 1);
+						queue.push(n);
+					}
+				}
+			}
+			let maxDepth = 0;
+			const rings = new Map();
+			for (const [key, depth] of depthByKey.entries()) {
+				if (depth > maxDepth) maxDepth = depth;
+				if (!rings.has(depth)) rings.set(depth, []);
+				rings.get(depth).push(cellByCoord.get(key));
+			}
+			for (const [depth, cells] of rings.entries()) {
+				const denom = Math.max(1, maxDepth);
+				const t = (denom - depth) / denom;
+				const points = Math.round(ringMinPts + t * (ringMaxPts - ringMinPts));
+				if (cells.every(c => c.active)) {
+					const winner = getLatestPlacerOwner(cells);
+					if (winner && playerScores[winner]) {
+						playerScores[winner].yellow += points;
+					}
+				}
+			}
+		} else {
+			// Default: kolom-gebaseerd (World 1)
+			for (let x = 0; x < yellowZone.cols; x++) {
+				if (hasStoneInYellowColumn(yellowZone, x)) continue;
+				let colComplete = true;
+				let hasCells = false;
+				const colCells = [];
+				for (let y = 0; y < yellowZone.rows; y++) {
+					const cell = getDataCell(yellowZone, x, y);
+					if (!cell) continue; // skip void cells (staircase pattern)
+					hasCells = true;
+					if (!cell.active) { colComplete = false; break; }
+					colCells.push(cell);
+				}
+				if (colComplete && hasCells && colCells.length > 0) {
+					const pairIndex = Math.min(Math.floor(x / 2), YELLOW_COLUMN_PAIR_POINTS.length - 1);
+					const points = YELLOW_COLUMN_PAIR_POINTS[pairIndex];
+					const winner = getLatestPlacerOwner(colCells);
+					if (winner && playerScores[winner]) {
+						playerScores[winner].yellow += points;
+					}
 				}
 			}
 		}
