@@ -859,8 +859,8 @@ function generateLevel1Board(rng, level, playerCount, maxWins) {
 			goldCells: yellowGold,
 			voidCells: stairVoids
 		});
-		placeGoldFlags(zones.yellow, rng, 6);
-		placeBonusSymbols(zones.yellow, rng, 6, { excludeColor: 'yellow' });
+		placeGoldFlags(zones.yellow, rng, 5);
+		placeBonusSymbols(zones.yellow, rng, 3, { excludeColor: 'yellow' });
 	} else if (world === 2) {
 		// World 2: vierkant grid met diagonale scoring
 		const yellowSize = 11 + playerTier;
@@ -883,8 +883,8 @@ function generateLevel1Board(rng, level, playerCount, maxWins) {
 		});
 		zones.yellow.scoreMode = 'diagonal';
 		zones.yellow.minDiagonalLength = 4;
-		placeGoldFlags(zones.yellow, rng, 8);
-		placeBonusSymbols(zones.yellow, rng, 8, { excludeColor: 'yellow' });
+		placeGoldFlags(zones.yellow, rng, 7);
+		placeBonusSymbols(zones.yellow, rng, 5, { excludeColor: 'yellow' });
 	} else {
 		// World 3: ruitvorm (diamond) met ring scoring
 		const diamondPattern = [4, 6, 8, 10, 12, 12, 12, 12, 10, 8, 6, 4];
@@ -924,14 +924,14 @@ function generateLevel1Board(rng, level, playerCount, maxWins) {
 		zones.yellow.ringMinPoints = 12;
 		zones.yellow.ringMaxPoints = 64;
 		placeGoldFlags(zones.yellow, rng, 10);
-		placeBonusSymbols(zones.yellow, rng, 10, { excludeColor: 'yellow' });
+		placeBonusSymbols(zones.yellow, rng, 6, { excludeColor: 'yellow' });
 	}
 
 	// ══════════════════════════════════════════
 	//  GREEN ZONE — Wereldafhankelijk + spelerafhankelijk
 	//  Meer end cells per playerTier
 	// ══════════════════════════════════════════
-	const greenEndCells = 12 + playerTier * 3;
+	const greenEndCells = 10 + playerTier * 2;
 	if (world === 1) {
 		const greenSize = 15 + playerTier;
 		const greenCenter = Math.floor(greenSize / 2);
@@ -963,9 +963,9 @@ function generateLevel1Board(rng, level, playerCount, maxWins) {
 	}
 
 	// Gold en bonus in green zone
-	const greenGoldCount = world === 1 ? 5 : (world === 2 ? 7 : 10);
+	const greenGoldCount = world === 1 ? 3 : (world === 2 ? 5 : 7);
 	placeGoldFlags(zones.green, rng, greenGoldCount);
-	placeBonusSymbols(zones.green, rng, world === 1 ? 5 : (world === 2 ? 7 : 10), { excludeColor: 'green' });
+	placeBonusSymbols(zones.green, rng, world === 1 ? 2 : (world === 2 ? 4 : 5), { excludeColor: 'green' });
 
 	// ══════════════════════════════════════════
 	//  BLUE ZONE — Wereldafhankelijk + spelerafhankelijk
@@ -1024,8 +1024,8 @@ function generateLevel1Board(rng, level, playerCount, maxWins) {
 		}
 		zones.blue = createZoneGrid(blueHeight, blueWidth, { boldCells: blueBold, goldCells: blueGold, voidCells: blueVoid });
 		zones.blue.boldRows = blueBoldRows;
-		placeGoldFlags(zones.blue, rng, 4);
-		placeBonusSymbols(zones.blue, rng, 5, { excludeColor: 'blue' });
+		placeGoldFlags(zones.blue, rng, 2);
+		placeBonusSymbols(zones.blue, rng, 2, { excludeColor: 'blue' });
 	} else if (world === 2) {
 		const blueWidth = 4 + playerTier;
 		const blueHeight = 52; // 2x W1 hoogte
@@ -1048,8 +1048,8 @@ function generateLevel1Board(rng, level, playerCount, maxWins) {
 		}
 		zones.blue = createZoneGrid(blueHeight, blueWidth, { boldCells: blueBold, goldCells: blueGold, voidCells: blueVoid });
 		zones.blue.boldRows = blueBoldRows;
-		placeGoldFlags(zones.blue, rng, 6);
-		placeBonusSymbols(zones.blue, rng, 7, { excludeColor: 'blue' });
+		placeGoldFlags(zones.blue, rng, 4);
+		placeBonusSymbols(zones.blue, rng, 4, { excludeColor: 'blue' });
 	} else {
 		const blueWidth = 5 + playerTier;
 		const blueHeight = 78; // 3x W1 hoogte
@@ -1072,8 +1072,8 @@ function generateLevel1Board(rng, level, playerCount, maxWins) {
 		}
 		zones.blue = createZoneGrid(blueHeight, blueWidth, { boldCells: blueBold, goldCells: blueGold, voidCells: blueVoid });
 		zones.blue.boldRows = blueBoldRows;
-		placeGoldFlags(zones.blue, rng, 8);
-		placeBonusSymbols(zones.blue, rng, 10, { excludeColor: 'blue' });
+		placeGoldFlags(zones.blue, rng, 6);
+		placeBonusSymbols(zones.blue, rng, 5, { excludeColor: 'blue' });
 	}
 
 	// ══════════════════════════════════════════
@@ -1123,9 +1123,9 @@ function generateLevel1Board(rng, level, playerCount, maxWins) {
 
 	// Gold en bonus in rode subgrids
 	for (const sg of zones.red.subgrids) {
-		placeGoldFlags(sg, rng, 2);
-		const redBonusBase = world === 1 ? 4 : (world === 2 ? 5 : 6);
-		placeBonusSymbols(sg, rng, redBonusBase * 0.65, { excludeColor: 'red' });
+		placeGoldFlags(sg, rng, 1);
+		const redBonusBase = world === 1 ? 3 : (world === 2 ? 4 : 5);
+		placeBonusSymbols(sg, rng, redBonusBase * 0.45, { excludeColor: 'red' });
 	}
 
 	// ══════════════════════════════════════════
@@ -1181,7 +1181,7 @@ function generateLevel1Board(rng, level, playerCount, maxWins) {
 	}
 
 	const purpleGold = [];
-	const purpleGoldCount = world === 1 ? 3 : (world === 2 ? 5 : 8);
+	const purpleGoldCount = world === 1 ? 2 : (world === 2 ? 4 : 6);
 	for (let i = 0; i < purpleGoldCount; i++) {
 		purpleGold.push({
 			x: Math.floor(rng() * purpleSize),
@@ -1198,7 +1198,6 @@ function generateLevel1Board(rng, level, playerCount, maxWins) {
 		zones.purple.cornerBoldBonus = world === 2 ? 20 : 25;
 	}
 	placeGoldFlags(zones.purple, rng, purpleGoldCount);
-	placeBonusSymbols(zones.purple, rng, world === 1 ? 4 : (world === 2 ? 6 : 8), { excludeColor: 'purple' });
 
 	// Tag outer ring cellen
 	for (let i = 0; i < purpleSize; i++) {
@@ -1214,7 +1213,7 @@ function generateLevel1Board(rng, level, playerCount, maxWins) {
 		tagCellFlag(zones.purple, purpleSize - 2, i, 'outer-ring-1');
 	}
 
-	placeBonusSymbols(zones.purple, rng, world === 1 ? 3 : (world === 2 ? 5 : 7), { excludeColor: 'purple' });
+	placeBonusSymbols(zones.purple, rng, world === 1 ? 2 : (world === 2 ? 4 : 5), { excludeColor: 'purple' });
 	ensureAnyBonusSymbolOnBoard(zones, rng);
 
 	// Plaats parel-schatten in gele zone (meer coins)
@@ -4788,11 +4787,6 @@ function advanceTurn(gameState) {
 		if (gameState.currentTurnIndex === 0) {
 			gameState.turnCount++;
 			spawnBonusesAfterRoundFour(gameState, { isRoundStart: true });
-
-			// Beloningsmodus: na elke ronde krijgt elke speler een bonuskaart
-			if (gameState.settings?.rewardingMode) {
-				_rewardingRoundBonusCards(gameState);
-			}
 		}
 
 		const nextPid = gameState.playerOrder[gameState.currentTurnIndex];

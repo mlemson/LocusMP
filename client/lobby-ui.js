@@ -5499,7 +5499,7 @@ class LocusLobbyUI {
 		// Vinkje op elke actieve bold-cel
 		if (cell.flags.includes('bold') && cell.active) {
 			const checkChar = document.documentElement.classList.contains('theme-classic') ? '' : '✓';
-			const zoneCheckClass = zoneName === 'blue' ? 'mp-blue-check' : zoneName === 'purple' ? 'mp-purple-check' : zoneName === 'yellow' ? 'mp-yellow-check' : '';
+			const zoneCheckClass = zoneName === 'blue' ? 'mp-blue-check' : zoneName === 'purple' ? 'mp-purple-check' : zoneName === 'yellow' ? 'mp-yellow-check' : zoneName === 'green' ? 'mp-green-check' : '';
 			inner += `<span class="mp-zone-check ${zoneCheckClass}">${checkChar}</span>`;
 		}
 		if (zoneName === 'yellow' && meta.isYellowColComplete && cell.active && !cell.flags.includes('bold')) {
