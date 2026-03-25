@@ -2701,7 +2701,9 @@ class LocusLobbyUI {
 		const isMyTurn = this.mp.isMyTurn();
 
 		// Skip re-render if hand data hasn't changed
-		const handKey = JSON.stringify(hand) + '|' + isMyTurn;
+		const myPlayerForKey = this.mp.getMyPlayer();
+		const goldForKey = this.mp.gameState?.settings?.coinMode ? (myPlayerForKey?.goldCoins || 0) : '';
+		const handKey = JSON.stringify(hand) + '|' + isMyTurn + '|' + goldForKey;
 		if (handKey === this._lastHandKey) return;
 		this._lastHandKey = handKey;
 
@@ -7978,6 +7980,10 @@ class LocusLobbyUI {
 
 	_isRewardingMode() {
 		return !!this.mp?.gameState?.settings?.rewardingMode;
+	}
+
+	_isCoinMode() {
+		return !!this.mp?.gameState?.settings?.coinMode;
 	}
 
 	/**
