@@ -103,17 +103,70 @@ class LocusLobbyUI {
 		this._showScreen('lobby-screen');
 	}
 
+	destroy() {
+		// Stop all intervals
+		this._stopTurnTimer();
+		this._stopOpponentTimerTicker();
+		this._stopTVHeartbeat();
+
+		// Close AudioContext
+		if (this._audioCtx) {
+			try { this._audioCtx.close(); } catch (_) {}
+			this._audioCtx = null;
+		}
+
+		// Remove global event listeners
+		if (this._onVisibilityChange) {
+			document.removeEventListener('visibilitychange', this._onVisibilityChange);
+		}
+		if (this._onKeyDown) {
+			document.removeEventListener('keydown', this._onKeyDown);
+		}
+		if (this._onWheel) {
+			document.removeEventListener('wheel', this._onWheel);
+		}
+		if (this._blockGesture) {
+			document.removeEventListener('gesturestart', this._blockGesture);
+			document.removeEventListener('gesturechange', this._blockGesture);
+			document.removeEventListener('gestureend', this._blockGesture);
+		}
+		if (this._onTouchEndGuard) {
+			document.removeEventListener('touchend', this._onTouchEndGuard);
+		}
+
+		// Clear any drag/bonus listeners
+		if (this._onPointerMove) {
+			document.removeEventListener('pointermove', this._onPointerMove);
+		}
+		if (this._onPlacementPointerUpCancel) {
+			document.removeEventListener('pointerup', this._onPlacementPointerUpCancel);
+		}
+		if (this._bonusMoveHandler) {
+			document.removeEventListener('pointermove', this._bonusMoveHandler);
+		}
+		if (this._onBonusPointerUpCancel) {
+			document.removeEventListener('pointerup', this._onBonusPointerUpCancel);
+		}
+
+		// Clear callbacks on multiplayer adapter
+		if (this.mp) {
+			this.mp.onGameStateChanged = null;
+			this.mp.onPlayerJoined = null;
+			this.mp.onError = null;
+			this.mp.onConnectionChanged = null;
+		}
+	}
+
 	/**
 	 * Pause all ticking timers when the page/tab is hidden (screen off, tab switch, app backgrounded).
 	 * This is the single biggest battery saver on mobile.
 	 */
 	_bindVisibilityHandler() {
-		document.addEventListener('visibilitychange', () => {
+		this._onVisibilityChange = () => {
 			if (document.hidden) {
 				this._stopTurnTimer();
 				this._stopOpponentTimerTicker();
 			} else {
-				// Re-sync timers from latest state when becoming visible again
 				const gs = this.mp?.gameState;
 				if (gs?.phase === 'playing') {
 					this._syncTurnTimerFromState(gs);
@@ -121,7 +174,8 @@ class LocusLobbyUI {
 					this._startOpponentTimerTicker();
 				}
 			}
-		});
+		};
+		document.addEventListener('visibilitychange', this._onVisibilityChange);
 	}
 
 	_setVersionBadge() {
@@ -150,22 +204,23 @@ class LocusLobbyUI {
 		if (!this._isTouchLikeDevice()) return;
 		this._mobileGestureGuardsBound = true;
 
-		const blockGesture = (e) => {
+		this._blockGesture = (e) => {
 			e.preventDefault();
 		};
 
-		document.addEventListener('gesturestart', blockGesture, { passive: false });
-		document.addEventListener('gesturechange', blockGesture, { passive: false });
-		document.addEventListener('gestureend', blockGesture, { passive: false });
+		document.addEventListener('gesturestart', this._blockGesture, { passive: false });
+		document.addEventListener('gesturechange', this._blockGesture, { passive: false });
+		document.addEventListener('gestureend', this._blockGesture, { passive: false });
 
 		let lastTouchEndTs = 0;
-		document.addEventListener('touchend', (e) => {
+		this._onTouchEndGuard = (e) => {
 			const now = Date.now();
 			if (now - lastTouchEndTs < 300) {
 				e.preventDefault();
 			}
 			lastTouchEndTs = now;
-		}, { passive: false });
+		};
+		document.addEventListener('touchend', this._onTouchEndGuard, { passive: false });
 	}
 
 	/** Herstart UI na auto-reconnect (pagina refresh) */
@@ -393,7 +448,7 @@ class LocusLobbyUI {
 	}
 
 	_bindKeyboard() {
-		document.addEventListener('keydown', (e) => {
+		this._onKeyDown = (e) => {
 			const targetTag = e.target?.tagName;
 			const isTypingTarget = targetTag === 'INPUT' || targetTag === 'TEXTAREA' || targetTag === 'SELECT' || e.target?.isContentEditable;
 			const isSpace = e.key === ' ' || e.code === 'Space' || e.key === 'Spacebar';
@@ -430,14 +485,16 @@ class LocusLobbyUI {
 				this._cancelDrag();
 				this._cancelBonusMode();
 			}
-		});
+		};
+		document.addEventListener('keydown', this._onKeyDown);
 
 		// Mouse wheel voor rotatie
-		document.addEventListener('wheel', (e) => {
+		this._onWheel = (e) => {
 			if (!this._dragState && !this._bonusMode) return;
 			e.preventDefault();
 			this._rotateCurrentShape();
-		}, { passive: false });
+		};
+		document.addEventListener('wheel', this._onWheel, { passive: false });
 	}
 
 	_registerCallbacks() {
@@ -507,6 +564,11 @@ class LocusLobbyUI {
 					this._tvPostMessage({ type: 'theme', theme });
 					this._broadcastTVState();
 				}
+			};
+			this._tvChannel.onmessageerror = () => {
+				console.warn('[Locus TV] BroadcastChannel berichtfout');
+				this._tvConnected = false;
+				this._stopTVHeartbeat();
 			};
 		} catch (err) {
 			console.warn('[Locus TV] BroadcastChannel niet beschikbaar:', err);
