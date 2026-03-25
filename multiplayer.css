@@ -741,12 +741,14 @@ html.theme-classic .mp-red-subgrid-wrap.is-full .mp-red-subgrid-label {
 html.theme-classic .mp-red-progress-bar { background: rgba(200, 120, 130, 0.15); }
 html.theme-classic .mp-red-progress-fill { background: #b56069; }
 
-/* Classic green end check — hidden on pastel (cell styling is sufficient) */
+/* Classic green end check — show on all themes */
 html.theme-classic .mp-green-end-check {
-	display: none;
+	color: #1a5c2a;
+	text-shadow: 0 1px 2px rgba(255,255,255,0.6);
 }
 html.theme-classic .mp-zone-check {
-	display: none;
+	color: #333;
+	text-shadow: 0 1px 2px rgba(255,255,255,0.6);
 }
 
 /* Classic zone info button — singleplayer style */

@@ -1275,7 +1275,7 @@ function placeBonusSymbols(zoneData, rng, count, options = {}) {
 	const preferredColor = bonusColors.includes(options.preferredColor) ? options.preferredColor : null;
 	const preferredChance = Math.max(0, Math.min(1, Number(options.preferredChance || 0)));
 	const multicolorChance = Math.max(0, Math.min(1, Number(options.multicolorChance || 0.08)));
-	const targetCount = Math.max(0, Math.floor((Number(count) || 0) * 2));
+	const targetCount = Math.max(0, Math.floor(Number(count) || 0));
 	const availableCells = Object.values(zoneData.cells).filter(c =>
 		!c.active &&
 		!c.flags.includes('bold') &&
@@ -3572,25 +3572,9 @@ function buildDeck(cardCount, rng, options = {}) {
  */
 function buildRewardingDeck(rng, isBot) {
 	const deck = [];
-	const multikleurColor = COLORS.find(c => c.name === 'multikleur');
 	const playableColors = COLORS.filter(c => c.name !== 'multikleur');
-	const dominoMatrix = [[1, 1]]; // 2x1 blok
 
-	// 10 multikleur 2x1 kaarten
-	for (let i = 0; i < 10; i++) {
-		deck.push({
-			id: `rw-mk-${i}-${Math.floor(rng() * 100000)}`,
-			shapeName: 'Domino',
-			matrix: cloneMatrix(dominoMatrix),
-			category: 'mini',
-			color: { ...multikleurColor },
-			isGolden: false,
-			rotation: 0,
-			mirrored: false
-		});
-	}
-
-	// 5 normale kaarten — alleen shapes met 3-4 cellen
+	// Verzamel medium shapes (3-4 cellen)
 	const mediumShapes = [];
 	for (const cat of ['mini', 'standard']) {
 		for (const shape of (BASE_SHAPES[cat] || [])) {
@@ -3600,10 +3584,10 @@ function buildRewardingDeck(rng, isBot) {
 			}
 		}
 	}
-	// Fallback: if no 3-4 cell shapes found, use standard shapes
 	const shapePool = mediumShapes.length > 0 ? mediumShapes : (BASE_SHAPES.standard || []);
 
-	for (let i = 0; i < 5; i++) {
+	// 15 normale gekleurde kaarten (3-4 cellen)
+	for (let i = 0; i < 15; i++) {
 		const shape = shapePool[Math.floor(rng() * shapePool.length)];
 		const color = playableColors[Math.floor(rng() * playableColors.length)];
 		deck.push({
@@ -3613,21 +3597,6 @@ function buildRewardingDeck(rng, isBot) {
 			category: shape.category || 'standard',
 			color: { ...color },
 			isGolden: false,
-			rotation: 0,
-			mirrored: false
-		});
-	}
-
-	// Menselijke spelers krijgen 1 stenen kaart (1×2)
-	if (!isBot) {
-		const stoneShape = STONE_SHAPES_2[0]; // 'Steen H' (horizontaal 1×2)
-		deck.push({
-			id: `rw-stone-${Math.floor(rng() * 100000)}`,
-			shapeName: stoneShape.name,
-			matrix: cloneMatrix(stoneShape.matrix),
-			category: 'stone',
-			color: { ...STONE_COLOR },
-			isStone: true,
 			rotation: 0,
 			mirrored: false
 		});
@@ -5071,9 +5040,6 @@ const SHOP_ITEMS = [
 	{ id: 'extra-bonus', name: 'Bonus Charge', description: 'Krijg een bonus charge naar keuze (eenmalig)', cost: 2, icon: '⚡', oneTimePerLevel: true },
 	{ id: 'random-card', name: 'Random Kaart', description: 'Ontvang direct 1 willekeurige kaart voor je volgende level (eenmalig)', cost: 1, icon: '🎲', oneTimePerLevel: true },
 	{ id: 'time-bomb', name: 'Tijdbom', description: 'Stop de beurt van een andere speler direct! (eenmalig)', cost: 2, icon: '💣', oneTimePerLevel: true },
-	{ id: 'unlock-golden', name: 'Gouden Kaarten', description: 'Unlock gouden kaarten (wildcard, elke zone)', cost: 5, icon: '✨', unlockOnly: true, minLevel: 3 },
-	{ id: 'unlock-multikleur', name: 'Multikleur Kaarten', description: 'Unlock multikleur kaarten (elke zone)', cost: 5, icon: '🌈', unlockOnly: true, minLevel: 3 },
-	{ id: 'unlock-steen', name: 'Steen Vormen', description: 'Kies 1 van 3 steen vormen die aangrenzende plaatsing blokkeren', cost: 5, icon: '🪨', unlockOnly: true, minLevel: 3, reappearLevel: 8 },
 ];
 
 function getShopItems(level, player, seed) {
@@ -5081,16 +5047,6 @@ function getShopItems(level, player, seed) {
 		.filter(item => {
 			if (item.minLevel && (level || 1) < item.minLevel) return false;
 			if (item.oneTimePerLevel && player?.shopPurchasesThisLevel?.[item.id]) return false;
-			// Hide unlock if already unlocked (tenzij reappear op huidig level)
-			if (item.id === 'unlock-golden' && player?.unlockedGolden) return false;
-			if (item.id === 'unlock-multikleur' && player?.unlockedMultikleur) return false;
-			if (item.id === 'unlock-steen') {
-				// Steen verschijnt op minLevel en weer exact op reappearLevel
-				if (player?.unlockedSteen) {
-					// Al eerder gekocht: toon alleen opnieuw bij exact reappearLevel
-					if (!item.reappearLevel || (level || 1) !== item.reappearLevel) return false;
-				}
-			}
 			return true;
 		})
 		.map(item => ({ ...item }));
@@ -5138,6 +5094,10 @@ function generateShopCardOfferings(gameState, playerId) {
 		// Golden/multikleur cards cost +2 extra
 		if (card.isGolden || card.color?.name === 'multikleur' || card.color?.code === 'rainbow') {
 			price += 2;
+		}
+		// Rewarding mode: kaarten 2x zo duur
+		if (gameState.settings?.rewardingMode) {
+			price *= 2;
 		}
 		card.shopPrice = price;
 		offerings.push(card);
@@ -5247,65 +5207,6 @@ function buyShopItem(gameState, playerId, itemId, extra) {
 			player.goldCoins -= item.cost;
 			break;
 		}
-		case 'unlock-golden': {
-			if (player.unlockedGolden) return { error: 'Al ontgrendeld' };
-			player.unlockedGolden = true;
-			player.goldCoins -= item.cost;
-			// Generate 3 golden card choices for popup (player picks 1 free)
-			const rng = createRNG(Date.now() + playerId.length);
-			const goldenChoices = [];
-			for (let i = 0; i < 3; i++) {
-				const deck = buildDeck(1, rng, { enableGolden: true, goldenChance: 1.0 });
-				goldenChoices[i] = deck[0];
-				goldenChoices[i].shopPrice = 0;
-			}
-			// Store pending choices — player must pick 1
-			player._pendingFreeChoices = goldenChoices;
-			gameState.updatedAt = Date.now();
-			return { success: true, freeChoices: goldenChoices };
-		}
-		case 'unlock-multikleur': {
-			if (player.unlockedMultikleur) return { error: 'Al ontgrendeld' };
-			player.unlockedMultikleur = true;
-			player.goldCoins -= item.cost;
-			// Generate 3 multikleur card choices for popup (player picks 1 free)
-			const rng2 = createRNG(Date.now() + playerId.length + 999);
-			const mkChoices = [];
-			for (let i = 0; i < 3; i++) {
-				const deck = buildDeck(1, rng2, { enableMultikleur: true, multikleurChance: 1.0 });
-				mkChoices[i] = deck[0];
-				mkChoices[i].shopPrice = 0;
-			}
-			player._pendingFreeChoices = mkChoices;
-			gameState.updatedAt = Date.now();
-			return { success: true, freeChoices: mkChoices };
-		}
-		case 'unlock-steen': {
-			player.unlockedSteen = true;
-			player.goldCoins -= item.cost;
-			// Generate 3 stone shapes to choose from: 1 small (2-cel), 1 medium (3-cel), 1 large (4-cel)
-			const rngS = createRNG(Date.now() + playerId.length + 7777);
-			const stoneChoices = [];
-			const pick2 = STONE_SHAPES_2[Math.floor(rngS() * STONE_SHAPES_2.length)];
-			const pick3 = STONE_SHAPES_3[Math.floor(rngS() * STONE_SHAPES_3.length)];
-			const pick4 = STONE_SHAPES_4[Math.floor(rngS() * STONE_SHAPES_4.length)];
-			[pick2, pick3, pick4].forEach((shape, i) => {
-				stoneChoices.push({
-					id: `stone-${i}-${Math.floor(rngS() * 100000)}`,
-					shapeName: shape.name,
-					matrix: cloneMatrix(shape.matrix),
-					category: 'stone',
-					color: { ...STONE_COLOR },
-					isStone: true,
-					rotation: 0,
-					mirrored: false,
-					shopPrice: 0
-				});
-			});
-			player._pendingFreeChoices = stoneChoices;
-			gameState.updatedAt = Date.now();
-			return { success: true, freeChoices: stoneChoices };
-		}
 		default:
 			return { error: 'Onbekend item' };
 	}
@@ -5332,18 +5233,21 @@ function chooseRewardCardType(gameState, playerId, cardType) {
 	let choices = [];
 
 	if (cardType === 'golden') {
+		player.unlockedGolden = true;
 		for (let i = 0; i < 3; i++) {
 			const deck = buildDeck(1, rng, { enableGolden: true, goldenChance: 1.0 });
 			deck[0].shopPrice = 0;
 			choices.push(deck[0]);
 		}
 	} else if (cardType === 'multikleur') {
+		player.unlockedMultikleur = true;
 		for (let i = 0; i < 3; i++) {
 			const deck = buildDeck(1, rng, { enableMultikleur: true, multikleurChance: 1.0 });
 			deck[0].shopPrice = 0;
 			choices.push(deck[0]);
 		}
 	} else if (cardType === 'steen') {
+		player.unlockedSteen = true;
 		const pick2 = STONE_SHAPES_2[Math.floor(rng() * STONE_SHAPES_2.length)];
 		const pick3 = STONE_SHAPES_3[Math.floor(rng() * STONE_SHAPES_3.length)];
 		const pick4 = STONE_SHAPES_4[Math.floor(rng() * STONE_SHAPES_4.length)];

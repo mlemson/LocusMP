@@ -5493,18 +5493,15 @@ class LocusLobbyUI {
 			}
 		}
 		if (zoneName === 'green' && cell.flags.includes('end') && cell.active) {
-			const checkChar = document.documentElement.classList.contains('theme-classic') ? '' : '✓';
-			inner += `<span class="mp-green-end-check">${checkChar}</span>`;
+			inner += `<span class="mp-green-end-check">✓</span>`;
 		}
 		// Vinkje op elke actieve bold-cel
 		if (cell.flags.includes('bold') && cell.active) {
-			const checkChar = document.documentElement.classList.contains('theme-classic') ? '' : '✓';
 			const zoneCheckClass = zoneName === 'blue' ? 'mp-blue-check' : zoneName === 'purple' ? 'mp-purple-check' : zoneName === 'yellow' ? 'mp-yellow-check' : zoneName === 'green' ? 'mp-green-check' : '';
-			inner += `<span class="mp-zone-check ${zoneCheckClass}">${checkChar}</span>`;
+			inner += `<span class="mp-zone-check ${zoneCheckClass}">✓</span>`;
 		}
 		if (zoneName === 'yellow' && meta.isYellowColComplete && cell.active && !cell.flags.includes('bold')) {
-			const checkChar = document.documentElement.classList.contains('theme-classic') ? '' : '✓';
-			inner += `<span class="mp-zone-check mp-yellow-check">${checkChar}</span>`;
+			inner += `<span class="mp-zone-check mp-yellow-check">✓</span>`;
 		}
 		// portal indicators disabled (unlock later)
 		// if (cell.flags.includes('portal') && !cell.active) { ... }
@@ -7988,8 +7985,8 @@ class LocusLobbyUI {
 		overlay.innerHTML = `
 			<div class="mp-rewarding-popup">
 				<div class="mp-rewarding-icon">🎁</div>
-				<h2 class="mp-rewarding-title">Kies een gratis kaart!</h2>
-				<p class="mp-rewarding-subtitle">Kies een kaarttype — je krijgt 1 kaart gratis bij je deck.</p>
+				<h2 class="mp-rewarding-title">Kies een kaarttype om te ontgrendelen!</h2>
+				<p class="mp-rewarding-subtitle">Kies een type — je ontgrendelt het permanent en krijgt 1 gratis kaart.</p>
 				<div class="mp-reward-type-choices">
 					<button class="mp-reward-type-card" data-type="golden">
 						<span class="mp-reward-type-icon">✨</span>
