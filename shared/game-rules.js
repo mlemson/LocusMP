@@ -2622,6 +2622,7 @@ function calculatePlayerScores(boardState, playerIds) {
 function recalcScoresForActivePlayer(gameState) {
 	const playerScores = calculatePlayerScores(gameState.boardState, gameState.playerOrder);
 	const currentPlayerId = gameState.playerOrder[gameState.currentTurnIndex];
+	const isRewarding = !!gameState.settings?.rewardingMode;
 
 	// Objective achievement voor actieve speler direct markeren
 	checkAndAwardObjective(gameState, currentPlayerId);
@@ -2629,11 +2630,14 @@ function recalcScoresForActivePlayer(gameState) {
 	for (const pid of gameState.playerOrder) {
 		const player = gameState.players[pid];
 		const objectiveBonus = player?.objectiveAchieved ? (player.objectiveAchievedPoints || 0) : 0;
-		const totalWithObjective = (playerScores[pid].total || 0) + objectiveBonus;
+		// Beloningsmodus: coins en parels tellen mee als punten (5 per stuk)
+		const coinPoints = isRewarding ? (player?.goldCoins || 0) * 5 : 0;
+		const totalWithObjective = (playerScores[pid].total || 0) + objectiveBonus + coinPoints;
 		gameState.players[pid].score = totalWithObjective;
 		gameState.players[pid].scoreBreakdown = {
 			...playerScores[pid],
 			objectiveBonus,
+			coinPoints,
 			total: totalWithObjective
 		};
 		playerScores[pid] = gameState.players[pid].scoreBreakdown;
@@ -3560,6 +3564,78 @@ function buildDeck(cardCount, rng, options = {}) {
 	return deck;
 }
 
+/**
+ * Bouw een beloningsmodus startdeck.
+ * - 10 multikleur 2×1 kaarten (Domino shape)
+ * - 5 normale kaarten van 3-4 cellen
+ * - Voor menselijke spelers: +1 stenen kaart (1×2)
+ */
+function buildRewardingDeck(rng, isBot) {
+	const deck = [];
+	const multikleurColor = COLORS.find(c => c.name === 'multikleur');
+	const playableColors = COLORS.filter(c => c.name !== 'multikleur');
+	const dominoMatrix = [[1, 1]]; // 2x1 blok
+
+	// 10 multikleur 2x1 kaarten
+	for (let i = 0; i < 10; i++) {
+		deck.push({
+			id: `rw-mk-${i}-${Math.floor(rng() * 100000)}`,
+			shapeName: 'Domino',
+			matrix: cloneMatrix(dominoMatrix),
+			category: 'mini',
+			color: { ...multikleurColor },
+			isGolden: false,
+			rotation: 0,
+			mirrored: false
+		});
+	}
+
+	// 5 normale kaarten — alleen shapes met 3-4 cellen
+	const mediumShapes = [];
+	for (const cat of ['mini', 'standard']) {
+		for (const shape of (BASE_SHAPES[cat] || [])) {
+			const cellCount = shape.matrix.flat().filter(Boolean).length;
+			if (cellCount >= 3 && cellCount <= 4) {
+				mediumShapes.push({ name: shape.name, matrix: shape.matrix, category: cat });
+			}
+		}
+	}
+	// Fallback: if no 3-4 cell shapes found, use standard shapes
+	const shapePool = mediumShapes.length > 0 ? mediumShapes : (BASE_SHAPES.standard || []);
+
+	for (let i = 0; i < 5; i++) {
+		const shape = shapePool[Math.floor(rng() * shapePool.length)];
+		const color = playableColors[Math.floor(rng() * playableColors.length)];
+		deck.push({
+			id: `rw-std-${i}-${Math.floor(rng() * 100000)}`,
+			shapeName: shape.name,
+			matrix: cloneMatrix(shape.matrix),
+			category: shape.category || 'standard',
+			color: { ...color },
+			isGolden: false,
+			rotation: 0,
+			mirrored: false
+		});
+	}
+
+	// Menselijke spelers krijgen 1 stenen kaart (1×2)
+	if (!isBot) {
+		const stoneShape = STONE_SHAPES_2[0]; // 'Steen H' (horizontaal 1×2)
+		deck.push({
+			id: `rw-stone-${Math.floor(rng() * 100000)}`,
+			shapeName: stoneShape.name,
+			matrix: cloneMatrix(stoneShape.matrix),
+			category: 'stone',
+			color: { ...STONE_COLOR },
+			isStone: true,
+			rotation: 0,
+			mirrored: false
+		});
+	}
+
+	return deck;
+}
+
 function normalizeStartingDeckType(deckType) {
 	const value = String(deckType || '').trim().toLowerCase();
 	if (STARTING_DECK_TYPES.includes(value)) return value;
@@ -3813,11 +3889,19 @@ function initializeLevelOneAfterDeckChoice(gameState) {
 	gameState.boardState = generateLevel1Board(rng, 1, mapSize, _getMaxWins(gameState));
 
 	// 2. Genereer startdecks per speler op basis van keuze
+	const isRewarding = !!gameState.settings?.rewardingMode;
 	for (const playerId of gameState.playerOrder) {
 		const player = gameState.players[playerId];
-		const deckType = normalizeStartingDeckType(player.startingDeckType) || 'random';
-		const baseDeckRng = createRNG((gameState.seed | 0) ^ hashStringToInt(`${playerId}-level-1-base-${deckType}`));
-		const initialDeck = buildStartingDeckByType(gameState.settings.cardsPerPlayer, baseDeckRng, deckType);
+		const baseDeckRng = createRNG((gameState.seed | 0) ^ hashStringToInt(`${playerId}-level-1-base-${player.startingDeckType || 'random'}`));
+
+		let initialDeck;
+		if (isRewarding) {
+			// Beloningsmodus: 10 multikleur 2×1 + 5 standaard (3-4 cellen) + optioneel stenen kaart
+			initialDeck = buildRewardingDeck(baseDeckRng, !!player.isAI);
+		} else {
+			const deckType = normalizeStartingDeckType(player.startingDeckType) || 'random';
+			initialDeck = buildStartingDeckByType(gameState.settings.cardsPerPlayer, baseDeckRng, deckType);
+		}
 		player.permanentBaseCards = cloneDeckCards(initialDeck);
 
 		const shuffledInitialDeck = shuffleWithRNG(
@@ -4731,10 +4815,12 @@ function checkGameEnd(gameState) {
 	}
 
 	// Level is klaar: herbereken ALLE spelers' scores definitief
+	const isRewarding = !!gameState.settings?.rewardingMode;
 	const finalPlayerScores = calculatePlayerScores(gameState.boardState, gameState.playerOrder);
 	for (const pid of gameState.playerOrder) {
-		gameState.players[pid].score = finalPlayerScores[pid].total;
-		gameState.players[pid].scoreBreakdown = finalPlayerScores[pid];
+		const coinPts = isRewarding ? (gameState.players[pid]?.goldCoins || 0) * 5 : 0;
+		gameState.players[pid].score = finalPlayerScores[pid].total + coinPts;
+		gameState.players[pid].scoreBreakdown = { ...finalPlayerScores[pid], coinPoints: coinPts, total: finalPlayerScores[pid].total + coinPts };
 	}
 
 	// Bereken level scores
