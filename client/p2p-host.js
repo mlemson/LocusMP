@@ -1125,6 +1125,34 @@ class LocusP2PHost {
 				}
 				if (perkRes.startedPlaying) this._startTimerForCurrentPlayer(true);
 			}
+
+			// Beloningsmodus: bots kiezen een kaarttype en claimen een gratis kaart
+			if (this.gameState.settings?.rewardingMode) {
+				for (const aiId of this.aiPlayerIds) {
+					const p = this.gameState.players?.[aiId];
+					if (!p || !p.chosenObjective || p._rewardCardChosen || p._pendingFreeChoices) continue;
+					const types = ['golden', 'multikleur', 'steen'];
+					const pick = types[Math.floor(Math.random() * types.length)];
+					const typeRes = this.Rules.chooseRewardCardType(this.gameState, aiId, pick);
+					if (typeRes?.error) continue;
+					changed = true;
+					// Claim de eerste beschikbare kaart
+					const choices = p._pendingFreeChoices || [];
+					if (choices.length > 0) {
+						const card = choices[Math.floor(Math.random() * choices.length)];
+						if (card?.id) {
+							const claimRes = this.Rules.claimFreeCard(this.gameState, aiId, card.id);
+							if (!claimRes?.error) {
+								this._broadcastEvent('botActivity', {
+									playerId: aiId,
+									playerName: p.name,
+									text: `🎁 Gratis ${pick} kaart gekozen`
+								});
+							}
+						}
+					}
+				}
+			}
 		}
 
 		if (phase === 'playing' && !this.gameState.paused) {
