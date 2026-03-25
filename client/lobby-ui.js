@@ -375,11 +375,17 @@ class LocusLobbyUI {
 			if (e.key === 'Enter') this._handleJoinGame();
 		});
 
-		// Beloningsmodus toggle: schakel kaarten automatisch naar 9 (en terug naar 6)
+		// Beloningsmodus toggle: schakel kaarten automatisch en toon juiste opties
 		this.elements['rewarding-mode-toggle']?.addEventListener('change', () => {
 			const cardsSelect = this.elements['cards-per-player-select'];
 			if (!cardsSelect) return;
-			if (this.elements['rewarding-mode-toggle'].checked) {
+			const isRewarding = this.elements['rewarding-mode-toggle'].checked;
+			// Toggle visibility of standard vs rewarding options
+			for (const opt of cardsSelect.options) {
+				const isRewardingOpt = opt.classList.contains('rewarding-only');
+				opt.style.display = (isRewarding === isRewardingOpt) ? '' : 'none';
+			}
+			if (isRewarding) {
 				this._cardsBeforeRewarding = cardsSelect.value;
 				cardsSelect.value = '9';
 			} else {
