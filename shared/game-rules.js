@@ -2631,7 +2631,8 @@ function recalcScoresForActivePlayer(gameState) {
 		const player = gameState.players[pid];
 		const objectiveBonus = player?.objectiveAchieved ? (player.objectiveAchievedPoints || 0) : 0;
 		// Beloningsmodus: coins en parels tellen mee als punten (5 per stuk)
-		const coinPoints = isRewarding ? (player?.goldCoins || 0) * 5 : 0;
+		// Coin modus: coins geven GEEN punten
+		const coinPoints = isRewarding && !gameState.settings?.coinMode ? (player?.goldCoins || 0) * 5 : 0;
 		const totalWithObjective = (playerScores[pid].total || 0) + objectiveBonus + coinPoints;
 		gameState.players[pid].score = totalWithObjective;
 		gameState.players[pid].scoreBreakdown = {
@@ -4946,7 +4947,7 @@ function checkGameEnd(gameState) {
 	const isRewarding = !!gameState.settings?.rewardingMode;
 	const finalPlayerScores = calculatePlayerScores(gameState.boardState, gameState.playerOrder);
 	for (const pid of gameState.playerOrder) {
-		const coinPts = isRewarding ? (gameState.players[pid]?.goldCoins || 0) * 5 : 0;
+		const coinPts = isRewarding && !gameState.settings?.coinMode ? (gameState.players[pid]?.goldCoins || 0) * 5 : 0;
 		gameState.players[pid].score = finalPlayerScores[pid].total + coinPts;
 		gameState.players[pid].scoreBreakdown = { ...finalPlayerScores[pid], coinPoints: coinPts, total: finalPlayerScores[pid].total + coinPts };
 	}

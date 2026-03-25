@@ -3085,8 +3085,8 @@ class LocusLobbyUI {
 		// Cancel bonus mode als die actief is
 		this._cancelBonusMode();
 
-		// Blokkeer als er al een kaart gespeeld is deze beurt
-		if (this.mp.gameState?._cardPlayedThisTurn) return;
+		// Blokkeer als er al een kaart gespeeld is deze beurt (niet in coin mode — daar mag je extra betalen)
+		if (this.mp.gameState?._cardPlayedThisTurn && !this.mp.gameState?.settings?.coinMode) return;
 
 		if (this._isDragging) {
 			// Klik op dezelfde kaart? Toggle uit. Andere kaart? Wissel.
@@ -5547,7 +5547,7 @@ class LocusLobbyUI {
 			inner += `<span class="mp-zone-check mp-yellow-check">✓</span>`;
 		}
 		// Blue: vinkje op ALLE cellen in een geclaimde rij (punten!)
-		if (zoneName === 'blue' && meta.isBlueClaimedRow && cell.active) {
+		if (zoneName === 'blue' && meta.isBlueClaimedRow) {
 			inner += `<span class="mp-zone-check mp-blue-check">✓</span>`;
 		}
 		// portal indicators disabled (unlock later)
