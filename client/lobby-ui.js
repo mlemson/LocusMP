@@ -8006,6 +8006,7 @@ class LocusLobbyUI {
 		requestAnimationFrame(() => overlay.classList.add('visible'));
 
 		overlay.querySelector('#mp-reward-type-skip').addEventListener('click', () => {
+			this._rewardTypeSkipped = true;
 			overlay.classList.remove('visible');
 			setTimeout(() => { overlay.remove(); this._showChosenGoalWaitingState(); }, 300);
 		});
