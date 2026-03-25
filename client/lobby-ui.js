@@ -2203,6 +2203,12 @@ class LocusLobbyUI {
 		this._repositionScoreboardForMobile();
 
 		const scoreboard = this.mp.getScoreboard();
+
+		// Skip re-render if scoreboard data hasn't changed
+		const sbKey = JSON.stringify(scoreboard);
+		if (sbKey === this._lastScoreboardKey) return;
+		this._lastScoreboardKey = sbKey;
+
 		const sorted = [...scoreboard];
 
 		const isClassicSB = document.documentElement.classList.contains('theme-classic');
@@ -2660,6 +2666,11 @@ class LocusLobbyUI {
 
 		const hand = this.mp.getMyHand();
 		const isMyTurn = this.mp.isMyTurn();
+
+		// Skip re-render if hand data hasn't changed
+		const handKey = JSON.stringify(hand) + '|' + isMyTurn;
+		if (handKey === this._lastHandKey) return;
+		this._lastHandKey = handKey;
 
 		if (!hand || hand.length === 0) {
 			// Check if player still has bonuses
