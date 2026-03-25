@@ -5030,6 +5030,12 @@ class LocusLobbyUI {
 	_renderBoard(boardState) {
 		const container = this.elements['mp-board-container'];
 		if (!container || !boardState) return;
+
+		// Skip re-render if board data hasn't changed
+		const boardKey = JSON.stringify(boardState);
+		if (boardKey === this._lastBoardKey) return;
+		this._lastBoardKey = boardKey;
+
 		const prevMobileIdx = this._getCurrentMobileBoardIndex();
 
 		const zones = boardState.zones || {};
@@ -6767,6 +6773,7 @@ class LocusLobbyUI {
 	// ──────────────────────────────────────────
 
 	_onGameStateChanged(state, prevState) {
+		if (!state) return;
 		// Sync tutorial flag from state so guest players get it before phase handlers
 		if (state?.settings?.tutorialEnabled !== undefined) {
 			this._tutorialEnabled = !!state.settings.tutorialEnabled;
