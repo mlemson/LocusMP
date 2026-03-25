@@ -2692,6 +2692,14 @@ html.theme-classic .mp-cell.bonus-just-spawned {
 	box-sizing: border-box;
 }
 
+.mp-board-col-left .mp-zone-green {
+	max-height: 50vh;
+	overflow-y: auto;
+	overflow-x: hidden;
+	scrollbar-width: thin;
+	scrollbar-color: rgba(91,232,180,0.3) rgba(0,0,0,0.1);
+}
+
 .mp-board-col-middle {
 	align-self: stretch;
 	max-height: 55vh;

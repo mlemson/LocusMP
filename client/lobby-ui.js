@@ -5174,6 +5174,13 @@ class LocusLobbyUI {
 					</div>
 				</div>
 			`;
+			// Desktop: scroll blue column to bottom so the start row is visible
+			const blueCol = container.querySelector('.mp-board-col-middle');
+			if (blueCol) {
+				const scrollBlue = () => { blueCol.scrollTop = blueCol.scrollHeight; };
+				scrollBlue();
+				requestAnimationFrame(scrollBlue);
+			}
 		}
 
 		if (isTouch) {

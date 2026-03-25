@@ -3023,6 +3023,22 @@ class LocusP2PHost {
 						if (cell?.flags?.includes('end')) { score += 14; endCount++; valueCount++; }
 						if (this._hasAdjacentActive(zoneData, c.x, c.y)) adjacentCount++;
 					}
+					// Score optional cells (perk upgrade extra cell)
+					const optCells = cells.optionalCells || [];
+					for (const c of optCells) {
+						const cell = this.Rules.getDataCell(zoneData, c.x, c.y);
+						if (cell?.flags?.includes('gold')) { score += prioritizeCoins ? 12 : 6; goldCount++; valueCount++; }
+						if (cell?.bonusSymbol) { bonusCount++; score += 20; valueCount++; }
+						if (cell?.flags?.includes('bold')) {
+							boldCount++;
+							score += 8;
+							valueCount++;
+						}
+						if (cell?.treasureCoins > 0) { score += prioritizeCoins ? 10 : 4; valueCount++; }
+						if (cell?.flags?.includes('end')) { score += 10; endCount++; valueCount++; }
+						if (this._hasAdjacentActive(zoneData, c.x, c.y)) adjacentCount++;
+						score += 3; // Base bonus for covering extra cell
+					}
 					// Combo bonus: points + bonuses together = best placement
 					if ((boldCount + endCount) > 0 && bonusCount > 0) {
 						score += (boldCount + endCount + bonusCount) * 10;
