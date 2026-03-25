@@ -2694,6 +2694,7 @@ html.theme-classic .mp-cell.bonus-just-spawned {
 
 .mp-board-col-middle {
 	align-self: stretch;
+	max-height: 50vh;
 	overflow-y: auto;
 	overflow-x: hidden;
 	scrollbar-width: thin;

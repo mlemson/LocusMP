@@ -128,6 +128,13 @@ class LocusMultiplayer {
 	}
 
 	_registerSocketListeners() {
+		// Voorkom duplicatie bij herhaalde aanroep (reconnect)
+		const preserveEvents = ['connect', 'connect_error'];
+		const allEvents = Object.keys(this.socket._callbacks || {}).map(k => k.replace(/^\//, ''));
+		for (const ev of allEvents) {
+			if (!preserveEvents.includes(ev)) this.socket.removeAllListeners(ev);
+		}
+
 		// Game state updates van server
 		this.socket.on('gameState', (state) => {
 			const prevState = this.gameState;

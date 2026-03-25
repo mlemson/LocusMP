@@ -315,6 +315,18 @@ class LocusLobbyUI {
 			if (e.key === 'Enter') this._handleJoinGame();
 		});
 
+		// Beloningsmodus toggle: schakel kaarten automatisch naar 9 (en terug naar 6)
+		this.elements['rewarding-mode-toggle']?.addEventListener('change', () => {
+			const cardsSelect = this.elements['cards-per-player-select'];
+			if (!cardsSelect) return;
+			if (this.elements['rewarding-mode-toggle'].checked) {
+				this._cardsBeforeRewarding = cardsSelect.value;
+				cardsSelect.value = '9';
+			} else {
+				cardsSelect.value = this._cardsBeforeRewarding || '6';
+			}
+		});
+
 		// Live naam-validatie: highlight name field en schakel buttons in/uit
 		const nameInput = this.elements['player-name-input'];
 		if (nameInput) {
@@ -1095,7 +1107,7 @@ class LocusLobbyUI {
 
 	async _handleStartGame() {
 		// Read host settings from waiting room before starting
-		const cardsPerPlayer = Number(this.elements['cards-per-player-select']?.value) || 8;
+		const cardsPerPlayer = Number(this.elements['cards-per-player-select']?.value) || 6;
 		const mapSize = Number(this.elements['map-size-select']?.value) || 4;
 		const timerEnabled = this.elements['timer-toggle']?.checked !== false;
 		const tutorialEnabled = !!this.elements['tutorial-toggle']?.checked;

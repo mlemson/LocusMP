@@ -121,7 +121,7 @@ class LocusP2PHost {
 							seed,
 							maxPlayers: options.maxPlayers || 4,
 							mapSize: options.mapSize || 4,
-							cardsPerPlayer: options.cardsPerPlayer || 8,
+							cardsPerPlayer: options.cardsPerPlayer || 6,
 							handSize: 3
 						}
 					);
@@ -220,24 +220,25 @@ class LocusP2PHost {
 		const playerId = this.playerMap.get(conn.peer);
 
 		switch (msg.type) {
-			case 'addAIPlayer': {
+			case 'addAIPlayer':
+			case 'removeAIPlayer': {
 				if (playerId !== this.hostPlayerId && playerId) {
-					conn.send({ type: 'result', action: 'addAIPlayer', success: false, error: 'Alleen de host kan AI toevoegen.' });
+					conn.send({ type: 'result', action: msg.type, success: false, error: 'Alleen de host kan AI beheren.' });
 					return;
 				}
-				const result = this._addAIPlayer(msg.difficulty || 'normal');
-				conn.send({ type: 'result', action: 'addAIPlayer', ...result });
+				const result = this._executeAction(playerId, msg.type, msg);
+				conn.send({ type: 'result', action: msg.type, ...result });
 				this._broadcastState();
 				break;
 			}
 
-			case 'removeAIPlayer': {
+			case 'startGame': {
 				if (playerId !== this.hostPlayerId && playerId) {
-					conn.send({ type: 'result', action: 'removeAIPlayer', success: false, error: 'Alleen de host kan AI verwijderen.' });
+					conn.send({ type: 'result', action: 'startGame', success: false, error: 'Alleen de host kan starten.' });
 					return;
 				}
-				const rmResult = this._removeAIPlayer(msg.playerId);
-				conn.send({ type: 'result', action: 'removeAIPlayer', ...rmResult });
+				const result = this._executeAction(playerId, 'startGame', msg);
+				conn.send({ type: 'result', action: 'startGame', ...result });
 				this._broadcastState();
 				break;
 			}
@@ -680,6 +681,27 @@ class LocusP2PHost {
 	/** Host speelt zelf een actie (roep direct de game rules aan) */
 	hostAction(type, data = {}) {
 		const playerId = this.hostPlayerId;
+
+		// Apply host settings before starting (only the host UI sends these)
+		if (type === 'startGame' && data && this.gameState?.settings) {
+			if (data.cardsPerPlayer) this.gameState.settings.cardsPerPlayer = Number(data.cardsPerPlayer);
+			if (data.mapSize) this.gameState.settings.mapSize = Number(data.mapSize);
+			if ('timerEnabled' in data) this.gameState.settings.timerEnabled = !!data.timerEnabled;
+			if ('tutorialEnabled' in data) this.gameState.settings.tutorialEnabled = !!data.tutorialEnabled;
+			if ('rewardingMode' in data) this.gameState.settings.rewardingMode = !!data.rewardingMode;
+		}
+
+		const result = this._executeAction(playerId, type, data);
+		this._broadcastState();
+		return result;
+	}
+
+	/**
+	 * Gedeelde actie-uitvoerder voor zowel _handleMessage (remote) als hostAction (lokaal).
+	 * Bevat alle game-rule aanroepen, timer-management en event broadcasts.
+	 * Retourneert het Rules-resultaat.
+	 */
+	_executeAction(playerId, type, data) {
 		let result;
 
 		switch (type) {
@@ -690,14 +712,6 @@ class LocusP2PHost {
 				result = this._removeAIPlayer(data.playerId);
 				break;
 			case 'startGame':
-				// Apply host settings if provided (from waiting room UI)
-				if (data && this.gameState?.settings) {
-					if (data.cardsPerPlayer) this.gameState.settings.cardsPerPlayer = Number(data.cardsPerPlayer);
-					if (data.mapSize) this.gameState.settings.mapSize = Number(data.mapSize);
-					if ('timerEnabled' in data) this.gameState.settings.timerEnabled = !!data.timerEnabled;
-					if ('tutorialEnabled' in data) this.gameState.settings.tutorialEnabled = !!data.tutorialEnabled;
-					if ('rewardingMode' in data) this.gameState.settings.rewardingMode = !!data.rewardingMode;
-				}
 				result = this.Rules.startGame(this.gameState);
 				break;
 			case 'chooseStartingDeck':
@@ -709,19 +723,17 @@ class LocusP2PHost {
 				break;
 			case 'playMove': {
 				const transformedMatrix = this._getTransformedMoveMatrix(
-					playerId,
-					data.cardId,
-					data.zoneName,
-					data.rotation || 0,
-					!!data.mirrored
+					playerId, data.cardId, data.zoneName, data.rotation || 0, !!data.mirrored
 				);
-				result = this.Rules.playMove(this.gameState, playerId, data.cardId, data.zoneName,
-					data.baseX, data.baseY, data.rotation || 0, !!data.mirrored, data.subgridId || null);
+				result = this.Rules.playMove(
+					this.gameState, playerId, data.cardId, data.zoneName,
+					data.baseX, data.baseY, data.rotation || 0, !!data.mirrored, data.subgridId || null
+				);
 				if (result.success) {
 					this._grantExtraTurnTime(playerId, 5000);
 					this._broadcastEvent('movePlayed', {
 						playerId,
-						playerName: this.gameState?.players?.[playerId]?.name || 'Host',
+						playerName: this.gameState?.players?.[playerId]?.name || 'Speler',
 						zoneName: data.zoneName,
 						baseX: data.baseX,
 						baseY: data.baseY,
@@ -739,13 +751,15 @@ class LocusP2PHost {
 				break;
 			}
 			case 'playBonus':
-				result = this.Rules.playBonus(this.gameState, playerId, data.bonusColor, data.zoneName,
-					data.baseX, data.baseY, data.subgridId || null, data.rotation || 0);
+				result = this.Rules.playBonus(
+					this.gameState, playerId, data.bonusColor, data.zoneName,
+					data.baseX, data.baseY, data.subgridId || null, data.rotation || 0
+				);
 				if (result.success) {
 					this._grantExtraTurnTime(playerId, 5000);
 					this._broadcastEvent('movePlayed', {
 						playerId,
-						playerName: this.gameState?.players?.[playerId]?.name || 'Host',
+						playerName: this.gameState?.players?.[playerId]?.name || 'Speler',
 						zoneName: data.zoneName,
 						baseX: data.baseX,
 						baseY: data.baseY,
@@ -829,27 +843,33 @@ class LocusP2PHost {
 						bombedPlayerName: result.bombedPlayerName
 					});
 				}
-				if (!result?.gameEnded) this._startTimerForCurrentPlayer(true);
+				if (!result.gameEnded) this._startTimerForCurrentPlayer(true);
 				break;
 			case 'useMine':
 				result = this.Rules.useMine(this.gameState, playerId, data.zoneName, data.cellX, data.cellY);
 				break;
 			case 'stealCard':
 				result = this.Rules.stealCard(this.gameState, playerId, data.targetPlayerId, data.cardId);
+				if (result.success) {
+					this._broadcastEvent('cardStolen', {
+						thiefId: playerId,
+						thiefName: (this.gameState.players[playerId] || {}).name || 'Speler',
+						victimId: data.targetPlayerId,
+						victimName: (this.gameState.players[data.targetPlayerId] || {}).name || 'Speler',
+						cardId: data.cardId
+					});
+				}
 				break;
 			case 'getStealableCards':
 				result = this.Rules.getStealableCards(this.gameState, playerId, data.targetPlayerId);
 				break;
 			case 'togglePause': {
-				// Host toggled pause
 				if (this.gameState.paused) {
 					this.gameState.paused = false;
 					this.gameState.pausedBy = null;
 					this.gameState.pausedAt = null;
-					// Herstart timer met de opgeslagen resterende tijd
 					if (this.gameState.phase === 'playing') this._startTimerForCurrentPlayer(false);
 				} else {
-					// Sla resterende tijd op vóór pauzeren
 					const _pauseElapsed = Math.max(0, Date.now() - (this._turnTimerStart || 0));
 					const _pauseDuration = Math.max(1, Number(this.gameState._turnTimerDurationMs) || this._turnTimerDuration);
 					this.gameState._turnTimerRemainingMs = Math.max(1, _pauseDuration - _pauseElapsed);
@@ -866,7 +886,6 @@ class LocusP2PHost {
 				result = { error: 'Onbekende actie: ' + type };
 		}
 
-		this._broadcastState();
 		return result;
 	}
 
@@ -4001,7 +4020,7 @@ class LocusP2PGuest {
 			// Timeout — clear handler to prevent leak
 			timeoutId = setTimeout(() => {
 				this.connection.off('data', handler);
-				resolve({ success: true }); // assume ok
+				reject(new Error('Host reageert niet (timeout).'));
 			}, 5000);
 		});
 	}
