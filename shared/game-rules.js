@@ -4102,11 +4102,14 @@ function playMove(gameState, playerId, cardId, zoneName, baseX, baseY, rotation,
 
 	const card = player.hand[cardIndex];
 
-	// Coin mode: controleer of speler genoeg coins heeft om deze kaart te spelen
-	if (gameState.settings?.coinMode) {
-		const playCost = getCardPlayCost(card);
-		if (playCost > 0 && (player.goldCoins || 0) < playCost) {
-			return { error: `Niet genoeg goudmunten (nodig: ${playCost}, beschikbaar: ${player.goldCoins || 0})` };
+	// Coin mode: eerste kaart is gratis, extra kaarten kosten coins
+	if (gameState.settings?.coinMode && !card.isGolden) {
+		if (gameState._coinFreeCardUsed) {
+			// Extra kaart: controleer of speler genoeg coins heeft
+			const playCost = getCardPlayCost(card);
+			if (playCost > 0 && (player.goldCoins || 0) < playCost) {
+				return { error: `Niet genoeg goudmunten (nodig: ${playCost}, beschikbaar: ${player.goldCoins || 0})` };
+			}
 		}
 	}
 
@@ -4119,7 +4122,8 @@ function playMove(gameState, playerId, cardId, zoneName, baseX, baseY, rotation,
 	};
 
 	// Max 1 regular kaart per beurt — gouden kaarten mogen als EXTRA gespeeld worden
-	if (gameState._cardPlayedThisTurn && !card.isGolden) {
+	// Coin mode: meerdere kaarten toegestaan als je coins betaalt
+	if (gameState._cardPlayedThisTurn && !card.isGolden && !gameState.settings?.coinMode) {
 		return { error: 'Je hebt al een kaart gespeeld deze beurt. Speel bonussen of beëindig je beurt.' };
 	}
 
@@ -4183,8 +4187,8 @@ function playMove(gameState, playerId, cardId, zoneName, baseX, baseY, rotation,
 	// Verwijder kaart uit hand
 	player.hand.splice(cardIndex, 1);
 
-	// Coin mode: trek speelkosten af
-	if (gameState.settings?.coinMode) {
+	// Coin mode: trek speelkosten af (alleen voor extra kaarten, eerste is gratis)
+	if (gameState.settings?.coinMode && gameState._coinFreeCardUsed && !card.isGolden) {
 		const playCost = getCardPlayCost(card);
 		if (playCost > 0) {
 			player.goldCoins = (player.goldCoins || 0) - playCost;
@@ -4319,6 +4323,10 @@ function playMove(gameState, playerId, cardId, zoneName, baseX, baseY, rotation,
 	// Golden cards don't count as the regular card play
 	if (!card.isGolden) {
 		gameState._cardPlayedThisTurn = true;
+		// Coin mode: markeer dat de gratis kaart is gebruikt
+		if (gameState.settings?.coinMode && !gameState._coinFreeCardUsed) {
+			gameState._coinFreeCardUsed = true;
+		}
 	}
 
 	// Track wildcard usage
@@ -4779,6 +4787,7 @@ function undoMove(gameState, playerId) {
 		// Clear turn state (kaart is teruggedraaid)
 		delete gameState._turnUndoData;
 		gameState._cardPlayedThisTurn = false;
+		delete gameState._coinFreeCardUsed;
 		gameState.bonusPlayedThisTurn = false;
 
 		gameState.updatedAt = Date.now();
@@ -4846,6 +4855,7 @@ function advanceTurn(gameState) {
 	// Reset turn state
 	delete gameState._turnUndoData;
 	delete gameState._cardPlayedThisTurn;
+	delete gameState._coinFreeCardUsed;
 	delete gameState._turnTimerStart;
 	gameState.bonusPlayedThisTurn = false;
 
@@ -5139,13 +5149,16 @@ function checkGameEnd(gameState) {
 const SHOP_ITEMS = [
 	{ id: 'extra-bonus', name: 'Bonus Charge', description: 'Krijg een bonus charge naar keuze (eenmalig)', cost: 2, icon: '⚡', oneTimePerLevel: true },
 	{ id: 'time-bomb', name: 'Tijdbom', description: 'Stop de beurt van een andere speler direct! (eenmalig)', cost: 2, icon: '💣', oneTimePerLevel: true },
+	{ id: 'random-card', name: 'Random Kaart', description: 'Krijg een willekeurige kaart in je hand', cost: 1, icon: '🎲', oneTimePerLevel: true, normalModeOnly: true },
 ];
 
-function getShopItems(level, player, seed) {
+function getShopItems(level, player, seed, settings) {
+	const isSpecialMode = !!(settings?.rewardingMode || settings?.coinMode);
 	const all = SHOP_ITEMS
 		.filter(item => {
 			if (item.minLevel && (level || 1) < item.minLevel) return false;
 			if (item.oneTimePerLevel && player?.shopPurchasesThisLevel?.[item.id]) return false;
+			if (item.normalModeOnly && isSpecialMode) return false;
 			return true;
 		})
 		.map(item => ({ ...item }));
@@ -5272,6 +5285,19 @@ function buyShopItem(gameState, playerId, itemId, extra) {
 			player.timeBombs = (player.timeBombs || 0) + 1;
 			player.goldCoins -= item.cost;
 			break;
+		}
+		case 'random-card': {
+			const rcSeed = (gameState.seed | 0) ^ ((gameState.level || 1) * 991) ^ hashStringToInt(playerId) ^ Date.now();
+			const rcRng = createRNG(rcSeed);
+			const rcDeck = buildDeck(1, rcRng, {
+				enableGolden: player.unlockedGolden || false,
+				enableMultikleur: player.unlockedMultikleur || false,
+			});
+			const rcCard = rcDeck[0];
+			player.hand.push(rcCard);
+			player.goldCoins -= item.cost;
+			gameState.updatedAt = Date.now();
+			return { success: true, card: rcCard };
 		}
 		default:
 			return { error: 'Onbekend item' };

@@ -2126,7 +2126,7 @@ class LocusLobbyUI {
 				${isPaused
 					? `${pauseIcon}Gepauzeerd door ${this._escapeHtml(pausedByName)}`
 					: (isMyTurn
-					? (cardPlayed ? `${turnIcon} Speel bonussen of beëindig beurt!` : `${turnIcon} Jouw beurt!`)
+					? (cardPlayed ? `${turnIcon} ${this.mp.gameState?.settings?.coinMode ? 'Speel extra kaarten, bonussen of beëindig beurt!' : 'Speel bonussen of beëindig beurt!'}` : `${turnIcon} Jouw beurt!`)
 					: `${waitIcon}${this._escapeHtml(current?.name || '???')} is aan zet`)}
 			</div>
 			${!isPaused ? `
@@ -2703,7 +2703,8 @@ class LocusLobbyUI {
 		// Skip re-render if hand data hasn't changed
 		const myPlayerForKey = this.mp.getMyPlayer();
 		const goldForKey = this.mp.gameState?.settings?.coinMode ? (myPlayerForKey?.goldCoins || 0) : '';
-		const handKey = JSON.stringify(hand) + '|' + isMyTurn + '|' + goldForKey;
+		const coinFreeUsedKey = this.mp.gameState?.settings?.coinMode ? (this.mp.gameState?._coinFreeCardUsed ? '1' : '0') : '';
+		const handKey = JSON.stringify(hand) + '|' + isMyTurn + '|' + goldForKey + '|' + coinFreeUsedKey;
 		if (handKey === this._lastHandKey) return;
 		this._lastHandKey = handKey;
 
@@ -2764,21 +2765,38 @@ class LocusLobbyUI {
 
 			// Na het plaatsen van 1 kaart: overige kaarten worden 'spent' (transparant, niet speelbaar)
 			// Gouden kaarten blijven speelbaar (extra play)
+			// Coin mode: eerste kaart is gratis, extra kaarten kosten coins
 			let cardClass = 'mp-card';
 			const isCoinMode = !!this.mp.gameState?.settings?.coinMode;
+			const coinFreeCardUsed = !!this.mp.gameState?._coinFreeCardUsed;
 			const coinCost = isCoinMode && Rules?.getCardPlayCost ? Rules.getCardPlayCost(card) : 0;
-			const canAffordCard = !isCoinMode || coinCost === 0 || (myPlayer?.goldCoins || 0) >= coinCost;
+			// In coin mode: als gratis kaart nog niet gebruikt, is de volgende kaart gratis
+			// Na de gratis kaart moeten extra kaarten betaald worden
+			const needsPayment = isCoinMode && coinFreeCardUsed && !card.isGolden;
+			const canAffordCard = !needsPayment || coinCost === 0 || (myPlayer?.goldCoins || 0) >= coinCost;
 			if (!isMyTurn) {
 				cardClass += ' disabled';
-			} else if (cardPlayed && !card.isGolden) {
+			} else if (!isCoinMode && cardPlayed && !card.isGolden) {
 				cardClass += ' card-spent';
-			} else if (isCoinMode && !canAffordCard) {
+			} else if (isCoinMode && needsPayment && !canAffordCard) {
 				cardClass += ' card-spent';
 			} else {
 				cardClass += ' playable';
 			}
 			if (card.isGolden) cardClass += ' golden';
 			if (card.isStolenTemp) cardClass += ' stolen-temp';
+
+			// Coin cost badge: toon de kosten voor extra kaarten, of GRATIS voor de 1e kaart
+			let coinBadge = '';
+			if (isCoinMode && !card.isGolden) {
+				if (!coinFreeCardUsed) {
+					coinBadge = '<div class="mp-card-coin-cost free">GRATIS</div>';
+				} else if (coinCost > 0) {
+					coinBadge = `<div class="mp-card-coin-cost ${canAffordCard ? '' : 'cant-afford'}">💰 ${coinCost}</div>`;
+				} else {
+					coinBadge = '<div class="mp-card-coin-cost free">GRATIS</div>';
+				}
+			}
 
 			return `
 				<div class="${cardClass}"
@@ -2792,8 +2810,7 @@ class LocusLobbyUI {
 					</div>
 					${card.isGolden ? '<div class="mp-card-extra-badge">⭐ EXTRA</div>' : ''}
 					${card.isStolenTemp ? '<div class="mp-card-extra-badge" style="background:rgba(255,100,100,0.85);">🃏 TIJDELIJK</div>' : ''}
-					${isCoinMode && coinCost > 0 ? `<div class="mp-card-coin-cost ${canAffordCard ? '' : 'cant-afford'}">💰 ${coinCost}</div>` : ''}
-					${isCoinMode && coinCost === 0 ? '<div class="mp-card-coin-cost free">GRATIS</div>' : ''}
+					${coinBadge}
 				</div>
 			`;
 		}).join('');
@@ -5525,13 +5542,13 @@ class LocusLobbyUI {
 		if (zoneName === 'green' && cell.flags.includes('end') && cell.active) {
 			inner += `<span class="mp-green-end-check">✓</span>`;
 		}
-		// Vinkje op elke actieve bold-cel
-		if (cell.flags.includes('bold') && cell.active) {
-			const zoneCheckClass = zoneName === 'blue' ? 'mp-blue-check' : zoneName === 'purple' ? 'mp-purple-check' : zoneName === 'yellow' ? 'mp-yellow-check' : zoneName === 'green' ? 'mp-green-check' : '';
-			inner += `<span class="mp-zone-check ${zoneCheckClass}">✓</span>`;
-		}
-		if (zoneName === 'yellow' && meta.isYellowColComplete && cell.active && !cell.flags.includes('bold')) {
+		// Yellow: vinkje op ALLE cellen in een voltooide kolom (punten!)
+		if (zoneName === 'yellow' && meta.isYellowColComplete && cell.active) {
 			inner += `<span class="mp-zone-check mp-yellow-check">✓</span>`;
+		}
+		// Blue: vinkje op ALLE cellen in een geclaimde rij (punten!)
+		if (zoneName === 'blue' && meta.isBlueClaimedRow && cell.active) {
+			inner += `<span class="mp-zone-check mp-blue-check">✓</span>`;
 		}
 		// portal indicators disabled (unlock later)
 		// if (cell.flags.includes('portal') && !cell.active) { ... }
@@ -6068,7 +6085,7 @@ class LocusLobbyUI {
 
 		const Rules = window.LocusGameRules;
 		const myPlayer = this.mp.getMyPlayer();
-		const shopItems = Rules ? Rules.getShopItems(this.mp.gameState?.level, myPlayer, this.mp.gameState?.seed) : [];
+		const shopItems = Rules ? Rules.getShopItems(this.mp.gameState?.level, myPlayer, this.mp.gameState?.seed, this.mp.gameState?.settings) : [];
 		const goldCoins = myPlayer?.goldCoins || 0;
 		const isReady = myPlayer?.shopReady || false;
 		const level = this.mp.gameState?.level || 1;
@@ -6608,17 +6625,17 @@ class LocusLobbyUI {
 				return;
 			}
 
-			if (itemId === 'random-card' && result.card) {
+			if (itemId.startsWith('shop-card-') && sourceEl?.closest('.mp-shop-offering.mystery') && result.card) {
 				this._showShopRandomCardReveal(result.card, sourceEl);
-				this._showToast('🎲 Random kaart gekocht!', 'success');
+				this._showToast('🎲 Gesloten kaart onthuld!', 'success');
 				this._spawnShopSparkles(sourceEl);
 				setTimeout(() => this._renderShop(), 220);
 				return;
 			}
 
-			if (itemId.startsWith('shop-card-') && sourceEl?.closest('.mp-shop-offering.mystery') && result.card) {
+			if (itemId === 'random-card' && result.card) {
 				this._showShopRandomCardReveal(result.card, sourceEl);
-				this._showToast('🎲 Gesloten kaart onthuld!', 'success');
+				this._showToast('🎲 Random kaart gekocht!', 'success');
 				this._spawnShopSparkles(sourceEl);
 				setTimeout(() => this._renderShop(), 220);
 				return;
