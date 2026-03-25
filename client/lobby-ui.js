@@ -2765,22 +2765,22 @@ class LocusLobbyUI {
 
 			// Na het plaatsen van 1 kaart: overige kaarten worden 'spent' (transparant, niet speelbaar)
 			// Gouden kaarten blijven speelbaar (extra play)
-			// Coin mode: eerste kaart is gratis, extra kaarten kosten coins
+			// Coin mode: dominos gratis (max 1/beurt), rest kost coins
 			let cardClass = 'mp-card';
 			const isCoinMode = !!this.mp.gameState?.settings?.coinMode;
 			const coinFreeCardUsed = !!this.mp.gameState?._coinFreeCardUsed;
-			const coinCostRaw = isCoinMode && Rules?.getCardPlayCost ? Rules.getCardPlayCost(card) : 0;
-			// Na de gratis kaart kost elke extra kaart minimaal 1 coin
-			const coinCost = (isCoinMode && coinFreeCardUsed && !card.isGolden) ? Math.max(1, coinCostRaw) : coinCostRaw;
-			// In coin mode: als gratis kaart nog niet gebruikt, is de volgende kaart gratis
-			// Na de gratis kaart moeten extra kaarten betaald worden
-			const needsPayment = isCoinMode && coinFreeCardUsed && !card.isGolden;
-			const canAffordCard = !needsPayment || (myPlayer?.goldCoins || 0) >= coinCost;
+			const coinCost = isCoinMode && Rules?.getCardPlayCost ? Rules.getCardPlayCost(card) : 0;
+			// Domino (cost 0): gratis maar max 1 per beurt
+			// Betaalde kaarten: altijd coins nodig
+			const isFreeDomino = isCoinMode && !card.isGolden && coinCost === 0;
+			const isPaidCard = isCoinMode && !card.isGolden && coinCost > 0;
+			const canAffordCard = !isPaidCard || (myPlayer?.goldCoins || 0) >= coinCost;
+			const dominoBlocked = isFreeDomino && coinFreeCardUsed;
 			if (!isMyTurn) {
 				cardClass += ' disabled';
 			} else if (!isCoinMode && cardPlayed && !card.isGolden) {
 				cardClass += ' card-spent';
-			} else if (isCoinMode && needsPayment && !canAffordCard) {
+			} else if (isCoinMode && (dominoBlocked || (isPaidCard && !canAffordCard))) {
 				cardClass += ' card-spent';
 			} else {
 				cardClass += ' playable';
@@ -2788,11 +2788,13 @@ class LocusLobbyUI {
 			if (card.isGolden) cardClass += ' golden';
 			if (card.isStolenTemp) cardClass += ' stolen-temp';
 
-			// Coin cost badge: toon de kosten voor extra kaarten, of GRATIS voor de 1e kaart
+			// Coin cost badge
 			let coinBadge = '';
 			if (isCoinMode && !card.isGolden) {
-				if (!coinFreeCardUsed) {
+				if (isFreeDomino && !coinFreeCardUsed) {
 					coinBadge = '<div class="mp-card-coin-cost free">GRATIS</div>';
+				} else if (isFreeDomino && coinFreeCardUsed) {
+					coinBadge = '<div class="mp-card-coin-cost cant-afford">MAX 1</div>';
 				} else {
 					coinBadge = `<div class="mp-card-coin-cost ${canAffordCard ? '' : 'cant-afford'}">💰 ${coinCost}</div>`;
 				}

@@ -4103,11 +4103,20 @@ function playMove(gameState, playerId, cardId, zoneName, baseX, baseY, rotation,
 
 	const card = player.hand[cardIndex];
 
-	// Coin mode: eerste kaart is gratis, extra kaarten kosten coins (minimaal 1)
+	// Coin mode spelregels:
+	// - Multikleur 2×1 domino: gratis, maar max 1 per beurt
+	// - Gekleurde kaarten: kosten 1 coin
+	// - Multikleur >2 cellen / stenen / grote kaarten: kosten 2 coins
+	// - Gouden kaarten: altijd gratis, onbeperkt
 	if (gameState.settings?.coinMode && !card.isGolden) {
-		if (gameState._coinFreeCardUsed) {
-			// Extra kaart: minimaal 1 coin, ook als getCardPlayCost 0 geeft
-			const playCost = Math.max(1, getCardPlayCost(card));
+		const playCost = getCardPlayCost(card);
+		if (playCost === 0) {
+			// Gratis domino: max 1 per beurt
+			if (gameState._coinFreeCardUsed) {
+				return { error: 'Je hebt al een gratis domino gespeeld deze beurt.' };
+			}
+		} else {
+			// Betaalde kaart: check of speler genoeg coins heeft
 			if ((player.goldCoins || 0) < playCost) {
 				return { error: `Niet genoeg goudmunten (nodig: ${playCost}, beschikbaar: ${player.goldCoins || 0})` };
 			}
@@ -4188,10 +4197,12 @@ function playMove(gameState, playerId, cardId, zoneName, baseX, baseY, rotation,
 	// Verwijder kaart uit hand
 	player.hand.splice(cardIndex, 1);
 
-	// Coin mode: trek speelkosten af (alleen voor extra kaarten, eerste is gratis, minimaal 1 coin)
-	if (gameState.settings?.coinMode && gameState._coinFreeCardUsed && !card.isGolden) {
-		const playCost = Math.max(1, getCardPlayCost(card));
-		player.goldCoins = (player.goldCoins || 0) - playCost;
+	// Coin mode: trek speelkosten af (dominos zijn gratis, rest kost coins)
+	if (gameState.settings?.coinMode && !card.isGolden) {
+		const playCost = getCardPlayCost(card);
+		if (playCost > 0) {
+			player.goldCoins = (player.goldCoins || 0) - playCost;
+		}
 	}
 
 	// Voeg gespeelde kaart toe aan aflegstapel
@@ -4322,8 +4333,8 @@ function playMove(gameState, playerId, cardId, zoneName, baseX, baseY, rotation,
 	// Golden cards don't count as the regular card play
 	if (!card.isGolden) {
 		gameState._cardPlayedThisTurn = true;
-		// Coin mode: markeer dat de gratis kaart is gebruikt
-		if (gameState.settings?.coinMode && !gameState._coinFreeCardUsed) {
+		// Coin mode: markeer dat de gratis domino is gebruikt
+		if (gameState.settings?.coinMode && !gameState._coinFreeCardUsed && getCardPlayCost(card) === 0) {
 			gameState._coinFreeCardUsed = true;
 		}
 	}
