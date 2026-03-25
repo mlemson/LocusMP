@@ -4103,12 +4103,12 @@ function playMove(gameState, playerId, cardId, zoneName, baseX, baseY, rotation,
 
 	const card = player.hand[cardIndex];
 
-	// Coin mode: eerste kaart is gratis, extra kaarten kosten coins
+	// Coin mode: eerste kaart is gratis, extra kaarten kosten coins (minimaal 1)
 	if (gameState.settings?.coinMode && !card.isGolden) {
 		if (gameState._coinFreeCardUsed) {
-			// Extra kaart: controleer of speler genoeg coins heeft
-			const playCost = getCardPlayCost(card);
-			if (playCost > 0 && (player.goldCoins || 0) < playCost) {
+			// Extra kaart: minimaal 1 coin, ook als getCardPlayCost 0 geeft
+			const playCost = Math.max(1, getCardPlayCost(card));
+			if ((player.goldCoins || 0) < playCost) {
 				return { error: `Niet genoeg goudmunten (nodig: ${playCost}, beschikbaar: ${player.goldCoins || 0})` };
 			}
 		}
@@ -4188,12 +4188,10 @@ function playMove(gameState, playerId, cardId, zoneName, baseX, baseY, rotation,
 	// Verwijder kaart uit hand
 	player.hand.splice(cardIndex, 1);
 
-	// Coin mode: trek speelkosten af (alleen voor extra kaarten, eerste is gratis)
+	// Coin mode: trek speelkosten af (alleen voor extra kaarten, eerste is gratis, minimaal 1 coin)
 	if (gameState.settings?.coinMode && gameState._coinFreeCardUsed && !card.isGolden) {
-		const playCost = getCardPlayCost(card);
-		if (playCost > 0) {
-			player.goldCoins = (player.goldCoins || 0) - playCost;
-		}
+		const playCost = Math.max(1, getCardPlayCost(card));
+		player.goldCoins = (player.goldCoins || 0) - playCost;
 	}
 
 	// Voeg gespeelde kaart toe aan aflegstapel
