@@ -237,6 +237,17 @@ function _tryBonusPlacements(bonusMatrix, zoneData, zoneName, rotations, subgrid
 					if (cell?.flags?.includes('bold')) score += 3;
 					if (cell?.flags?.includes('end')) score += 5;
 				}
+				// Score optional cells (perk upgrade extra cell)
+				const optCells = cells.optionalCells || [];
+				for (const c of optCells) {
+					const cell = GameRules.getDataCell(zoneData, c.x, c.y);
+					if (cell?.flags?.includes('gold')) { score += 7; goldCount++; }
+					if (cell?.bonusSymbol) { bonusCount++; score += 20; }
+					if (cell?.treasureCoins > 0) score += 4;
+					if (cell?.flags?.includes('bold')) score += 3;
+					if (cell?.flags?.includes('end')) score += 4;
+					score += 3; // Base bonus for covering extra cell
+				}
 				// Extra scaling for multi-bonus grabs (3 bonuses >> 3x one bonus)
 				if (bonusCount >= 2) score += bonusCount * 15;
 				if (bonusCount >= 3) score += 25;
