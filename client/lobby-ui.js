@@ -1656,6 +1656,12 @@ class LocusLobbyUI {
 		if (currentPhase && currentPhase !== 'choosingGoals') {
 			return;
 		}
+		// In beloningsmodus: toon kaarttype-keuze als dat nog niet is gedaan
+		const myPlayer = this.mp?.getMyPlayer?.();
+		if (this._isRewardingMode() && myPlayer && !myPlayer._rewardCardChosen && !myPlayer._pendingFreeChoices && !this._rewardTypeSkipped) {
+			this._showRewardCardTypeChoice();
+			return;
+		}
 		this._showScreen('goal-screen');
 		const container = this.elements['goal-choices-container'];
 		if (container) {
@@ -8314,35 +8320,100 @@ class LocusLobbyUI {
 	_processRewardUnlockQueue(onDone) {
 		const myPlayer = this.mp?.getMyPlayer();
 		const queue = myPlayer?._rewardUnlockQueue;
-		if (!queue || queue.length === 0 || !myPlayer._pendingFreeChoices) {
+		if (!queue || queue.length === 0) {
 			if (onDone) onDone();
 			return;
 		}
 
-		const current = queue[0];
-		const unlockNames = {
-			'unlock-golden': '✨ Gouden kaarten',
-			'unlock-multikleur': '🌈 Multikleur kaarten',
-			'unlock-steen': '🪨 Steen vormen'
+		// Show type choice popup — player picks which unlock to claim first
+		const unlockMeta = {
+			'unlock-golden': { icon: '✨', name: 'Gouden kaart', desc: 'Kan extra gespeeld worden naast je normale beurt' },
+			'unlock-multikleur': { icon: '🌈', name: 'Multikleur kaart', desc: 'Past in elke zone — uiterst flexibel' },
+			'unlock-steen': { icon: '🪨', name: 'Stenen kaart', desc: 'Blokkeert tegenstanders — strategisch wapen' }
 		};
-		const title = unlockNames[current.type] || 'Kies een kaart';
 
-		this._showRewardFreeCardChoice(myPlayer._pendingFreeChoices, title, (cardId) => {
-			if (cardId) {
-				this.mp.claimFreeCard(cardId).then(result => {
-					if (result?.success) {
-						this._playRevealSound?.();
-						this._showToast(`${title} — kaart gekozen!`, 'success');
+		if (queue.length === 1) {
+			// Single unlock — skip type choice, go straight to cards
+			const current = queue[0];
+			const choices = current.choices || myPlayer._pendingFreeChoices || [];
+			const meta = unlockMeta[current.type] || { icon: '🎁', name: 'Kaart' };
+			const title = `${meta.icon} ${meta.name}`;
+			this._showRewardFreeCardChoice(choices, title, (cardId) => {
+				if (cardId) {
+					this.mp.claimFreeCard(cardId).then(result => {
+						if (result?.success) {
+							this._playRevealSound?.();
+							this._showToast(`${title} — kaart gekozen!`, 'success');
+						}
+						this._processRewardUnlockQueue(onDone);
+					}).catch(() => {
+						this._processRewardUnlockQueue(onDone);
+					});
+				} else {
+					if (onDone) onDone();
+				}
+			});
+			return;
+		}
+
+		// Multiple unlocks — show type choice popup
+		const overlay = document.createElement('div');
+		overlay.className = 'mp-rewarding-overlay';
+		overlay.innerHTML = `
+			<div class="mp-rewarding-popup">
+				<div class="mp-rewarding-icon">🎁</div>
+				<h2 class="mp-rewarding-title">Kies een kaarttype!</h2>
+				<p class="mp-rewarding-subtitle">Je hebt ${queue.length} ontgrendelingen — kies welk type je wilt.</p>
+				<div class="mp-reward-type-choices">
+					${queue.map((item, i) => {
+						const meta = unlockMeta[item.type] || { icon: '🎁', name: 'Kaart', desc: '' };
+						return `<button class="mp-reward-type-card" data-queue-index="${i}">
+							<span class="mp-reward-type-icon">${meta.icon}</span>
+							<span class="mp-reward-type-name">${meta.name}</span>
+							<span class="mp-reward-type-desc">${meta.desc}</span>
+						</button>`;
+					}).join('')}
+				</div>
+			</div>
+		`;
+		document.body.appendChild(overlay);
+		requestAnimationFrame(() => overlay.classList.add('visible'));
+
+		overlay.querySelectorAll('.mp-reward-type-card').forEach(btn => {
+			btn.addEventListener('click', () => {
+				const idx = parseInt(btn.dataset.queueIndex, 10);
+				const chosen = queue[idx];
+				if (!chosen) return;
+
+				overlay.classList.remove('visible');
+				setTimeout(() => overlay.remove(), 300);
+
+				// Reorder queue so chosen item is first, then set pending choices
+				if (idx !== 0) {
+					queue.splice(idx, 1);
+					queue.unshift(chosen);
+					myPlayer._pendingFreeChoices = chosen.choices;
+				}
+
+				const choices = chosen.choices || myPlayer._pendingFreeChoices || [];
+				const meta = unlockMeta[chosen.type] || { icon: '🎁', name: 'Kaart' };
+				const title = `${meta.icon} ${meta.name}`;
+				this._showRewardFreeCardChoice(choices, title, (cardId) => {
+					if (cardId) {
+						this.mp.claimFreeCard(cardId).then(result => {
+							if (result?.success) {
+								this._playRevealSound?.();
+								this._showToast(`${title} — kaart gekozen!`, 'success');
+							}
+							this._processRewardUnlockQueue(onDone);
+						}).catch(() => {
+							this._processRewardUnlockQueue(onDone);
+						});
+					} else {
+						if (onDone) onDone();
 					}
-					// Recurse for next in queue
-					this._processRewardUnlockQueue(onDone);
-				}).catch(() => {
-					this._processRewardUnlockQueue(onDone);
 				});
-			} else {
-				// Skipped or error — proceed
-				if (onDone) onDone();
-			}
+			});
 		});
 	}
 
