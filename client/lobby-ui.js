@@ -5556,7 +5556,9 @@ class LocusLobbyUI {
 			inner += `<span class="mp-cell-gold-dot"></span>`;
 		}
 		if (cell.treasureCoins && !cell.active) {
-			inner += `<span class="mp-cell-pearl-dot" title="Parel: +${cell.treasureCoins} munten"></span>`;
+			const isCoinMode = !!this.mp.gameState?.settings?.coinMode;
+			const pearlLabel = isCoinMode ? 'Parel: +1 perkpunt' : `Parel: +${cell.treasureCoins} munten`;
+			inner += `<span class="mp-cell-pearl-dot" title="${pearlLabel}"></span>`;
 		}
 		// Toon eigen mijn-indicator op het bord (alleen voor de plaatser)
 		if (!cell.active) {
