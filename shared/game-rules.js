@@ -4262,15 +4262,32 @@ function playMove(gameState, playerId, cardId, zoneName, baseX, baseY, rotation,
 	});
 
 	// Gold coins bijhouden als currency (doubleCoins perk)
-	// Coin mode: parels geven perkpunten i.p.v. munten
+	// Coin mode: parels geven gratis random perk i.p.v. munten
 	let pearlPerkPoints = 0;
+	let pearlAutoPerks = [];
 	if (placementResult.goldCollected > 0) {
 		let effectiveGold = placementResult.goldCollected;
 		if (gameState.settings?.coinMode && (placementResult.pearlGold || 0) > 0) {
 			effectiveGold -= placementResult.pearlGold;
-			pearlPerkPoints = placementResult.pearlsCollected || 0;
+			const pearlCount = placementResult.pearlsCollected || 0;
 			if (!player.perks) player.perks = { perkPoints: 0, unlockedPerks: [], bonusUpgrades: {} };
-			player.perks.perkPoints = (player.perks.perkPoints || 0) + pearlPerkPoints;
+			// Auto-unlock random perks for each pearl collected
+			for (let pi = 0; pi < pearlCount; pi++) {
+				const available = getAvailablePerks(player);
+				if (available.length === 0) break;
+				const pick = available[Math.floor(Math.random() * available.length)];
+				// Check cost: pearl gives 1 free perk point, use it immediately
+				if (pick.cost <= 1) {
+					player.perks.unlockedPerks.push(pick.id);
+					if (pick.color) player.perks.bonusUpgrades[pick.color] = true;
+					_applyPerkSideEffects(player, pick.id, gameState, playerId);
+					pearlAutoPerks.push({ id: pick.id, name: pick.name, icon: pick.icon });
+				} else {
+					// Perk costs more than 1 — give perk point instead
+					player.perks.perkPoints = (player.perks.perkPoints || 0) + 1;
+					pearlPerkPoints++;
+				}
+			}
 		}
 		if (effectiveGold > 0) {
 			const goldAmount = playerHasPerk(player, 'flex_double_coins')

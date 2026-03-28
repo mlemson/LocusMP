@@ -6238,8 +6238,11 @@ class LocusLobbyUI {
 				<div class="mp-shop-items">
 					<h3 class="mp-shop-section-title">⚡ Acties</h3>
 					${shopItems.map(item => {
-						const canAfford = goldCoins >= item.cost;
+						const isCardItem = (item.id === 'random-card');
+						const coinBlocked = isCoinMode && (isCardItem ? coinCardBought : coinActionBought);
+						const canAfford = isCoinMode ? !coinBlocked : goldCoins >= item.cost;
 						const isUnlock = item.unlockOnly;
+						const costLabel = isCoinMode ? (coinBlocked ? 'MAX 1' : '🎁 Gratis') : `💰 ${item.cost}`;
 						return `
 							<button class="mp-shop-item ${isUnlock ? 'mp-shop-unlock' : ''} ${canAfford ? '' : 'cant-afford'} ${isReady ? 'disabled' : ''}"
 									data-item-id="${item.id}"
@@ -6249,7 +6252,7 @@ class LocusLobbyUI {
 									<div class="mp-shop-item-name">${this._escapeHtml(item.name)}</div>
 									<div class="mp-shop-item-desc">${this._escapeHtml(item.description)}</div>
 								</div>
-								<span class="mp-shop-cost">💰 ${item.cost}</span>
+								<span class="mp-shop-cost">${costLabel}</span>
 							</button>
 						`;
 					}).join('')}
