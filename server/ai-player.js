@@ -827,6 +827,7 @@ function _evaluatePlacementImpact(gameState, playerId, card, placement) {
 	let boldHit = 0;
 	let endHit = 0;
 	let hasAnyValueFlag = false;
+	const isCoinMode = !!gameState.settings?.coinMode;
 	for (const c of cells) {
 		const cell = GameRules.getDataCell(zoneData, c.x, c.y);
 		if (cell?.flags?.includes('gold')) {
@@ -834,6 +835,8 @@ function _evaluatePlacementImpact(gameState, playerId, card, placement) {
 			hasAnyValueFlag = true;
 			const coinValue = player.perks?.doubleCoins ? 20 : 10;
 			impactScore += coinValue;
+			// Coin mode: gold is the primary objective — massive boost
+			if (isCoinMode) impactScore += 30;
 		}
 		if (cell?.bonusSymbol) {
 			bonusFlagsCollected++;
@@ -841,7 +844,12 @@ function _evaluatePlacementImpact(gameState, playerId, card, placement) {
 			// Bonuses are extremely valuable: they chain into more bonuses and points
 			impactScore += 35;
 		}
-		if (cell?.treasureCoins > 0) { impactScore += 8; hasAnyValueFlag = true; }
+		if (cell?.treasureCoins > 0) {
+			impactScore += 8;
+			hasAnyValueFlag = true;
+			// Coin mode: treasure pearls give perks — very valuable
+			if (isCoinMode) impactScore += 25;
+		}
 		if (cell?.flags?.includes('bold')) { boldHit++; hasAnyValueFlag = true; }
 		if (cell?.flags?.includes('end')) { endHit++; hasAnyValueFlag = true; }
 	}
