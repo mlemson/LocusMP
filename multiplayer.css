@@ -346,7 +346,6 @@ html.theme-classic .mp-logo {
 	.mp-waiting-split {
 		max-width: 100%;
 		padding: 16px;
-		overflow: hidden;
 	}
 	.mp-waiting-body {
 		flex-direction: row;
@@ -355,9 +354,14 @@ html.theme-classic .mp-logo {
 		scroll-snap-type: x mandatory;
 		-webkit-overflow-scrolling: touch;
 		flex-wrap: nowrap;
+		scrollbar-width: none;
+	}
+	.mp-waiting-body::-webkit-scrollbar {
+		display: none;
 	}
 	.mp-waiting-panel {
 		flex: 0 0 100%;
+		min-width: 0;
 		scroll-snap-align: start;
 		padding: 0 12px;
 		box-sizing: border-box;
@@ -365,6 +369,28 @@ html.theme-classic .mp-logo {
 	.mp-waiting-left {
 		border-right: none;
 		padding-right: 12px;
+	}
+}
+/* Swipe dots — hidden on desktop */
+.mp-swipe-dots {
+	display: none;
+}
+@media (max-width: 640px) {
+	.mp-swipe-dots {
+		display: flex;
+		justify-content: center;
+		gap: 8px;
+		padding: 10px 0 2px;
+	}
+	.mp-swipe-dot {
+		width: 8px;
+		height: 8px;
+		border-radius: 50%;
+		background: rgba(255, 255, 255, 0.2);
+		transition: background 0.3s;
+	}
+	.mp-swipe-dot.active {
+		background: rgba(166, 140, 255, 0.8);
 	}
 }
 
