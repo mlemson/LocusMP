@@ -3015,7 +3015,10 @@ class LocusLobbyUI {
 		}
 
 		container.innerHTML = objectiveHtml
-			? `<div class="mp-deck-split-layout">${cardsHtml}${objectiveHtml}</div>${perksHtml}`
+			? `<div class="mp-deck-split-layout">
+				<div class="mp-deck-swipe-panel">${cardsHtml}</div>
+				<div class="mp-deck-swipe-panel">${objectiveHtml}${perksHtml}</div>
+			</div>`
 			: `${cardsHtml}${perksHtml}`;
 	}
 
