@@ -5272,6 +5272,8 @@ function startShopPhase(gameState) {
 	for (const pid of gameState.playerOrder) {
 		gameState.players[pid].shopReady = false;
 		gameState.players[pid].shopPurchasesThisLevel = {};
+		gameState.players[pid]._coinShopCardBought = false;
+		gameState.players[pid]._coinShopActionBought = false;
 		// Generate 2 open + 1 gesloten random offering per player
 		gameState.players[pid].shopOfferings = generateShopCardOfferings(gameState, pid);
 	}
@@ -5285,6 +5287,7 @@ function buyShopItem(gameState, playerId, itemId, extra) {
 
 	const player = gameState.players[playerId];
 	if (!player) return { error: 'Speler niet gevonden' };
+	const isCoinMode = !!gameState.settings?.coinMode;
 
 	// Handle buying a specific shop card offering
 	if (itemId.startsWith('shop-card-')) {
@@ -5293,15 +5296,22 @@ function buyShopItem(gameState, playerId, itemId, extra) {
 		if (idx < 0 || idx >= offerings.length) return { error: 'Kaart niet beschikbaar' };
 		const card = offerings[idx];
 		if (!card) return { error: 'Kaart al gekocht' };
-		const price = card.shopPrice || getCardPrice(card);
-		if ((player.goldCoins || 0) < price) return { error: 'Niet genoeg goud' };
+
+		if (isCoinMode) {
+			// Coin mode: 1 free card per shop phase
+			if (player._coinShopCardBought) return { error: 'Je mag maar 1 gratis kaart kiezen in coin modus' };
+			player._coinShopCardBought = true;
+		} else {
+			const price = card.shopPrice || getCardPrice(card);
+			if ((player.goldCoins || 0) < price) return { error: 'Niet genoeg goud' };
+			player.goldCoins -= price;
+		}
 
 		let boughtCard = card;
 
 		player.shopCards.push(boughtCard);
 		player.permanentShopCards = player.permanentShopCards || [];
 		player.permanentShopCards.push(boughtCard);
-		player.goldCoins -= price;
 		// Remove the bought card from offerings (set to null so indices stay stable)
 		player.shopOfferings[idx] = null;
 		gameState.updatedAt = Date.now();
@@ -5312,7 +5322,12 @@ function buyShopItem(gameState, playerId, itemId, extra) {
 	if (!item) return { error: 'Item niet gevonden' };
 	if (item.oneTimePerLevel && player.shopPurchasesThisLevel?.[itemId]) return { error: 'Dit item is eenmalig per shopronde' };
 
-	if ((player.goldCoins || 0) < item.cost) return { error: 'Niet genoeg goud' };
+	if (isCoinMode) {
+		// Coin mode: 1 free action per shop phase
+		if (player._coinShopActionBought) return { error: 'Je mag maar 1 gratis actie kiezen in coin modus' };
+	} else {
+		if ((player.goldCoins || 0) < item.cost) return { error: 'Niet genoeg goud' };
+	}
 
 	switch (itemId) {
 		case 'extra-bonus': {
@@ -5320,15 +5335,20 @@ function buyShopItem(gameState, playerId, itemId, extra) {
 			const validColors = ['yellow', 'red', 'green', 'purple', 'blue'];
 			if (!validColors.includes(bonusColor)) return { error: 'Ongeldige bonus kleur' };
 			player.bonusInventory[bonusColor] = (player.bonusInventory[bonusColor] || 0) + 1;
-			player.goldCoins -= item.cost;
+			if (!isCoinMode) player.goldCoins -= item.cost;
 			break;
 		}
 		case 'time-bomb': {
 			player.timeBombs = (player.timeBombs || 0) + 1;
-			player.goldCoins -= item.cost;
+			if (!isCoinMode) player.goldCoins -= item.cost;
 			break;
 		}
 		case 'random-card': {
+			if (isCoinMode) {
+				// In coin mode random-card counts as card, not action
+				if (player._coinShopCardBought) return { error: 'Je mag maar 1 gratis kaart kiezen in coin modus' };
+				player._coinShopCardBought = true;
+			}
 			const rcSeed = (gameState.seed | 0) ^ ((gameState.level || 1) * 991) ^ hashStringToInt(playerId) ^ Date.now();
 			const rcRng = createRNG(rcSeed);
 			const rcDeck = buildDeck(1, rcRng, {
@@ -5337,13 +5357,15 @@ function buyShopItem(gameState, playerId, itemId, extra) {
 			});
 			const rcCard = rcDeck[0];
 			player.hand.push(rcCard);
-			player.goldCoins -= item.cost;
+			if (!isCoinMode) player.goldCoins -= item.cost;
 			gameState.updatedAt = Date.now();
 			return { success: true, card: rcCard };
 		}
 		default:
 			return { error: 'Onbekend item' };
 	}
+
+	if (isCoinMode) player._coinShopActionBought = true;
 
 	if (item.oneTimePerLevel) {
 		player.shopPurchasesThisLevel = player.shopPurchasesThisLevel || {};

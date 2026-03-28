@@ -3162,6 +3162,16 @@ class LocusLobbyUI {
 		if (!Rules) return;
 		const transform = this._getCardTransform(card.id);
 
+		// Auto-rotate wide-but-short cards (e.g. 1×2) to start vertical,
+		// matching the hand's visual transpose. Only when no saved rotation.
+		if (!this._cardTransforms?.[card.id] && card.matrix) {
+			const mR = card.matrix.length;
+			const mC = card.matrix[0]?.length || 0;
+			if (mC > mR && mR <= 2) {
+				transform.rotation = 1;
+			}
+		}
+
 		// State setup
 		this._dragState = {
 			card,
@@ -6172,6 +6182,9 @@ class LocusLobbyUI {
 
 		// Card offerings
 		const offerings = myPlayer?.shopOfferings || [];
+		const isCoinMode = !!this.mp.gameState?.settings?.coinMode;
+		const coinCardBought = !!myPlayer?._coinShopCardBought;
+		const coinActionBought = !!myPlayer?._coinShopActionBought;
 
 		// Gekochte kaarten
 		const shopCards = myPlayer?.shopCards || [];
@@ -6193,8 +6206,8 @@ class LocusLobbyUI {
 					<div class="mp-shop-offering-grid">
 						${offerings.map((card, i) => {
 							if (!card) return `<div class="mp-shop-offering sold"><div class="mp-shop-offering-sold-label">Gekocht ✓</div></div>`;
-							const price = card.shopPrice || (Rules ? Rules.getCardPrice(card) : 4);
-							const canAfford = goldCoins >= price;
+							const price = isCoinMode ? 0 : (card.shopPrice || (Rules ? Rules.getCardPrice(card) : 4));
+							const canAfford = isCoinMode ? !coinCardBought : goldCoins >= price;
 							const colorStyle = card.isGolden
 								? `background: linear-gradient(135deg, ${card.color?.code || '#f5d76e'}, #f5d76e, ${card.color?.code || '#f5d76e'})`
 								: card.color?.code === 'rainbow'
@@ -6205,6 +6218,7 @@ class LocusLobbyUI {
 							const isShopMulticolor = card.color?.code === 'rainbow' || card.color?.name === 'multikleur';
 							const isShopSpecial = card.isGolden || card.isStone || (isShopMulticolor && cells > 2);
 							const typeLabel = isShopSpecial ? (card.isGolden ? '✨ Gouden' : card.isStone ? '🪨 Steen' : '🌈 Multikleur') : `${cells} cellen`;
+							const btnLabel = isCoinMode ? (coinCardBought ? 'MAX 1' : '🎁 Gratis') : `💰 ${price} kopen`;
 							return `
 								<div class="mp-shop-offering ${canAfford && !isReady ? '' : 'cant-afford'}">
 									${isShopSpecial ? `<div class="mp-shop-offering-color" style="${colorStyle}"></div>` : ''}
@@ -6213,7 +6227,7 @@ class LocusLobbyUI {
 									<button class="mp-shop-buy-btn ${canAfford && !isReady ? '' : 'disabled'}"
 											data-item-id="shop-card-${i}"
 											${(!canAfford || isReady) ? 'disabled' : ''}>
-										💰 ${price} kopen
+										${btnLabel}
 									</button>
 								</div>
 							`;
