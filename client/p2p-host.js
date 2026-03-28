@@ -1592,6 +1592,7 @@ class LocusP2PHost {
 							goldCollected: result.goldCollected || 0,
 							bonusesCollected: result.bonusesCollected || [],
 							pearlsCollected: result.pearlsCollected || 0,
+							pearlPerkPoints: result.pearlPerkPoints || 0,
 							objectivesRevealed: this._shouldRevealObjectives(),
 							mineTriggered: result.mineTriggered || null
 						});
