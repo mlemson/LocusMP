@@ -221,6 +221,32 @@ function getAvailablePerks(player) {
 	return available;
 }
 
+/** Apply perk side effects (stone blocks, mines, etc.) after unlocking */
+function _applyPerkSideEffects(player, perkId, gameState, playerId) {
+	if (perkId === 'agg_stone') {
+		player.perks.stoneBlocks = (player.perks.stoneBlocks || 0) + 1;
+		const stoneShape = STONE_SHAPES_2[0];
+		player.hand.push({
+			id: `stone_${playerId}_${Date.now()}`,
+			shapeName: stoneShape.name,
+			matrix: cloneMatrix(stoneShape.matrix),
+			color: { ...STONE_COLOR },
+			isStone: true
+		});
+	}
+	if (perkId === 'agg_mine') player.perks.minesPerRound = 1;
+	if (perkId === 'agg_steal') player.perks.stealsPerRound = 1;
+	if (perkId === 'flex_gap') player.perks.greenGapAllowed = true;
+	if (perkId === 'flex_gap_red') player.perks.redGapAllowed = true;
+	if (perkId === 'flex_rotate') player.perks.diagonalRotation = true;
+	if (perkId === 'flex_wildcard') player.perks.wildcardPerRound = 1;
+	if (perkId === 'flex_double_coins') player.perks.doubleCoins = true;
+	if (perkId === 'flex_extra_card') {
+		player.perks.extraCard = true;
+		drawHandForPlayer(gameState, player, 4);
+	}
+}
+
 /**
  * Ontgrendel een perk voor een speler.
  */
@@ -260,48 +286,8 @@ function choosePerk(gameState, playerId, perkId) {
 		player.perks.bonusUpgrades[perk.color] = true;
 	}
 
-	// Aggressive branch perk awards
-	if (perkId === 'agg_stone') {
-		// Geef direct een steenblok kaart in de hand
-		player.perks.stoneBlocks = (player.perks.stoneBlocks || 0) + 1;
-		const stoneShape = STONE_SHAPES_2[0]; // Horizontaal 2×1 steenblok
-		const stoneCard = {
-			id: `stone_${playerId}_${Date.now()}`,
-			shapeName: stoneShape.name,
-			matrix: cloneMatrix(stoneShape.matrix),
-			color: { ...STONE_COLOR },
-			isStone: true
-		};
-		player.hand.push(stoneCard);
-	}
-	if (perkId === 'agg_mine') {
-		player.perks.minesPerRound = 1;
-	}
-	if (perkId === 'agg_steal') {
-		player.perks.stealsPerRound = 1;
-	}
-
-	// Flexible branch perk awards
-	if (perkId === 'flex_gap') {
-		player.perks.greenGapAllowed = true;
-	}
-	if (perkId === 'flex_gap_red') {
-		player.perks.redGapAllowed = true;
-	}
-	if (perkId === 'flex_rotate') {
-		player.perks.diagonalRotation = true;
-	}
-	if (perkId === 'flex_wildcard') {
-		player.perks.wildcardPerRound = 1;
-	}
-	if (perkId === 'flex_double_coins') {
-		player.perks.doubleCoins = true;
-	}
-	if (perkId === 'flex_extra_card') {
-		player.perks.extraCard = true;
-		// Trek direct een extra kaart als de speler minder dan 4 kaarten heeft
-		drawHandForPlayer(gameState, player, 4);
-	}
+	// Apply side effects
+	_applyPerkSideEffects(player, perkId, gameState, playerId);
 
 	gameState.updatedAt = Date.now();
 	if (isGoalPhase) {
