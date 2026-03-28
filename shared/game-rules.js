@@ -4390,10 +4390,11 @@ function playMove(gameState, playerId, cardId, zoneName, baseX, baseY, rotation,
 	return {
 		success: true,
 		scores: playerScores,
-		goldCollected: placementResult.goldCollected,
+		goldCollected: placementResult.goldCollected - (gameState.settings?.coinMode ? (placementResult.pearlGold || 0) : 0),
 		bonusesCollected: placementResult.collectedBonuses,
 		pearlsCollected: placementResult.pearlsCollected || 0,
 		pearlPerkPoints: pearlPerkPoints || 0,
+		pearlAutoPerks: pearlAutoPerks.length > 0 ? pearlAutoPerks : null,
 		mineTriggered: mineTriggered || null,
 		gameEnded: false
 	};
