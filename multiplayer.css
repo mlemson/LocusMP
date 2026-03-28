@@ -341,24 +341,30 @@ html.theme-classic .mp-logo {
 	flex-direction: column;
 	gap: 8px;
 }
-/* Mobile: stack vertically with swipe-like scroll */
+/* Mobile: horizontal swipe between two panels */
 @media (max-width: 640px) {
 	.mp-waiting-split {
 		max-width: 100%;
 		padding: 16px;
+		overflow: hidden;
 	}
 	.mp-waiting-body {
-		flex-direction: column;
-		gap: 16px;
+		flex-direction: row;
+		gap: 0;
 		overflow-x: auto;
 		scroll-snap-type: x mandatory;
+		-webkit-overflow-scrolling: touch;
 		flex-wrap: nowrap;
+	}
+	.mp-waiting-panel {
+		flex: 0 0 100%;
+		scroll-snap-align: start;
+		padding: 0 12px;
+		box-sizing: border-box;
 	}
 	.mp-waiting-left {
 		border-right: none;
-		padding-right: 0;
-		border-bottom: 1px solid rgba(166, 140, 255, 0.12);
-		padding-bottom: 16px;
+		padding-right: 12px;
 	}
 }
 

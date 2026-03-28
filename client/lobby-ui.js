@@ -385,15 +385,26 @@ class LocusLobbyUI {
 			if (coinToggle) coinToggle.checked = (mode === 'coin');
 			if (cardsSelect) {
 				const isRewarding = (mode === 'challenging');
+				const isCoin = (mode === 'coin');
 				for (const opt of cardsSelect.options) {
 					const isRewardingOpt = opt.classList.contains('rewarding-only');
 					opt.style.display = (isRewarding === isRewardingOpt) ? '' : 'none';
 				}
-				if (isRewarding) {
+				if (isCoin) {
+					this._cardsBeforeCoin = cardsSelect.value;
+					// Show the 15 option (which is rewarding-only) for coin mode
+					for (const opt of cardsSelect.options) {
+						opt.style.display = (opt.value === '15') ? '' : 'none';
+					}
+					cardsSelect.value = '15';
+					cardsSelect.disabled = true;
+				} else if (isRewarding) {
 					this._cardsBeforeRewarding = cardsSelect.value;
 					cardsSelect.value = '9';
+					cardsSelect.disabled = false;
 				} else {
-					cardsSelect.value = this._cardsBeforeRewarding || '6';
+					cardsSelect.value = this._cardsBeforeCoin || this._cardsBeforeRewarding || '6';
+					cardsSelect.disabled = false;
 				}
 			}
 		});
@@ -420,19 +431,28 @@ class LocusLobbyUI {
 			}
 		});
 
-		// Coin modus toggle: mutual exclusion met rewarding
+		// Coin modus toggle: mutual exclusion met rewarding, force 15 cards
 		this.elements['coin-mode-toggle']?.addEventListener('change', () => {
 			const isCoin = this.elements['coin-mode-toggle'].checked;
+			const cardsSelect = this.elements['cards-per-player-select'];
 			if (isCoin && this.elements['rewarding-mode-toggle']) {
 				this.elements['rewarding-mode-toggle'].checked = false;
-				// Reset cards select back to normal
-				const cardsSelect = this.elements['cards-per-player-select'];
 				if (cardsSelect) {
+					// Show only the 15 option for coin mode
 					for (const opt of cardsSelect.options) {
-						opt.style.display = opt.classList.contains('rewarding-only') ? 'none' : '';
+						opt.style.display = (opt.value === '15') ? '' : 'none';
 					}
-					cardsSelect.value = this._cardsBeforeRewarding || '6';
+					this._cardsBeforeCoin = cardsSelect.value;
+					cardsSelect.value = '15';
+					cardsSelect.disabled = true;
 				}
+			} else if (cardsSelect) {
+				// Restore normal options
+				for (const opt of cardsSelect.options) {
+					opt.style.display = opt.classList.contains('rewarding-only') ? 'none' : '';
+				}
+				cardsSelect.value = this._cardsBeforeCoin || this._cardsBeforeRewarding || '6';
+				cardsSelect.disabled = false;
 			}
 		});
 
@@ -2821,8 +2841,11 @@ class LocusLobbyUI {
 				}
 			}
 
-			// Only show color bar for special cards (golden, stone, multicolor)
-			const isSpecialCard = card.isGolden || card.isStone || card.color?.code === 'rainbow' || card.color?.name === 'multikleur';
+			// Only show color bar for special cards (golden, stone, large multicolor)
+			let cardCellCount = 0;
+			if (card.matrix) for (const row of card.matrix) for (const v of row) { if (v) cardCellCount++; }
+			const isMulticolor = card.color?.code === 'rainbow' || card.color?.name === 'multikleur';
+			const isSpecialCard = card.isGolden || card.isStone || (isMulticolor && cardCellCount > 2);
 			const colorBarHtml = isSpecialCard ? `<div class="mp-card-color" style="${colorStyle}"></div>` : '';
 
 			return `
@@ -2912,7 +2935,10 @@ class LocusLobbyUI {
 						: card.color?.code === 'rainbow'
 							? 'background: linear-gradient(135deg, #b56069, #cfba51, #92c28c, #5689b0, #8f76b8)'
 							: `background: ${card.color?.code || '#666'}`;
-					const isSpecialDeck = card.isGolden || card.isStone || card.color?.code === 'rainbow' || card.color?.name === 'multikleur';
+					let deckCellCount = 0;
+					if (card.matrix) for (const row of card.matrix) for (const v of row) { if (v) deckCellCount++; }
+					const isDeckMulticolor = card.color?.code === 'rainbow' || card.color?.name === 'multikleur';
+					const isSpecialDeck = card.isGolden || card.isStone || (isDeckMulticolor && deckCellCount > 2);
 					return `
 						<div class="mp-deck-card ${dimmed ? 'mp-deck-card-used' : ''}">
 							${isSpecialDeck ? `<div class="mp-card-color" style="${colorStyle}"></div>` : ''}
@@ -6176,7 +6202,8 @@ class LocusLobbyUI {
 									: `background: ${card.color?.code || '#666'}`;
 							let cells = 0;
 							if (card.matrix) for (const row of card.matrix) for (const c of row) { if (c) cells++; }
-							const isShopSpecial = card.isGolden || card.isStone || card.color?.code === 'rainbow' || card.color?.name === 'multikleur';
+							const isShopMulticolor = card.color?.code === 'rainbow' || card.color?.name === 'multikleur';
+							const isShopSpecial = card.isGolden || card.isStone || (isShopMulticolor && cells > 2);
 							const typeLabel = isShopSpecial ? (card.isGolden ? '✨ Gouden' : card.isStone ? '🪨 Steen' : '🌈 Multikleur') : `${cells} cellen`;
 							return `
 								<div class="mp-shop-offering ${canAfford && !isReady ? '' : 'cant-afford'}">
@@ -6782,9 +6809,14 @@ class LocusLobbyUI {
 				colorStyle = `background: ${colorCode}`;
 			}
 
+			let freeCardCellCount = 0;
+			if (card.matrix) for (const row of card.matrix) for (const v of row) { if (v) freeCardCellCount++; }
+			const freeIsMulticolor = colorCode === 'rainbow' || card.color?.name === 'multikleur';
+			const showFreeColorBar = isStone || isGolden || (freeIsMulticolor && freeCardCellCount > 2);
+
 			return `
 				<div class="mp-free-card-option" data-card-id="${card.id}">
-					<div class="mp-shop-offering-color" style="${colorStyle}"></div>
+					${showFreeColorBar ? `<div class="mp-shop-offering-color" style="${colorStyle}"></div>` : ''}
 					<div class="mp-card-shape">
 						${this._renderMiniGrid(card.matrix, card.color, true)}
 					</div>
