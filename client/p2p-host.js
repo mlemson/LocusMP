@@ -1186,9 +1186,11 @@ class LocusP2PHost {
 
 				// Geen perk-keuze in shopping: choosePerk is alleen geldig tijdens choosingGoals.
 
-				// Koop shop items met beschikbare coins
+				const isCoinMode = !!this.gameState?.settings?.coinMode;
+
+				// Koop shop items met beschikbare coins (or free in coin mode)
 				let remainingCoins = p.goldCoins || 0;
-				if (remainingCoins >= 1) {
+				if (remainingCoins >= 1 || isCoinMode) {
 					const claimPendingFreeChoice = () => {
 						const choices = p._pendingFreeChoices || [];
 						if (!Array.isArray(choices) || choices.length === 0) return false;
@@ -1217,6 +1219,75 @@ class LocusP2PHost {
 					};
 
 					claimPendingFreeChoice();
+
+					if (isCoinMode) {
+						// Coin mode: buy 1 free card + 1 free action (server validates limits via _coinShopCardBought/_coinShopActionBought)
+						// 1) Buy best card offering
+						const offerings = p.shopOfferings || [];
+						let bestOffer = null;
+						for (let ci = 0; ci < offerings.length; ci++) {
+							const card = offerings[ci];
+							if (!card) continue;
+							let value = 0;
+							if (card.isRandomOffer) value += 8;
+							if (card.isGolden) value += 6;
+							if (card.color?.zone === 'any' || card.color?.name === 'multikleur') value += 6;
+							const cells = card.matrix ? card.matrix.flat().filter(Boolean).length : 1;
+							value += Math.min(6, cells);
+							if (isRandomBot) value += Math.random() * 5;
+							if (!bestOffer || value > bestOffer.value) bestOffer = { ci, card, value };
+						}
+						if (bestOffer) {
+							const buyResult = this.Rules.buyShopItem(this.gameState, aiId, `shop-card-${bestOffer.ci}`, {});
+							if (buyResult && !buyResult.error) {
+								console.log(`🛒 Bot ${p.name} coin-mode free card (slot ${bestOffer.ci})`);
+								this._broadcastEvent('botActivity', {
+									playerId: aiId, playerName: p.name,
+									text: `🎁 Gratis kaart: ${bestOffer.card.shapeName || 'kaart'}`
+								});
+								changed = true;
+								claimPendingFreeChoice();
+							}
+						}
+						// 2) Buy best action item
+						const shopItems = this.Rules.getShopItems(this.gameState.level || 1, p) || [];
+						const isAggressive = (this._aiPersonality?.get(aiId) || 'normal') === 'aggressive';
+						let bestItem = null;
+						for (const item of shopItems) {
+							if (item.id === 'unlock-steen') continue;
+							let value = 0;
+							if (item.unlockOnly) value += 30;
+							if (item.id === 'extra-bonus') value += isHard ? 16 : 12;
+							if (item.id === 'time-bomb') value += isAggressive ? 28 : (isHard ? 10 : 7);
+							if (item.id === 'random-card') value += 5;
+							if (isRandomBot) value += Math.random() * 8;
+							if (!bestItem || value > bestItem.value) bestItem = { item, value };
+						}
+						if (bestItem && bestItem.item) {
+							const item = bestItem.item;
+							const extra = {};
+							if (item.id === 'extra-bonus') {
+								const inv = p.bonusInventory || {};
+								const colors = ['yellow', 'red', 'green', 'purple', 'blue'];
+								if (isRandomBot) {
+									extra.bonusColor = colors[Math.floor(Math.random() * colors.length)];
+								} else {
+									colors.sort((a, b) => (inv[a] || 0) - (inv[b] || 0));
+									extra.bonusColor = colors[0];
+								}
+							}
+							const buyResult = this.Rules.buyShopItem(this.gameState, aiId, item.id, extra);
+							if (buyResult && !buyResult.error) {
+								console.log(`🛒 Bot ${p.name} coin-mode free action: ${item.id}`);
+								this._broadcastEvent('botActivity', {
+									playerId: aiId, playerName: p.name,
+									text: `🎁 Gratis: ${item.name || item.id}`
+								});
+								changed = true;
+								claimPendingFreeChoice();
+							}
+						}
+					} else {
 					let guard = 0;
 					while (remainingCoins >= 1 && guard++ < 16) {
 						let boughtSomething = false;
@@ -1303,6 +1374,7 @@ class LocusP2PHost {
 
 						if (!boughtSomething) break;
 					}
+					} // end else (non-coin-mode)
 				}
 
 				const readyResult = this.Rules.shopReady(this.gameState, aiId);
@@ -1413,6 +1485,10 @@ class LocusP2PHost {
 		if (bestMove) {
 			actions.push({ type: 'previewCard', move: bestMove });
 			actions.push({ type: 'playCard', move: bestMove });
+			// In coin mode, play a second regular card (resolved at execution time after board update)
+			if (this.gameState?.settings?.coinMode) {
+				actions.push({ type: 'coinSecondCard', isHard, isRandom });
+			}
 		}
 
 		// 4. Play bonuses — always play all bonuses (never waste them)
@@ -1611,6 +1687,21 @@ class LocusP2PHost {
 						}
 					} else {
 						console.log(`[AI ${playerName}] Kaart mislukt: ${result.error}`);
+					}
+					resetWatchdog();
+					setTimeout(processNext, ACTION_DELAY);
+					break;
+				}
+
+				case 'coinSecondCard': {
+					// Coin mode: find and play a second regular card (board is now updated after first card)
+					const secondMove = action.isRandom ? this._aiFindRandomMove(playerId) : this._aiFindBestMove(playerId, action.isHard);
+					if (secondMove) {
+						// Insert preview + play actions immediately after this action
+						actions.splice(idx, 0,
+							{ type: 'previewCard', move: secondMove },
+							{ type: 'playCard', move: secondMove }
+						);
 					}
 					resetWatchdog();
 					setTimeout(processNext, ACTION_DELAY);
@@ -3420,6 +3511,8 @@ class LocusP2PHost {
 	}
 
 	_shouldPrioritizeCoins(playerId) {
+		// In coin mode, always prioritize coins
+		if (this.gameState?.settings?.coinMode) return true;
 		const player = this.gameState?.players?.[playerId];
 		if (!player || !player.chosenObjective || player.objectiveAchieved) return false;
 		const objective = player.chosenObjective;
