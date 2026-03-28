@@ -1747,6 +1747,7 @@ function applyPlacement(boardState, zoneName, zoneData, baseX, baseY, matrix, co
 	const collectedBonuses = [];
 	let goldCollected = 0;
 	let pearlsCollected = 0;
+	let pearlGold = 0;
 
 	for (const coord of pendingCells) {
 		const cell = getDataCell(zoneData, coord.x, coord.y);
@@ -1769,6 +1770,7 @@ function applyPlacement(boardState, zoneName, zoneData, baseX, baseY, matrix, co
 			// Parel-schat: geeft extra munten (bijv. 5)
 			if (cell.treasureCoins && cell.treasureCoins > 0) {
 				goldCollected += cell.treasureCoins;
+				pearlGold += cell.treasureCoins;
 				pearlsCollected++;
 			}
 
@@ -1794,6 +1796,7 @@ function applyPlacement(boardState, zoneName, zoneData, baseX, baseY, matrix, co
 			if (cell.flags.includes('gold')) goldCollected++;
 			if (cell.treasureCoins && cell.treasureCoins > 0) {
 				goldCollected += cell.treasureCoins;
+				pearlGold += cell.treasureCoins;
 				pearlsCollected++;
 			}
 			if (cell.bonusSymbol) collectedBonuses.push(cell.bonusSymbol);
@@ -1807,7 +1810,8 @@ function applyPlacement(boardState, zoneName, zoneData, baseX, baseY, matrix, co
 		color,
 		goldCollected,
 		collectedBonuses,
-		pearlsCollected
+		pearlsCollected,
+		pearlGold
 	};
 }
 
@@ -3406,7 +3410,12 @@ function generateObjectiveChoices(rng, level, gameState = null, playerId = null)
 	const mw = gameState ? _getMaxWins(gameState) : 0;
 	const effectiveLevel = Math.max(level || 1, mw >= 3 ? 4 : (mw >= 2 ? 3 : 1));
 	const lvl = Math.min(effectiveLevel, 4);
-	const pool = LEVEL_OBJECTIVES[lvl] || LEVEL_OBJECTIVES[3];
+	let pool = LEVEL_OBJECTIVES[lvl] || LEVEL_OBJECTIVES[3];
+	// Coin mode: verwijder munt-verzamelobjectieven (coins zijn al currency)
+	const isCoinMode = !!gameState?.settings?.coinMode;
+	if (isCoinMode) {
+		pool = pool.filter(obj => !obj.id?.startsWith('collect_') || !obj.id?.includes('_gold'));
+	}
 	const shuffled = shuffleWithRNG([...pool], rng);
 	return shuffled.slice(0, 3).map(obj => {
 		const materialized = materializeObjectiveForPlayer(obj, gameState, playerId, rng);
@@ -4104,23 +4113,23 @@ function playMove(gameState, playerId, cardId, zoneName, baseX, baseY, rotation,
 	const card = player.hand[cardIndex];
 
 	// Coin mode spelregels:
-	// - Multikleur 2×1 domino: gratis, maar max 1 per beurt
-	// - Gekleurde kaarten: kosten 1 coin
-	// - Multikleur >2 cellen / stenen / grote kaarten: kosten 2 coins
+	// - 1e kaart per beurt: gratis (geen coins nodig)
+	// - 2e kaart per beurt: kost coins volgens getCardPlayCost
 	// - Gouden kaarten: altijd gratis, onbeperkt
+	// - Max 2 reguliere kaarten per beurt
 	if (gameState.settings?.coinMode && !card.isGolden) {
-		const playCost = getCardPlayCost(card);
-		if (playCost === 0) {
-			// Gratis domino: max 1 per beurt
-			if (gameState._coinFreeCardUsed) {
-				return { error: 'Je hebt al een gratis domino gespeeld deze beurt.' };
-			}
-		} else {
-			// Betaalde kaart: check of speler genoeg coins heeft
-			if ((player.goldCoins || 0) < playCost) {
+		const coinCardsPlayed = gameState._coinCardsPlayedThisTurn || 0;
+		if (coinCardsPlayed >= 2) {
+			return { error: 'Je hebt al 2 kaarten gespeeld deze beurt.' };
+		}
+		if (coinCardsPlayed >= 1) {
+			// 2e kaart: kost coins
+			const playCost = getCardPlayCost(card);
+			if (playCost > 0 && (player.goldCoins || 0) < playCost) {
 				return { error: `Niet genoeg goudmunten (nodig: ${playCost}, beschikbaar: ${player.goldCoins || 0})` };
 			}
 		}
+		// 1e kaart is gratis
 	}
 
 	const objectiveSnapshot = {
@@ -4198,11 +4207,16 @@ function playMove(gameState, playerId, cardId, zoneName, baseX, baseY, rotation,
 	player.hand.splice(cardIndex, 1);
 
 	// Coin mode: trek speelkosten af (dominos zijn gratis, rest kost coins)
+	// Coin mode: alleen 2e kaart kost coins, 1e is gratis
 	if (gameState.settings?.coinMode && !card.isGolden) {
-		const playCost = getCardPlayCost(card);
-		if (playCost > 0) {
-			player.goldCoins = (player.goldCoins || 0) - playCost;
+		const coinCardsPlayed = gameState._coinCardsPlayedThisTurn || 0;
+		if (coinCardsPlayed >= 1) {
+			const playCost = getCardPlayCost(card);
+			if (playCost > 0) {
+				player.goldCoins = (player.goldCoins || 0) - playCost;
+			}
 		}
+		gameState._coinCardsPlayedThisTurn = (gameState._coinCardsPlayedThisTurn || 0) + 1;
 	}
 
 	// Voeg gespeelde kaart toe aan aflegstapel
@@ -4248,11 +4262,22 @@ function playMove(gameState, playerId, cardId, zoneName, baseX, baseY, rotation,
 	});
 
 	// Gold coins bijhouden als currency (doubleCoins perk)
+	// Coin mode: parels geven perkpunten i.p.v. munten
+	let pearlPerkPoints = 0;
 	if (placementResult.goldCollected > 0) {
-		const goldAmount = playerHasPerk(player, 'flex_double_coins')
-			? placementResult.goldCollected * 2
-			: placementResult.goldCollected;
-		player.goldCoins = (player.goldCoins || 0) + goldAmount;
+		let effectiveGold = placementResult.goldCollected;
+		if (gameState.settings?.coinMode && (placementResult.pearlGold || 0) > 0) {
+			effectiveGold -= placementResult.pearlGold;
+			pearlPerkPoints = placementResult.pearlsCollected || 0;
+			if (!player.perks) player.perks = { perkPoints: 0, unlockedPerks: [], bonusUpgrades: {} };
+			player.perks.perkPoints = (player.perks.perkPoints || 0) + pearlPerkPoints;
+		}
+		if (effectiveGold > 0) {
+			const goldAmount = playerHasPerk(player, 'flex_double_coins')
+				? effectiveGold * 2
+				: effectiveGold;
+			player.goldCoins = (player.goldCoins || 0) + goldAmount;
+		}
 	}
 
 	// Mine trigger check: als IEMAND een mijn op deze cellen had, verwijder het HELE geplaatste blok
@@ -4333,10 +4358,6 @@ function playMove(gameState, playerId, cardId, zoneName, baseX, baseY, rotation,
 	// Golden cards don't count as the regular card play
 	if (!card.isGolden) {
 		gameState._cardPlayedThisTurn = true;
-		// Coin mode: markeer dat de gratis domino is gebruikt
-		if (gameState.settings?.coinMode && !gameState._coinFreeCardUsed && getCardPlayCost(card) === 0) {
-			gameState._coinFreeCardUsed = true;
-		}
 	}
 
 	// Track wildcard usage
@@ -4355,6 +4376,7 @@ function playMove(gameState, playerId, cardId, zoneName, baseX, baseY, rotation,
 		goldCollected: placementResult.goldCollected,
 		bonusesCollected: placementResult.collectedBonuses,
 		pearlsCollected: placementResult.pearlsCollected || 0,
+		pearlPerkPoints: pearlPerkPoints || 0,
 		mineTriggered: mineTriggered || null,
 		gameEnded: false
 	};
@@ -4429,11 +4451,21 @@ function playBonus(gameState, playerId, bonusColor, zoneName, baseX, baseY, subg
 	}
 
 	// Gold coins bijhouden als currency (doubleCoins perk)
+	// Coin mode: parels geven perkpunten i.p.v. munten
 	if (placementResult.goldCollected > 0) {
-		const goldAmount = playerHasPerk(player, 'flex_double_coins')
-			? placementResult.goldCollected * 2
-			: placementResult.goldCollected;
-		player.goldCoins = (player.goldCoins || 0) + goldAmount;
+		let effectiveGold = placementResult.goldCollected;
+		if (gameState.settings?.coinMode && (placementResult.pearlGold || 0) > 0) {
+			effectiveGold -= placementResult.pearlGold;
+			const pp = placementResult.pearlsCollected || 0;
+			if (!player.perks) player.perks = { perkPoints: 0, unlockedPerks: [], bonusUpgrades: {} };
+			player.perks.perkPoints = (player.perks.perkPoints || 0) + pp;
+		}
+		if (effectiveGold > 0) {
+			const goldAmount = playerHasPerk(player, 'flex_double_coins')
+				? effectiveGold * 2
+				: effectiveGold;
+			player.goldCoins = (player.goldCoins || 0) + goldAmount;
+		}
 	}
 
 	// Mine trigger check: als IEMAND een mijn op deze cellen had, verwijder de bonus plaatsing
@@ -4797,7 +4829,7 @@ function undoMove(gameState, playerId) {
 		// Clear turn state (kaart is teruggedraaid)
 		delete gameState._turnUndoData;
 		gameState._cardPlayedThisTurn = false;
-		delete gameState._coinFreeCardUsed;
+		delete gameState._coinCardsPlayedThisTurn;
 		gameState.bonusPlayedThisTurn = false;
 
 		gameState.updatedAt = Date.now();
@@ -4865,7 +4897,7 @@ function advanceTurn(gameState) {
 	// Reset turn state
 	delete gameState._turnUndoData;
 	delete gameState._cardPlayedThisTurn;
-	delete gameState._coinFreeCardUsed;
+	delete gameState._coinCardsPlayedThisTurn;
 	delete gameState._turnTimerStart;
 	gameState.bonusPlayedThisTurn = false;
 

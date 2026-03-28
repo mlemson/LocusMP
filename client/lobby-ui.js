@@ -7387,7 +7387,7 @@ class LocusLobbyUI {
 
 	/** Wordt aangeroepen als een move wordt gebroadcast (met bonus/goud info) */
 	_onMovePlayed(data) {
-		const { playerId, playerName, zoneName, goldCollected, bonusesCollected, pearlsCollected, cardsPlayed, objectivesRevealed, mineTriggered } = data;
+		const { playerId, playerName, zoneName, goldCollected, bonusesCollected, pearlsCollected, pearlPerkPoints, cardsPlayed, objectivesRevealed, mineTriggered } = data;
 		const isMe = playerId === this.mp.userId;
 		const zoneEl = document.querySelector(`.mp-zone-${zoneName}`);
 		if (!zoneEl) return;
@@ -7472,6 +7472,10 @@ class LocusLobbyUI {
 		if (pearlsCollected && pearlsCollected > 0) {
 			setTimeout(() => {
 				this._showPearlCollectAnimation(cx, cy, pearlsCollected);
+				// Coin mode: parels geven perkpunten
+				if (pearlPerkPoints && pearlPerkPoints > 0 && isMe) {
+					this._showFloatingScore(zoneEl, `🎁 +${pearlPerkPoints} perkpunt${pearlPerkPoints !== 1 ? 'en' : ''}`, '#e8dff5', cx, cy);
+				}
 			}, goldCollected > 0 ? 400 : 0);
 		}
 
