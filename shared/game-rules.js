@@ -5159,7 +5159,7 @@ function checkGameEnd(gameState) {
 const SHOP_ITEMS = [
 	{ id: 'extra-bonus', name: 'Bonus Charge', description: 'Krijg een bonus charge naar keuze (eenmalig)', cost: 2, icon: '⚡', oneTimePerLevel: true },
 	{ id: 'time-bomb', name: 'Tijdbom', description: 'Stop de beurt van een andere speler direct! (eenmalig)', cost: 2, icon: '💣', oneTimePerLevel: true },
-	{ id: 'random-card', name: 'Random Kaart', description: 'Krijg een willekeurige kaart in je hand', cost: 1, icon: '🎲', oneTimePerLevel: true, normalModeOnly: true },
+	{ id: 'random-card', name: 'Random Kaart', description: 'Krijg een willekeurige kaart in je hand', cost: 1, icon: '🎲', oneTimePerLevel: true },
 ];
 
 function getShopItems(level, player, seed, settings) {

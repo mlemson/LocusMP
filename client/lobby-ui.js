@@ -1700,9 +1700,9 @@ class LocusLobbyUI {
 		if (currentPhase && currentPhase !== 'choosingGoals') {
 			return;
 		}
-		// In beloningsmodus: toon kaarttype-keuze als dat nog niet is gedaan
+		// In beloningsmodus: skip kaarttype-keuze (stone/gold/multi), ga direct naar perks
 		const myPlayer = this.mp?.getMyPlayer?.();
-		if (this._isRewardingMode() && myPlayer && !myPlayer._rewardCardChosen && !myPlayer._pendingFreeChoices && !this._rewardTypeSkipped) {
+		if (false && this._isRewardingMode() && myPlayer && !myPlayer._rewardCardChosen && !myPlayer._pendingFreeChoices && !this._rewardTypeSkipped) {
 			this._showRewardCardTypeChoice();
 			return;
 		}
@@ -6011,66 +6011,74 @@ class LocusLobbyUI {
 		const maxLevels = Math.max(1, Number(this.mp.gameState?.maxLevels) || 10);
 
 		overlay.innerHTML = `
-			<div class="mp-level-popup">
+			<div class="mp-level-popup mp-level-popup-wide">
 				<div class="mp-level-main-winner">
 					🏆 ${sorted[0].name} wint dit level met ${sorted[0].finalTotal} punten!
 				</div>
-				<div class="mp-level-scores">
-					${sorted.map((p, rank) => {
-						const rewards = [];
-						if (p.objectiveAchieved && p.objectiveBonus) rewards.push(`<span class="mp-reward-tag objective">🎯 +${p.objectiveBonus} pt</span>`);
-						if (p.objectiveAchieved && p.objectiveCoins) rewards.push(`<span class="mp-reward-tag coins">🪙 +${p.objectiveCoins}</span>`);
-						if (p.objectiveAchieved && p.objectiveRandomBonuses) rewards.push(`<span class="mp-reward-tag bonus">🎁 +${p.objectiveRandomBonuses}</span>`);
-						if (p.roundWinnerCoinsBonus) rewards.push(`<span class="mp-reward-tag gold">🥇 +${p.roundWinnerCoinsBonus} 🪙</span>`);
-						if (p.secondPlaceCoinsBonus) rewards.push(`<span class="mp-reward-tag silver">🥈 +${p.secondPlaceCoinsBonus} 🪙</span>`);
-						return `
-						<div class="mp-level-card ${p.id === this.mp.userId ? 'is-me' : ''} ${rank === 0 ? 'winner' : ''}">
-							<div class="mp-card-header">
-								<span class="mp-card-rank">${rank === 0 ? '🥇' : rank === 1 ? '🥈' : rank === 2 ? '🥉' : rank + 1}</span>
-								<span class="mp-card-name">${this._escapeHtml(p.name)}</span>
-								<span class="mp-card-total">${p.finalTotal} pt</span>
-								<span class="mp-card-coins">💰 ${p.goldCoins}</span>
-							</div>
-							<div class="mp-card-objective ${p.objectiveAchieved ? 'achieved' : (p.objectiveFailed ? 'failed' : '')}">
-								<span class="mp-obj-icon">${p.objectiveAchieved ? '✅' : (p.objectiveFailed ? '❌' : '🎯')}</span>
-								<span class="mp-obj-name">${this._escapeHtml(p.objectiveName || 'Doelstelling')}</span>
-							</div>
-							${rewards.length ? `<div class="mp-card-rewards">${rewards.join('')}</div>` : ''}
-							<div class="mp-card-zones">
-								<span class="mp-zone-pill yellow">G ${p.yellow || 0}</span>
-								<span class="mp-zone-pill green">Gr ${p.green || 0}</span>
-								<span class="mp-zone-pill blue">B ${p.blue || 0}</span>
-								<span class="mp-zone-pill red">R ${p.red || 0}</span>
-								<span class="mp-zone-pill purple">P ${p.purple || 0}</span>
-								${p.gold ? `<span class="mp-zone-pill gold">⬤ ${p.gold}</span>` : ''}
-							</div>
-						</div>`;
-					}).join('')}
-				</div>
-				<div class="mp-level-winner" style="margin-top:8px; margin-bottom:10px;">
-					Ranglijst wins — eerste tot ${winsTarget} wins wint! (Level ${currentLevel}/${maxLevels})
-				</div>
-				<div class="mp-level-scores" style="margin-bottom: 16px;">
-					${winSorted.map((p, rank) => `
-						<div class="mp-level-score-row ${p.id === this.mp.userId ? 'is-me' : ''} ${rank === 0 ? 'winner' : ''}">
-							<span class="mp-result-rank">${rank === 0 ? '🥇' : rank === 1 ? '🥈' : rank === 2 ? '🥉' : rank + 1}</span>
-							<span class="mp-result-name">${this._escapeHtml(p.name)}${p.id === this.mp.userId ? ' (jij)' : ''}</span>
-							<span class="mp-result-total">${p.matchWins || 0}/${winsTarget} wins</span>
+				<div class="mp-level-split-body">
+					<!-- LEFT: Detailed scores -->
+					<div class="mp-level-split-left">
+						<div class="mp-level-scores">
+							${sorted.map((p, rank) => {
+								const rewards = [];
+								if (p.objectiveAchieved && p.objectiveBonus) rewards.push(`<span class="mp-reward-tag objective">🎯 +${p.objectiveBonus} pt</span>`);
+								if (p.objectiveAchieved && p.objectiveCoins) rewards.push(`<span class="mp-reward-tag coins">🪙 +${p.objectiveCoins}</span>`);
+								if (p.objectiveAchieved && p.objectiveRandomBonuses) rewards.push(`<span class="mp-reward-tag bonus">🎁 +${p.objectiveRandomBonuses}</span>`);
+								if (p.roundWinnerCoinsBonus) rewards.push(`<span class="mp-reward-tag gold">🥇 +${p.roundWinnerCoinsBonus} 🪙</span>`);
+								if (p.secondPlaceCoinsBonus) rewards.push(`<span class="mp-reward-tag silver">🥈 +${p.secondPlaceCoinsBonus} 🪙</span>`);
+								return `
+								<div class="mp-level-card ${p.id === this.mp.userId ? 'is-me' : ''} ${rank === 0 ? 'winner' : ''}">
+									<div class="mp-card-header">
+										<span class="mp-card-rank">${rank === 0 ? '🥇' : rank === 1 ? '🥈' : rank === 2 ? '🥉' : rank + 1}</span>
+										<span class="mp-card-name">${this._escapeHtml(p.name)}</span>
+										<span class="mp-card-total">${p.finalTotal} pt</span>
+										<span class="mp-card-coins">💰 ${p.goldCoins}</span>
+									</div>
+									<div class="mp-card-objective ${p.objectiveAchieved ? 'achieved' : (p.objectiveFailed ? 'failed' : '')}">
+										<span class="mp-obj-icon">${p.objectiveAchieved ? '✅' : (p.objectiveFailed ? '❌' : '🎯')}</span>
+										<span class="mp-obj-name">${this._escapeHtml(p.objectiveName || 'Doelstelling')}</span>
+									</div>
+									${rewards.length ? `<div class="mp-card-rewards">${rewards.join('')}</div>` : ''}
+									<div class="mp-card-zones">
+										<span class="mp-zone-pill yellow">G ${p.yellow || 0}</span>
+										<span class="mp-zone-pill green">Gr ${p.green || 0}</span>
+										<span class="mp-zone-pill blue">B ${p.blue || 0}</span>
+										<span class="mp-zone-pill red">R ${p.red || 0}</span>
+										<span class="mp-zone-pill purple">P ${p.purple || 0}</span>
+										${p.gold ? `<span class="mp-zone-pill gold">⬤ ${p.gold}</span>` : ''}
+									</div>
+								</div>`;
+							}).join('')}
 						</div>
-					`).join('')}
+					</div>
+					<!-- RIGHT: Ranking + action -->
+					<div class="mp-level-split-right">
+						<div class="mp-level-winner" style="margin-bottom:10px;">
+							Ranglijst wins — eerste tot ${winsTarget} wins wint! (Level ${currentLevel}/${maxLevels})
+						</div>
+						<div class="mp-level-scores" style="margin-bottom: 16px;">
+							${winSorted.map((p, rank) => `
+								<div class="mp-level-score-row ${p.id === this.mp.userId ? 'is-me' : ''} ${rank === 0 ? 'winner' : ''}">
+									<span class="mp-result-rank">${rank === 0 ? '🥇' : rank === 1 ? '🥈' : rank === 2 ? '🥉' : rank + 1}</span>
+									<span class="mp-result-name">${this._escapeHtml(p.name)}${p.id === this.mp.userId ? ' (jij)' : ''}</span>
+									<span class="mp-result-total">${p.matchWins || 0}/${winsTarget} wins</span>
+								</div>
+							`).join('')}
+						</div>
+						${isMatchFinished ? `
+							<div class="mp-level-winner" style="margin-bottom:12px;">
+								🏁 ${this._escapeHtml(this.mp.gameState.players[matchWinner]?.name || sorted[0].name)} wint de match met ${this.mp.gameState.players[matchWinner]?.matchWins || winsTarget} wins!
+							</div>
+						` : `
+							<div class="mp-level-progress" style="margin-bottom:12px; text-align:center; opacity:0.7; font-size:0.9em;">
+								${maxLevels - currentLevel} levels te gaan
+							</div>
+						`}
+						<button class="mp-btn mp-btn-primary mp-to-shop-btn" id="mp-go-shop-btn">
+							${isMatchFinished ? '🏁 Naar eindresultaat' : '🛒 Naar de Shop'}
+						</button>
+					</div>
 				</div>
-				${isMatchFinished ? `
-					<div class="mp-level-winner" style="margin-bottom:12px;">
-						🏁 ${this._escapeHtml(this.mp.gameState.players[matchWinner]?.name || sorted[0].name)} wint de match met ${this.mp.gameState.players[matchWinner]?.matchWins || winsTarget} wins!
-					</div>
-				` : `
-					<div class="mp-level-progress" style="margin-bottom:12px; text-align:center; opacity:0.7; font-size:0.9em;">
-						${maxLevels - currentLevel} levels te gaan
-					</div>
-				`}
-				<button class="mp-btn mp-btn-primary mp-to-shop-btn" id="mp-go-shop-btn">
-					${isMatchFinished ? '🏁 Naar eindresultaat' : '🛒 Naar de Shop'}
-				</button>
 			</div>
 		`;
 
@@ -6163,12 +6171,13 @@ class LocusLobbyUI {
 									: `background: ${card.color?.code || '#666'}`;
 							let cells = 0;
 							if (card.matrix) for (const row of card.matrix) for (const c of row) { if (c) cells++; }
-							const typeLabel = card.isGolden ? '✨ Gouden' : card.isStone ? '🪨 Steen' : (card.color?.code === 'rainbow' || card.color?.name === 'multikleur') ? '🌈 Multikleur' : `${cells} cellen`;
+							const isShopSpecial = card.isGolden || card.isStone || card.color?.code === 'rainbow' || card.color?.name === 'multikleur';
+							const typeLabel = isShopSpecial ? (card.isGolden ? '✨ Gouden' : card.isStone ? '🪨 Steen' : '🌈 Multikleur') : `${cells} cellen`;
 							return `
 								<div class="mp-shop-offering ${canAfford && !isReady ? '' : 'cant-afford'}">
-									<div class="mp-shop-offering-color" style="${colorStyle}"></div>
+									${isShopSpecial ? `<div class="mp-shop-offering-color" style="${colorStyle}"></div>` : ''}
 									<div class="mp-shop-offering-type">${typeLabel}</div>
-									<div class="mp-card-shape">${this._renderMiniGrid(card.matrix, card.color)}</div>
+									<div class="mp-card-shape mp-card-shape-large">${this._renderMiniGrid(card.matrix, card.color, true)}</div>
 									<button class="mp-shop-buy-btn ${canAfford && !isReady ? '' : 'disabled'}"
 											data-item-id="shop-card-${i}"
 											${(!canAfford || isReady) ? 'disabled' : ''}>
@@ -8209,6 +8218,18 @@ class LocusLobbyUI {
 						this._showToast(`${result.perk?.icon || '🎯'} ${result.perk?.name || 'Perk'} ontgrendeld!`, 'success');
 						try { this._renderBonusBar(); } catch (e) {}
 						try { this._renderHand(); } catch (e) {}
+						// Check remaining perk points — re-show if more remain
+						const remaining = this.mp.getMyPlayer?.()?.perks?.perkPoints || 0;
+						if (remaining > 0) {
+							setTimeout(() => {
+								overlay.classList.remove('show');
+								setTimeout(() => {
+									overlay.remove();
+									this._showRewardingPerkChoice(onDone);
+								}, 350);
+							}, 800);
+							return;
+						}
 					} else {
 						this._showToast(result?.error || 'Perk ontgrendelen mislukt', 'error');
 					}
