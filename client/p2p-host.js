@@ -497,6 +497,7 @@ class LocusP2PHost {
 						bonusesCollected: result.bonusesCollected || [],
 						pearlsCollected: result.pearlsCollected || 0,
 						pearlPerkPoints: result.pearlPerkPoints || 0,
+						pearlAutoPerks: result.pearlAutoPerks || null,
 						objectivesRevealed: this._shouldRevealObjectives(),
 						mineTriggered: result.mineTriggered || null
 					});
@@ -1593,6 +1594,7 @@ class LocusP2PHost {
 							bonusesCollected: result.bonusesCollected || [],
 							pearlsCollected: result.pearlsCollected || 0,
 							pearlPerkPoints: result.pearlPerkPoints || 0,
+							pearlAutoPerks: result.pearlAutoPerks || null,
 							objectivesRevealed: this._shouldRevealObjectives(),
 							mineTriggered: result.mineTriggered || null
 						});

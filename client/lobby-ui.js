@@ -6979,8 +6979,12 @@ class LocusLobbyUI {
 			const myPlayer = state.players?.[this.mp.userId];
 			const myPerkPoints = myPlayer?.perks?.perkPoints || 0;
 			if (myPlayer?.chosenObjective) {
-				if (myPerkPoints > 0 && !this._goalPerkPromptShown) {
-					this._promptPerksAfterGoalChoice();
+				if (myPerkPoints > 0) {
+					// Always re-prompt perks while points remain (even after state broadcasts)
+					if (!this._goalPerkPromptShown) {
+						this._promptPerksAfterGoalChoice();
+					}
+					// else: popup is still open from previous prompt, let it handle re-show
 				} else {
 					this._showChosenGoalWaitingState();
 				}

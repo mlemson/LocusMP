@@ -4455,14 +4455,27 @@ function playBonus(gameState, playerId, bonusColor, zoneName, baseX, baseY, subg
 	}
 
 	// Gold coins bijhouden als currency (doubleCoins perk)
-	// Coin mode: parels geven perkpunten i.p.v. munten
+	// Coin mode: parels geven gratis random perk i.p.v. munten
+	let bonusPearlAutoPerks = [];
 	if (placementResult.goldCollected > 0) {
 		let effectiveGold = placementResult.goldCollected;
 		if (gameState.settings?.coinMode && (placementResult.pearlGold || 0) > 0) {
 			effectiveGold -= placementResult.pearlGold;
-			const pp = placementResult.pearlsCollected || 0;
+			const pearlCount = placementResult.pearlsCollected || 0;
 			if (!player.perks) player.perks = { perkPoints: 0, unlockedPerks: [], bonusUpgrades: {} };
-			player.perks.perkPoints = (player.perks.perkPoints || 0) + pp;
+			for (let pi = 0; pi < pearlCount; pi++) {
+				const available = getAvailablePerks(player);
+				if (available.length === 0) break;
+				const pick = available[Math.floor(Math.random() * available.length)];
+				if (pick.cost <= 1) {
+					player.perks.unlockedPerks.push(pick.id);
+					if (pick.color) player.perks.bonusUpgrades[pick.color] = true;
+					_applyPerkSideEffects(player, pick.id, gameState, playerId);
+					bonusPearlAutoPerks.push({ id: pick.id, name: pick.name, icon: pick.icon });
+				} else {
+					player.perks.perkPoints = (player.perks.perkPoints || 0) + 1;
+				}
+			}
 		}
 		if (effectiveGold > 0) {
 			const goldAmount = playerHasPerk(player, 'flex_double_coins')
