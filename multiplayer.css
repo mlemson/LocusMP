@@ -308,6 +308,60 @@ html.theme-classic .mp-logo {
 	background-clip: text;
 }
 
+/* ── WAITING ROOM SPLIT LAYOUT ── */
+.mp-waiting-split {
+	max-width: 800px;
+}
+.mp-waiting-title-full {
+	text-align: center;
+	width: 100%;
+}
+.mp-waiting-invite-top {
+	width: 100%;
+}
+.mp-waiting-body {
+	display: flex;
+	gap: 24px;
+	width: 100%;
+	margin-top: 12px;
+}
+.mp-waiting-panel {
+	flex: 1;
+	min-width: 0;
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+}
+.mp-waiting-left {
+	border-right: 1px solid rgba(166, 140, 255, 0.12);
+	padding-right: 24px;
+}
+.mp-waiting-right {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+}
+/* Mobile: stack vertically with swipe-like scroll */
+@media (max-width: 640px) {
+	.mp-waiting-split {
+		max-width: 100%;
+		padding: 16px;
+	}
+	.mp-waiting-body {
+		flex-direction: column;
+		gap: 16px;
+		overflow-x: auto;
+		scroll-snap-type: x mandatory;
+		flex-wrap: nowrap;
+	}
+	.mp-waiting-left {
+		border-right: none;
+		padding-right: 0;
+		border-bottom: 1px solid rgba(166, 140, 255, 0.12);
+		padding-bottom: 16px;
+	}
+}
+
 /* ── Classic theme: revert Neon component overrides ── */
 html.theme-classic .mp-version-badge {
 	color: rgba(113,146,219,0.85);

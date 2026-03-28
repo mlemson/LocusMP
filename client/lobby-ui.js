@@ -285,7 +285,7 @@ class LocusLobbyUI {
 			'game-screen', 'results-screen', 'shop-screen',
 			'level-complete-overlay',
 			'player-name-input', 'create-game-btn', 'join-game-btn',
-			'invite-code-input', 'max-players-select', 'cards-per-player-select', 'map-size-select', 'timer-toggle', 'tutorial-toggle', 'rewarding-mode-toggle', 'coin-mode-toggle',
+			'invite-code-input', 'max-players-select', 'cards-per-player-select', 'map-size-select', 'timer-toggle', 'tutorial-toggle', 'rewarding-mode-toggle', 'coin-mode-toggle', 'game-mode-select',
 			'invite-code-display', 'player-list', 'start-game-btn',
 			'waiting-status',
 			'goal-choices-container',
@@ -373,6 +373,29 @@ class LocusLobbyUI {
 		});
 		this.elements['invite-code-input']?.addEventListener('keydown', (e) => {
 			if (e.key === 'Enter') this._handleJoinGame();
+		});
+
+		// Game mode selector: syncs hidden toggles and adjusts cards
+		this.elements['game-mode-select']?.addEventListener('change', () => {
+			const mode = this.elements['game-mode-select'].value;
+			const cardsSelect = this.elements['cards-per-player-select'];
+			const rewardToggle = this.elements['rewarding-mode-toggle'];
+			const coinToggle = this.elements['coin-mode-toggle'];
+			if (rewardToggle) rewardToggle.checked = (mode === 'challenging');
+			if (coinToggle) coinToggle.checked = (mode === 'coin');
+			if (cardsSelect) {
+				const isRewarding = (mode === 'challenging');
+				for (const opt of cardsSelect.options) {
+					const isRewardingOpt = opt.classList.contains('rewarding-only');
+					opt.style.display = (isRewarding === isRewardingOpt) ? '' : 'none';
+				}
+				if (isRewarding) {
+					this._cardsBeforeRewarding = cardsSelect.value;
+					cardsSelect.value = '9';
+				} else {
+					cardsSelect.value = this._cardsBeforeRewarding || '6';
+				}
+			}
 		});
 
 		// Beloningsmodus toggle: schakel kaarten automatisch en toon juiste opties
@@ -2791,14 +2814,16 @@ class LocusLobbyUI {
 			// Coin cost badge
 			let coinBadge = '';
 			if (isCoinMode && !card.isGolden) {
-				if (isFreeDomino && !coinFreeCardUsed) {
-					coinBadge = '<div class="mp-card-coin-cost free">GRATIS</div>';
-				} else if (isFreeDomino && coinFreeCardUsed) {
+				if (isFreeDomino && coinFreeCardUsed) {
 					coinBadge = '<div class="mp-card-coin-cost cant-afford">MAX 1</div>';
-				} else {
+				} else if (!isFreeDomino) {
 					coinBadge = `<div class="mp-card-coin-cost ${canAffordCard ? '' : 'cant-afford'}">💰 ${coinCost}</div>`;
 				}
 			}
+
+			// Only show color bar for special cards (golden, stone, multicolor)
+			const isSpecialCard = card.isGolden || card.isStone || card.color?.code === 'rainbow' || card.color?.name === 'multikleur';
+			const colorBarHtml = isSpecialCard ? `<div class="mp-card-color" style="${colorStyle}"></div>` : '';
 
 			return `
 				<div class="${cardClass}"
@@ -2806,7 +2831,7 @@ class LocusLobbyUI {
 					 data-shape="${card.shapeName}"
 					 style="--card-index: ${cardIndex}"
 					 touch-action="none">
-					<div class="mp-card-color" style="${colorStyle}"></div>
+					${colorBarHtml}
 					<div class="mp-card-shape">
 						${this._renderMiniGrid(renderMatrix, card.color)}
 					</div>
@@ -2887,9 +2912,10 @@ class LocusLobbyUI {
 						: card.color?.code === 'rainbow'
 							? 'background: linear-gradient(135deg, #b56069, #cfba51, #92c28c, #5689b0, #8f76b8)'
 							: `background: ${card.color?.code || '#666'}`;
+					const isSpecialDeck = card.isGolden || card.isStone || card.color?.code === 'rainbow' || card.color?.name === 'multikleur';
 					return `
 						<div class="mp-deck-card ${dimmed ? 'mp-deck-card-used' : ''}">
-							<div class="mp-card-color" style="${colorStyle}"></div>
+							${isSpecialDeck ? `<div class="mp-card-color" style="${colorStyle}"></div>` : ''}
 							<div class="mp-card-shape">
 								${this._renderMiniGrid(card.matrix, card.color)}
 							</div>
@@ -5677,6 +5703,19 @@ class LocusLobbyUI {
 
 	_renderMiniGrid(matrix, color, large = false, forGhost = false) {
 		if (!matrix) return '';
+		// Auto-transpose matrices that are wider than tall (e.g. 1×2, 1×3) so blocks display vertically
+		const mRows = matrix.length;
+		const mCols = matrix[0]?.length || 0;
+		if (!forGhost && mCols > mRows && mRows <= 2) {
+			const transposed = [];
+			for (let c = 0; c < mCols; c++) {
+				transposed[c] = [];
+				for (let r = 0; r < mRows; r++) {
+					transposed[c][r] = matrix[r][c];
+				}
+			}
+			matrix = transposed;
+		}
 		const colorCode = color?.code || '#666';
 		const isGolden = color?.isGolden;
 		const isStone = color?.isStone;
@@ -6735,7 +6774,6 @@ class LocusLobbyUI {
 					<div class="mp-card-shape">
 						${this._renderMiniGrid(card.matrix, card.color, true)}
 					</div>
-					<div class="mp-free-label">GRATIS</div>
 				</div>
 			`;
 		}).join('');
