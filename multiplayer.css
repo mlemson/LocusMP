@@ -13121,6 +13121,10 @@ html.theme-reef .mp-objective-reveal-sub {
 	min-height: 0;
 }
 
+.mp-deck-swipe-panel {
+	display: contents;
+}
+
 .mp-deck-cards-panel {
 	flex: 1;
 	overflow-y: auto;
@@ -13141,17 +13145,28 @@ html.theme-reef .mp-objective-reveal-sub {
 	padding-left: 24px;
 }
 
-/* On narrow screens, stack vertically */
+/* On narrow screens, horizontal swipe panels */
 @media (max-width: 860px) {
 	.mp-deck-split-layout {
-		flex-direction: column;
+		flex-direction: row;
+		overflow-x: auto;
+		scroll-snap-type: x mandatory;
+		-webkit-overflow-scrolling: touch;
+		gap: 0;
+	}
+	.mp-deck-swipe-panel {
+		flex: 0 0 100%;
+		scroll-snap-align: start;
+		overflow-y: auto;
+		min-width: 0;
+		padding: 0 8px;
 	}
 	.mp-deck-objective-panel {
 		width: 100%;
 		border-left: none;
-		border-top: 1px solid rgba(255,255,255,0.08);
+		border-top: none;
 		padding-left: 0;
-		padding-top: 16px;
+		padding-top: 0;
 	}
 	.mp-deck-card {
 		width: 120px;
