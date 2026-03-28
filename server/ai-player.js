@@ -656,6 +656,24 @@ function planTurn(gameState, playerId, personality) {
 			subgridId: best.subgridId
 		});
 		cardPlayed = true;
+
+		// Coin mode: play a second regular card
+		if (gameState.settings?.coinMode) {
+			const secondPlacements = allPlacements.filter(p => p.cardId !== best.cardId);
+			if (secondPlacements.length > 0) {
+				const second = secondPlacements[0];
+				actions.push({
+					type: 'playCard',
+					cardId: second.cardId,
+					zoneName: second.zoneName,
+					baseX: second.baseX,
+					baseY: second.baseY,
+					rotation: second.rotation,
+					mirrored: second.mirrored,
+					subgridId: second.subgridId
+				});
+			}
+		}
 	}
 
 	// 2. Probeer gouden kaarten als extra (also impact-scored)
@@ -809,6 +827,7 @@ function planShop(gameState, playerId) {
 			actions.push({ type: 'buyShopItem', itemId: allBuyable[0].id, extra: allBuyable[0].extra });
 		}
 	}
+	} // end else (non-coin-mode)
 
 	// Perk kiezen als punten beschikbaar
 	const perkId = choosePerk(gameState, playerId);
@@ -1582,6 +1601,24 @@ function planTurnHard(gameState, playerId) {
 			subgridId: best.subgridId
 		});
 		cardPlayed = true;
+
+		// Coin mode: play a second regular card
+		if (gameState.settings?.coinMode) {
+			const secondPlacements = allPlacements.filter(p => p.cardId !== best.cardId);
+			if (secondPlacements.length > 0) {
+				const second = secondPlacements[0];
+				actions.push({
+					type: 'playCard',
+					cardId: second.cardId,
+					zoneName: second.zoneName,
+					baseX: second.baseX,
+					baseY: second.baseY,
+					rotation: second.rotation,
+					mirrored: second.mirrored,
+					subgridId: second.subgridId
+				});
+			}
+		}
 	}
 
 	// 2. Golden cards — also use impact scoring
@@ -1710,11 +1747,38 @@ function planShopHard(gameState, playerId) {
 
 	const actions = [];
 	const coins = player.goldCoins || 0;
-	if (coins <= 0) return [{ type: 'shopReady' }];
+	const isCoinMode = !!gameState.settings?.coinMode;
+	if (coins <= 0 && !isCoinMode) return [{ type: 'shopReady' }];
 
 	let remainingCoins = coins;
 
-	// 1. Shop card offerings FIRST — permanent cards with most cells
+	if (isCoinMode) {
+		// Coin mode: 1 free card + 1 free action
+		const offerings = player.shopOfferings || [];
+		const cardScores = offerings.map((card, i) => {
+			if (!card) return { idx: i, score: -1 };
+			const cellCount = card.matrix ? card.matrix.flat().filter(v => v > 0).length : 0;
+			return { idx: i, score: cellCount };
+		});
+		cardScores.sort((a, b) => b.score - a.score);
+		if (cardScores.length > 0 && cardScores[0].score > 0) {
+			actions.push({ type: 'buyShopItem', itemId: `shop-card-${cardScores[0].idx}` });
+		}
+
+		const shopItems = GameRules.getShopItems(gameState.level || 1, player);
+		const bestAction = shopItems.filter(item => !item.unlockOnly && item.id !== 'unlock-steen')
+			.sort((a, b) => b.cost - a.cost)[0];
+		if (bestAction) {
+			const extra = {};
+			if (bestAction.id === 'extra-bonus') {
+				const scores = player.scoreBreakdown || {};
+				const colors = ['yellow', 'red', 'green', 'purple', 'blue'];
+				colors.sort((a, b) => (scores[a] || 0) - (scores[b] || 0));
+				extra.bonusColor = colors[0];
+			}
+			actions.push({ type: 'buyShopItem', itemId: bestAction.id, extra });
+		}
+	} else {
 	const offerings = player.shopOfferings || [];
 	const cardScores = offerings.map((card, i) => {
 		if (!card) return { idx: i, score: -1, price: Infinity };
@@ -1763,6 +1827,7 @@ function planShopHard(gameState, playerId) {
 			actions.push({ type: 'buyShopItem', itemId: allBuyable[0].id, extra: allBuyable[0].extra });
 		}
 	}
+	} // end else (non-coin-mode)
 
 	const perkId = chooseHardPerk(gameState, playerId);
 	if (perkId) {
