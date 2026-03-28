@@ -1575,6 +1575,17 @@ class LocusLobbyUI {
 		if (this._tvCastActive) {
 			this._broadcastTVState();
 		}
+
+		// Mobile swipe dots: sync active dot on scroll
+		const waitBody = document.querySelector('.mp-waiting-body');
+		const swipeDots = document.querySelectorAll('.mp-swipe-dot');
+		if (waitBody && swipeDots.length >= 2) {
+			waitBody.addEventListener('scroll', () => {
+				const scrollRatio = waitBody.scrollLeft / (waitBody.scrollWidth - waitBody.clientWidth || 1);
+				const activeIdx = scrollRatio > 0.5 ? 1 : 0;
+				swipeDots.forEach((d, i) => d.classList.toggle('active', i === activeIdx));
+			}, { passive: true });
+		}
 	}
 
 	_updatePlayerList() {
