@@ -2958,7 +2958,8 @@ function awardObjectiveRewards(gameState, playerId, objective, result) {
 	player.objectiveFailed = false; // Kan nooit gelijktijdig behaald én mislukt zijn
 	player.objectiveAchievedPoints = points;
 
-	if (coins > 0) {
+	// Coin mode: doelstellingen geven GEEN coins
+	if (coins > 0 && !gameState?.settings?.coinMode) {
 		player.goldCoins = (player.goldCoins || 0) + coins;
 	}
 
@@ -3396,49 +3397,52 @@ const LEVEL_OBJECTIVES = {
  */
 function generateCoinModeObjectives(rng, level) {
 	const round = Math.max(1, level || 1);
-	// Basis scaling: hogere rondes = hogere targets en meer punten
-	const pointsBase = 8 + round * 4;            // 12, 16, 20, 24, 28, ...
-	const totalTarget = 10 + round * 8;           // 18, 26, 34, 42, 50, ...
-	const singleColorTarget = 6 + round * 4;      // 10, 14, 18, 22, 26, ...
-	const dualColorTarget = 4 + round * 3;         // 7, 10, 13, 16, 19, ...
-	const balanceTarget = 2 + round * 2;           // 4, 6, 8, 10, 12, ...
-	const yellowColTarget = Math.min(1 + round, 8);
-	const greenEndTarget = Math.min(1 + round, 8);
-	const blueRowTarget = Math.min(1 + Math.floor(round / 2), 5);
-	const redGridTarget = Math.min(Math.ceil(round / 2), 3);
-	const purpleBoldTarget = Math.min(2 + round, 8);
+	// Exponentiële scaling: +50% moeilijker per ronde, +50% meer punten
+	const scale = Math.pow(1.5, round - 1);       // 1, 1.5, 2.25, 3.375, ...
+	const pointsBase = Math.round(12 * scale);     // 12, 18, 27, 41, ...
+	const totalTarget = Math.round(18 * scale);    // 18, 27, 41, 61, ...
+	const singleColorTarget = Math.round(10 * scale); // 10, 15, 23, 34, ...
+	const dualColorTarget = Math.round(7 * scale);    // 7, 11, 16, 24, ...
+	const balanceTarget = Math.round(4 * scale);      // 4, 6, 9, 14, ...
+	const yellowColTarget = Math.min(Math.round(2 * scale), 8);
+	const greenEndTarget = Math.min(Math.round(2 * scale), 8);
+	const blueRowTarget = Math.min(Math.round(1.5 * scale), 5);
+	const redGridTarget = Math.min(Math.round(1 * scale), 3);
+	const purpleBoldTarget = Math.min(Math.round(3 * scale), 10);
+	const bonusPointsExtra = Math.round(5 * scale);
+	const bonusPointsLarge = Math.round(10 * scale);
 
 	const pool = [
 		// Totaalscore doelen
-		{ id: `coin_total_${round}`, name: 'Totaalscore', description: `Haal ${totalTarget} punten totaal.`, target: totalTarget, points: pointsBase, coins: round,
+		{ id: `coin_total_${round}`, name: 'Totaalscore', description: `Haal ${totalTarget} punten totaal.`, target: totalTarget, points: pointsBase, coins: 0,
 		  useContext: true, check: (ctx) => Math.min((ctx?.playerScore?.total || 0), totalTarget) },
 		// Enkele kleur doelen
-		{ id: `coin_yellow_${round}`, name: 'Geel Doel', description: `Scoor ${singleColorTarget} punten in geel.`, target: singleColorTarget, points: pointsBase, coins: round,
+		{ id: `coin_yellow_${round}`, name: 'Geel Doel', description: `Scoor ${singleColorTarget} punten in geel.`, target: singleColorTarget, points: pointsBase, coins: 0,
 		  useContext: true, check: (ctx) => Math.min((ctx?.playerScore?.yellow || 0), singleColorTarget) },
-		{ id: `coin_green_${round}`, name: 'Groen Doel', description: `Scoor ${singleColorTarget} punten in groen.`, target: singleColorTarget, points: pointsBase, coins: round,
+		{ id: `coin_green_${round}`, name: 'Groen Doel', description: `Scoor ${singleColorTarget} punten in groen.`, target: singleColorTarget, points: pointsBase, coins: 0,
 		  useContext: true, check: (ctx) => Math.min((ctx?.playerScore?.green || 0), singleColorTarget) },
-		{ id: `coin_blue_${round}`, name: 'Blauw Doel', description: `Scoor ${singleColorTarget} punten in blauw.`, target: singleColorTarget, points: pointsBase, coins: round,
+		{ id: `coin_blue_${round}`, name: 'Blauw Doel', description: `Scoor ${singleColorTarget} punten in blauw.`, target: singleColorTarget, points: pointsBase, coins: 0,
 		  useContext: true, check: (ctx) => Math.min((ctx?.playerScore?.blue || 0), singleColorTarget) },
-		{ id: `coin_purple_${round}`, name: 'Paars Doel', description: `Scoor ${singleColorTarget} punten in paars.`, target: singleColorTarget, points: pointsBase, coins: round,
+		{ id: `coin_purple_${round}`, name: 'Paars Doel', description: `Scoor ${singleColorTarget} punten in paars.`, target: singleColorTarget, points: pointsBase, coins: 0,
 		  useContext: true, check: (ctx) => Math.min((ctx?.playerScore?.purple || 0), singleColorTarget) },
-		{ id: `coin_red_${round}`, name: 'Rood Doel', description: `Scoor ${singleColorTarget} punten in rood.`, target: singleColorTarget, points: pointsBase, coins: round,
+		{ id: `coin_red_${round}`, name: 'Rood Doel', description: `Scoor ${singleColorTarget} punten in rood.`, target: singleColorTarget, points: pointsBase, coins: 0,
 		  useContext: true, check: (ctx) => Math.min((ctx?.playerScore?.red || 0), singleColorTarget) },
 		// Twee-kleuren combo's
-		{ id: `coin_yellow_green_${round}`, name: 'Geel + Groen', description: `Scoor ${dualColorTarget} punten in geel en ${dualColorTarget} in groen.`, target: 2, points: pointsBase + 5, coins: round + 1,
+		{ id: `coin_yellow_green_${round}`, name: 'Geel + Groen', description: `Scoor ${dualColorTarget} punten in geel en ${dualColorTarget} in groen.`, target: 2, points: pointsBase + bonusPointsExtra, coins: 0,
 		  useContext: true, check: (ctx) => {
 			let done = 0;
 			if ((ctx?.playerScore?.yellow || 0) >= dualColorTarget) done++;
 			if ((ctx?.playerScore?.green || 0) >= dualColorTarget) done++;
 			return done;
 		  }},
-		{ id: `coin_blue_purple_${round}`, name: 'Blauw + Paars', description: `Scoor ${dualColorTarget} punten in blauw en ${dualColorTarget} in paars.`, target: 2, points: pointsBase + 5, coins: round + 1,
+		{ id: `coin_blue_purple_${round}`, name: 'Blauw + Paars', description: `Scoor ${dualColorTarget} punten in blauw en ${dualColorTarget} in paars.`, target: 2, points: pointsBase + bonusPointsExtra, coins: 0,
 		  useContext: true, check: (ctx) => {
 			let done = 0;
 			if ((ctx?.playerScore?.blue || 0) >= dualColorTarget) done++;
 			if ((ctx?.playerScore?.purple || 0) >= dualColorTarget) done++;
 			return done;
 		  }},
-		{ id: `coin_red_yellow_${round}`, name: 'Rood + Geel', description: `Scoor ${dualColorTarget} punten in rood en ${dualColorTarget} in geel.`, target: 2, points: pointsBase + 5, coins: round + 1,
+		{ id: `coin_red_yellow_${round}`, name: 'Rood + Geel', description: `Scoor ${dualColorTarget} punten in rood en ${dualColorTarget} in geel.`, target: 2, points: pointsBase + bonusPointsExtra, coins: 0,
 		  useContext: true, check: (ctx) => {
 			let done = 0;
 			if ((ctx?.playerScore?.red || 0) >= dualColorTarget) done++;
@@ -3446,18 +3450,18 @@ function generateCoinModeObjectives(rng, level) {
 			return done;
 		  }},
 		// Balans doel
-		{ id: `coin_balance_${round}`, name: 'Evenwicht', description: `Behaal minstens ${balanceTarget} punten in elke kleur.`, target: 5, points: pointsBase + 10, coins: round + 2,
+		{ id: `coin_balance_${round}`, name: 'Evenwicht', description: `Behaal minstens ${balanceTarget} punten in elke kleur.`, target: 5, points: pointsBase + bonusPointsLarge, coins: 0,
 		  useContext: true, check: (ctx) => countPlayerZonesAtLeast(ctx?.playerScore, balanceTarget) },
 		// Zone-specifieke doelen
-		{ id: `coin_yellowcol_${round}`, name: 'Gele Kolommen', description: `Vul ${yellowColTarget} gele kolom${yellowColTarget > 1 ? 'men' : ''}.`, target: yellowColTarget, points: pointsBase + 5, coins: round + 1,
+		{ id: `coin_yellowcol_${round}`, name: 'Gele Kolommen', description: `Vul ${yellowColTarget} gele kolom${yellowColTarget > 1 ? 'men' : ''}.`, target: yellowColTarget, points: pointsBase + bonusPointsExtra, coins: 0,
 		  useContext: true, check: (ctx) => countPlayerCompletedYellowCols(ctx.boardState, ctx.playerId) },
-		{ id: `coin_greenend_${round}`, name: 'Groene Eindpunten', description: `Bereik ${greenEndTarget} groene eindpunt${greenEndTarget > 1 ? 'en' : ''}.`, target: greenEndTarget, points: pointsBase + 5, coins: round + 1,
+		{ id: `coin_greenend_${round}`, name: 'Groene Eindpunten', description: `Bereik ${greenEndTarget} groene eindpunt${greenEndTarget > 1 ? 'en' : ''}.`, target: greenEndTarget, points: pointsBase + bonusPointsExtra, coins: 0,
 		  useContext: true, check: (ctx) => countPlayerGreenEnds(ctx.boardState, ctx.playerId) },
-		{ id: `coin_bluerow_${round}`, name: 'Blauwe Rijen', description: `Bereik ${blueRowTarget} blauwe rij${blueRowTarget > 1 ? 'en' : ''}.`, target: blueRowTarget, points: pointsBase + 5, randomBonuses: Math.min(round, 3),
+		{ id: `coin_bluerow_${round}`, name: 'Blauwe Rijen', description: `Bereik ${blueRowTarget} blauwe rij${blueRowTarget > 1 ? 'en' : ''}.`, target: blueRowTarget, points: pointsBase + bonusPointsExtra, randomBonuses: Math.min(round, 3),
 		  useContext: true, check: (ctx) => getPlayerBlueHighestTier(ctx.boardState, ctx.playerId) },
-		{ id: `coin_redgrid_${round}`, name: 'Rode Grids', description: `Vul ${redGridTarget} rood${redGridTarget > 1 ? 'e' : ''} grid${redGridTarget > 1 ? 's' : ''}.`, target: redGridTarget, points: pointsBase + 5, coins: round + 2,
+		{ id: `coin_redgrid_${round}`, name: 'Rode Grids', description: `Vul ${redGridTarget} rood${redGridTarget > 1 ? 'e' : ''} grid${redGridTarget > 1 ? 's' : ''}.`, target: redGridTarget, points: pointsBase + bonusPointsExtra, coins: 0,
 		  useContext: true, check: (ctx) => countPlayerCompletedRedSubgrids(ctx.boardState, ctx.playerId) },
-		{ id: `coin_purple_bold_${round}`, name: 'Paars Cluster', description: `Verbind ${purpleBoldTarget} paarse bold-cellen.`, target: purpleBoldTarget, points: pointsBase + 5, randomBonuses: Math.min(round, 3),
+		{ id: `coin_purple_bold_${round}`, name: 'Paars Cluster', description: `Verbind ${purpleBoldTarget} paarse bold-cellen.`, target: purpleBoldTarget, points: pointsBase + bonusPointsExtra, randomBonuses: Math.min(round, 3),
 		  useContext: true, check: (ctx) => getPlayerPurpleMaxBoldCluster(ctx.boardState, ctx.playerId) },
 	];
 
@@ -5185,36 +5189,50 @@ function checkGameEnd(gameState) {
 	const sorted = gameState.playerOrder
 		.map(pid => ({ pid, score: levelScores[pid].finalTotal }))
 		.sort((a, b) => b.score - a.score);
+	// Bij gelijk aantal punten: alle gelijkspelende spelers winnen
+	const topScore = sorted[0].score;
+	const tiedWinners = sorted.filter(s => s.score === topScore);
 	gameState.levelWinner = sorted[0].pid;
+	gameState.levelWinners = tiedWinners.map(s => s.pid);
 
 	// Zet winner in history
 	const lastHistory = gameState.levelScoresHistory?.[gameState.levelScoresHistory.length - 1];
-	if (lastHistory) lastHistory.winner = sorted[0].pid;
-
-	const roundWinner = gameState.players[gameState.levelWinner];
-	if (roundWinner) {
-		roundWinner.matchWins = (roundWinner.matchWins || 0) + 1;
+	if (lastHistory) {
+		lastHistory.winner = sorted[0].pid;
+		lastHistory.winners = tiedWinners.map(s => s.pid);
 	}
 
-	// Rondebeloning: winnaar krijgt 3 coins
-	const winnerPlayer = gameState.players[gameState.levelWinner];
-	if (winnerPlayer) {
-		winnerPlayer.goldCoins = (winnerPlayer.goldCoins || 0) + 3;
-		if (gameState.levelScores?.[gameState.levelWinner]) {
-			gameState.levelScores[gameState.levelWinner].goldCoins = winnerPlayer.goldCoins;
-			gameState.levelScores[gameState.levelWinner].roundWinnerCoinsBonus = 3;
+	for (const tw of tiedWinners) {
+		const roundWinner = gameState.players[tw.pid];
+		if (roundWinner) {
+			roundWinner.matchWins = (roundWinner.matchWins || 0) + 1;
 		}
 	}
 
-	// Nummer 2 krijgt 1 coin
-	const secondPlace = sorted[1];
-	if (secondPlace?.pid) {
-		const secondPlayer = gameState.players[secondPlace.pid];
-		if (secondPlayer) {
-			secondPlayer.goldCoins = (secondPlayer.goldCoins || 0) + 1;
-			if (gameState.levelScores?.[secondPlace.pid]) {
-				gameState.levelScores[secondPlace.pid].goldCoins = secondPlayer.goldCoins;
-				gameState.levelScores[secondPlace.pid].secondPlaceCoinsBonus = 1;
+	// Rondebeloning: winnaar(s) krijgt/krijgen 3 coins, niet in coin mode
+	if (!gameState.settings?.coinMode) {
+		for (const tw of tiedWinners) {
+			const winnerPlayer = gameState.players[tw.pid];
+			if (winnerPlayer) {
+				winnerPlayer.goldCoins = (winnerPlayer.goldCoins || 0) + 3;
+				if (gameState.levelScores?.[tw.pid]) {
+					gameState.levelScores[tw.pid].goldCoins = winnerPlayer.goldCoins;
+					gameState.levelScores[tw.pid].roundWinnerCoinsBonus = 3;
+				}
+			}
+		}
+
+		// Nummer 2 krijgt 1 coin (alleen als die niet al winnaar is)
+		const nonWinnerSorted = sorted.filter(s => s.score < topScore);
+		const secondPlace = nonWinnerSorted[0];
+		if (secondPlace?.pid) {
+			const secondPlayer = gameState.players[secondPlace.pid];
+			if (secondPlayer) {
+				secondPlayer.goldCoins = (secondPlayer.goldCoins || 0) + 1;
+				if (gameState.levelScores?.[secondPlace.pid]) {
+					gameState.levelScores[secondPlace.pid].goldCoins = secondPlayer.goldCoins;
+					gameState.levelScores[secondPlace.pid].secondPlaceCoinsBonus = 1;
+				}
 			}
 		}
 	}
@@ -5315,9 +5333,10 @@ function checkGameEnd(gameState) {
 
 	const winsToEnd = Math.max(1, Number(gameState.winsToEnd) || MATCH_WINS_TARGET);
 	const maxLevels = Math.max(1, Number(gameState.maxLevels) || DEFAULT_MAX_LEVELS);
-	const matchWinnerEntry = gameState.playerOrder
+	const matchSorted = gameState.playerOrder
 		.map(pid => ({ pid, wins: gameState.players[pid]?.matchWins || 0 }))
-		.sort((a, b) => b.wins - a.wins)[0];
+		.sort((a, b) => b.wins - a.wins);
+	const matchWinnerEntry = matchSorted[0];
 	// Spel is gewonnen als iemand genoeg wins heeft OF alle levels gespeeld zijn
 	const currentLevel = gameState.level || 1;
 	if (matchWinnerEntry && matchWinnerEntry.wins >= winsToEnd) {
@@ -5337,7 +5356,6 @@ function checkGameEnd(gameState) {
 // ──────────────────────────────────────────────
 
 const SHOP_ITEMS = [
-	{ id: 'random-card', name: 'Random Kaart', description: 'Krijg een willekeurige kaart in je deck', cost: 1, icon: '🎲', oneTimePerLevel: true },
 	{ id: 'extra-bonus', name: 'Bonus Charge', description: 'Krijg een bonus charge naar keuze (eenmalig)', cost: 2, icon: '⚡', oneTimePerLevel: true },
 	{ id: 'time-bomb', name: 'Tijdbom', description: 'Stop de beurt van een andere speler direct! (eenmalig)', cost: 2, icon: '💣', oneTimePerLevel: true },
 ];
@@ -5526,14 +5544,24 @@ function buyShopItem(gameState, playerId, itemId, extra) {
 	return { success: true };
 }
 
-/** Choose a reward card type (golden/multikleur/steen) in rewarding mode during goal phase */
+/** Choose a reward card type (golden/multikleur/steen) — works in shop phase (any mode) or goal phase (rewarding mode) */
 function chooseRewardCardType(gameState, playerId, cardType) {
-	if (!gameState.settings?.rewardingMode) return { error: 'Alleen in beloningsmodus' };
-	if (gameState.phase !== 'choosingGoals') return { error: 'Niet in doelstellingsfase' };
+	const isShopPhase = gameState.phase === 'shopping';
+	const isGoalPhase = gameState.phase === 'choosingGoals';
+	if (!isShopPhase && !(isGoalPhase && gameState.settings?.rewardingMode)) {
+		return { error: 'Niet beschikbaar in deze fase' };
+	}
 	const player = gameState.players[playerId];
 	if (!player) return { error: 'Speler niet gevonden' };
 	if (player._pendingFreeChoices) return { error: 'Er is al een keuze actief' };
-	if (player._rewardCardChosen) return { error: 'Je hebt deze ronde al een kaart gekozen' };
+	// In goal phase: only one per round
+	if (isGoalPhase && player._rewardCardChosen) return { error: 'Je hebt deze ronde al een kaart gekozen' };
+	// In shop phase with coins: check cost (3 coins, or free in coin mode)
+	if (isShopPhase && !gameState.settings?.coinMode) {
+		const cost = 3;
+		if ((player.goldCoins || 0) < cost) return { error: 'Niet genoeg goud (3 coins nodig)' };
+		player.goldCoins -= cost;
+	}
 
 	const rng = createRNG(Date.now() + (playerId || '').length + 5555);
 	let choices = [];
@@ -5718,6 +5746,10 @@ function startNextLevel(gameState) {
 		player.objectiveProgress = null;
 		player.score = 0;
 		player.scoreBreakdown = { yellow: 0, green: 0, blue: 0, red: 0, purple: 0, bonus: 0, gold: 0, total: 0 };
+		// Coin mode: reset coins elke ronde
+		if (gameState.settings?.coinMode) {
+			player.goldCoins = 0;
+		}
 		// Reset bonus inventory? Nee, behoud bonussen
 		// Reset per-level perk counters (perks zelf blijven)
 		if (player.perks) {
@@ -5956,6 +5988,9 @@ function endGameFinal(gameState) {
 		.map(pid => ({ pid, wins: finalScores[pid].matchWins || 0, score: finalScores[pid].finalTotal }))
 		.sort((a, b) => (b.wins - a.wins) || (b.score - a.score));
 	gameState.winner = sorted[0].pid;
+	// Bij gelijk: alle spelers met dezelfde wins tellen als winnaar
+	const topWins = sorted[0].wins;
+	gameState.matchWinners = sorted.filter(s => s.wins === topWins).map(s => s.pid);
 	if (!gameState.matchWinner && (finalScores[gameState.winner]?.matchWins || 0) >= winsToEnd) {
 		gameState.matchWinner = gameState.winner;
 	}

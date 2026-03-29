@@ -2213,7 +2213,7 @@ html.theme-classic .mp-cell.bonus-just-spawned {
 .mp-taunt-menu {
 	display: block;
 	position: relative;
-	z-index: 15;
+	z-index: 99999;
 }
 
 .mp-taunt-menu-toggle {
@@ -2248,7 +2248,7 @@ html.theme-classic .mp-cell.bonus-just-spawned {
 	backdrop-filter: blur(12px);
 	gap: 4px;
 	flex-direction: column;
-	z-index: 10200;
+	z-index: 999999;
 }
 
 .mp-taunt-menu[open] .mp-taunt-menu-panel {
@@ -4062,7 +4062,7 @@ body.mp-loading .mp-btn {
 		position: fixed;
 		top: 6px;
 		left: 6px;
-		z-index: 10100;
+		z-index: 999999;
 	}
 
 	#mp-turn-indicator {
@@ -5166,6 +5166,69 @@ body.mp-loading .mp-btn {
 .mp-shop-unlock {
 	border-color: var(--mp-gold, #f5d76e) !important;
 	background: rgba(245, 215, 110, 0.06) !important;
+}
+
+/* Special cards section (golden/multi/stone) */
+.mp-shop-special-cards {
+	margin-top: 16px;
+}
+
+.mp-shop-special-grid {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+}
+
+.mp-shop-special-btn {
+	display: flex;
+	align-items: center;
+	gap: 14px;
+	padding: 14px 18px;
+	background: rgba(255,255,255,0.04);
+	border: 1px solid rgba(166,140,255,0.2);
+	border-radius: 12px;
+	cursor: pointer;
+	transition: all 0.2s;
+	text-align: left;
+	color: #e0e0e0;
+	font-family: inherit;
+	font-size: 1rem;
+}
+
+.mp-shop-special-btn:hover:not(:disabled) {
+	background: rgba(255,255,255,0.08);
+	border-color: #f5d76e;
+	transform: translateY(-1px);
+}
+
+.mp-shop-special-btn:disabled {
+	opacity: 0.4;
+	cursor: not-allowed;
+}
+
+.mp-shop-special-icon {
+	font-size: 2rem;
+	flex-shrink: 0;
+}
+
+.mp-shop-special-info {
+	flex: 1;
+}
+
+.mp-shop-special-name {
+	font-weight: 600;
+	margin-bottom: 2px;
+}
+
+.mp-shop-special-desc {
+	font-size: 0.8rem;
+	color: #999;
+}
+
+.mp-shop-special-cost {
+	font-weight: bold;
+	color: #f5d76e;
+	white-space: nowrap;
 }
 
 .mp-shop-unlock:hover:not(:disabled) {

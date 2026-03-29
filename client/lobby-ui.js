@@ -1662,10 +1662,11 @@ class LocusLobbyUI {
 		const randomBonuses = this._normalizeObjectiveReward(objective?.randomBonuses);
 		const includeFallbackPoints = options.includeFallbackPoints === true;
 		const fallbackPoints = this._normalizeObjectiveReward(options.fallbackPoints ?? 15);
+		const isCoinMode = !!this.mp?.gameState?.settings?.coinMode;
 
 		const rewards = [];
 		if (points > 0) rewards.push({ icon: '🏆', value: points, label: 'punten', cls: 'is-points' });
-		if (coins > 0) rewards.push({ icon: '🪙', value: coins, label: 'munten', cls: 'is-coins' });
+		if (coins > 0 && !isCoinMode) rewards.push({ icon: '🪙', value: coins, label: 'munten', cls: 'is-coins' });
 		if (randomBonuses > 0) {
 			rewards.push({
 				icon: '🎁',
@@ -5926,8 +5927,6 @@ class LocusLobbyUI {
 			matchWins: this.mp.gameState.players[pid]?.matchWins || finalScores[pid]?.matchWins || 0,
 			...finalScores[pid]
 		}));
-		const sorted = [...players].sort((a, b) => (b.matchWins - a.matchWins) || (b.finalTotal - a.finalTotal));
-
 		// Level history tabel
 		const historyHtml = levelHistory.length > 0 ? `
 			<div class="mp-results-history">
@@ -5946,7 +5945,7 @@ class LocusLobbyUI {
 							<span class="mp-history-cell mp-history-label">Level ${lh.level}</span>
 							${this.mp.gameState.playerOrder.map(pid => {
 								const sc = lh.scores?.[pid];
-								const isWinner = lh.winner === pid;
+								const isWinner = lh.winner === pid || (lh.winners && lh.winners.includes(pid));
 								return `
 									<span class="mp-history-cell ${isWinner ? 'winner' : ''} ${pid === this.mp.userId ? 'is-me' : ''}">
 										${sc?.finalTotal || 0}${isWinner ? ' 🏆' : ''}
@@ -5967,12 +5966,17 @@ class LocusLobbyUI {
 			</div>
 		` : '';
 
+		const sorted = [...players].sort((a, b) => (b.matchWins - a.matchWins) || (b.finalTotal - a.finalTotal));
+		const topMatchWins = sorted[0]?.matchWins || 0;
+		const matchWinners = sorted.filter(p => p.matchWins === topMatchWins);
+		const winnerNames = matchWinners.map(p => this._escapeHtml(p.name)).join(' & ');
+
 		container.innerHTML = `
 			<div class="mp-results-winner-banner">
 				<h2 class="mp-results-title">🏆 Spel Afgelopen!</h2>
 				<div class="mp-results-winner">
-					Winnaar: <strong>${this._escapeHtml(sorted[0].name)}</strong>
-					met ${sorted[0].matchWins || 0}/${winsTarget} wins!
+					${matchWinners.length > 1 ? 'Winnaars' : 'Winnaar'}: <strong>${winnerNames}</strong>
+					met ${topMatchWins}/${winsTarget} wins!
 				</div>
 			</div>
 			<div class="mp-results-stats">
@@ -6065,11 +6069,18 @@ class LocusLobbyUI {
 		const matchWinner = this.mp.gameState.matchWinner || null;
 		const isMatchFinished = !!matchWinner;
 		const maxLevels = Math.max(1, Number(this.mp.gameState?.maxLevels) || 10);
+		const isCoinMode = !!this.mp.gameState?.settings?.coinMode;
+		// Check for tied winners
+		const topScore = sorted[0]?.finalTotal || 0;
+		const tiedWinners = sorted.filter(p => p.finalTotal === topScore);
+		const tiedWinnerText = tiedWinners.length > 1
+			? `🏆 Gelijkspel! ${tiedWinners.map(p => p.name).join(' & ')} winnen met ${topScore} punten!`
+			: `🏆 ${sorted[0].name} wint dit level met ${sorted[0].finalTotal} punten!`;
 
 		overlay.innerHTML = `
 			<div class="mp-level-popup mp-level-popup-wide">
-				<div class="mp-level-main-winner">
-					🏆 ${sorted[0].name} wint dit level met ${sorted[0].finalTotal} punten!
+			<div class="mp-level-main-winner">
+					${tiedWinnerText}
 				</div>
 				<div class="mp-level-split-body">
 					<!-- LEFT: Detailed scores -->
@@ -6078,17 +6089,18 @@ class LocusLobbyUI {
 							${sorted.map((p, rank) => {
 								const rewards = [];
 								if (p.objectiveAchieved && p.objectiveBonus) rewards.push(`<span class="mp-reward-tag objective">🎯 +${p.objectiveBonus} pt</span>`);
-								if (p.objectiveAchieved && p.objectiveCoins) rewards.push(`<span class="mp-reward-tag coins">🪙 +${p.objectiveCoins}</span>`);
+								if (!isCoinMode && p.objectiveAchieved && p.objectiveCoins) rewards.push(`<span class="mp-reward-tag coins">🪙 +${p.objectiveCoins}</span>`);
 								if (p.objectiveAchieved && p.objectiveRandomBonuses) rewards.push(`<span class="mp-reward-tag bonus">🎁 +${p.objectiveRandomBonuses}</span>`);
-								if (p.roundWinnerCoinsBonus) rewards.push(`<span class="mp-reward-tag gold">🥇 +${p.roundWinnerCoinsBonus} 🪙</span>`);
-								if (p.secondPlaceCoinsBonus) rewards.push(`<span class="mp-reward-tag silver">🥈 +${p.secondPlaceCoinsBonus} 🪙</span>`);
+								if (!isCoinMode && p.roundWinnerCoinsBonus) rewards.push(`<span class="mp-reward-tag gold">🥇 +${p.roundWinnerCoinsBonus} 🪙</span>`);
+								if (!isCoinMode && p.secondPlaceCoinsBonus) rewards.push(`<span class="mp-reward-tag silver">🥈 +${p.secondPlaceCoinsBonus} 🪙</span>`);
+								const isTiedWinner = tiedWinners.some(tw => tw.id === p.id);
 								return `
-								<div class="mp-level-card ${p.id === this.mp.userId ? 'is-me' : ''} ${rank === 0 ? 'winner' : ''}">
+								<div class="mp-level-card ${p.id === this.mp.userId ? 'is-me' : ''} ${isTiedWinner ? 'winner' : ''}">
 									<div class="mp-card-header">
 										<span class="mp-card-rank">${rank === 0 ? '🥇' : rank === 1 ? '🥈' : rank === 2 ? '🥉' : rank + 1}</span>
 										<span class="mp-card-name">${this._escapeHtml(p.name)}</span>
 										<span class="mp-card-total">${p.finalTotal} pt</span>
-										<span class="mp-card-coins">💰 ${p.goldCoins}</span>
+										${!isCoinMode ? `<span class="mp-card-coins">💰 ${p.goldCoins}</span>` : ''}
 									</div>
 									<div class="mp-card-objective ${p.objectiveAchieved ? 'achieved' : (p.objectiveFailed ? 'failed' : '')}">
 										<span class="mp-obj-icon">${p.objectiveAchieved ? '✅' : (p.objectiveFailed ? '❌' : '🎯')}</span>
@@ -6247,14 +6259,31 @@ class LocusLobbyUI {
 								</div>
 							`;
 						}).join('')}
+						${(() => {
+							const randomBought = !!myPlayer?.shopPurchasesThisLevel?.['random-card'];
+							const randomCanAfford = isCoinMode ? !coinCardBought : goldCoins >= 1;
+							const randomBtnLabel = randomBought ? 'Gekocht ✓' : (isCoinMode ? (coinCardBought ? 'MAX 1' : '🎁 Gratis') : '💰 1 kopen');
+							const randomDisabled = randomBought || !randomCanAfford || isReady;
+							return `
+								<div class="mp-shop-offering ${randomDisabled ? 'cant-afford' : ''}">
+									<div class="mp-shop-offering-type">🎲 Random</div>
+									<div class="mp-card-shape mp-card-shape-large" style="display:flex;align-items:center;justify-content:center;font-size:2rem;">🎲</div>
+									<div style="font-size:0.75rem;opacity:0.7;text-align:center;margin:2px 0;">Permanente kaart in je deck</div>
+									<button class="mp-shop-buy-btn ${randomDisabled ? 'disabled' : ''}"
+											data-item-id="random-card"
+											${randomDisabled ? 'disabled' : ''}>
+										${randomBtnLabel}
+									</button>
+								</div>
+							`;
+						})()}
 					</div>
 				</div>
 
 				<div class="mp-shop-items">
 					<h3 class="mp-shop-section-title">⚡ Acties</h3>
 					${shopItems.map(item => {
-						const isCardItem = (item.id === 'random-card');
-						const coinBlocked = isCoinMode && (isCardItem ? coinCardBought : coinActionBought);
+						const coinBlocked = isCoinMode && coinActionBought;
 						const canAfford = isCoinMode ? !coinBlocked : goldCoins >= item.cost;
 						const isUnlock = item.unlockOnly;
 						const costLabel = isCoinMode ? (coinBlocked ? 'MAX 1' : '🎁 Gratis') : `💰 ${item.cost}`;
@@ -6271,6 +6300,36 @@ class LocusLobbyUI {
 							</button>
 						`;
 					}).join('')}
+				</div>
+
+				<div class="mp-shop-special-cards">
+					<h3 class="mp-shop-section-title">✨ Speciale Kaarten</h3>
+					<div class="mp-shop-special-grid">
+						<button class="mp-shop-special-btn" data-card-type="golden" ${isReady ? 'disabled' : ''}>
+							<span class="mp-shop-special-icon">✨</span>
+							<div class="mp-shop-special-info">
+								<div class="mp-shop-special-name">Gouden Kaart</div>
+								<div class="mp-shop-special-desc">Extra speelbaar naast je normale beurt</div>
+							</div>
+							<span class="mp-shop-special-cost">${isCoinMode ? '🎁 Gratis' : '💰 3'}</span>
+						</button>
+						<button class="mp-shop-special-btn" data-card-type="multikleur" ${isReady ? 'disabled' : ''}>
+							<span class="mp-shop-special-icon">🌈</span>
+							<div class="mp-shop-special-info">
+								<div class="mp-shop-special-name">Multikleur Kaart</div>
+								<div class="mp-shop-special-desc">Past in elke zone — uiterst flexibel</div>
+							</div>
+							<span class="mp-shop-special-cost">${isCoinMode ? '🎁 Gratis' : '💰 3'}</span>
+						</button>
+						<button class="mp-shop-special-btn" data-card-type="steen" ${isReady ? 'disabled' : ''}>
+							<span class="mp-shop-special-icon">🪨</span>
+							<div class="mp-shop-special-info">
+								<div class="mp-shop-special-name">Stenen Kaart</div>
+								<div class="mp-shop-special-desc">Blokkeert tegenstanders — strategisch wapen</div>
+							</div>
+							<span class="mp-shop-special-cost">${isCoinMode ? '🎁 Gratis' : '💰 3'}</span>
+						</button>
+					</div>
 				</div>
 
 				${(() => {
@@ -6304,7 +6363,7 @@ class LocusLobbyUI {
 
 		`;
 
-		// Bind card buy buttons
+		// Bind card buy buttons (including random-card in card grid)
 		container.querySelectorAll('.mp-shop-buy-btn:not(.disabled)').forEach(btn => {
 			btn.addEventListener('click', () => this._handleBuyItem(btn.dataset.itemId, btn));
 		});
@@ -6318,6 +6377,42 @@ class LocusLobbyUI {
 		// Bind other shop item clicks
 		container.querySelectorAll('.mp-shop-item:not(.disabled)').forEach(btn => {
 			btn.addEventListener('click', () => this._handleBuyItem(btn.dataset.itemId, btn));
+		});
+
+		// Bind special card type buttons (golden/multikleur/steen)
+		container.querySelectorAll('.mp-shop-special-btn:not([disabled])').forEach(btn => {
+			btn.addEventListener('click', async () => {
+				const type = btn.dataset.cardType;
+				btn.disabled = true;
+				try {
+					const result = await this.mp.chooseRewardCardType(type);
+					if (!result?.success) {
+						this._showToast(result?.error || 'Kon type niet kiezen', 'error');
+						btn.disabled = false;
+						return;
+					}
+					const typeNames = { golden: '✨ Gouden kaart', multikleur: '🌈 Multikleur kaart', steen: '🪨 Stenen kaart' };
+					const choices = result.freeChoices || this.mp.getMyPlayer()?._pendingFreeChoices || [];
+					this._showRewardFreeCardChoice(choices, typeNames[type] || 'Speciale kaart', async (cardId) => {
+						if (cardId) {
+							try {
+								const claim = await this.mp.claimFreeCard(cardId);
+								if (claim?.success) {
+									this._showToast(`${typeNames[type]} — kaart gekozen!`, 'success');
+								} else if (claim?.error) {
+									this._showToast(claim.error, 'error');
+								}
+							} catch (e) {
+								this._showToast('Fout bij claimen: ' + (e.message || e), 'error');
+							}
+						}
+						this._renderShop();
+					});
+				} catch (err) {
+					this._showToast('Fout: ' + (err.message || err), 'error');
+					btn.disabled = false;
+				}
+			});
 		});
 
 		// Bind ready button
