@@ -696,7 +696,8 @@ class LocusP2PHost {
 						sanitized.players[pid].perks.activeMines = [];
 					}
 					if (sanitized.players[pid].chosenObjective) {
-						if (revealObjectives) {
+						const canSpy = !!this.gameState.players[targetPlayerId]?.perks?.canSeeObjectives;
+						if (revealObjectives || canSpy) {
 							sanitized.players[pid].chosenObjective._revealed = true;
 						} else {
 							sanitized.players[pid].chosenObjective = { hidden: true };
@@ -1697,13 +1698,14 @@ class LocusP2PHost {
 					// Coin mode: keep playing extra cards as long as the bot can afford them
 					const p = this.gameState?.players?.[playerId];
 					const coins = p?.goldCoins || 0;
-					if (coins >= 1 && p?.hand?.length > 0) {
+					const freeAvailable = !this.gameState._coinFreeCardUsed && p?.hand?.some(c => this.Rules.isFree2x1Card?.(c));
+					if ((coins >= 1 || freeAvailable) && p?.hand?.length > 0) {
 						const nextMove = action.isRandom ? this._aiFindRandomMove(playerId) : this._aiFindBestMove(playerId, action.isHard);
 						if (nextMove) {
-							// Check if the bot can afford this card
-							const nextCard = p.hand.find(c => c.id === nextMove.cardId);
-							const cost = nextCard && this.Rules?.getCardPlayCost ? this.Rules.getCardPlayCost(nextCard) : 1;
-							if (cost > 0 && coins >= cost) {
+							const nextCard = nextMove.card;
+							const isFreeCard = !this.gameState._coinFreeCardUsed && this.Rules.isFree2x1Card?.(nextCard);
+							const cost = isFreeCard ? 0 : (nextCard && this.Rules?.getCardPlayCost ? this.Rules.getCardPlayCost(nextCard) : 1);
+							if (cost === 0 || coins >= cost) {
 								// Insert preview + play + another coinExtraCards attempt
 								actions.splice(idx, 0,
 									{ type: 'previewCard', move: nextMove },
@@ -1880,8 +1882,22 @@ class LocusP2PHost {
 
 		// Collect all valid placements (sample up to ~200 to avoid perf issues)
 		const MAX_VALID = 200;
+
+		// Coin mode affordability
+		const isCoinMode = !!this.gameState?.settings?.coinMode;
+		const coinFreeUsed = !!this.gameState?._coinFreeCardUsed;
+		const playerCoins = player.goldCoins || 0;
+
 		for (const card of hand) {
 			if (validMoves.length >= MAX_VALID) break;
+			// Skip unaffordable cards in coin mode
+			if (isCoinMode && !card.isGolden) {
+				const canPlayFree = !coinFreeUsed && this.Rules.isFree2x1Card?.(card);
+				if (!canPlayFree) {
+					const cost = this.Rules.getCardPlayCost?.(card) || 1;
+					if (playerCoins < cost) continue;
+				}
+			}
 			const allowedZones = this.Rules.getAllowedZones(card);
 			const rotation = Math.floor(Math.random() * 4);
 			const mirrored = Math.random() < 0.5;
@@ -1949,8 +1965,21 @@ class LocusP2PHost {
 		const totalBonuses = Object.values(inv).reduce((s, v) => s + (v || 0), 0);
 		const hasBonuses = totalBonuses > 0;
 
+		// Coin mode affordability
+		const isCoinMode = !!this.gameState?.settings?.coinMode;
+		const coinFreeUsed = !!this.gameState?._coinFreeCardUsed;
+		const playerCoins = player.goldCoins || 0;
+
 		for (const card of hand) {
 			if (stopSearch) break;
+			// Skip unaffordable cards in coin mode
+			if (isCoinMode && !card.isGolden) {
+				const canPlayFree = !coinFreeUsed && this.Rules.isFree2x1Card?.(card);
+				if (!canPlayFree) {
+					const cost = this.Rules.getCardPlayCost?.(card) || 1;
+					if (playerCoins < cost) continue;
+				}
+			}
 			const allowedZones = this.Rules.getAllowedZones(card);
 			const rotations = [0, 1, 2, 3];
 			const mirrors = [false, true];
@@ -2948,6 +2977,7 @@ class LocusP2PHost {
 		if (isAggressive) {
 			addIfAvailable('agg_steal', 14);
 			addIfAvailable('agg_mine', 10);
+			addIfAvailable('agg_spy', 8);
 			addIfAvailable('flex_wildcard', 10);
 			addIfAvailable('flex_double_coins', 9);
 			addIfAvailable('flex_gap', 8);
@@ -2991,6 +3021,7 @@ class LocusP2PHost {
 			// Aggressive perks at lower weight for normal bots
 			if (Math.random() < 0.35) addIfAvailable('agg_mine', 1);
 			addIfAvailable('agg_steal', 3);
+			addIfAvailable('agg_spy', 4);
 		}
 
 		if (candidates.length === 0) {

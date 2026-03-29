@@ -307,7 +307,8 @@ function sanitizeGameStateForPlayer(gameState, playerId) {
 
 			// Onthul objective na 4 kaarten gespeeld, anders verberg
 			if (sanitized.players[pid].chosenObjective) {
-				if (revealObjectives) {
+				const canSpy = !!gameState.players[playerId]?.perks?.canSeeObjectives;
+				if (revealObjectives || canSpy) {
 					// Laat de objective zien!
 					sanitized.players[pid].chosenObjective._revealed = true;
 				} else {
