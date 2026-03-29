@@ -657,21 +657,30 @@ function planTurn(gameState, playerId, personality) {
 		});
 		cardPlayed = true;
 
-		// Coin mode: play a second regular card
+		// Coin mode: keep playing extra paid cards as long as affordable
 		if (gameState.settings?.coinMode) {
-			const secondPlacements = allPlacements.filter(p => p.cardId !== best.cardId);
-			if (secondPlacements.length > 0) {
-				const second = secondPlacements[0];
-				actions.push({
-					type: 'playCard',
-					cardId: second.cardId,
-					zoneName: second.zoneName,
-					baseX: second.baseX,
-					baseY: second.baseY,
-					rotation: second.rotation,
-					mirrored: second.mirrored,
-					subgridId: second.subgridId
-				});
+			const playedIds = new Set([best.cardId]);
+			const aiPlayer = gameState.players[playerId];
+			let coins = aiPlayer?.goldCoins || 0;
+			const extraPlacements = allPlacements.filter(p => !playedIds.has(p.cardId));
+			for (const extra of extraPlacements) {
+				const extraCard = aiPlayer?.hand?.find(c => c.id === extra.cardId);
+				if (!extraCard || extraCard.isGolden) continue;
+				const cost = Rules.getCardPlayCost ? Rules.getCardPlayCost(extraCard) : 1;
+				if (cost > 0 && coins >= cost) {
+					actions.push({
+						type: 'playCard',
+						cardId: extra.cardId,
+						zoneName: extra.zoneName,
+						baseX: extra.baseX,
+						baseY: extra.baseY,
+						rotation: extra.rotation,
+						mirrored: extra.mirrored,
+						subgridId: extra.subgridId
+					});
+					playedIds.add(extra.cardId);
+					coins -= cost;
+				}
 			}
 		}
 	}
@@ -1602,21 +1611,30 @@ function planTurnHard(gameState, playerId) {
 		});
 		cardPlayed = true;
 
-		// Coin mode: play a second regular card
+		// Coin mode: keep playing extra paid cards as long as affordable
 		if (gameState.settings?.coinMode) {
-			const secondPlacements = allPlacements.filter(p => p.cardId !== best.cardId);
-			if (secondPlacements.length > 0) {
-				const second = secondPlacements[0];
-				actions.push({
-					type: 'playCard',
-					cardId: second.cardId,
-					zoneName: second.zoneName,
-					baseX: second.baseX,
-					baseY: second.baseY,
-					rotation: second.rotation,
-					mirrored: second.mirrored,
-					subgridId: second.subgridId
-				});
+			const playedIds = new Set([best.cardId]);
+			const aiPlayer = gameState.players[playerId];
+			let coins = aiPlayer?.goldCoins || 0;
+			const extraPlacements = allPlacements.filter(p => !playedIds.has(p.cardId));
+			for (const extra of extraPlacements) {
+				const extraCard = aiPlayer?.hand?.find(c => c.id === extra.cardId);
+				if (!extraCard || extraCard.isGolden) continue;
+				const cost = Rules.getCardPlayCost ? Rules.getCardPlayCost(extraCard) : 1;
+				if (cost > 0 && coins >= cost) {
+					actions.push({
+						type: 'playCard',
+						cardId: extra.cardId,
+						zoneName: extra.zoneName,
+						baseX: extra.baseX,
+						baseY: extra.baseY,
+						rotation: extra.rotation,
+						mirrored: extra.mirrored,
+						subgridId: extra.subgridId
+					});
+					playedIds.add(extra.cardId);
+					coins -= cost;
+				}
 			}
 		}
 	}

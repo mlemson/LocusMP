@@ -2819,22 +2819,24 @@ class LocusLobbyUI {
 
 			// Na het plaatsen van 1 kaart: overige kaarten worden 'spent' (transparant, niet speelbaar)
 			// Gouden kaarten blijven speelbaar (extra play)
-			// Coin mode: dominos gratis (max 1/beurt), rest kost coins
+			// Coin mode: 1 gratis 2x1 per beurt, rest kost coins (onbeperkt)
 			let cardClass = 'mp-card';
 			const isCoinMode = !!this.mp.gameState?.settings?.coinMode;
 			const coinFreeCardUsed = !!this.mp.gameState?._coinFreeCardUsed;
 			const coinCost = isCoinMode && Rules?.getCardPlayCost ? Rules.getCardPlayCost(card) : 0;
-			// Domino (cost 0): gratis maar max 1 per beurt
-			// Betaalde kaarten: altijd coins nodig
-			const isFreeDomino = isCoinMode && !card.isGolden && coinCost === 0;
-			const isPaidCard = isCoinMode && !card.isGolden && coinCost > 0;
-			const canAffordCard = !isPaidCard || (myPlayer?.goldCoins || 0) >= coinCost;
-			const dominoBlocked = isFreeDomino && coinFreeCardUsed;
+			const isFreeDomino = isCoinMode && !card.isGolden && Rules?.isFree2x1Card ? Rules.isFree2x1Card(card) : false;
+			const isPaidCard = isCoinMode && !card.isGolden && !isFreeDomino;
+			const canPlayFree = isFreeDomino && !coinFreeCardUsed;
+			const canAffordPaid = (myPlayer?.goldCoins || 0) >= coinCost;
 			if (!isMyTurn) {
 				cardClass += ' disabled';
 			} else if (!isCoinMode && cardPlayed && !card.isGolden) {
 				cardClass += ' card-spent';
-			} else if (isCoinMode && (dominoBlocked || (isPaidCard && !canAffordCard))) {
+			} else if (isCoinMode && !card.isGolden && isFreeDomino && coinFreeCardUsed) {
+				// Gratis 2x1 al gebruikt: geblokkeerd
+				cardClass += ' card-spent';
+			} else if (isCoinMode && !card.isGolden && isPaidCard && !canAffordPaid) {
+				// Betaalde kaart maar niet genoeg coins
 				cardClass += ' card-spent';
 			} else {
 				cardClass += ' playable';
@@ -2847,8 +2849,10 @@ class LocusLobbyUI {
 			if (isCoinMode && !card.isGolden) {
 				if (isFreeDomino && coinFreeCardUsed) {
 					coinBadge = '<div class="mp-card-coin-cost cant-afford">MAX 1</div>';
-				} else if (!isFreeDomino) {
-					coinBadge = `<div class="mp-card-coin-cost ${canAffordCard ? '' : 'cant-afford'}">💰 ${coinCost}</div>`;
+				} else if (isFreeDomino && !coinFreeCardUsed) {
+					coinBadge = '<div class="mp-card-coin-cost free">GRATIS</div>';
+				} else {
+					coinBadge = `<div class="mp-card-coin-cost ${canAffordPaid ? '' : 'cant-afford'}">💰 ${coinCost}</div>`;
 				}
 			}
 

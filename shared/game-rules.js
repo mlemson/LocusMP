@@ -3780,20 +3780,22 @@ function buildCoinModeDeck(rng) {
 /** Calculate coin cost to play a card in coin mode */
 function getCardPlayCost(card) {
 	if (!card) return 0;
-	// Gouden kaarten: gratis
+	// Gouden kaarten: altijd gratis
 	if (card.isGolden) return 0;
-	// Standaard 2×1 multikleur: gratis
-	if ((card.color?.name === 'multikleur' || card.color?.code === 'rainbow') && !card.isStone) {
-		const cells = card.matrix ? card.matrix.flat().filter(Boolean).length : 0;
-		if (cells <= 2) return 0;
-	}
+	const cellCount = card.matrix ? card.matrix.flat().filter(Boolean).length : 0;
 	// Steen, multikleur >2 cellen, of kaarten >4 cellen: 2 coins
 	if (card.isStone) return 2;
-	if (card.color?.name === 'multikleur' || card.color?.code === 'rainbow') return 2;
-	const cellCount = card.matrix ? card.matrix.flat().filter(Boolean).length : 0;
+	if ((card.color?.name === 'multikleur' || card.color?.code === 'rainbow') && cellCount > 2) return 2;
 	if (cellCount > 4) return 2;
-	// Normale gekleurde kaarten: 1 coin
+	// Alle overige kaarten (inclusief 2-cel): 1 coin
 	return 1;
+}
+
+/** Check if a card is a free 2x1 domino (2 cells, not golden, not stone) */
+function isFree2x1Card(card) {
+	if (!card || card.isGolden || card.isStone) return false;
+	const cellCount = card.matrix ? card.matrix.flat().filter(Boolean).length : 0;
+	return cellCount <= 2;
 }
 
 function normalizeStartingDeckType(deckType) {
@@ -4224,23 +4226,21 @@ function playMove(gameState, playerId, cardId, zoneName, baseX, baseY, rotation,
 	const card = player.hand[cardIndex];
 
 	// Coin mode spelregels:
-	// - 1e kaart per beurt: gratis (geen coins nodig)
-	// - 2e kaart per beurt: kost coins volgens getCardPlayCost
+	// - 1 gratis 2x1 kaart per beurt (domino)
+	// - Alle andere kaarten kosten coins (1-2) en zijn onbeperkt
 	// - Gouden kaarten: altijd gratis, onbeperkt
-	// - Max 2 reguliere kaarten per beurt
 	if (gameState.settings?.coinMode && !card.isGolden) {
-		const coinCardsPlayed = gameState._coinCardsPlayedThisTurn || 0;
-		if (coinCardsPlayed >= 2) {
-			return { error: 'Je hebt al 2 kaarten gespeeld deze beurt.' };
-		}
-		if (coinCardsPlayed >= 1) {
-			// 2e kaart: kost coins
+		const isFree = isFree2x1Card(card);
+		const freeUsed = !!gameState._coinFreeCardUsed;
+		if (isFree && !freeUsed) {
+			// Gratis 2x1 kaart — nog niet gebruikt
+		} else {
+			// Betaalde kaart: check of speler genoeg coins heeft
 			const playCost = getCardPlayCost(card);
 			if (playCost > 0 && (player.goldCoins || 0) < playCost) {
 				return { error: `Niet genoeg goudmunten (nodig: ${playCost}, beschikbaar: ${player.goldCoins || 0})` };
 			}
 		}
-		// 1e kaart is gratis
 	}
 
 	const objectiveSnapshot = {
@@ -4317,11 +4317,15 @@ function playMove(gameState, playerId, cardId, zoneName, baseX, baseY, rotation,
 	// Verwijder kaart uit hand
 	player.hand.splice(cardIndex, 1);
 
-	// Coin mode: trek speelkosten af (dominos zijn gratis, rest kost coins)
-	// Coin mode: alleen 2e kaart kost coins, 1e is gratis
+	// Coin mode: trek speelkosten af
+	// - 1 gratis 2x1 per beurt, rest kost coins
 	if (gameState.settings?.coinMode && !card.isGolden) {
-		const coinCardsPlayed = gameState._coinCardsPlayedThisTurn || 0;
-		if (coinCardsPlayed >= 1) {
+		const isFree = isFree2x1Card(card);
+		const freeUsed = !!gameState._coinFreeCardUsed;
+		if (isFree && !freeUsed) {
+			// Gratis 2x1 kaart gebruikt
+			gameState._coinFreeCardUsed = true;
+		} else {
 			const playCost = getCardPlayCost(card);
 			if (playCost > 0) {
 				player.goldCoins = (player.goldCoins || 0) - playCost;
@@ -4972,6 +4976,7 @@ function undoMove(gameState, playerId) {
 		delete gameState._turnUndoData;
 		gameState._cardPlayedThisTurn = false;
 		delete gameState._coinCardsPlayedThisTurn;
+		delete gameState._coinFreeCardUsed;
 		gameState.bonusPlayedThisTurn = false;
 
 		gameState.updatedAt = Date.now();
@@ -5040,6 +5045,7 @@ function advanceTurn(gameState) {
 	delete gameState._turnUndoData;
 	delete gameState._cardPlayedThisTurn;
 	delete gameState._coinCardsPlayedThisTurn;
+	delete gameState._coinFreeCardUsed;
 	delete gameState._turnTimerStart;
 	gameState.bonusPlayedThisTurn = false;
 
@@ -5995,7 +6001,7 @@ const GameRules = {
 	OBJECTIVE_TEMPLATES, LEVEL_OBJECTIVES, generateObjectiveChoices, checkObjective,
 
 	// Deck
-	buildDeck, buildShapePool, buildCoinModeDeck, getCardPlayCost,
+	buildDeck, buildShapePool, buildCoinModeDeck, getCardPlayCost, isFree2x1Card,
 
 	// Game state
 	createGameState, addPlayer, removePlayer, startGame, chooseStartingDeck, chooseObjective,

@@ -1485,9 +1485,9 @@ class LocusP2PHost {
 		if (bestMove) {
 			actions.push({ type: 'previewCard', move: bestMove });
 			actions.push({ type: 'playCard', move: bestMove });
-			// In coin mode, play a second regular card (resolved at execution time after board update)
+			// In coin mode, keep playing extra paid cards as long as affordable
 			if (this.gameState?.settings?.coinMode) {
-				actions.push({ type: 'coinSecondCard', isHard, isRandom });
+				actions.push({ type: 'coinExtraCards', isHard, isRandom });
 			}
 		}
 
@@ -1693,15 +1693,25 @@ class LocusP2PHost {
 					break;
 				}
 
-				case 'coinSecondCard': {
-					// Coin mode: find and play a second regular card (board is now updated after first card)
-					const secondMove = action.isRandom ? this._aiFindRandomMove(playerId) : this._aiFindBestMove(playerId, action.isHard);
-					if (secondMove) {
-						// Insert preview + play actions immediately after this action
-						actions.splice(idx, 0,
-							{ type: 'previewCard', move: secondMove },
-							{ type: 'playCard', move: secondMove }
-						);
+				case 'coinExtraCards': {
+					// Coin mode: keep playing extra cards as long as the bot can afford them
+					const p = this.gameState?.players?.[playerId];
+					const coins = p?.goldCoins || 0;
+					if (coins >= 1 && p?.hand?.length > 0) {
+						const nextMove = action.isRandom ? this._aiFindRandomMove(playerId) : this._aiFindBestMove(playerId, action.isHard);
+						if (nextMove) {
+							// Check if the bot can afford this card
+							const nextCard = p.hand.find(c => c.id === nextMove.cardId);
+							const cost = nextCard && this.Rules?.getCardPlayCost ? this.Rules.getCardPlayCost(nextCard) : 1;
+							if (cost > 0 && coins >= cost) {
+								// Insert preview + play + another coinExtraCards attempt
+								actions.splice(idx, 0,
+									{ type: 'previewCard', move: nextMove },
+									{ type: 'playCard', move: nextMove },
+									{ type: 'coinExtraCards', isHard: action.isHard, isRandom: action.isRandom }
+								);
+							}
+						}
 					}
 					resetWatchdog();
 					setTimeout(processNext, ACTION_DELAY);
