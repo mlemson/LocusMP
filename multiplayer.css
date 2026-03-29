@@ -2248,6 +2248,7 @@ html.theme-classic .mp-cell.bonus-just-spawned {
 	backdrop-filter: blur(12px);
 	gap: 4px;
 	flex-direction: column;
+	z-index: 10200;
 }
 
 .mp-taunt-menu[open] .mp-taunt-menu-panel {
@@ -2350,6 +2351,9 @@ html.theme-classic .mp-cell.bonus-just-spawned {
 .mp-board.mp-touch-drag-lock {
 	touch-action: none !important;
 	overscroll-behavior: contain;
+	-webkit-user-select: none;
+	user-select: none;
+	-webkit-tap-highlight-color: transparent;
 }
 
 .mp-board-container.mp-touch-drag-lock,
@@ -2608,6 +2612,10 @@ html.theme-classic .mp-cell.bonus-just-spawned {
 	flex-direction: column;
 	align-items: center;
 	gap: 4px;
+	-webkit-user-select: none;
+	user-select: none;
+	-webkit-tap-highlight-color: transparent;
+	-webkit-touch-callout: none;
 }
 
 .mp-card.playable:hover {
@@ -2979,6 +2987,9 @@ html.theme-classic .mp-cell.bonus-just-spawned {
 	align-items: center;
 	justify-content: center;
 	box-shadow: inset 0 1px 2px rgba(0,0,0,0.2);
+	-webkit-user-select: none;
+	user-select: none;
+	-webkit-tap-highlight-color: transparent;
 }
 
 .mp-cell.void {
@@ -4048,9 +4059,10 @@ body.mp-loading .mp-btn {
 
 	.mp-taunt-menu {
 		display: block;
-		grid-column: 1;
-		grid-row: 1;
-		align-self: start;
+		position: fixed;
+		top: 6px;
+		left: 6px;
+		z-index: 10100;
 	}
 
 	#mp-turn-indicator {
@@ -4161,21 +4173,15 @@ body.mp-loading .mp-btn {
 	}
 
 	.mp-objective-title {
-		font-size: 0.68rem;
-		white-space: nowrap;
-		overflow: hidden;
-		text-overflow: ellipsis;
-		max-width: 30vw;
-		flex-shrink: 1;
-		min-width: 0;
+		display: none;
 	}
 
 	.mp-objective-desc {
-		font-size: 0.6rem;
+		font-size: 0.66rem;
 		white-space: nowrap;
 		overflow: hidden;
 		text-overflow: ellipsis;
-		max-width: 28vw;
+		max-width: 60vw;
 		flex-shrink: 1;
 		min-width: 0;
 	}
@@ -4291,12 +4297,26 @@ body.mp-loading .mp-btn {
 	}
 
 	.mp-card {
-		width: 90px;
+		width: 100px;
 	}
 
 	.mp-bonus-bar {
 		flex-wrap: wrap;
 		justify-content: center;
+		gap: 6px;
+	}
+
+	.mp-bonus-btn {
+		padding: 5px 10px;
+		font-size: 0.72rem;
+	}
+
+	.mp-discard-pile-indicator {
+		display: none !important;
+	}
+
+	.mp-turn-label {
+		display: none;
 	}
 
 	.mp-lobby-card,
@@ -4400,7 +4420,7 @@ body.mp-loading .mp-btn {
 	}
 
 	.mp-card {
-		width: 68px;
+		width: 78px;
 		padding: 4px;
 	}
 
@@ -4502,7 +4522,7 @@ body.mp-loading .mp-btn {
 	}
 
 	.mp-turn-label {
-		font-size: 0.58rem;
+		display: none;
 	}
 
 	.mp-turn-player {
@@ -4515,13 +4535,16 @@ body.mp-loading .mp-btn {
 	}
 
 	.mp-objective-title {
-		font-size: 0.64rem;
-		max-width: 24vw;
+		display: none;
 	}
 
 	.mp-objective-desc {
-		font-size: 0.58rem;
-		max-width: 22vw;
+		font-size: 0.6rem;
+		max-width: 55vw;
+	}
+
+	.mp-discard-pile-indicator {
+		display: none !important;
 	}
 
 	.mp-bottom-bar {
@@ -5634,6 +5657,9 @@ body.mp-loading .mp-btn {
 body.mp-placing,
 body.mp-placing * {
 	cursor: none !important;
+	-webkit-user-select: none;
+	user-select: none;
+	-webkit-tap-highlight-color: transparent;
 }
 
 /* ══════════════════════════════════════════════

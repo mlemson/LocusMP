@@ -3390,18 +3390,112 @@ const LEVEL_OBJECTIVES = {
 	]
 };
 
+/**
+ * Coin mode objectives: simpeler, score-gebaseerd, schaalbaar per ronde.
+ * Elke ronde wordt het iets moeilijker en levert meer punten op.
+ */
+function generateCoinModeObjectives(rng, level) {
+	const round = Math.max(1, level || 1);
+	// Basis scaling: hogere rondes = hogere targets en meer punten
+	const pointsBase = 8 + round * 4;            // 12, 16, 20, 24, 28, ...
+	const totalTarget = 10 + round * 8;           // 18, 26, 34, 42, 50, ...
+	const singleColorTarget = 6 + round * 4;      // 10, 14, 18, 22, 26, ...
+	const dualColorTarget = 4 + round * 3;         // 7, 10, 13, 16, 19, ...
+	const balanceTarget = 2 + round * 2;           // 4, 6, 8, 10, 12, ...
+	const yellowColTarget = Math.min(1 + round, 8);
+	const greenEndTarget = Math.min(1 + round, 8);
+	const blueRowTarget = Math.min(1 + Math.floor(round / 2), 5);
+	const redGridTarget = Math.min(Math.ceil(round / 2), 3);
+	const purpleBoldTarget = Math.min(2 + round, 8);
+
+	const pool = [
+		// Totaalscore doelen
+		{ id: `coin_total_${round}`, name: 'Totaalscore', description: `Haal ${totalTarget} punten totaal.`, target: totalTarget, points: pointsBase, coins: round,
+		  useContext: true, check: (ctx) => Math.min((ctx?.playerScore?.total || 0), totalTarget) },
+		// Enkele kleur doelen
+		{ id: `coin_yellow_${round}`, name: 'Geel Doel', description: `Scoor ${singleColorTarget} punten in geel.`, target: singleColorTarget, points: pointsBase, coins: round,
+		  useContext: true, check: (ctx) => Math.min((ctx?.playerScore?.yellow || 0), singleColorTarget) },
+		{ id: `coin_green_${round}`, name: 'Groen Doel', description: `Scoor ${singleColorTarget} punten in groen.`, target: singleColorTarget, points: pointsBase, coins: round,
+		  useContext: true, check: (ctx) => Math.min((ctx?.playerScore?.green || 0), singleColorTarget) },
+		{ id: `coin_blue_${round}`, name: 'Blauw Doel', description: `Scoor ${singleColorTarget} punten in blauw.`, target: singleColorTarget, points: pointsBase, coins: round,
+		  useContext: true, check: (ctx) => Math.min((ctx?.playerScore?.blue || 0), singleColorTarget) },
+		{ id: `coin_purple_${round}`, name: 'Paars Doel', description: `Scoor ${singleColorTarget} punten in paars.`, target: singleColorTarget, points: pointsBase, coins: round,
+		  useContext: true, check: (ctx) => Math.min((ctx?.playerScore?.purple || 0), singleColorTarget) },
+		{ id: `coin_red_${round}`, name: 'Rood Doel', description: `Scoor ${singleColorTarget} punten in rood.`, target: singleColorTarget, points: pointsBase, coins: round,
+		  useContext: true, check: (ctx) => Math.min((ctx?.playerScore?.red || 0), singleColorTarget) },
+		// Twee-kleuren combo's
+		{ id: `coin_yellow_green_${round}`, name: 'Geel + Groen', description: `Scoor ${dualColorTarget} punten in geel en ${dualColorTarget} in groen.`, target: 2, points: pointsBase + 5, coins: round + 1,
+		  useContext: true, check: (ctx) => {
+			let done = 0;
+			if ((ctx?.playerScore?.yellow || 0) >= dualColorTarget) done++;
+			if ((ctx?.playerScore?.green || 0) >= dualColorTarget) done++;
+			return done;
+		  }},
+		{ id: `coin_blue_purple_${round}`, name: 'Blauw + Paars', description: `Scoor ${dualColorTarget} punten in blauw en ${dualColorTarget} in paars.`, target: 2, points: pointsBase + 5, coins: round + 1,
+		  useContext: true, check: (ctx) => {
+			let done = 0;
+			if ((ctx?.playerScore?.blue || 0) >= dualColorTarget) done++;
+			if ((ctx?.playerScore?.purple || 0) >= dualColorTarget) done++;
+			return done;
+		  }},
+		{ id: `coin_red_yellow_${round}`, name: 'Rood + Geel', description: `Scoor ${dualColorTarget} punten in rood en ${dualColorTarget} in geel.`, target: 2, points: pointsBase + 5, coins: round + 1,
+		  useContext: true, check: (ctx) => {
+			let done = 0;
+			if ((ctx?.playerScore?.red || 0) >= dualColorTarget) done++;
+			if ((ctx?.playerScore?.yellow || 0) >= dualColorTarget) done++;
+			return done;
+		  }},
+		// Balans doel
+		{ id: `coin_balance_${round}`, name: 'Evenwicht', description: `Behaal minstens ${balanceTarget} punten in elke kleur.`, target: 5, points: pointsBase + 10, coins: round + 2,
+		  useContext: true, check: (ctx) => countPlayerZonesAtLeast(ctx?.playerScore, balanceTarget) },
+		// Zone-specifieke doelen
+		{ id: `coin_yellowcol_${round}`, name: 'Gele Kolommen', description: `Vul ${yellowColTarget} gele kolom${yellowColTarget > 1 ? 'men' : ''}.`, target: yellowColTarget, points: pointsBase + 5, coins: round + 1,
+		  useContext: true, check: (ctx) => countPlayerCompletedYellowCols(ctx.boardState, ctx.playerId) },
+		{ id: `coin_greenend_${round}`, name: 'Groene Eindpunten', description: `Bereik ${greenEndTarget} groene eindpunt${greenEndTarget > 1 ? 'en' : ''}.`, target: greenEndTarget, points: pointsBase + 5, coins: round + 1,
+		  useContext: true, check: (ctx) => countPlayerGreenEnds(ctx.boardState, ctx.playerId) },
+		{ id: `coin_bluerow_${round}`, name: 'Blauwe Rijen', description: `Bereik ${blueRowTarget} blauwe rij${blueRowTarget > 1 ? 'en' : ''}.`, target: blueRowTarget, points: pointsBase + 5, randomBonuses: Math.min(round, 3),
+		  useContext: true, check: (ctx) => getPlayerBlueHighestTier(ctx.boardState, ctx.playerId) },
+		{ id: `coin_redgrid_${round}`, name: 'Rode Grids', description: `Vul ${redGridTarget} rood${redGridTarget > 1 ? 'e' : ''} grid${redGridTarget > 1 ? 's' : ''}.`, target: redGridTarget, points: pointsBase + 5, coins: round + 2,
+		  useContext: true, check: (ctx) => countPlayerCompletedRedSubgrids(ctx.boardState, ctx.playerId) },
+		{ id: `coin_purple_bold_${round}`, name: 'Paars Cluster', description: `Verbind ${purpleBoldTarget} paarse bold-cellen.`, target: purpleBoldTarget, points: pointsBase + 5, randomBonuses: Math.min(round, 3),
+		  useContext: true, check: (ctx) => getPlayerPurpleMaxBoldCluster(ctx.boardState, ctx.playerId) },
+	];
+
+	const shuffled = shuffleWithRNG([...pool], rng);
+	return shuffled.slice(0, 3);
+}
+
 /** Genereer 3 objectives voor een level (level-afhankelijk) */
 function generateObjectiveChoices(rng, level, gameState = null, playerId = null) {
+	// Coin mode: gebruik simpelere score-gebaseerde doelen
+	const isCoinMode = !!gameState?.settings?.coinMode;
+	if (isCoinMode) {
+		const coinObjs = generateCoinModeObjectives(rng, level);
+		return coinObjs.map(obj => {
+			const basePoints = getObjectiveRewardPoints(obj, 15);
+			let baseCoins = getObjectiveRewardCoins(obj);
+			let baseRandomBonuses = getObjectiveRandomBonuses(obj);
+			return {
+				id: obj.id,
+				name: obj.name,
+				description: obj.description,
+				target: obj.target,
+				points: basePoints,
+				coins: baseCoins,
+				randomBonuses: baseRandomBonuses,
+				dynamicType: null,
+				endOnly: false,
+				targetPlayerId: null,
+				targetObjectiveId: null,
+				targetObjectiveName: null
+			};
+		});
+	}
 	// Objective moeilijkheid schaalt mee met maxWins
 	const mw = gameState ? _getMaxWins(gameState) : 0;
 	const effectiveLevel = Math.max(level || 1, mw >= 3 ? 4 : (mw >= 2 ? 3 : 1));
 	const lvl = Math.min(effectiveLevel, 4);
 	let pool = LEVEL_OBJECTIVES[lvl] || LEVEL_OBJECTIVES[3];
-	// Coin mode: verwijder munt-verzamelobjectieven (coins zijn al currency)
-	const isCoinMode = !!gameState?.settings?.coinMode;
-	if (isCoinMode) {
-		pool = pool.filter(obj => !obj.id?.startsWith('collect_') || !obj.id?.includes('_gold'));
-	}
 	const shuffled = shuffleWithRNG([...pool], rng);
 	return shuffled.slice(0, 3).map(obj => {
 		const materialized = materializeObjectiveForPlayer(obj, gameState, playerId, rng);
@@ -3454,7 +3548,7 @@ function checkObjective(gameStateOrBoardState, playerIdOrObjective, maybeObjecti
 		: objective.target;
 
 	// Zoek in alle levels
-	for (const lvl of [1, 2, 3]) {
+	for (const lvl of [1, 2, 3, 4]) {
 		const tmpl = LEVEL_OBJECTIVES[lvl]?.find(t => t.id === objective.id || (Array.isArray(t.legacyIds) && t.legacyIds.includes(objective.id)));
 		if (tmpl) {
 			if (gameState && isNamedSabotageObjective(objective)) {
@@ -3478,6 +3572,37 @@ function checkObjective(gameStateOrBoardState, playerIdOrObjective, maybeObjecti
 			return {
 				achieved: !failed && current >= normalizedTarget,
 				failed,
+				current,
+				target: normalizedTarget,
+				points: getObjectiveRewardPoints(objective, 15),
+				coins: getObjectiveRewardCoins(objective),
+				randomBonuses: getObjectiveRandomBonuses(objective)
+			};
+		}
+	}
+	// Coin mode objectives: dynamisch gegenereerd per ronde
+	if (objective.id && objective.id.startsWith('coin_')) {
+		const roundMatch = objective.id.match(/_(\d+)$/);
+		const round = roundMatch ? parseInt(roundMatch[1], 10) : (gameState?.level || 1);
+		const coinSeedRng = createRNG(0); // seed irrelevant, we just need all pool entries
+		const coinPool = generateCoinModeObjectives(coinSeedRng, round);
+		const coinTmpl = coinPool.find(t => t.id === objective.id);
+		if (coinTmpl && coinTmpl.useContext) {
+			if (!objectiveCtx) {
+				return {
+					achieved: false,
+					failed: false,
+					current: 0,
+					target: normalizedTarget,
+					points: getObjectiveRewardPoints(objective, 15),
+					coins: getObjectiveRewardCoins(objective),
+					randomBonuses: getObjectiveRandomBonuses(objective)
+				};
+			}
+			const current = coinTmpl.check(objectiveCtx, objective);
+			return {
+				achieved: current >= normalizedTarget,
+				failed: false,
 				current,
 				target: normalizedTarget,
 				points: getObjectiveRewardPoints(objective, 15),
@@ -5206,9 +5331,9 @@ function checkGameEnd(gameState) {
 // ──────────────────────────────────────────────
 
 const SHOP_ITEMS = [
+	{ id: 'random-card', name: 'Random Kaart', description: 'Krijg een willekeurige kaart in je deck', cost: 1, icon: '🎲', oneTimePerLevel: true },
 	{ id: 'extra-bonus', name: 'Bonus Charge', description: 'Krijg een bonus charge naar keuze (eenmalig)', cost: 2, icon: '⚡', oneTimePerLevel: true },
 	{ id: 'time-bomb', name: 'Tijdbom', description: 'Stop de beurt van een andere speler direct! (eenmalig)', cost: 2, icon: '💣', oneTimePerLevel: true },
-	{ id: 'random-card', name: 'Random Kaart', description: 'Krijg een willekeurige kaart in je hand', cost: 1, icon: '🎲', oneTimePerLevel: true },
 ];
 
 function getShopItems(level, player, seed, settings) {
@@ -5373,7 +5498,9 @@ function buyShopItem(gameState, playerId, itemId, extra) {
 				enableMultikleur: player.unlockedMultikleur || false,
 			});
 			const rcCard = rcDeck[0];
-			player.hand.push(rcCard);
+			player.shopCards.push(rcCard);
+			player.permanentShopCards = player.permanentShopCards || [];
+			player.permanentShopCards.push(rcCard);
 			if (!isCoinMode) player.goldCoins -= item.cost;
 			gameState.updatedAt = Date.now();
 			return { success: true, card: rcCard };
