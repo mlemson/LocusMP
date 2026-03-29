@@ -144,6 +144,19 @@ const PERK_BRANCHES = {
 			{ id: 'flex_extra_card', name: 'Brede Hand', icon: '🃑', description: 'Je hand bevat 4 kaarten in plaats van 3', cost: 1, tier: 2,
 				requiresAnyOf: ['flex_gap', 'flex_rotate'] }
 		]
+	},
+	special: {
+		id: 'special',
+		name: 'Speciale Kaarten',
+		icon: '✨',
+		description: 'Ontgrendel gouden, multikleur en stenen kaarten',
+		sequential: false,
+		perks: [
+			{ id: 'special_golden', name: 'Gouden Kaart', icon: '✨', description: 'Ontgrendel gouden kaarten — extra speelbaar naast je beurt', cost: 1, tier: 1 },
+			{ id: 'special_multi', name: 'Multikleur Kaart', icon: '🌈', description: 'Ontgrendel multikleur kaarten — past in elke zone', cost: 1, tier: 1 },
+			{ id: 'special_stone', name: 'Blokkade', icon: '🪨', description: 'Ontgrendel stenen kaarten — blokkeert tegenstanders', cost: 1, tier: 2,
+				requiresAnyOf: ['special_golden', 'special_multi', 'agg_stone', 'agg_mine'] }
+		]
 	}
 };
 
@@ -247,6 +260,50 @@ function _applyPerkSideEffects(player, perkId, gameState, playerId) {
 		player.perks.extraCard = true;
 		drawHandForPlayer(gameState, player, 4);
 	}
+	if (perkId === 'special_golden') {
+		player.unlockedGolden = true;
+		const rng = createRNG(Date.now() + (playerId || '').length + 7777);
+		const choices = [];
+		for (let i = 0; i < 3; i++) {
+			const deck = buildDeck(1, rng, { enableGolden: true, goldenChance: 1.0 });
+			deck[0].shopPrice = 0;
+			choices.push(deck[0]);
+		}
+		player._pendingFreeChoices = choices;
+	}
+	if (perkId === 'special_multi') {
+		player.unlockedMultikleur = true;
+		const rng = createRNG(Date.now() + (playerId || '').length + 8888);
+		const choices = [];
+		for (let i = 0; i < 3; i++) {
+			const deck = buildDeck(1, rng, { enableMultikleur: true, multikleurChance: 1.0 });
+			deck[0].shopPrice = 0;
+			choices.push(deck[0]);
+		}
+		player._pendingFreeChoices = choices;
+	}
+	if (perkId === 'special_stone') {
+		player.unlockedSteen = true;
+		const rng = createRNG(Date.now() + (playerId || '').length + 9999);
+		const choices = [];
+		const pick2 = STONE_SHAPES_2[Math.floor(rng() * STONE_SHAPES_2.length)];
+		const pick3 = STONE_SHAPES_3[Math.floor(rng() * STONE_SHAPES_3.length)];
+		const pick4 = STONE_SHAPES_4[Math.floor(rng() * STONE_SHAPES_4.length)];
+		[pick2, pick3, pick4].forEach((shape, i) => {
+			choices.push({
+				id: `perk-stone-${i}-${Math.floor(rng() * 100000)}`,
+				shapeName: shape.name,
+				matrix: cloneMatrix(shape.matrix),
+				category: 'stone',
+				color: { ...STONE_COLOR },
+				isStone: true,
+				rotation: 0,
+				mirrored: false,
+				shopPrice: 0
+			});
+		});
+		player._pendingFreeChoices = choices;
+	}
 }
 
 /**
@@ -292,12 +349,13 @@ function choosePerk(gameState, playerId, perkId) {
 	_applyPerkSideEffects(player, perkId, gameState, playerId);
 
 	gameState.updatedAt = Date.now();
+	const freeChoices = player._pendingFreeChoices || null;
 	if (isGoalPhase) {
 		player.goalPerksDone = isGoalPerkDone(gameState, playerId);
 		const startedPlaying = maybeStartPlayingAfterGoalPhase(gameState);
-		return { success: true, perk: { id: perkId, name: perk.name, icon: perk.icon, cost: perk.cost }, startedPlaying };
+		return { success: true, perk: { id: perkId, name: perk.name, icon: perk.icon, cost: perk.cost }, startedPlaying, freeChoices };
 	}
-	return { success: true, perk: { id: perkId, name: perk.name, icon: perk.icon, cost: perk.cost } };
+	return { success: true, perk: { id: perkId, name: perk.name, icon: perk.icon, cost: perk.cost }, freeChoices };
 }
 
 function allObjectivesChosen(gameState) {
@@ -311,6 +369,7 @@ function isGoalPerkDone(gameState, playerId) {
 	const player = gameState.players?.[playerId];
 	if (!player || player.connected === false) return true;
 	if (!player.chosenObjective) return false;
+	if (player._pendingFreeChoices && player._pendingFreeChoices.length > 0) return false;
 	if (player.goalPerksDone) return true;
 	if (!player.perks || (player.perks.perkPoints || 0) < 1) return true;
 	const available = getAvailablePerks(player);
@@ -851,7 +910,7 @@ function generateLevel1Board(rng, level, playerCount, maxWins) {
 		placeBonusSymbols(zones.yellow, rng, 3, { excludeColor: 'yellow' });
 	} else if (world === 2) {
 		// World 2: vierkant grid met diagonale scoring
-		const yellowSize = 11 + playerTier;
+		const yellowSize = 8 + playerTier;
 		const yellowBold = [];
 		// Bold cellen op de 4 hoeken + midden
 		yellowBold.push({ x: 0, y: 0 }, { x: yellowSize - 1, y: 0 });
@@ -4253,9 +4312,9 @@ function playMove(gameState, playerId, cardId, zoneName, baseX, baseY, rotation,
 		bonusInventory: player.bonusInventory ? { ...player.bonusInventory } : { yellow: 0, red: 0, green: 0, purple: 0, blue: 0, any: 0 }
 	};
 
-	// Max 1 regular kaart per beurt — gouden kaarten mogen als EXTRA gespeeld worden
+	// Max 1 regular kaart per beurt — gouden kaarten en gestolen kaarten mogen als EXTRA gespeeld worden
 	// Coin mode: meerdere kaarten toegestaan als je coins betaalt
-	if (gameState._cardPlayedThisTurn && !card.isGolden && !gameState.settings?.coinMode) {
+	if (gameState._cardPlayedThisTurn && !card.isGolden && !card.isStolenTemp && !gameState.settings?.coinMode) {
 		return { error: 'Je hebt al een kaart gespeeld deze beurt. Speel bonussen of beëindig je beurt.' };
 	}
 
@@ -5482,6 +5541,32 @@ function buyShopItem(gameState, playerId, itemId, extra) {
 		return { success: true, card: boughtCard };
 	}
 
+	// Handle random-card separately (not in SHOP_ITEMS array)
+	if (itemId === 'random-card') {
+		if (player.shopPurchasesThisLevel?.['random-card']) return { error: 'Al gekocht deze ronde' };
+		if (isCoinMode) {
+			if (player._coinShopCardBought) return { error: 'Je mag maar 1 gratis kaart kiezen in coin modus' };
+			player._coinShopCardBought = true;
+		} else {
+			if ((player.goldCoins || 0) < 1) return { error: 'Niet genoeg goud' };
+			player.goldCoins -= 1;
+		}
+		const rcSeed = (gameState.seed | 0) ^ ((gameState.level || 1) * 991) ^ hashStringToInt(playerId) ^ Date.now();
+		const rcRng = createRNG(rcSeed);
+		const rcDeck = buildDeck(1, rcRng, {
+			enableGolden: player.unlockedGolden || false,
+			enableMultikleur: player.unlockedMultikleur || false,
+		});
+		const rcCard = rcDeck[0];
+		player.shopCards.push(rcCard);
+		player.permanentShopCards = player.permanentShopCards || [];
+		player.permanentShopCards.push(rcCard);
+		player.shopPurchasesThisLevel = player.shopPurchasesThisLevel || {};
+		player.shopPurchasesThisLevel['random-card'] = true;
+		gameState.updatedAt = Date.now();
+		return { success: true, card: rcCard };
+	}
+
 	const item = SHOP_ITEMS.find(i => i.id === itemId);
 	if (!item) return { error: 'Item niet gevonden' };
 	if (item.oneTimePerLevel && player.shopPurchasesThisLevel?.[itemId]) return { error: 'Dit item is eenmalig per shopronde' };
@@ -5506,26 +5591,6 @@ function buyShopItem(gameState, playerId, itemId, extra) {
 			player.timeBombs = (player.timeBombs || 0) + 1;
 			if (!isCoinMode) player.goldCoins -= item.cost;
 			break;
-		}
-		case 'random-card': {
-			if (isCoinMode) {
-				// In coin mode random-card counts as card, not action
-				if (player._coinShopCardBought) return { error: 'Je mag maar 1 gratis kaart kiezen in coin modus' };
-				player._coinShopCardBought = true;
-			}
-			const rcSeed = (gameState.seed | 0) ^ ((gameState.level || 1) * 991) ^ hashStringToInt(playerId) ^ Date.now();
-			const rcRng = createRNG(rcSeed);
-			const rcDeck = buildDeck(1, rcRng, {
-				enableGolden: player.unlockedGolden || false,
-				enableMultikleur: player.unlockedMultikleur || false,
-			});
-			const rcCard = rcDeck[0];
-			player.shopCards.push(rcCard);
-			player.permanentShopCards = player.permanentShopCards || [];
-			player.permanentShopCards.push(rcCard);
-			if (!isCoinMode) player.goldCoins -= item.cost;
-			gameState.updatedAt = Date.now();
-			return { success: true, card: rcCard };
 		}
 		default:
 			return { error: 'Onbekend item' };
@@ -5608,7 +5673,7 @@ function chooseRewardCardType(gameState, playerId, cardType) {
 /** Claim a free card from the unlock popup (player picks 1 of 3) */
 function claimFreeCard(gameState, playerId, cardId) {
 	const rewardingMode = !!gameState.settings?.rewardingMode;
-	const validPhase = gameState.phase === 'shopping' || (rewardingMode && (gameState.phase === 'levelComplete' || gameState.phase === 'choosingGoals'));
+	const validPhase = gameState.phase === 'shopping' || gameState.phase === 'choosingGoals' || (rewardingMode && gameState.phase === 'levelComplete');
 	if (!validPhase) return { error: 'Niet in shop fase' };
 	const player = gameState.players[playerId];
 	if (!player) return { error: 'Speler niet gevonden' };
@@ -5746,7 +5811,7 @@ function startNextLevel(gameState) {
 		player.scoreBreakdown = { yellow: 0, green: 0, blue: 0, red: 0, purple: 0, bonus: 0, gold: 0, total: 0 };
 		// Coin mode: reset coins elke ronde
 		if (gameState.settings?.coinMode) {
-			player.goldCoins = 0;
+			player.goldCoins = 1;  // Coin mode: start elke ronde met 1 coin
 		}
 		// Reset bonus inventory? Nee, behoud bonussen
 		// Reset per-level perk counters (perks zelf blijven)

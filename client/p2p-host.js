@@ -1110,6 +1110,15 @@ class LocusP2PHost {
 				const perkRes = this.Rules.choosePerk(this.gameState, aiId, perkChoice);
 				if (perkRes?.error) continue;
 				changed = true;
+
+				// If perk generated free card choices (special perks), auto-claim one
+				if (perkRes.freeChoices && perkRes.freeChoices.length > 0) {
+					const card = perkRes.freeChoices[Math.floor(Math.random() * perkRes.freeChoices.length)];
+					if (card?.id) {
+						this.Rules.claimFreeCard(this.gameState, aiId, card.id);
+					}
+				}
+
 				// ML logging for perk choice
 				try {
 					console.log(`[AI-ML] PERK player=${aiId} chose=${perkChoice} diff=${aiDiff}`);
@@ -2985,6 +2994,9 @@ class LocusP2PHost {
 			addIfAvailable('flex_rotate', 8);
 			addIfAvailable('bonus_multi_double', 8);
 			addIfAvailable('flex_extra_card', 9);
+			addIfAvailable('special_golden', 7);
+			addIfAvailable('special_multi', 7);
+			addIfAvailable('special_stone', 10);
 			// Bonus perks at lower weight for aggressive
 			const colorPerks = ['bonus_yellow', 'bonus_red', 'bonus_green', 'bonus_purple', 'bonus_blue'];
 			for (const cp of colorPerks) {
@@ -3022,6 +3034,9 @@ class LocusP2PHost {
 			if (Math.random() < 0.35) addIfAvailable('agg_mine', 1);
 			addIfAvailable('agg_steal', 3);
 			addIfAvailable('agg_spy', 4);
+			addIfAvailable('special_golden', 6);
+			addIfAvailable('special_multi', 6);
+			addIfAvailable('special_stone', 5);
 		}
 
 		if (candidates.length === 0) {

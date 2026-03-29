@@ -2874,7 +2874,7 @@ class LocusLobbyUI {
 					<div class="mp-card-shape">
 						${this._renderMiniGrid(renderMatrix, card.color)}
 					</div>
-					${card.isGolden ? '<div class="mp-card-extra-badge">⭐ EXTRA</div>' : ''}
+	
 					${card.isStolenTemp ? '<div class="mp-card-extra-badge" style="background:rgba(255,100,100,0.85);">🃏 TIJDELIJK</div>' : ''}
 					${coinBadge}
 				</div>
@@ -6222,11 +6222,11 @@ class LocusLobbyUI {
 					<div class="mp-shop-header-icon">🛒</div>
 					<h2 class="mp-shop-title">Shop — Level ${level}</h2>
 				</div>
-				<div class="mp-shop-gold">
+				${!isCoinMode ? `<div class="mp-shop-gold">
 					<span class="mp-shop-gold-icon">💰</span>
 					<span class="mp-shop-gold-amount">${goldCoins}</span>
 					<span class="mp-shop-gold-label">goudmunten</span>
-				</div>
+				</div>` : ''}
 
 				<div class="mp-shop-offerings">
 					<h3 class="mp-shop-section-title">🃏 Kaarten te koop</h3>
@@ -6302,35 +6302,7 @@ class LocusLobbyUI {
 					}).join('')}
 				</div>
 
-				<div class="mp-shop-special-cards">
-					<h3 class="mp-shop-section-title">✨ Speciale Kaarten</h3>
-					<div class="mp-shop-special-grid">
-						<button class="mp-shop-special-btn" data-card-type="golden" ${isReady ? 'disabled' : ''}>
-							<span class="mp-shop-special-icon">✨</span>
-							<div class="mp-shop-special-info">
-								<div class="mp-shop-special-name">Gouden Kaart</div>
-								<div class="mp-shop-special-desc">Extra speelbaar naast je normale beurt</div>
-							</div>
-							<span class="mp-shop-special-cost">${isCoinMode ? '🎁 Gratis' : '💰 3'}</span>
-						</button>
-						<button class="mp-shop-special-btn" data-card-type="multikleur" ${isReady ? 'disabled' : ''}>
-							<span class="mp-shop-special-icon">🌈</span>
-							<div class="mp-shop-special-info">
-								<div class="mp-shop-special-name">Multikleur Kaart</div>
-								<div class="mp-shop-special-desc">Past in elke zone — uiterst flexibel</div>
-							</div>
-							<span class="mp-shop-special-cost">${isCoinMode ? '🎁 Gratis' : '💰 3'}</span>
-						</button>
-						<button class="mp-shop-special-btn" data-card-type="steen" ${isReady ? 'disabled' : ''}>
-							<span class="mp-shop-special-icon">🪨</span>
-							<div class="mp-shop-special-info">
-								<div class="mp-shop-special-name">Stenen Kaart</div>
-								<div class="mp-shop-special-desc">Blokkeert tegenstanders — strategisch wapen</div>
-							</div>
-							<span class="mp-shop-special-cost">${isCoinMode ? '🎁 Gratis' : '💰 3'}</span>
-						</button>
-					</div>
-				</div>
+
 
 				${(() => {
 					const _shopIds = new Set((shopCards || []).map(c => c.id));
@@ -6379,41 +6351,7 @@ class LocusLobbyUI {
 			btn.addEventListener('click', () => this._handleBuyItem(btn.dataset.itemId, btn));
 		});
 
-		// Bind special card type buttons (golden/multikleur/steen)
-		container.querySelectorAll('.mp-shop-special-btn:not([disabled])').forEach(btn => {
-			btn.addEventListener('click', async () => {
-				const type = btn.dataset.cardType;
-				btn.disabled = true;
-				try {
-					const result = await this.mp.chooseRewardCardType(type);
-					if (!result?.success) {
-						this._showToast(result?.error || 'Kon type niet kiezen', 'error');
-						btn.disabled = false;
-						return;
-					}
-					const typeNames = { golden: '✨ Gouden kaart', multikleur: '🌈 Multikleur kaart', steen: '🪨 Stenen kaart' };
-					const choices = result.freeChoices || this.mp.getMyPlayer()?._pendingFreeChoices || [];
-					this._showRewardFreeCardChoice(choices, typeNames[type] || 'Speciale kaart', async (cardId) => {
-						if (cardId) {
-							try {
-								const claim = await this.mp.claimFreeCard(cardId);
-								if (claim?.success) {
-									this._showToast(`${typeNames[type]} — kaart gekozen!`, 'success');
-								} else if (claim?.error) {
-									this._showToast(claim.error, 'error');
-								}
-							} catch (e) {
-								this._showToast('Fout bij claimen: ' + (e.message || e), 'error');
-							}
-						}
-						this._renderShop();
-					});
-				} catch (err) {
-					this._showToast('Fout: ' + (err.message || err), 'error');
-					btn.disabled = false;
-				}
-			});
-		});
+
 
 		// Bind ready button
 		const readyBtn = container.querySelector('#mp-shop-ready-btn');
@@ -6662,6 +6600,40 @@ class LocusLobbyUI {
 			}
 			this._playGoldSound();
 			this._showToast(`${result.perk?.icon || '🎯'} ${result.perk?.name || 'Perk'} ontgrendeld!`, 'success');
+
+			// If perk generated free card choices, show the card selection popup first
+			const freeChoices = result.freeChoices || myPlayer?._pendingFreeChoices || [];
+			if (freeChoices.length > 0) {
+				const typeNames = { special_golden: '✨ Gouden kaart', special_multi: '🌈 Multikleur kaart', special_stone: '🪨 Blokkade kaart' };
+				const title = typeNames[perkId] || (result.perk?.name || 'Speciale kaart');
+				// Close perk popup temporarily
+				document.getElementById('mp-perk-popup-overlay')?.remove();
+				this._showRewardFreeCardChoice(freeChoices, title, async (cardId) => {
+					if (cardId) {
+						try {
+							const claim = await this.mp.claimFreeCard(cardId);
+							if (claim?.success) {
+								this._showToast(`${title} — kaart gekozen!`, 'success');
+							} else if (claim?.error) {
+								this._showToast(claim.error, 'error');
+							}
+						} catch (e) {
+							this._showToast('Fout bij claimen: ' + (e.message || e), 'error');
+						}
+					}
+					// Re-open perk popup or close based on remaining points
+					const pts = this.mp.getMyPlayer?.()?.perks?.perkPoints || 0;
+					if (pts > 0) {
+						this._openPerkPopup(onClose);
+					} else if (onClose) {
+						onClose();
+					}
+					try { this._renderBonusBar(); } catch (e) {}
+					try { this._renderHand(); } catch (e) {}
+				});
+				return;
+			}
+
 			// Auto-close if no perk points remain, otherwise re-open with updated state
 			const remainingPoints = this.mp.getMyPlayer?.()?.perks?.perkPoints || 0;
 			if (remainingPoints <= 0) {
