@@ -323,6 +323,8 @@ function choosePerk(gameState, playerId, perkId) {
 	if (perkId === '__skip__') {
 		if (isGoalPhase) {
 			player.goalPerksDone = true;
+			// Safety: clear unclaimed free choices so they don't block phase transition
+			if (player._pendingFreeChoices) delete player._pendingFreeChoices;
 			gameState.updatedAt = Date.now();
 			const startedPlaying = maybeStartPlayingAfterGoalPhase(gameState);
 			return { success: true, skipped: true, startedPlaying };

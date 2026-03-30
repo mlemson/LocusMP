@@ -7486,11 +7486,23 @@ class LocusLobbyUI {
 			setTimeout(() => s.remove(), 900);
 		}
 
-		// Floating text
-		const zoneEl = document.querySelector('.mp-zone-yellow');
-		if (zoneEl) {
-			this._showFloatingScore(zoneEl, `🫧 Parel! +${count * 5} goud`, '#e0f7fa', x, y);
-		}
+	}
+
+	/** Show a centered popup when a perk is unlocked via pearl */
+	_showPearlPerkPopup(icon, text) {
+		const popup = document.createElement('div');
+		popup.className = 'mp-pearl-perk-popup';
+		popup.innerHTML = `
+			<div class="mp-pearl-perk-icon">${icon}</div>
+			<div class="mp-pearl-perk-text">${this._escapeHtml(text)}</div>
+		`;
+		document.body.appendChild(popup);
+		requestAnimationFrame(() => popup.classList.add('show'));
+		setTimeout(() => {
+			popup.classList.remove('show');
+			popup.classList.add('hide');
+			setTimeout(() => popup.remove(), 500);
+		}, 2200);
 	}
 
 	/** Reef theme: shockwave ring effect on card placement */
@@ -7615,13 +7627,14 @@ class LocusLobbyUI {
 				// Coin mode: parels geven gratis perks of perkpunten
 				if (isMe && pearlAutoPerks && pearlAutoPerks.length > 0) {
 					for (const ap of pearlAutoPerks) {
-						this._showFloatingScore(zoneEl, `🎁 ${ap.icon || '🎯'} ${ap.name}`, '#e8dff5', cx, cy);
-						this._showToast(`${ap.icon || '🎁'} ${ap.name} ontgrendeld via parel!`, 'success');
+						this._showPearlPerkPopup(ap.icon || '🎯', ap.name);
 					}
 					try { this._renderBonusBar(); } catch (e) {}
 					try { this._renderHand(); } catch (e) {}
 				} else if (pearlPerkPoints && pearlPerkPoints > 0 && isMe) {
-					this._showFloatingScore(zoneEl, `🎁 +${pearlPerkPoints} perkpunt${pearlPerkPoints !== 1 ? 'en' : ''}`, '#e8dff5', cx, cy);
+					this._showPearlPerkPopup('🫧', `+${pearlPerkPoints} perkpunt${pearlPerkPoints !== 1 ? 'en' : ''}`);
+				} else if (isMe) {
+					this._showFloatingScore(zoneEl, '🫧 Parel!', '#e0f7fa', cx, cy);
 				}
 			}, goldCollected > 0 ? 400 : 0);
 		}
@@ -8369,6 +8382,39 @@ class LocusLobbyUI {
 						this._showToast(`${result.perk?.icon || '🎯'} ${result.perk?.name || 'Perk'} ontgrendeld!`, 'success');
 						try { this._renderBonusBar(); } catch (e) {}
 						try { this._renderHand(); } catch (e) {}
+
+						// If perk generated free card choices (special_golden/multi/stone), show card selection first
+						const freeChoices = result.freeChoices || this.mp.getMyPlayer?.()._pendingFreeChoices || [];
+						if (freeChoices.length > 0) {
+							const typeNames = { special_golden: '✨ Gouden kaart', special_multi: '🌈 Multikleur kaart', special_stone: '🪨 Blokkade kaart' };
+							const title = typeNames[perkId] || (result.perk?.name || 'Speciale kaart');
+							overlay.classList.remove('show');
+							setTimeout(() => {
+								overlay.remove();
+								this._showRewardFreeCardChoice(freeChoices, title, async (cardId) => {
+									if (cardId) {
+										try {
+											const claim = await this.mp.claimFreeCard(cardId);
+											if (claim?.success) {
+												this._showToast(`${title} — kaart gekozen!`, 'success');
+											}
+										} catch (e) {
+											console.error('[Locus UI] Free card claim error:', e);
+										}
+									}
+									const pts = this.mp.getMyPlayer?.()?.perks?.perkPoints || 0;
+									if (pts > 0) {
+										this._showRewardingPerkChoice(onDone);
+									} else if (onDone) {
+										onDone();
+									}
+									try { this._renderBonusBar(); } catch (e) {}
+									try { this._renderHand(); } catch (e) {}
+								});
+							}, 350);
+							return;
+						}
+
 						// Check remaining perk points — re-show if more remain
 						const remaining = this.mp.getMyPlayer?.()?.perks?.perkPoints || 0;
 						if (remaining > 0) {

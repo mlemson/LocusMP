@@ -565,6 +565,7 @@ class LocusP2PHost {
 				break;
 			case 'claimFreeCard':
 				result = this.Rules.claimFreeCard(this.gameState, playerId, data.cardId);
+				if (result.startedPlaying) this._startTimerForCurrentPlayer(true);
 				break;
 			case 'chooseRewardCardType':
 				result = this.Rules.chooseRewardCardType(this.gameState, playerId, data.cardType);

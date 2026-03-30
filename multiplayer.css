@@ -10116,6 +10116,56 @@ html.theme-bloom .mp-sparkle {
 	100% { opacity: 0; transform: translate(calc(-50% + var(--dx)), calc(-50% + var(--dy))) scale(0); }
 }
 
+/* ── Pearl perk unlock popup ── */
+.mp-pearl-perk-popup {
+	position: fixed;
+	top: 50%;
+	left: 50%;
+	transform: translate(-50%, -50%) scale(0.3);
+	z-index: 10001;
+	pointer-events: none;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 6px;
+	background: linear-gradient(135deg, rgba(40,30,60,0.95), rgba(60,40,90,0.95));
+	border: 2px solid rgba(232,223,245,0.5);
+	border-radius: 18px;
+	padding: 18px 32px;
+	box-shadow: 0 0 30px rgba(200,160,255,0.4), 0 8px 32px rgba(0,0,0,0.5);
+	opacity: 0;
+	transition: opacity 0.35s ease, transform 0.35s cubic-bezier(0.34,1.56,0.64,1);
+}
+.mp-pearl-perk-popup.show {
+	opacity: 1;
+	transform: translate(-50%, -50%) scale(1);
+}
+.mp-pearl-perk-popup.hide {
+	opacity: 0;
+	transform: translate(-50%, -50%) scale(0.6);
+	transition: opacity 0.4s ease, transform 0.4s ease;
+}
+.mp-pearl-perk-icon {
+	font-size: 2.8rem;
+	line-height: 1;
+	filter: drop-shadow(0 0 8px rgba(232,223,245,0.6));
+	animation: mp-pearl-perk-bounce 0.5s ease 0.1s;
+}
+.mp-pearl-perk-text {
+	font-size: 1rem;
+	font-weight: 600;
+	color: #e8dff5;
+	text-shadow: 0 1px 4px rgba(0,0,0,0.5);
+	text-align: center;
+	max-width: 220px;
+}
+@keyframes mp-pearl-perk-bounce {
+	0%   { transform: scale(1); }
+	40%  { transform: scale(1.3); }
+	70%  { transform: scale(0.9); }
+	100% { transform: scale(1); }
+}
+
 /* ── Sell popup ── */
 .mp-popup-overlay {
 	position: fixed;
