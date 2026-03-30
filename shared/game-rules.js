@@ -5707,6 +5707,14 @@ function claimFreeCard(gameState, playerId, cardId) {
 	}
 
 	gameState.updatedAt = Date.now();
+
+	// Re-check goal perk status and phase transition after claiming during choosingGoals
+	if (gameState.phase === 'choosingGoals') {
+		player.goalPerksDone = isGoalPerkDone(gameState, playerId);
+		const startedPlaying = maybeStartPlayingAfterGoalPhase(gameState);
+		return { success: true, card, startedPlaying };
+	}
+
 	return { success: true, card };
 }
 
@@ -6112,6 +6120,9 @@ const GameRules = {
 
 	// Perks
 	PERK_BRANCHES, choosePerk, getAvailablePerks, playerHasPerk, getBonusShapeForPlayer,
+
+	// Phase helpers
+	maybeStartPlayingAfterGoalPhase,
 
 	// Utils
 	createRNG, shuffleWithRNG, getMajorityOwner

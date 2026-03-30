@@ -543,6 +543,14 @@ function executeAIActions(gameId) {
 					console.log(`[Locus AI] ${player.name} koos perk "${perkResult.perk?.name}" tijdens doelstellingsfase`);
 					_emitBotActivity(gameId, aiId, `${perkResult.perk?.icon || '🎯'} Perk: ${perkResult.perk?.name || perkChoice}`);
 					changed = true;
+					// Auto-claim free card choice (e.g. from special_golden/multi/stone perks)
+					if (player._pendingFreeChoices && player._pendingFreeChoices.length > 0) {
+						const freeCard = player._pendingFreeChoices[0];
+						const claimResult = GameRules.claimFreeCard(gameState, aiId, freeCard.id);
+						if (claimResult.success) {
+							console.log(`[Locus AI] ${player.name} claimde gratis kaart "${freeCard.id}" na perk`);
+						}
+					}
 				}
 				if (perkResult.startedPlaying) {
 					_startTimerForCurrentPlayer(gameId, true);
@@ -562,16 +570,38 @@ function executeAIActions(gameId) {
 		if (changed) {
 			broadcastGameState(io, gameId);
 		} else {
-			// If no state changed, explicitly re-schedule AI to avoid getting stuck in choosingGoals.
+			// If no state changed, try to force phase transition (e.g. after human claimFreeCard)
 			const gsNow = games.get(gameId);
 			if (gsNow?.phase === 'choosingGoals') {
-				const aiStatus = [...gameAIs].map(aiId => {
+				// Auto-claim any remaining AI free choices that block transition
+				for (const aiId of gameAIs) {
 					const p = gsNow.players?.[aiId];
-					if (!p) return `${aiId}:missing`;
-					return `${p.name || aiId}:{obj:${!!p.chosenObjective}, perkPts:${p.perks?.perkPoints || 0}, done:${!!p.goalPerksDone}}`;
-				}).join(' | ');
-				console.warn(`[Locus AI] choosingGoals no progress; rescheduling. ${aiStatus}`);
-				scheduleAIActions(gameId);
+					if (p?._pendingFreeChoices?.length > 0) {
+						const freeCard = p._pendingFreeChoices[0];
+						const claimResult = GameRules.claimFreeCard(gsNow, aiId, freeCard.id);
+						if (claimResult.success) {
+							console.log(`[Locus AI] ${p.name} claimde achtergebleven gratis kaart "${freeCard.id}"`);
+							changed = true;
+						}
+					}
+				}
+				// Try phase transition explicitly
+				const transitioned = GameRules.maybeStartPlayingAfterGoalPhase(gsNow);
+				if (transitioned) {
+					console.log(`[Locus AI] Forced phase transition to playing after stuck choosingGoals`);
+					_startTimerForCurrentPlayer(gameId, true);
+					broadcastGameState(io, gameId);
+				} else if (changed) {
+					broadcastGameState(io, gameId);
+				} else {
+					const aiStatus = [...gameAIs].map(aiId => {
+						const p = gsNow.players?.[aiId];
+						if (!p) return `${aiId}:missing`;
+						return `${p.name || aiId}:{obj:${!!p.chosenObjective}, perkPts:${p.perks?.perkPoints || 0}, done:${!!p.goalPerksDone}, free:${p._pendingFreeChoices?.length || 0}}`;
+					}).join(' | ');
+					console.warn(`[Locus AI] choosingGoals no progress; rescheduling. ${aiStatus}`);
+					scheduleAIActions(gameId);
+				}
 			}
 		}
 		return;
@@ -1783,6 +1813,9 @@ io.on('connection', (socket) => {
 
 			console.log(`[Locus] Speler ${info.playerId} koos gratis kaart ${cardId}`);
 			callback(result);
+			if (result.startedPlaying) {
+				_startTimerForCurrentPlayer(info.gameId, true);
+			}
 			broadcastGameState(io, info.gameId);
 
 		} catch (error) {
