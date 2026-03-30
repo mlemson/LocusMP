@@ -6656,6 +6656,7 @@ class LocusLobbyUI {
 			// Re-render bonus bar and hand in case of stone/mine perks
 			try { this._renderBonusBar(); } catch (e) {}
 			try { this._renderHand(); } catch (e) {}
+			try { this._renderPerkIcons(); } catch (e) {}
 		} catch (error) {
 			console.error('[Locus UI] Choose perk error:', error);
 			this._showToast('Perk ontgrendelen mislukt', 'error');
@@ -7393,6 +7394,7 @@ class LocusLobbyUI {
 
 	/** Sparkle burst effect (bij goud) */
 	_showSparkle(x, y, count = 6) {
+		if (!Number.isFinite(x) || !Number.isFinite(y) || x < 1 || y < 1) return;
 		const isBloom = document.documentElement.classList.contains('theme-bloom');
 		const isClassicSp = document.documentElement.classList.contains('theme-classic');
 		const enhanced = isBloom || isClassicSp;
@@ -7413,6 +7415,7 @@ class LocusLobbyUI {
 
 	/** Confetti burst (Bloom theme dopamine) */
 	_showConfetti(x, y, count = 8, colors = ['#e07a5f', '#4caf68', '#5a9ec9', '#d4a820', '#9678c4', '#f0a030', '#d46b7a']) {
+		if (!Number.isFinite(x) || !Number.isFinite(y) || x < 1 || y < 1) return;
 		for (let i = 0; i < count; i++) {
 			const c = document.createElement('div');
 			c.className = 'mp-confetti';
@@ -7631,6 +7634,7 @@ class LocusLobbyUI {
 					}
 					try { this._renderBonusBar(); } catch (e) {}
 					try { this._renderHand(); } catch (e) {}
+					try { this._renderPerkIcons(); } catch (e) {}
 				} else if (pearlPerkPoints && pearlPerkPoints > 0 && isMe) {
 					this._showPearlPerkPopup('🫧', `+${pearlPerkPoints} perkpunt${pearlPerkPoints !== 1 ? 'en' : ''}`);
 				} else if (isMe) {

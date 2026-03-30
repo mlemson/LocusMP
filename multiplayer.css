@@ -948,6 +948,13 @@ html.theme-classic .mp-cell-pearl-dot {
 	box-shadow: 0 1px 3px rgba(0,0,0,0.25), inset 0 1px 2px rgba(255,255,255,0.7);
 }
 
+/* Mine dot — more visible on classic light backgrounds */
+html.theme-classic .mp-cell-mine-dot {
+	font-size: 13px;
+	opacity: 0.85;
+	filter: drop-shadow(0 1px 2px rgba(0,0,0,0.4));
+}
+
 /* Purple outer ring cells — singleplayer darker tinted background */
 html.theme-classic .mp-zone-purple .mp-cell.outer-ring-0:not(.active) {
 	background: #d3c3ea;
@@ -2323,6 +2330,9 @@ html.theme-classic .mp-cell.bonus-just-spawned {
 	align-items: flex-start;
 	justify-content: center;
 	background: radial-gradient(ellipse at 50% 40%, rgba(166, 140, 255, 0.04) 0%, transparent 70%);
+	position: relative;
+	z-index: 0;
+	isolation: isolate;
 }
 
 .mp-zone-dots {
@@ -13331,6 +13341,12 @@ html.theme-reef .mp-objective-reveal-sub {
 		overflow-y: auto;
 		min-width: 0;
 		padding: 0 8px;
+		display: flex;
+		flex-direction: column;
+	}
+	.mp-deck-cards-panel {
+		flex: none;
+		overflow-y: visible;
 	}
 	.mp-deck-objective-panel {
 		width: 100%;

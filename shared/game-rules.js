@@ -3846,11 +3846,10 @@ function getCardPlayCost(card) {
 	// Gouden kaarten: altijd gratis
 	if (card.isGolden) return 0;
 	const cellCount = card.matrix ? card.matrix.flat().filter(Boolean).length : 0;
-	// Steen, multikleur >2 cellen, of kaarten >4 cellen: 2 coins
+	// Steen, multikleur >2 cellen: 2 coins; alle overige: 1 coin
 	if (card.isStone) return 2;
 	if ((card.color?.name === 'multikleur' || card.color?.code === 'rainbow') && cellCount > 2) return 2;
-	if (cellCount > 4) return 2;
-	// Alle overige kaarten (inclusief 2-cel): 1 coin
+	// Alle overige kaarten (inclusief 2-cel en 5-cel): 1 coin
 	return 1;
 }
 
