@@ -7635,6 +7635,29 @@ class LocusLobbyUI {
 					try { this._renderBonusBar(); } catch (e) {}
 					try { this._renderHand(); } catch (e) {}
 					try { this._renderPerkIcons(); } catch (e) {}
+					// If a special perk created free card choices, show the popup
+					const freeChoicesAfterPearl = this.mp.getMyPlayer()?._pendingFreeChoices;
+					if (freeChoicesAfterPearl && freeChoicesAfterPearl.length > 0) {
+						const lastPerk = pearlAutoPerks[pearlAutoPerks.length - 1];
+						const typeNames = { special_golden: '✨ Gouden kaart', special_multi: '🌈 Multikleur kaart', special_stone: '🪨 Blokkade kaart' };
+						const title = typeNames[lastPerk.id] || (lastPerk.name || 'Speciale kaart');
+						setTimeout(() => {
+							this._showRewardFreeCardChoice(freeChoicesAfterPearl, title, async (cardId) => {
+								if (cardId) {
+									try {
+										const claim = await this.mp.claimFreeCard(cardId);
+										if (claim?.success) {
+											this._showToast(`${title} — kaart gekozen!`, 'success');
+										}
+									} catch (e) {
+										console.error('[Locus UI] Pearl free card claim error:', e);
+									}
+								}
+								try { this._renderHand(); } catch (e) {}
+								try { this._renderBonusBar(); } catch (e) {}
+							});
+						}, 800);
+					}
 				} else if (pearlPerkPoints && pearlPerkPoints > 0 && isMe) {
 					this._showPearlPerkPopup('🫧', `+${pearlPerkPoints} perkpunt${pearlPerkPoints !== 1 ? 'en' : ''}`);
 				} else if (isMe) {

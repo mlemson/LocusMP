@@ -5674,7 +5674,7 @@ function chooseRewardCardType(gameState, playerId, cardType) {
 /** Claim a free card from the unlock popup (player picks 1 of 3) */
 function claimFreeCard(gameState, playerId, cardId) {
 	const rewardingMode = !!gameState.settings?.rewardingMode;
-	const validPhase = gameState.phase === 'shopping' || gameState.phase === 'choosingGoals' || (rewardingMode && gameState.phase === 'levelComplete');
+	const validPhase = gameState.phase === 'shopping' || gameState.phase === 'choosingGoals' || gameState.phase === 'playing' || (rewardingMode && gameState.phase === 'levelComplete');
 	if (!validPhase) return { error: 'Niet in shop fase' };
 	const player = gameState.players[playerId];
 	if (!player) return { error: 'Speler niet gevonden' };
@@ -5689,6 +5689,21 @@ function claimFreeCard(gameState, playerId, cardId) {
 	player.shopCards.push(card);
 	player.permanentShopCards = player.permanentShopCards || [];
 	player.permanentShopCards.push(card);
+
+	// Also make card available in current level
+	const cardClone = cloneCardForDeck(card);
+	if (gameState.phase === 'choosingGoals') {
+		// Will be drawn into hand when game starts
+		player.drawPile = player.drawPile || [];
+		player.drawPile.unshift(cardClone);
+	} else {
+		// Add directly to hand for immediate use
+		player.hand = player.hand || [];
+		player.hand.push(cardClone);
+	}
+	// Track in full deck for deck overview
+	if (player.deck) player.deck.push(cloneCardForDeck(card));
+
 	// Clear pending choices
 	delete player._pendingFreeChoices;
 
