@@ -4604,10 +4604,14 @@ function playMove(gameState, playerId, cardId, zoneName, baseX, baseY, rotation,
 
 	gameState.updatedAt = Date.now();
 
+	// Bereken effectieve goud (met doubleCoins perk) voor client animatie
+	const rawGold = placementResult.goldCollected - (gameState.settings?.coinMode ? (placementResult.pearlGold || 0) : 0);
+	const effectiveGoldForClient = rawGold > 0 && playerHasPerk(player, 'flex_double_coins') ? rawGold * 2 : rawGold;
+
 	return {
 		success: true,
 		scores: playerScores,
-		goldCollected: placementResult.goldCollected - (gameState.settings?.coinMode ? (placementResult.pearlGold || 0) : 0),
+		goldCollected: effectiveGoldForClient,
 		bonusesCollected: placementResult.collectedBonuses,
 		pearlsCollected: placementResult.pearlsCollected || 0,
 		pearlPerkPoints: pearlPerkPoints || 0,
@@ -4792,11 +4796,13 @@ function playBonus(gameState, playerId, bonusColor, zoneName, baseX, baseY, subg
 	gameState.updatedAt = Date.now();
 
 	const bonusPearlGold = gameState.settings?.coinMode ? (placementResult.pearlGold || 0) : 0;
+	const rawBonusGold = (placementResult.goldCollected || 0) - bonusPearlGold;
+	const effectiveBonusGold = rawBonusGold > 0 && playerHasPerk(player, 'flex_double_coins') ? rawBonusGold * 2 : rawBonusGold;
 
 	return {
 		success: true, scores: playerScores, gameEnded: false,
 		bonusesCollected: placementResult.collectedBonuses || [],
-		goldCollected: (placementResult.goldCollected || 0) - bonusPearlGold,
+		goldCollected: effectiveBonusGold,
 		pearlsCollected: placementResult.pearlsCollected || 0,
 		pearlAutoPerks: bonusPearlAutoPerks.length > 0 ? bonusPearlAutoPerks : null,
 		mineTriggered: mineTriggered || null
@@ -5287,8 +5293,11 @@ function checkGameEnd(gameState) {
 		// If objective was already awarded during play, don't add again
 		const alreadyAwarded = !!p.objectiveAchieved;
 		const objectiveBonus = alreadyAwarded ? (p.objectiveAchievedPoints || 0) : (objResult.achieved ? getObjectiveRewardPoints(objResult, 15) : 0);
-		// For players who didn't get real-time award, add now
-		if (!alreadyAwarded && objResult.achieved) {
+		if (alreadyAwarded) {
+			// Re-add objective points (score was reset above without them)
+			p.score = (p.score || 0) + (p.objectiveAchievedPoints || 0);
+		} else if (objResult.achieved) {
+			// For players who didn't get real-time award, add now
 			awardObjectiveRewards(gameState, pid, p.chosenObjective, objResult);
 			p.score = (p.score || 0) + (p.objectiveAchievedPoints || 0);
 		}
