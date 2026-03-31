@@ -471,6 +471,11 @@ class LocusLobbyUI {
 			// Initial check
 			this._validateLobbyName();
 		}
+
+		// Sync initial game mode state (e.g. coin mode selected by default → lock 15 cards)
+		if (this.elements['game-mode-select']) {
+			this.elements['game-mode-select'].dispatchEvent(new Event('change'));
+		}
 	}
 
 	_getSavedLobbyName() {
@@ -4242,6 +4247,12 @@ class LocusLobbyUI {
 				this._showToast('💥 Mijn geplaatst!', 'success');
 				this._cancelMineMode();
 				this._renderBonusBar();
+				// Re-render board zodat mijn-indicator direct zichtbaar is
+				const boardState = this.mp.gameState?.boardState;
+				if (boardState) {
+					this._lastBoardKey = null; // Force re-render
+					this._renderBoard(boardState);
+				}
 			} else {
 				this._showToast(result.error || 'Mijn plaatsen mislukt', 'error');
 			}

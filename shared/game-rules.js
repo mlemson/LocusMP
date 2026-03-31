@@ -1014,10 +1014,10 @@ function generateLevel1Board(rng, level, playerCount, maxWins) {
 		});
 	}
 
-	// Gold en bonus in green zone
-	const greenGoldCount = world === 1 ? 3 : (world === 2 ? 5 : 7);
+	// Gold en bonus in green zone — schaal mee met playerTier (grotere grids)
+	const greenGoldCount = (world === 1 ? 3 : (world === 2 ? 5 : 7)) + playerTier;
 	placeGoldFlags(zones.green, rng, greenGoldCount);
-	placeBonusSymbols(zones.green, rng, world === 1 ? 2 : (world === 2 ? 4 : 5), { excludeColor: 'green' });
+	placeBonusSymbols(zones.green, rng, (world === 1 ? 2 : (world === 2 ? 4 : 5)) + playerTier, { excludeColor: 'green' });
 
 	// ══════════════════════════════════════════
 	//  BLUE ZONE — Wereldafhankelijk + spelerafhankelijk
@@ -1076,8 +1076,8 @@ function generateLevel1Board(rng, level, playerCount, maxWins) {
 		}
 		zones.blue = createZoneGrid(blueHeight, blueWidth, { boldCells: blueBold, goldCells: blueGold, voidCells: blueVoid });
 		zones.blue.boldRows = blueBoldRows;
-		placeGoldFlags(zones.blue, rng, 2);
-		placeBonusSymbols(zones.blue, rng, 2, { excludeColor: 'blue' });
+		placeGoldFlags(zones.blue, rng, 2 + playerTier);
+		placeBonusSymbols(zones.blue, rng, 2 + playerTier, { excludeColor: 'blue' });
 	} else if (world === 2) {
 		const blueWidth = 4 + playerTier;
 		const blueHeight = 52; // 2x W1 hoogte
@@ -1100,8 +1100,8 @@ function generateLevel1Board(rng, level, playerCount, maxWins) {
 		}
 		zones.blue = createZoneGrid(blueHeight, blueWidth, { boldCells: blueBold, goldCells: blueGold, voidCells: blueVoid });
 		zones.blue.boldRows = blueBoldRows;
-		placeGoldFlags(zones.blue, rng, 4);
-		placeBonusSymbols(zones.blue, rng, 4, { excludeColor: 'blue' });
+		placeGoldFlags(zones.blue, rng, 4 + playerTier);
+		placeBonusSymbols(zones.blue, rng, 4 + playerTier, { excludeColor: 'blue' });
 	} else {
 		const blueWidth = 5 + playerTier;
 		const blueHeight = 78; // 3x W1 hoogte
@@ -1124,8 +1124,8 @@ function generateLevel1Board(rng, level, playerCount, maxWins) {
 		}
 		zones.blue = createZoneGrid(blueHeight, blueWidth, { boldCells: blueBold, goldCells: blueGold, voidCells: blueVoid });
 		zones.blue.boldRows = blueBoldRows;
-		placeGoldFlags(zones.blue, rng, 6);
-		placeBonusSymbols(zones.blue, rng, 5, { excludeColor: 'blue' });
+		placeGoldFlags(zones.blue, rng, 6 + playerTier);
+		placeBonusSymbols(zones.blue, rng, 5 + playerTier, { excludeColor: 'blue' });
 	}
 
 	// ══════════════════════════════════════════
@@ -1175,9 +1175,9 @@ function generateLevel1Board(rng, level, playerCount, maxWins) {
 
 	// Gold en bonus in rode subgrids
 	for (const sg of zones.red.subgrids) {
-		placeGoldFlags(sg, rng, 1);
+		placeGoldFlags(sg, rng, 1 + Math.floor(playerTier / 2));
 		const redBonusBase = world === 1 ? 3 : (world === 2 ? 4 : 5);
-		placeBonusSymbols(sg, rng, redBonusBase * 0.45, { excludeColor: 'red' });
+		placeBonusSymbols(sg, rng, redBonusBase * 0.45 + Math.floor(playerTier / 2), { excludeColor: 'red' });
 	}
 
 	// ══════════════════════════════════════════
@@ -1249,7 +1249,7 @@ function generateLevel1Board(rng, level, playerCount, maxWins) {
 	if (world >= 2) {
 		zones.purple.cornerBoldBonus = world === 2 ? 20 : 25;
 	}
-	placeGoldFlags(zones.purple, rng, purpleGoldCount);
+	placeGoldFlags(zones.purple, rng, purpleGoldCount + playerTier);
 
 	// Tag outer ring cellen
 	for (let i = 0; i < purpleSize; i++) {
@@ -1265,12 +1265,12 @@ function generateLevel1Board(rng, level, playerCount, maxWins) {
 		tagCellFlag(zones.purple, purpleSize - 2, i, 'outer-ring-1');
 	}
 
-	placeBonusSymbols(zones.purple, rng, world === 1 ? 2 : (world === 2 ? 4 : 5), { excludeColor: 'purple' });
+	placeBonusSymbols(zones.purple, rng, (world === 1 ? 2 : (world === 2 ? 4 : 5)) + playerTier, { excludeColor: 'purple' });
 	ensureAnyBonusSymbolOnBoard(zones, rng);
 
-	// Plaats parel-schatten in gele zone (meer coins)
+	// Plaats parel-schatten in gele zone (meer coins) — schaal mee met playerTier
 	if (zones.yellow) {
-		const pearlCount = world === 3 ? 3 : (world === 2 ? 2 : 1);
+		const pearlCount = (world === 3 ? 3 : (world === 2 ? 2 : 1)) + Math.floor(playerTier / 2);
 		placeTreasurePearls(zones.yellow, rng, pearlCount, 5);
 	}
 
@@ -1633,6 +1633,15 @@ function getEnhancedMatrix(matrix, zoneName, perkFlags) {
 	}
 	if (zoneName === 'purple' && perkFlags.diagonalRotation) {
 		return addExtraOptionalCell(matrix);
+	}
+	// Multi-color cards (zone 'any'): apply the best available perk enhancement
+	if (zoneName === 'any') {
+		if (perkFlags.diagonalRotation) {
+			return addExtraOptionalCell(matrix);
+		}
+		if (perkFlags.greenGapAllowed || perkFlags.redGapAllowed) {
+			return makeOneCellOptional(matrix);
+		}
 	}
 	return matrix;
 }
@@ -3849,8 +3858,8 @@ function getCardPlayCost(card) {
 	// Gouden kaarten: altijd gratis
 	if (card.isGolden) return 0;
 	const cellCount = card.matrix ? card.matrix.flat().filter(Boolean).length : 0;
-	// Steen, multikleur >2 cellen: 2 coins; alle overige: 1 coin
-	if (card.isStone) return 2;
+	// Steen: kleine blokken (2-3 cellen) 1 coin, grotere 2 coins
+	if (card.isStone) return cellCount <= 3 ? 1 : 2;
 	if ((card.color?.name === 'multikleur' || card.color?.code === 'rainbow') && cellCount > 2) return 2;
 	// Alle overige kaarten (inclusief 2-cel en 5-cel): 1 coin
 	return 1;
@@ -4454,7 +4463,12 @@ function playMove(gameState, playerId, cardId, zoneName, baseX, baseY, rotation,
 			// Auto-unlock random perks for each pearl collected
 			for (let pi = 0; pi < pearlCount; pi++) {
 				const available = getAvailablePerks(player);
-				if (available.length === 0) break;
+				if (available.length === 0) {
+					// All perks unlocked — give perk point as fallback reward
+					player.perks.perkPoints = (player.perks.perkPoints || 0) + 1;
+					pearlPerkPoints++;
+					continue;
+				}
 				const pick = available[Math.floor(Math.random() * available.length)];
 				// Check cost: pearl gives 1 free perk point, use it immediately
 				if (pick.cost <= 1) {
@@ -4659,7 +4673,10 @@ function playBonus(gameState, playerId, bonusColor, zoneName, baseX, baseY, subg
 			if (!player.perks) player.perks = { perkPoints: 0, unlockedPerks: [], bonusUpgrades: {} };
 			for (let pi = 0; pi < pearlCount; pi++) {
 				const available = getAvailablePerks(player);
-				if (available.length === 0) break;
+				if (available.length === 0) {
+					player.perks.perkPoints = (player.perks.perkPoints || 0) + 1;
+					continue;
+				}
 				const pick = available[Math.floor(Math.random() * available.length)];
 				if (pick.cost <= 1) {
 					player.perks.unlockedPerks.push(pick.id);
