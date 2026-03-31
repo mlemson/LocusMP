@@ -393,7 +393,10 @@ function maybeStartPlayingAfterGoalPhase(gameState) {
 		drawHand(gameState, pid);
 	}
 	gameState.phase = 'playing';
-	gameState.currentTurnIndex = 0;
+	// Rotate starting player each round for fairness
+	const playerCount = gameState.playerOrder.length;
+	const startIdx = (gameState._roundStartPlayerIndex || 0) % playerCount;
+	gameState.currentTurnIndex = startIdx;
 	gameState.turnCount = 1;
 	for (const pid of gameState.playerOrder) {
 		if (gameState.players?.[pid]) gameState.players[pid].goalPerksDone = false;
@@ -1873,7 +1876,7 @@ function applyPlacement(boardState, zoneName, zoneData, baseX, baseY, matrix, co
  * Punten per compleet gevulde kolom, oplopend van links→rechts:
  * Kolom paar 0,1 → 6pt; 2,3 → 8pt; 4,5 → 10pt; 6,7 → 12pt; 8,9 → 15pt; 10,11 → 20pt; 12,13 → 25pt
  */
-const YELLOW_COLUMN_PAIR_POINTS = [6, 8, 10, 12, 15, 20, 25];
+const YELLOW_COLUMN_PAIR_POINTS = [10, 12, 15, 18, 22, 26, 30];
 
 function hasStoneInYellowColumn(zoneData, x) {
 	if (!zoneData) return false;
@@ -5115,7 +5118,8 @@ function advanceTurn(gameState) {
 		gameState.currentTurnIndex = (gameState.currentTurnIndex + 1) % playerCount;
 		spawnBonusesAfterRoundFour(gameState, { isRoundStart: false });
 
-		if (gameState.currentTurnIndex === 0) {
+		const roundStartIdx = (gameState._roundStartPlayerIndex || 0) % playerCount;
+		if (gameState.currentTurnIndex === roundStartIdx) {
 			gameState.turnCount++;
 			spawnBonusesAfterRoundFour(gameState, { isRoundStart: true });
 		}
@@ -5855,6 +5859,9 @@ function startNextLevel(gameState) {
 	}
 
 	gameState.phase = 'choosingGoals';
+	// Advance starting player for next round (rotates each level)
+	const playerCount = gameState.playerOrder.length;
+	gameState._roundStartPlayerIndex = ((gameState._roundStartPlayerIndex || 0) + 1) % playerCount;
 	gameState.currentTurnIndex = 0;
 	gameState.turnCount = 1;
 	delete gameState._roundFiveBonusBurstDone;

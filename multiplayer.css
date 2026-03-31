@@ -2628,6 +2628,7 @@ html.theme-classic .mp-cell.bonus-just-spawned {
 	user-select: none;
 	-webkit-tap-highlight-color: transparent;
 	-webkit-touch-callout: none;
+	position: relative;
 }
 
 .mp-card.playable:hover {

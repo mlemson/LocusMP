@@ -2813,7 +2813,7 @@ class LocusLobbyUI {
 			let renderMatrix = Rules ? Rules.rotateMatrixN(baseMatrix, ((Number(transform.rotation) || 0) + 4) % 4) : baseMatrix;
 			if (transform.mirrored && Rules) renderMatrix = Rules.mirrorMatrix(renderMatrix);
 			const colorStyle = card.isGolden
-				? `background: linear-gradient(135deg, ${card.color?.code || '#f5d76e'}, #f5d76e, ${card.color?.code || '#f5d76e'})`
+				? `background: ${card.color?.code || '#f5d76e'}`
 				: card.color?.code === 'rainbow'
 					? 'background: linear-gradient(135deg, #b56069, #cfba51, #92c28c, #5689b0, #8f76b8)'
 					: `background: ${card.color?.code || '#666'}`;
@@ -2947,7 +2947,7 @@ class LocusLobbyUI {
 			return `<div class="mp-deck-group-cards">
 				${cards.map(card => {
 					const colorStyle = card.isGolden
-						? `background: linear-gradient(135deg, ${card.color?.code || '#f5d76e'}, #f5d76e, ${card.color?.code || '#f5d76e'})`
+						? `background: ${card.color?.code || '#f5d76e'}`
 						: card.color?.code === 'rainbow'
 							? 'background: linear-gradient(135deg, #b56069, #cfba51, #92c28c, #5689b0, #8f76b8)'
 							: `background: ${card.color?.code || '#666'}`;
@@ -6236,7 +6236,7 @@ class LocusLobbyUI {
 							const price = isCoinMode ? 0 : (card.shopPrice || (Rules ? Rules.getCardPrice(card) : 4));
 							const canAfford = isCoinMode ? !coinCardBought : goldCoins >= price;
 							const colorStyle = card.isGolden
-								? `background: linear-gradient(135deg, ${card.color?.code || '#f5d76e'}, #f5d76e, ${card.color?.code || '#f5d76e'})`
+								? `background: ${card.color?.code || '#f5d76e'}`
 								: card.color?.code === 'rainbow'
 									? 'background: linear-gradient(135deg, #b56069, #cfba51, #92c28c, #5689b0, #8f76b8)'
 									: `background: ${card.color?.code || '#666'}`;
@@ -6718,7 +6718,7 @@ class LocusLobbyUI {
 					${permCards.map(c => {
 						const sellPrice = Rules ? Rules.getCardSellPrice(c) : 1;
 						const colorStyle = c.isGolden
-							? `background: linear-gradient(135deg, ${c.color?.code || '#f5d76e'}, #f5d76e, ${c.color?.code || '#f5d76e'})`
+							? `background: ${c.color?.code || '#f5d76e'}`
 							: c.color?.code === 'rainbow'
 								? 'background: linear-gradient(135deg, #b56069, #cfba51, #92c28c, #5689b0, #8f76b8)'
 								: `background: ${c.color?.code || '#666'}`;
@@ -6902,7 +6902,7 @@ class LocusLobbyUI {
 			if (isStone) {
 				colorStyle = 'background: linear-gradient(135deg, #a0a0a0, #8a8a8a, #707070)';
 			} else if (isGolden) {
-				colorStyle = `background: linear-gradient(135deg, ${colorCode}, #f5d76e, ${colorCode})`;
+				colorStyle = `background: ${colorCode}`;
 			} else if (isRainbow) {
 				colorStyle = 'background: linear-gradient(135deg, #b56069, #cfba51, #92c28c, #5689b0, #8f76b8)';
 			} else {
@@ -8769,7 +8769,6 @@ class LocusLobbyUI {
 						const isRainbow = colorCode === 'rainbow' || card.color?.name === 'multikleur';
 						let bgStyle = `background:${colorCode};`;
 						if (isStone) bgStyle = 'background:linear-gradient(135deg,#a0a0a0,#8a8a8a,#707070);';
-						else if (isGolden) bgStyle = `background:linear-gradient(135deg,${colorCode},#f5d76e,${colorCode});`;
 						else if (isRainbow) bgStyle = 'background:linear-gradient(135deg,#e74c3c,#f39c12,#2ecc71,#3498db,#9b59b6);';
 
 						const gridHtml = card.matrix ? card.matrix.map(row =>
