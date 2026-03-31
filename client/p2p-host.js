@@ -1751,7 +1751,8 @@ class LocusP2PHost {
 									matrix: null,
 									goldCollected: bonusResult.goldCollected || 0,
 									bonusesCollected: bonusResult.bonusesCollected || [],
-									pearlsCollected: 0,
+									pearlsCollected: bonusResult.pearlsCollected || 0,
+									pearlAutoPerks: bonusResult.pearlAutoPerks || null,
 									isBonusPlay: true
 								});
 								this._broadcastEvent('botActivity', {
@@ -2219,8 +2220,32 @@ class LocusP2PHost {
 
 									// Favor building upward — STRONG height preference
 									const minY = Math.min(...cells.map(c => c.y));
+									const maxY = Math.max(...cells.map(c => c.y));
 									const rows = zoneData.rows || 20;
 									score += Math.max(0, rows - minY);
+
+									// STRONG upward stacking: find highest existing active cell and prefer placing directly above
+									let highestExistingY = rows;
+									for (let sy = 0; sy < rows; sy++) {
+										for (let sx = 0; sx < (zoneData.cols || 4); sx++) {
+											const sc = this.Rules.getDataCell(zoneData, sx, sy);
+											if (sc?.active) { highestExistingY = Math.min(highestExistingY, sy); }
+										}
+									}
+									if (highestExistingY < rows) {
+										if (maxY >= highestExistingY && minY < highestExistingY) {
+											score += 30; // Extends upward from existing cells
+										} else if (minY < highestExistingY) {
+											score += 15; // All above existing
+										} else if (minY >= highestExistingY) {
+											const hasValuableBelow = cells.some(c => {
+												const cell = this.Rules.getDataCell(zoneData, c.x, c.y);
+												return cell?.bonusSymbol || cell?.treasureCoins > 0 || cell?.flags?.some(f => ['bold', 'gold'].includes(f));
+											});
+											if (!hasValuableBelow) score -= 40;
+										}
+									}
+
 									// Penalize bottom-half placements that don't hit bold/bonus
 									if (minY > rows * 0.55) {
 										const bottomPenalty = Math.round((minY - rows * 0.55) * 3);

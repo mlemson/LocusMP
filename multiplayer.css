@@ -4149,12 +4149,11 @@ body.mp-loading .mp-btn {
 	}
 
 	.mp-turn-label {
-		font-size: 0.62rem;
+		display: none;
 	}
 
 	.mp-turn-player {
-		font-size: 0.78rem;
-		line-height: 1.2;
+		display: none;
 	}
 
 	.mp-turn-meta-row {
@@ -4436,6 +4435,8 @@ body.mp-loading .mp-btn {
 
 	.mp-card {
 		width: 78px;
+		min-width: 60px;
+		flex-shrink: 1;
 		padding: 4px;
 	}
 

@@ -355,6 +355,9 @@ class LocusLobbyUI {
 		this.elements['shop-ready-btn']?.addEventListener('click', () => this._handleShopReady());
 		this.elements['mp-deck-overview-btn']?.addEventListener('click', () => this._toggleDeckOverview());
 		this.elements['mp-deck-close-btn']?.addEventListener('click', () => this._closeDeckOverview());
+		this.elements['mp-deck-overlay']?.addEventListener('click', (e) => {
+			if (e.target === this.elements['mp-deck-overlay']) this._closeDeckOverview();
+		});
 
 		// TV Cast buttons
 		this.elements['tv-cast-btn']?.addEventListener('click', () => this.startTVCast());
@@ -8022,7 +8025,7 @@ class LocusLobbyUI {
 				title: 'Doelstellingen',
 				body: `
 					<p>Elk level kies je een <strong>geheim doel</strong>. Andere spelers zien niet welk doel jij kiest!</p>
-					<p>Als je je doel behaalt, krijg je <strong>bonuspunten</strong> en soms <strong>goudmunten</strong> 🪙.</p>
+					<p>Als je je doel behaalt, krijg je <strong>bonuspunten</strong> en <strong>goudmunten</strong> 🪙.</p>
 				`
 			},
 			{
@@ -8068,7 +8071,7 @@ class LocusLobbyUI {
 							<text x="75" y="54" fill="#8a7820" font-size="9" font-weight="bold">kolom = punten!</text>
 						</svg>
 					</div>
-					<p>Vul een <strong>complete kolom</strong> van boven tot onder. Kolommen verder naar rechts = meer punten (10→38).</p>
+					<p>Vul een <strong>complete kolom</strong> van boven tot onder. Kolommen verder naar rechts = meer punten (10→30).</p>
 				`
 			},
 			{
@@ -8186,6 +8189,7 @@ class LocusLobbyUI {
 				title: 'Beurten',
 				body: `
 					<p>Elke beurt heb je <strong>3 kaarten</strong> in je hand. Kies welke je speelt.</p>
+					<p>In <strong>Coin Modus</strong> kun je extra kaarten spelen door munten te betalen!</p>
 					${this.mp?.gameState?.settings?.timerEnabled !== false
 						? '<p>Let op de <strong>timer</strong> — als de tijd op is wordt je beurt automatisch overgeslagen!</p>'
 						: '<p>Neem de tijd — er is geen timer ingesteld.</p>'}
@@ -8202,7 +8206,7 @@ class LocusLobbyUI {
 				title: 'De Shop',
 				body: `
 					<p>Na elk level kun je in de shop <strong>nieuwe kaarten kopen</strong> met goudmunten 🪙.</p>
-					<p>Goudmunten verdien je door levels te winnen en doelen te behalen.</p>
+					<p>Goudmunten verdien je door <strong>goud-cellen</strong> te raken en doelen te behalen.</p>
 				`
 			},
 			{

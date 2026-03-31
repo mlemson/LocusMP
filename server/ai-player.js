@@ -1237,8 +1237,37 @@ function _scoreBlueImpact(zoneData, placedCells) {
 
 	// Favor building upward — higher cells are worth more
 	const minY = Math.min(...placedCells.map(c => c.y));
+	const maxY = Math.max(...placedCells.map(c => c.y));
 	const blueRows = zoneData.rows || 20;
 	impact += Math.max(0, blueRows - minY);
+
+	// STRONG upward stacking: find the highest existing active cell and prefer placing directly above it
+	let highestExistingY = blueRows; // bottom (worst)
+	const cols = zoneData.cols || 4;
+	for (let y = 0; y < blueRows; y++) {
+		for (let x = 0; x < cols; x++) {
+			const cell = GameRules.getDataCell(zoneData, x, y);
+			if (cell?.active) { highestExistingY = Math.min(highestExistingY, y); }
+		}
+	}
+	if (highestExistingY < blueRows) {
+		// There are existing active cells — strongly prefer stacking on top
+		if (maxY >= highestExistingY && minY < highestExistingY) {
+			// Placement extends upward from existing cells — ideal
+			impact += 30;
+		} else if (minY < highestExistingY) {
+			// All placed cells above existing — good (maybe gap but still upward)
+			impact += 15;
+		} else if (minY >= highestExistingY) {
+			// Placed at same level or below existing top — bad unless hitting bonus/bold
+			const hasValuableBelow = placedCells.some(c => {
+				const cell = GameRules.getDataCell(zoneData, c.x, c.y);
+				return cell?.bonusSymbol || cell?.treasureCoins > 0 || cell?.flags?.some(f => ['bold', 'gold'].includes(f));
+			});
+			if (!hasValuableBelow) impact -= 40;
+		}
+	}
+
 	// Penalize bottom-half placements that don't hit bold/bonus
 	if (minY > blueRows * 0.55) {
 		const hasBoldOrBonus = placedCells.some(c => {

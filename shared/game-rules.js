@@ -4751,10 +4751,14 @@ function playBonus(gameState, playerId, bonusColor, zoneName, baseX, baseY, subg
 
 	gameState.updatedAt = Date.now();
 
+	const bonusPearlGold = gameState.settings?.coinMode ? (placementResult.pearlGold || 0) : 0;
+
 	return {
 		success: true, scores: playerScores, gameEnded: false,
 		bonusesCollected: placementResult.collectedBonuses || [],
-		goldCollected: placementResult.goldCollected || 0,
+		goldCollected: (placementResult.goldCollected || 0) - bonusPearlGold,
+		pearlsCollected: placementResult.pearlsCollected || 0,
+		pearlAutoPerks: bonusPearlAutoPerks.length > 0 ? bonusPearlAutoPerks : null,
 		mineTriggered: mineTriggered || null
 	};
 }

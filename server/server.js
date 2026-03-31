@@ -851,7 +851,8 @@ function executeAITurn(gameId, aiPlayerId) {
 						matrix: null,
 						goldCollected: bonusResult.goldCollected || 0,
 						bonusesCollected: bonusResult.bonusesCollected || [],
-						pearlsCollected: 0,
+						pearlsCollected: bonusResult.pearlsCollected || 0,
+						pearlAutoPerks: bonusResult.pearlAutoPerks || null,
 						isBonusPlay: true
 					});
 					// Check for bonus chaining: if placement earned new bonus charges, queue them
