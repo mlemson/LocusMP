@@ -2831,23 +2831,12 @@ function getAllowedZones(card) {
 const OBJECTIVE_TEMPLATES = [
 	{
 		id: 'fill_yellow_cols',
-		name: 'Gele Kolommen',
-		description: 'Vul minstens {target} complete kolommen in de gele zone.',
+		name: 'Gele Punten',
+		description: 'Haal minstens {target} punten in geel.',
 		check: (boardState) => {
-			const zone = boardState.zones.yellow;
-			if (!zone) return 0;
-			let count = 0;
-			for (let x = 0; x < zone.cols; x++) {
-				let complete = true;
-				for (let y = 0; y < zone.rows; y++) {
-					const cell = getDataCell(zone, x, y);
-					if (!cell || !cell.active) { complete = false; break; }
-				}
-				if (complete) count++;
-			}
-			return count;
+			return scoreYellowData(boardState.zones.yellow) || 0;
 		},
-		targets: [2, 3, 5]
+		targets: [10, 20, 30]
 	},
 	{
 		id: 'reach_green_ends',
@@ -3033,8 +3022,8 @@ function awardObjectiveRewards(gameState, playerId, objective, result) {
 	player.objectiveFailed = false; // Kan nooit gelijktijdig behaald én mislukt zijn
 	player.objectiveAchievedPoints = points;
 
-	// Coin mode: doelstellingen geven GEEN coins
-	if (coins > 0 && !gameState?.settings?.coinMode) {
+	// Coins toekennen (ook in coin mode: doelstellingen mogen coins geven)
+	if (coins > 0) {
 		player.goldCoins = (player.goldCoins || 0) + coins;
 	}
 
@@ -3252,8 +3241,8 @@ function countPlayerGoldCells(boardState, playerId) {
 const LEVEL_OBJECTIVES = {
 	// Level 1: Makkelijke doelstellingen (8-12 punten)
 	1: [
-		{ id: 'fill_2_yellow_cols', name: 'Gele Start', description: 'Vul minstens 2 kolommen in de gele zone.', target: 2, points: 10, coins: 2,
-		  useContext: true, check: (ctx) => countPlayerCompletedYellowCols(ctx.boardState, ctx.playerId)},
+		{ id: 'fill_2_yellow_cols', name: 'Gele Start', description: 'Haal minstens 10 punten in geel.', target: 10, points: 10, coins: 2,
+		  useContext: true, check: (ctx) => Math.min((ctx?.playerScore?.yellow || 0), 10)},
 		{ id: 'reach_1_green_end', legacyIds: ['reach_2_green_ends'], name: 'Groene Verkenner', description: 'Bereik minstens 2 eindpunten in de groene zone.', target: 2, points: 10, randomBonuses: 1, coins: 2,
 		  useContext: true, check: (ctx) => countPlayerGreenEnds(ctx.boardState, ctx.playerId)},
 		{ id: 'fill_1_blue_row', name: 'Blauwe Basis', description: 'Bereik minstens 2 rijen in de blauwe zone.', target: 2, points: 10, randomBonuses: 2,
@@ -3284,8 +3273,8 @@ const LEVEL_OBJECTIVES = {
 	],
 	// Level 2: Medium doelstellingen (12-18 punten)
 	2: [
-		{ id: 'fill_4_yellow_cols', name: 'Gele Muur', description: 'Vul minstens 4 kolommen in de gele zone.', target: 4, points: 30, coins: 3,
-		  useContext: true, check: (ctx) => countPlayerCompletedYellowCols(ctx.boardState, ctx.playerId)},
+		{ id: 'fill_4_yellow_cols', name: 'Gele Muur', description: 'Haal minstens 20 punten in geel.', target: 20, points: 30, coins: 3,
+		  useContext: true, check: (ctx) => Math.min((ctx?.playerScore?.yellow || 0), 20)},
 		{ id: 'reach_2_green_ends_l2', legacyIds: ['reach_5_green_ends'], name: 'Groene Expeditie', description: 'Bereik minstens 3 eindpunten in de groene zone.', target: 3, points: 30, coins: 3,
 		  useContext: true, check: (ctx) => countPlayerGreenEnds(ctx.boardState, ctx.playerId)},
 		{ id: 'fill_2_blue_rows', name: 'Blauwe Toren', description: 'Bereik minstens 3 rijen in de blauwe zone.', target: 3, points: 30, randomBonuses: 3,
@@ -3294,10 +3283,10 @@ const LEVEL_OBJECTIVES = {
 		  useContext: true, check: (ctx) => countPlayerCompletedRedSubgrids(ctx.boardState, ctx.playerId)},
 		{ id: 'connect_3_purple', name: 'Paars Netwerk', description: 'Verbind minstens 5 bold-cellen in één paars cluster.', target: 5, points: 30, randomBonuses: 3,
 		  useContext: true, check: (ctx) => getPlayerPurpleMaxBoldCluster(ctx.boardState, ctx.playerId)},
-		{ id: 'combo_yellow2_green1end', name: 'Geel + Groen Combo', description: 'Haal minstens 3 gele kolommen én 2 groene eindpunten.', target: 2, points: 40, coins: 4, useContext: true,
+		{ id: 'combo_yellow2_green1end', name: 'Geel + Groen Combo', description: 'Haal 15 gele punten én 2 groene eindpunten.', target: 2, points: 40, coins: 4, useContext: true,
 		  check: (ctx) => {
 			let done = 0;
-			if (countPlayerCompletedYellowCols(ctx.boardState, ctx.playerId) >= 3) done++;
+			if ((ctx?.playerScore?.yellow || 0) >= 15) done++;
 			if (countPlayerGreenEnds(ctx.boardState, ctx.playerId) >= 2) done++;
 			return done;
 		  }},
@@ -3334,8 +3323,8 @@ const LEVEL_OBJECTIVES = {
 	],
 	// Level 3: Moeilijke doelstellingen (18-25 punten)
 	3: [
-		{ id: 'fill_6_yellow_cols', name: 'Gele Dominantie', description: 'Vul minstens 6 kolommen in de gele zone.', target: 6, points: 50, coins: 3,
-		  useContext: true, check: (ctx) => countPlayerCompletedYellowCols(ctx.boardState, ctx.playerId)},
+		{ id: 'fill_6_yellow_cols', name: 'Gele Dominantie', description: 'Haal minstens 30 punten in geel.', target: 30, points: 50, coins: 3,
+		  useContext: true, check: (ctx) => Math.min((ctx?.playerScore?.yellow || 0), 30)},
 		{ id: 'reach_6_green_ends', legacyIds: ['reach_8_green_ends'], name: 'Groene Meester', description: 'Bereik minstens 6 eindpunten in de groene zone.', target: 6, points: 50, coins: 4,
 		  useContext: true, check: (ctx) => countPlayerGreenEnds(ctx.boardState, ctx.playerId)},
 		{ id: 'fill_3_blue_rows', name: 'Blauwe Hemel', description: 'Bereik minstens 3 rijen in de blauwe zone.', target: 3, points: 50, randomBonuses: 3,
@@ -3376,10 +3365,10 @@ const LEVEL_OBJECTIVES = {
 		  }},
 		{ id: 'balance_15', name: 'Perfecte Balans', description: 'Behaal overal tenminste 15 punten.', target: 5, points: 50, coins: 8,
 		  useContext: true, check: (ctx) => countPlayerZonesAtLeast(ctx?.playerScore, 15) },
-		{ id: 'combo_yellow4_green3', name: 'Strakke Route', description: 'Haal 4 gele kolommen én 3 groene eindpunten.', target: 2, points: 50, coins: 6, useContext: true,
+		{ id: 'combo_yellow4_green3', name: 'Strakke Route', description: 'Haal 20 gele punten én 3 groene eindpunten.', target: 2, points: 50, coins: 6, useContext: true,
 		  check: (ctx) => {
 			let done = 0;
-			if (countPlayerCompletedYellowCols(ctx.boardState, ctx.playerId) >= 4) done++;
+			if ((ctx?.playerScore?.yellow || 0) >= 20) done++;
 			if (countPlayerGreenEnds(ctx.boardState, ctx.playerId) >= 3) done++;
 			return done;
 		  }},
@@ -3412,8 +3401,8 @@ const LEVEL_OBJECTIVES = {
 	],
 	// Level 4+: Ultra moeilijke doelstellingen (vanaf 3/4 wins)
 	4: [
-		{ id: 'fill_8_yellow_units', name: 'Gele Meester', description: 'Vul minstens 8 gele eenheden (kolommen/diagonalen/ringen).', target: 8, points: 70, coins: 5,
-		  useContext: true, check: (ctx) => countPlayerCompletedYellowCols(ctx.boardState, ctx.playerId)},
+		{ id: 'fill_8_yellow_units', name: 'Gele Meester', description: 'Haal minstens 40 punten in geel.', target: 40, points: 70, coins: 5,
+		  useContext: true, check: (ctx) => Math.min((ctx?.playerScore?.yellow || 0), 40)},
 		{ id: 'reach_8_green_ends_l4', name: 'Groene Legende', description: 'Bereik minstens 8 eindpunten in de groene zone.', target: 8, points: 70, coins: 6,
 		  useContext: true, check: (ctx) => countPlayerGreenEnds(ctx.boardState, ctx.playerId)},
 		{ id: 'fill_5_blue_rows', name: 'Blauwe Toren', description: 'Bereik minstens 5 rijen in de blauwe zone.', target: 5, points: 70, randomBonuses: 4,
@@ -3474,11 +3463,13 @@ function _buildCoinModeObjectivePool(round) {
 	const r = Math.max(1, round || 1);
 	const scale = Math.pow(1.5, r - 1);
 	const coinsBase = Math.round(3 * scale);
+	const pointsBase = Math.round(15 * scale);
+	const pointsCombo = Math.round(20 * scale);
 	const totalTarget = Math.round(18 * scale);
 	const singleColorTarget = Math.round(10 * scale);
 	const dualColorTarget = Math.round(7 * scale);
 	const balanceTarget = Math.round(4 * scale);
-	const yellowColTarget = Math.min(Math.round(2 * scale), 8);
+	const yellowPtsTarget = Math.round(10 * scale);
 	const greenEndTarget = Math.min(Math.round(2 * scale), 8);
 	const blueRowTarget = Math.min(Math.round(1.5 * scale), 5);
 	const redGridTarget = Math.min(Math.round(1 * scale), 3);
@@ -3487,50 +3478,50 @@ function _buildCoinModeObjectivePool(round) {
 	const bonusCoinsLarge = Math.round(4 * scale);
 
 	return [
-		{ id: `coin_total_${r}`, name: 'Totaalscore', description: `Haal ${totalTarget} punten totaal.`, target: totalTarget, points: 0, coins: coinsBase,
+		{ id: `coin_total_${r}`, name: 'Totaalscore', description: `Haal ${totalTarget} punten totaal.`, target: totalTarget, points: pointsBase, coins: coinsBase,
 		  useContext: true, check: (ctx) => Math.min((ctx?.playerScore?.total || 0), totalTarget) },
-		{ id: `coin_yellow_${r}`, name: 'Geel Doel', description: `Scoor ${singleColorTarget} punten in geel.`, target: singleColorTarget, points: 0, coins: coinsBase,
+		{ id: `coin_yellow_${r}`, name: 'Geel Doel', description: `Scoor ${singleColorTarget} punten in geel.`, target: singleColorTarget, points: pointsBase, coins: coinsBase,
 		  useContext: true, check: (ctx) => Math.min((ctx?.playerScore?.yellow || 0), singleColorTarget) },
-		{ id: `coin_green_${r}`, name: 'Groen Doel', description: `Scoor ${singleColorTarget} punten in groen.`, target: singleColorTarget, points: 0, coins: coinsBase,
+		{ id: `coin_green_${r}`, name: 'Groen Doel', description: `Scoor ${singleColorTarget} punten in groen.`, target: singleColorTarget, points: pointsBase, coins: coinsBase,
 		  useContext: true, check: (ctx) => Math.min((ctx?.playerScore?.green || 0), singleColorTarget) },
-		{ id: `coin_blue_${r}`, name: 'Blauw Doel', description: `Scoor ${singleColorTarget} punten in blauw.`, target: singleColorTarget, points: 0, coins: coinsBase,
+		{ id: `coin_blue_${r}`, name: 'Blauw Doel', description: `Scoor ${singleColorTarget} punten in blauw.`, target: singleColorTarget, points: pointsBase, coins: coinsBase,
 		  useContext: true, check: (ctx) => Math.min((ctx?.playerScore?.blue || 0), singleColorTarget) },
-		{ id: `coin_purple_${r}`, name: 'Paars Doel', description: `Scoor ${singleColorTarget} punten in paars.`, target: singleColorTarget, points: 0, coins: coinsBase,
+		{ id: `coin_purple_${r}`, name: 'Paars Doel', description: `Scoor ${singleColorTarget} punten in paars.`, target: singleColorTarget, points: pointsBase, coins: coinsBase,
 		  useContext: true, check: (ctx) => Math.min((ctx?.playerScore?.purple || 0), singleColorTarget) },
-		{ id: `coin_red_${r}`, name: 'Rood Doel', description: `Scoor ${singleColorTarget} punten in rood.`, target: singleColorTarget, points: 0, coins: coinsBase,
+		{ id: `coin_red_${r}`, name: 'Rood Doel', description: `Scoor ${singleColorTarget} punten in rood.`, target: singleColorTarget, points: pointsBase, coins: coinsBase,
 		  useContext: true, check: (ctx) => Math.min((ctx?.playerScore?.red || 0), singleColorTarget) },
-		{ id: `coin_yellow_green_${r}`, name: 'Geel + Groen', description: `Scoor ${dualColorTarget} punten in geel en ${dualColorTarget} in groen.`, target: 2, points: 0, coins: coinsBase + bonusCoinsExtra,
+		{ id: `coin_yellow_green_${r}`, name: 'Geel + Groen', description: `Scoor ${dualColorTarget} punten in geel en ${dualColorTarget} in groen.`, target: 2, points: pointsCombo, coins: coinsBase + bonusCoinsExtra,
 		  useContext: true, check: (ctx) => {
 			let done = 0;
 			if ((ctx?.playerScore?.yellow || 0) >= dualColorTarget) done++;
 			if ((ctx?.playerScore?.green || 0) >= dualColorTarget) done++;
 			return done;
 		  }},
-		{ id: `coin_blue_purple_${r}`, name: 'Blauw + Paars', description: `Scoor ${dualColorTarget} punten in blauw en ${dualColorTarget} in paars.`, target: 2, points: 0, coins: coinsBase + bonusCoinsExtra,
+		{ id: `coin_blue_purple_${r}`, name: 'Blauw + Paars', description: `Scoor ${dualColorTarget} punten in blauw en ${dualColorTarget} in paars.`, target: 2, points: pointsCombo, coins: coinsBase + bonusCoinsExtra,
 		  useContext: true, check: (ctx) => {
 			let done = 0;
 			if ((ctx?.playerScore?.blue || 0) >= dualColorTarget) done++;
 			if ((ctx?.playerScore?.purple || 0) >= dualColorTarget) done++;
 			return done;
 		  }},
-		{ id: `coin_red_yellow_${r}`, name: 'Rood + Geel', description: `Scoor ${dualColorTarget} punten in rood en ${dualColorTarget} in geel.`, target: 2, points: 0, coins: coinsBase + bonusCoinsExtra,
+		{ id: `coin_red_yellow_${r}`, name: 'Rood + Geel', description: `Scoor ${dualColorTarget} punten in rood en ${dualColorTarget} in geel.`, target: 2, points: pointsCombo, coins: coinsBase + bonusCoinsExtra,
 		  useContext: true, check: (ctx) => {
 			let done = 0;
 			if ((ctx?.playerScore?.red || 0) >= dualColorTarget) done++;
 			if ((ctx?.playerScore?.yellow || 0) >= dualColorTarget) done++;
 			return done;
 		  }},
-		{ id: `coin_balance_${r}`, name: 'Evenwicht', description: `Behaal minstens ${balanceTarget} punten in elke kleur.`, target: 5, points: 0, coins: coinsBase + bonusCoinsLarge,
+		{ id: `coin_balance_${r}`, name: 'Evenwicht', description: `Behaal minstens ${balanceTarget} punten in elke kleur.`, target: 5, points: pointsCombo, coins: coinsBase + bonusCoinsLarge,
 		  useContext: true, check: (ctx) => countPlayerZonesAtLeast(ctx?.playerScore, balanceTarget) },
-		{ id: `coin_yellowcol_${r}`, name: 'Gele Kolommen', description: `Vul ${yellowColTarget} gele kolom${yellowColTarget > 1 ? 'men' : ''}.`, target: yellowColTarget, points: 0, coins: coinsBase + bonusCoinsExtra,
-		  useContext: true, check: (ctx) => countPlayerCompletedYellowCols(ctx.boardState, ctx.playerId) },
-		{ id: `coin_greenend_${r}`, name: 'Groene Eindpunten', description: `Bereik ${greenEndTarget} groene eindpunt${greenEndTarget > 1 ? 'en' : ''}.`, target: greenEndTarget, points: 0, coins: coinsBase + bonusCoinsExtra,
+		{ id: `coin_yellowpts_${r}`, name: 'Gele Punten', description: `Haal ${yellowPtsTarget} punten in geel.`, target: yellowPtsTarget, points: pointsBase, coins: coinsBase + bonusCoinsExtra,
+		  useContext: true, check: (ctx) => Math.min((ctx?.playerScore?.yellow || 0), yellowPtsTarget) },
+		{ id: `coin_greenend_${r}`, name: 'Groene Eindpunten', description: `Bereik ${greenEndTarget} groene eindpunt${greenEndTarget > 1 ? 'en' : ''}.`, target: greenEndTarget, points: pointsBase, coins: coinsBase + bonusCoinsExtra,
 		  useContext: true, check: (ctx) => countPlayerGreenEnds(ctx.boardState, ctx.playerId) },
-		{ id: `coin_bluerow_${r}`, name: 'Blauwe Rijen', description: `Bereik ${blueRowTarget} blauwe rij${blueRowTarget > 1 ? 'en' : ''}.`, target: blueRowTarget, points: 0, coins: coinsBase + bonusCoinsExtra,
+		{ id: `coin_bluerow_${r}`, name: 'Blauwe Rijen', description: `Bereik ${blueRowTarget} blauwe rij${blueRowTarget > 1 ? 'en' : ''}.`, target: blueRowTarget, points: pointsBase, coins: coinsBase + bonusCoinsExtra,
 		  useContext: true, check: (ctx) => getPlayerBlueHighestTier(ctx.boardState, ctx.playerId) },
-		{ id: `coin_redgrid_${r}`, name: 'Rode Grids', description: `Vul ${redGridTarget} rood${redGridTarget > 1 ? 'e' : ''} grid${redGridTarget > 1 ? 's' : ''}.`, target: redGridTarget, points: 0, coins: coinsBase + bonusCoinsExtra,
+		{ id: `coin_redgrid_${r}`, name: 'Rode Grids', description: `Vul ${redGridTarget} rood${redGridTarget > 1 ? 'e' : ''} grid${redGridTarget > 1 ? 's' : ''}.`, target: redGridTarget, points: pointsBase, coins: coinsBase + bonusCoinsExtra,
 		  useContext: true, check: (ctx) => countPlayerCompletedRedSubgrids(ctx.boardState, ctx.playerId) },
-		{ id: `coin_purple_bold_${r}`, name: 'Paars Cluster', description: `Verbind ${purpleBoldTarget} paarse bold-cellen.`, target: purpleBoldTarget, points: 0, coins: coinsBase + bonusCoinsExtra,
+		{ id: `coin_purple_bold_${r}`, name: 'Paars Cluster', description: `Verbind ${purpleBoldTarget} paarse bold-cellen.`, target: purpleBoldTarget, points: pointsBase, coins: coinsBase + bonusCoinsExtra,
 		  useContext: true, check: (ctx) => getPlayerPurpleMaxBoldCluster(ctx.boardState, ctx.playerId) },
 	];
 }

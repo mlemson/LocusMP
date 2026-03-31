@@ -1075,9 +1075,10 @@ function _scoreYellowImpact(zoneData, placedCells) {
 				while (GameRules.getDataCell(zoneData, x, y)) { len++; const c = GameRules.getDataCell(zoneData, x, y); if (c.active) activeCount++; x -= dx; y -= dy; }
 				if (len >= 4) {
 					const remaining = len - activeCount;
-					if (remaining <= 1) impact += 16;
-					else if (remaining <= 3) impact += 8;
-					else impact += 2;
+					if (remaining <= 0) impact += 40;
+					else if (remaining <= 1) impact += 28;
+					else if (remaining <= 3) impact += 14;
+					else impact += 4;
 				}
 			}
 		}
@@ -1107,9 +1108,27 @@ function _scoreYellowImpact(zoneData, placedCells) {
 				if (n && !depthByKey.has(`${n.x},${n.y}`)) { depthByKey.set(`${n.x},${n.y}`, d+1); queue.push(n); }
 			}
 		}
+		// Check ring completion progress
+		const maxDepth = Math.max(0, ...depthByKey.values());
 		for (const pc of placedCells) {
 			const depth = depthByKey.get(`${pc.x},${pc.y}`) || 0;
-			impact += 3 + depth * 2; // inner cells more valuable
+			// Base value increases with depth (inner cells = more points)
+			let cellValue = 5 + depth * 4;
+			// Bonus for completing a ring: count how many cells at this depth are empty
+			if (maxDepth > 0) {
+				let totalAtDepth = 0, emptyAtDepth = 0;
+				for (const [key, d] of depthByKey) {
+					if (d === depth) {
+						totalAtDepth++;
+						const c = cellByCoord[key];
+						if (c && !c.active) emptyAtDepth++;
+					}
+				}
+				// Near ring completion = big bonus
+				if (emptyAtDepth <= 1) cellValue += 20;
+				else if (emptyAtDepth <= 3) cellValue += 10;
+			}
+			impact += cellValue;
 		}
 		return impact;
 	}
