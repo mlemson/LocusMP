@@ -3459,12 +3459,12 @@ const LEVEL_OBJECTIVES = {
 
 /**
  * Coin mode objectives: simpeler, score-gebaseerd, schaalbaar per ronde.
- * Elke ronde wordt het iets moeilijker en levert meer punten op.
+ * Elke ronde wordt het iets moeilijker en levert meer munten op.
  */
 function _buildCoinModeObjectivePool(round) {
 	const r = Math.max(1, round || 1);
 	const scale = Math.pow(1.5, r - 1);
-	const pointsBase = Math.round(12 * scale);
+	const coinsBase = Math.round(3 * scale);
 	const totalTarget = Math.round(18 * scale);
 	const singleColorTarget = Math.round(10 * scale);
 	const dualColorTarget = Math.round(7 * scale);
@@ -3474,54 +3474,54 @@ function _buildCoinModeObjectivePool(round) {
 	const blueRowTarget = Math.min(Math.round(1.5 * scale), 5);
 	const redGridTarget = Math.min(Math.round(1 * scale), 3);
 	const purpleBoldTarget = Math.min(Math.round(3 * scale), 10);
-	const bonusPointsExtra = Math.round(5 * scale);
-	const bonusPointsLarge = Math.round(10 * scale);
+	const bonusCoinsExtra = Math.round(2 * scale);
+	const bonusCoinsLarge = Math.round(4 * scale);
 
 	return [
-		{ id: `coin_total_${r}`, name: 'Totaalscore', description: `Haal ${totalTarget} punten totaal.`, target: totalTarget, points: pointsBase, coins: 0,
+		{ id: `coin_total_${r}`, name: 'Totaalscore', description: `Haal ${totalTarget} punten totaal.`, target: totalTarget, points: 0, coins: coinsBase,
 		  useContext: true, check: (ctx) => Math.min((ctx?.playerScore?.total || 0), totalTarget) },
-		{ id: `coin_yellow_${r}`, name: 'Geel Doel', description: `Scoor ${singleColorTarget} punten in geel.`, target: singleColorTarget, points: pointsBase, coins: 0,
+		{ id: `coin_yellow_${r}`, name: 'Geel Doel', description: `Scoor ${singleColorTarget} punten in geel.`, target: singleColorTarget, points: 0, coins: coinsBase,
 		  useContext: true, check: (ctx) => Math.min((ctx?.playerScore?.yellow || 0), singleColorTarget) },
-		{ id: `coin_green_${r}`, name: 'Groen Doel', description: `Scoor ${singleColorTarget} punten in groen.`, target: singleColorTarget, points: pointsBase, coins: 0,
+		{ id: `coin_green_${r}`, name: 'Groen Doel', description: `Scoor ${singleColorTarget} punten in groen.`, target: singleColorTarget, points: 0, coins: coinsBase,
 		  useContext: true, check: (ctx) => Math.min((ctx?.playerScore?.green || 0), singleColorTarget) },
-		{ id: `coin_blue_${r}`, name: 'Blauw Doel', description: `Scoor ${singleColorTarget} punten in blauw.`, target: singleColorTarget, points: pointsBase, coins: 0,
+		{ id: `coin_blue_${r}`, name: 'Blauw Doel', description: `Scoor ${singleColorTarget} punten in blauw.`, target: singleColorTarget, points: 0, coins: coinsBase,
 		  useContext: true, check: (ctx) => Math.min((ctx?.playerScore?.blue || 0), singleColorTarget) },
-		{ id: `coin_purple_${r}`, name: 'Paars Doel', description: `Scoor ${singleColorTarget} punten in paars.`, target: singleColorTarget, points: pointsBase, coins: 0,
+		{ id: `coin_purple_${r}`, name: 'Paars Doel', description: `Scoor ${singleColorTarget} punten in paars.`, target: singleColorTarget, points: 0, coins: coinsBase,
 		  useContext: true, check: (ctx) => Math.min((ctx?.playerScore?.purple || 0), singleColorTarget) },
-		{ id: `coin_red_${r}`, name: 'Rood Doel', description: `Scoor ${singleColorTarget} punten in rood.`, target: singleColorTarget, points: pointsBase, coins: 0,
+		{ id: `coin_red_${r}`, name: 'Rood Doel', description: `Scoor ${singleColorTarget} punten in rood.`, target: singleColorTarget, points: 0, coins: coinsBase,
 		  useContext: true, check: (ctx) => Math.min((ctx?.playerScore?.red || 0), singleColorTarget) },
-		{ id: `coin_yellow_green_${r}`, name: 'Geel + Groen', description: `Scoor ${dualColorTarget} punten in geel en ${dualColorTarget} in groen.`, target: 2, points: pointsBase + bonusPointsExtra, coins: 0,
+		{ id: `coin_yellow_green_${r}`, name: 'Geel + Groen', description: `Scoor ${dualColorTarget} punten in geel en ${dualColorTarget} in groen.`, target: 2, points: 0, coins: coinsBase + bonusCoinsExtra,
 		  useContext: true, check: (ctx) => {
 			let done = 0;
 			if ((ctx?.playerScore?.yellow || 0) >= dualColorTarget) done++;
 			if ((ctx?.playerScore?.green || 0) >= dualColorTarget) done++;
 			return done;
 		  }},
-		{ id: `coin_blue_purple_${r}`, name: 'Blauw + Paars', description: `Scoor ${dualColorTarget} punten in blauw en ${dualColorTarget} in paars.`, target: 2, points: pointsBase + bonusPointsExtra, coins: 0,
+		{ id: `coin_blue_purple_${r}`, name: 'Blauw + Paars', description: `Scoor ${dualColorTarget} punten in blauw en ${dualColorTarget} in paars.`, target: 2, points: 0, coins: coinsBase + bonusCoinsExtra,
 		  useContext: true, check: (ctx) => {
 			let done = 0;
 			if ((ctx?.playerScore?.blue || 0) >= dualColorTarget) done++;
 			if ((ctx?.playerScore?.purple || 0) >= dualColorTarget) done++;
 			return done;
 		  }},
-		{ id: `coin_red_yellow_${r}`, name: 'Rood + Geel', description: `Scoor ${dualColorTarget} punten in rood en ${dualColorTarget} in geel.`, target: 2, points: pointsBase + bonusPointsExtra, coins: 0,
+		{ id: `coin_red_yellow_${r}`, name: 'Rood + Geel', description: `Scoor ${dualColorTarget} punten in rood en ${dualColorTarget} in geel.`, target: 2, points: 0, coins: coinsBase + bonusCoinsExtra,
 		  useContext: true, check: (ctx) => {
 			let done = 0;
 			if ((ctx?.playerScore?.red || 0) >= dualColorTarget) done++;
 			if ((ctx?.playerScore?.yellow || 0) >= dualColorTarget) done++;
 			return done;
 		  }},
-		{ id: `coin_balance_${r}`, name: 'Evenwicht', description: `Behaal minstens ${balanceTarget} punten in elke kleur.`, target: 5, points: pointsBase + bonusPointsLarge, coins: 0,
+		{ id: `coin_balance_${r}`, name: 'Evenwicht', description: `Behaal minstens ${balanceTarget} punten in elke kleur.`, target: 5, points: 0, coins: coinsBase + bonusCoinsLarge,
 		  useContext: true, check: (ctx) => countPlayerZonesAtLeast(ctx?.playerScore, balanceTarget) },
-		{ id: `coin_yellowcol_${r}`, name: 'Gele Kolommen', description: `Vul ${yellowColTarget} gele kolom${yellowColTarget > 1 ? 'men' : ''}.`, target: yellowColTarget, points: pointsBase + bonusPointsExtra, coins: 0,
+		{ id: `coin_yellowcol_${r}`, name: 'Gele Kolommen', description: `Vul ${yellowColTarget} gele kolom${yellowColTarget > 1 ? 'men' : ''}.`, target: yellowColTarget, points: 0, coins: coinsBase + bonusCoinsExtra,
 		  useContext: true, check: (ctx) => countPlayerCompletedYellowCols(ctx.boardState, ctx.playerId) },
-		{ id: `coin_greenend_${r}`, name: 'Groene Eindpunten', description: `Bereik ${greenEndTarget} groene eindpunt${greenEndTarget > 1 ? 'en' : ''}.`, target: greenEndTarget, points: pointsBase + bonusPointsExtra, coins: 0,
+		{ id: `coin_greenend_${r}`, name: 'Groene Eindpunten', description: `Bereik ${greenEndTarget} groene eindpunt${greenEndTarget > 1 ? 'en' : ''}.`, target: greenEndTarget, points: 0, coins: coinsBase + bonusCoinsExtra,
 		  useContext: true, check: (ctx) => countPlayerGreenEnds(ctx.boardState, ctx.playerId) },
-		{ id: `coin_bluerow_${r}`, name: 'Blauwe Rijen', description: `Bereik ${blueRowTarget} blauwe rij${blueRowTarget > 1 ? 'en' : ''}.`, target: blueRowTarget, points: pointsBase + bonusPointsExtra, randomBonuses: Math.min(r, 3),
+		{ id: `coin_bluerow_${r}`, name: 'Blauwe Rijen', description: `Bereik ${blueRowTarget} blauwe rij${blueRowTarget > 1 ? 'en' : ''}.`, target: blueRowTarget, points: 0, coins: coinsBase + bonusCoinsExtra,
 		  useContext: true, check: (ctx) => getPlayerBlueHighestTier(ctx.boardState, ctx.playerId) },
-		{ id: `coin_redgrid_${r}`, name: 'Rode Grids', description: `Vul ${redGridTarget} rood${redGridTarget > 1 ? 'e' : ''} grid${redGridTarget > 1 ? 's' : ''}.`, target: redGridTarget, points: pointsBase + bonusPointsExtra, coins: 0,
+		{ id: `coin_redgrid_${r}`, name: 'Rode Grids', description: `Vul ${redGridTarget} rood${redGridTarget > 1 ? 'e' : ''} grid${redGridTarget > 1 ? 's' : ''}.`, target: redGridTarget, points: 0, coins: coinsBase + bonusCoinsExtra,
 		  useContext: true, check: (ctx) => countPlayerCompletedRedSubgrids(ctx.boardState, ctx.playerId) },
-		{ id: `coin_purple_bold_${r}`, name: 'Paars Cluster', description: `Verbind ${purpleBoldTarget} paarse bold-cellen.`, target: purpleBoldTarget, points: pointsBase + bonusPointsExtra, randomBonuses: Math.min(r, 3),
+		{ id: `coin_purple_bold_${r}`, name: 'Paars Cluster', description: `Verbind ${purpleBoldTarget} paarse bold-cellen.`, target: purpleBoldTarget, points: 0, coins: coinsBase + bonusCoinsExtra,
 		  useContext: true, check: (ctx) => getPlayerPurpleMaxBoldCluster(ctx.boardState, ctx.playerId) },
 	];
 }

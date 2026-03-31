@@ -2122,6 +2122,8 @@ html.theme-classic .mp-cell.bonus-just-spawned {
 	align-items: center;
 	gap: 4px;
 	flex-shrink: 0;
+	flex-wrap: wrap;
+	max-width: calc(8 * (28px + 4px));
 }
 .mp-perk-icon-badge {
 	display: inline-flex;
