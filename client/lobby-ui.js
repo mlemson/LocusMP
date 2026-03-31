@@ -473,8 +473,17 @@ class LocusLobbyUI {
 		}
 
 		// Sync initial game mode state (e.g. coin mode selected by default → lock 15 cards)
-		if (this.elements['game-mode-select']) {
-			this.elements['game-mode-select'].dispatchEvent(new Event('change'));
+		const gameModeSelect = this.elements['game-mode-select'];
+		const cardsSelectInit = this.elements['cards-per-player-select'];
+		if (gameModeSelect && cardsSelectInit && gameModeSelect.value === 'coin') {
+			// Force coin mode card lock on page load
+			const coinToggle = this.elements['coin-mode-toggle'];
+			if (coinToggle) coinToggle.checked = true;
+			for (const opt of cardsSelectInit.options) {
+				opt.style.display = (opt.value === '15') ? '' : 'none';
+			}
+			cardsSelectInit.value = '15';
+			cardsSelectInit.disabled = true;
 		}
 	}
 
@@ -7131,6 +7140,7 @@ class LocusLobbyUI {
 			try { this._renderOpponentPanels(); } catch (e) { console.error('[Locus UI] renderOpponentPanels error:', e); }
 			try { this._updateDeckCount(); } catch (e) { console.error('[Locus UI] updateDeckCount error:', e); }
 			try { this._renderMyObjective(); } catch (e) { console.error('[Locus UI] renderMyObjective error:', e); }
+			try { this._renderPerkIcons(); } catch (e) { console.error('[Locus UI] renderPerkIcons error:', e); }
 
 
 			// Check objective achievement (detect transition)

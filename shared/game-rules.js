@@ -4454,6 +4454,24 @@ function playMove(gameState, playerId, cardId, zoneName, baseX, baseY, rotation,
 	// Coin mode: parels geven gratis random perk i.p.v. munten
 	let pearlPerkPoints = 0;
 	let pearlAutoPerks = [];
+	// Snapshot perks VOOR pearl-toekenning (voor undo)
+	const perksSnapshotBeforePearl = player.perks ? {
+		perkPoints: player.perks.perkPoints || 0,
+		unlockedPerks: [...(player.perks.unlockedPerks || [])],
+		bonusUpgrades: { ...(player.perks.bonusUpgrades || {}) },
+		greenGapAllowed: !!player.perks.greenGapAllowed,
+		redGapAllowed: !!player.perks.redGapAllowed,
+		diagonalRotation: !!player.perks.diagonalRotation,
+		wildcardPerRound: player.perks.wildcardPerRound || 0,
+		minesPerRound: player.perks.minesPerRound || 0,
+		stealsPerRound: player.perks.stealsPerRound || 0,
+		canSeeObjectives: !!player.perks.canSeeObjectives,
+		doubleCoins: !!player.perks.doubleCoins,
+		extraCard: !!player.perks.extraCard,
+		stoneBlocks: player.perks.stoneBlocks || 0,
+		activeMines: player.perks.activeMines ? player.perks.activeMines.map(m => ({ ...m })) : []
+	} : null;
+	const handLengthBeforePearl = player.hand ? player.hand.length : 0;
 	if (placementResult.goldCollected > 0) {
 		let effectiveGold = placementResult.goldCollected;
 		if (gameState.settings?.coinMode && (placementResult.pearlGold || 0) > 0) {
@@ -4564,7 +4582,12 @@ function playMove(gameState, playerId, cardId, zoneName, baseX, baseY, rotation,
 		collectedBonuses: [...(placementResult.collectedBonuses || [])],
 		goldCollected: placementResult.goldCollected || 0,
 		moveHistoryLengthBefore: gameState.moveHistory.length - 1,
-		bonusMoves: []
+		bonusMoves: [],
+		// Pearl perk undo data
+		pearlAutoPerks: pearlAutoPerks.length > 0 ? pearlAutoPerks.map(p => ({ ...p })) : null,
+		pearlPerkPoints: pearlPerkPoints || 0,
+		perksSnapshotBeforePearl: perksSnapshotBeforePearl,
+		handLengthBeforePearl: handLengthBeforePearl
 	};
 	// Golden cards don't count as the regular card play
 	if (!card.isGolden) {
@@ -5004,6 +5027,32 @@ function undoMove(gameState, playerId) {
 
 	// Geen bonus moves meer → undo de kaartplaatsing
 	if (Array.isArray(undo.placedCells) && undo.placedCells.length > 0) {
+
+		// Herstel pearl perks (vóór cellen, want perk side-effects kunnen hand wijzigen)
+		if (undo.perksSnapshotBeforePearl && player.perks) {
+			const snap = undo.perksSnapshotBeforePearl;
+			player.perks.perkPoints = snap.perkPoints;
+			player.perks.unlockedPerks = [...snap.unlockedPerks];
+			player.perks.bonusUpgrades = { ...snap.bonusUpgrades };
+			player.perks.greenGapAllowed = snap.greenGapAllowed;
+			player.perks.redGapAllowed = snap.redGapAllowed;
+			player.perks.diagonalRotation = snap.diagonalRotation;
+			player.perks.wildcardPerRound = snap.wildcardPerRound;
+			player.perks.minesPerRound = snap.minesPerRound;
+			player.perks.stealsPerRound = snap.stealsPerRound;
+			player.perks.canSeeObjectives = snap.canSeeObjectives;
+			player.perks.doubleCoins = snap.doubleCoins;
+			player.perks.extraCard = snap.extraCard;
+			player.perks.stoneBlocks = snap.stoneBlocks;
+			player.perks.activeMines = snap.activeMines ? snap.activeMines.map(m => ({ ...m })) : [];
+			// Verwijder kaarten die door perk side-effects aan hand zijn toegevoegd
+			if (typeof undo.handLengthBeforePearl === 'number' && player.hand.length > undo.handLengthBeforePearl) {
+				player.hand.length = undo.handLengthBeforePearl;
+			}
+			// Verwijder pending free choices die door perks zijn aangemaakt
+			delete player._pendingFreeChoices;
+		}
+
 		const cardZoneData = undo.zoneName === 'red' && undo.subgridId
 			? gameState.boardState.zones.red.subgrids.find(sg => sg.id === undo.subgridId)
 			: gameState.boardState.zones[undo.zoneName];
