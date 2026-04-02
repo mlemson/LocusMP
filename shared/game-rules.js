@@ -4267,6 +4267,40 @@ function drawHand(gameState, playerId) {
 		const drawn = player.drawPile.splice(0, drawCount);
 		player.hand.push(...drawn);
 	}
+
+	// Coin mode: garandeer mix van minstens 1 gratis (2×1 multikleur) en 1 betaalde kaart
+	if (gameState.settings?.coinMode && player.hand.length >= 2) {
+		const hasFree = player.hand.some(c => isFree2x1Card(c));
+		const hasPaid = player.hand.some(c => !isFree2x1Card(c) && !c.isGolden);
+
+		if (!hasFree) {
+			// Zoek een gratis kaart in de drawPile om te swappen
+			const freeIdx = player.drawPile.findIndex(c => isFree2x1Card(c));
+			if (freeIdx !== -1) {
+				const swapOut = player.hand.findIndex(c => !isFree2x1Card(c) && !c.isGolden);
+				if (swapOut !== -1) {
+					const removed = player.hand.splice(swapOut, 1)[0];
+					const [freeCard] = player.drawPile.splice(freeIdx, 1);
+					player.hand.push(freeCard);
+					player.drawPile.push(removed);
+				}
+			}
+		}
+
+		if (!hasPaid) {
+			// Zoek een betaalde kaart in de drawPile om te swappen
+			const paidIdx = player.drawPile.findIndex(c => !isFree2x1Card(c) && !c.isGolden);
+			if (paidIdx !== -1) {
+				const swapOut = player.hand.findIndex(c => isFree2x1Card(c));
+				if (swapOut !== -1) {
+					const removed = player.hand.splice(swapOut, 1)[0];
+					const [paidCard] = player.drawPile.splice(paidIdx, 1);
+					player.hand.push(paidCard);
+					player.drawPile.push(removed);
+				}
+			}
+		}
+	}
 }
 
 // Helper voor choosePerk: trek kaarten aan tot een specifiek maximum

@@ -574,9 +574,24 @@ class LocusLobbyUI {
 		};
 		document.addEventListener('keydown', this._onKeyDown);
 
-		// Mouse wheel voor rotatie
+		// Mouse wheel voor rotatie — maar geef scrollbare zone-divs voorrang
 		this._onWheel = (e) => {
 			if (!this._dragState && !this._bonusMode) return;
+			// Check of de cursor boven een scrollbare container hangt die nog kan scrollen
+			let el = e.target;
+			while (el && el !== document.body) {
+				const style = getComputedStyle(el);
+				const overflowY = style.overflowY;
+				if (overflowY === 'auto' || overflowY === 'scroll') {
+					const canScrollDown = e.deltaY > 0 && el.scrollTop + el.clientHeight < el.scrollHeight - 1;
+					const canScrollUp = e.deltaY < 0 && el.scrollTop > 1;
+					if (canScrollDown || canScrollUp) {
+						// Laat de native scroll door, rotatie overslaan
+						return;
+					}
+				}
+				el = el.parentElement;
+			}
 			e.preventDefault();
 			this._rotateCurrentShape();
 		};
