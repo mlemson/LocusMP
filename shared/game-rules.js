@@ -4198,6 +4198,9 @@ function startGame(gameState) {
 	if (gameState.settings?.coinMode || gameState.settings?.rewardingMode) {
 		for (const pid of gameState.playerOrder) {
 			gameState.players[pid].startingDeckType = 'random';
+			if (gameState.settings?.coinMode) {
+				gameState.players[pid].goldCoins = 1;
+			}
 		}
 		initializeLevelOneAfterDeckChoice(gameState);
 		return { success: true };
