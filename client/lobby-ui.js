@@ -1055,6 +1055,28 @@ class LocusLobbyUI {
 		setTimeout(() => this._playTone(784, 0.25, 'sine', 0.32), 260);
 	}
 
+	_playTurnReminderSound() {
+		// Herinnerings-geluid: twee korte tonen
+		this._playTone(440, 0.15, 'sine', 0.22);
+		setTimeout(() => this._playTone(554, 0.2, 'sine', 0.25), 150);
+	}
+
+	_startTurnReminder() {
+		this._clearTurnReminder();
+		this._turnReminderTimeout = setTimeout(() => {
+			if (this.mp?.isMyTurn?.() && this.mp?.gameState?.phase === 'playing') {
+				this._playTurnReminderSound();
+			}
+		}, 10000);
+	}
+
+	_clearTurnReminder() {
+		if (this._turnReminderTimeout) {
+			clearTimeout(this._turnReminderTimeout);
+			this._turnReminderTimeout = null;
+		}
+	}
+
 	_playBombSound() {
 		// Explosie-achtig geluid: laag rommelend + hoge impact
 		this._playTone(80, 0.4, 'sawtooth', 0.25);
@@ -2123,6 +2145,9 @@ class LocusLobbyUI {
 		if (currentPlayerId === this.mp.userId) {
 			this._showToast('Jouw beurt!', 'info');
 			this._playTurnStartSound();
+			this._startTurnReminder();
+		} else {
+			this._clearTurnReminder();
 		}
 	}
 
@@ -3745,6 +3770,7 @@ class LocusLobbyUI {
 
 			this._cancelDrag();
 			if (result.success) {
+				this._clearTurnReminder();
 				// Animate played card to discard pile
 				if (playedCardEl) this._animateCardToDiscard(playedCardEl);
 				// Mine getriggerd: toon explosie-effect aan de plaatser
@@ -4815,6 +4841,7 @@ class LocusLobbyUI {
 			const result = await this.mp.playBonus(this._bonusMode.color, zoneName, baseX, baseY, subgridId, this._bonusMode.rotation || 0);
 			if (result?.error) throw new Error(result.error);
 			if (result?.success) {
+				this._clearTurnReminder();
 				this._playPlaceSound();
 				this._cancelBonusMode();
 			}

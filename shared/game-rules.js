@@ -4564,7 +4564,14 @@ function playMove(gameState, playerId, cardId, zoneName, baseX, baseY, rotation,
 	// Scores herberekenen (alleen actieve speler)
 	const playerScores = recalcScoresForActivePlayer(gameState);
 
-	// Sla undo data op (voor Ctrl+Z)
+	// Bij mijn-trigger: undo uitschakelen voor de rest van de beurt
+	if (mineTriggered) {
+		delete gameState._turnUndoData;
+		gameState._mineTriggeredThisTurn = true;
+	}
+
+	// Sla undo data op (voor Ctrl+Z) — NIET als er een mijn is afgegaan
+	if (!mineTriggered) {
 	gameState._turnUndoData = {
 		playerId,
 		card,
@@ -4583,6 +4590,7 @@ function playMove(gameState, playerId, cardId, zoneName, baseX, baseY, rotation,
 		perksSnapshotBeforePearl: perksSnapshotBeforePearl,
 		handLengthBeforePearl: handLengthBeforePearl
 	};
+	}
 	// Golden cards don't count as the regular card play
 	if (!card.isGolden) {
 		gameState._cardPlayedThisTurn = true;
@@ -4769,8 +4777,14 @@ function playBonus(gameState, playerId, bonusColor, zoneName, baseX, baseY, subg
 		}
 	}
 
-	// Track bonus move voor undo
-	if (gameState._turnUndoData && gameState._turnUndoData.playerId === playerId) {
+	// Bij mijn-trigger: undo volledig uitschakelen voor de rest van de beurt
+	if (mineTriggered) {
+		delete gameState._turnUndoData;
+		gameState._mineTriggeredThisTurn = true;
+	}
+
+	// Track bonus move voor undo (niet als mijn is afgegaan)
+	if (!mineTriggered && gameState._turnUndoData && gameState._turnUndoData.playerId === playerId) {
 		gameState._turnUndoData.bonusMoves.push({
 			bonusColor,
 			cells: placementResult.cells.map(c => ({ ...c })),
@@ -4970,6 +4984,9 @@ function endTurn(gameState, playerId, discardCardId = null) {
  */
 function undoMove(gameState, playerId) {
 	if (gameState.phase !== 'playing') return { error: 'Spel is niet in play fase' };
+
+	// Undo geblokkeerd als er deze beurt een mijn is afgegaan
+	if (gameState._mineTriggeredThisTurn) return { error: 'Undo niet beschikbaar na een mijn-explosie' };
 
 	const currentPlayerId = gameState.playerOrder[gameState.currentTurnIndex];
 	if (playerId !== currentPlayerId) return { error: 'Niet jouw beurt' };
@@ -5182,6 +5199,7 @@ function advanceTurn(gameState) {
 	delete gameState._coinCardsPlayedThisTurn;
 	delete gameState._coinFreeCardUsed;
 	delete gameState._turnTimerStart;
+	delete gameState._mineTriggeredThisTurn;
 	gameState.bonusPlayedThisTurn = false;
 
 	do {
