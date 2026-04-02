@@ -1058,7 +1058,7 @@ function generateLevel1Board(rng, level, playerCount, maxWins) {
 		const blueWidth = 3 + playerTier;
 		const blueHeight = 26; // +5 rijen (was 21)
 		const blueBoldRows = [];
-		for (let r = 0; r < blueHeight; r += 5) { blueBoldRows.push(r); }
+		for (let r = 0; r + 5 < blueHeight; r += 5) { blueBoldRows.push(r); } // eerste (onderste) boldrij overgeslagen
 		const blueVoid = generateBlueRiverVoids(blueWidth, blueHeight, rng, blueBoldRows);
 		const blueVoidSet = new Set(blueVoid.map(v => `${v.x},${v.y}`));
 		const blueBold = [];
@@ -1082,7 +1082,7 @@ function generateLevel1Board(rng, level, playerCount, maxWins) {
 		const blueWidth = 4 + playerTier;
 		const blueHeight = 52; // 2x W1 hoogte
 		const blueBoldRows = [];
-		for (let r = 0; r < blueHeight; r += 6) { blueBoldRows.push(r); }
+		for (let r = 0; r + 6 < blueHeight; r += 6) { blueBoldRows.push(r); } // eerste (onderste) boldrij overgeslagen
 		const blueVoid = generateBlueRiverVoids(blueWidth, blueHeight, rng, blueBoldRows);
 		const blueVoidSet = new Set(blueVoid.map(v => `${v.x},${v.y}`));
 		const blueBold = [];
@@ -1106,7 +1106,7 @@ function generateLevel1Board(rng, level, playerCount, maxWins) {
 		const blueWidth = 5 + playerTier;
 		const blueHeight = 78; // 3x W1 hoogte
 		const blueBoldRows = [];
-		for (let r = 0; r < blueHeight; r += 7) { blueBoldRows.push(r); }
+		for (let r = 0; r + 7 < blueHeight; r += 7) { blueBoldRows.push(r); } // eerste (onderste) boldrij overgeslagen
 		const blueVoid = generateBlueRiverVoids(blueWidth, blueHeight, rng, blueBoldRows);
 		const blueVoidSet = new Set(blueVoid.map(v => `${v.x},${v.y}`));
 		const blueBold = [];
@@ -1885,7 +1885,7 @@ function applyPlacement(boardState, zoneName, zoneData, baseX, baseY, matrix, co
  * Punten per compleet gevulde kolom, oplopend van links→rechts:
  * Kolom paar 0,1 → 6pt; 2,3 → 8pt; 4,5 → 10pt; 6,7 → 12pt; 8,9 → 15pt; 10,11 → 20pt; 12,13 → 25pt
  */
-const YELLOW_COLUMN_PAIR_POINTS = [10, 12, 15, 18, 22, 26, 30];
+const YELLOW_COLUMN_PAIR_POINTS = [10, 14, 19, 25, 33, 43, 55];
 
 function hasStoneInYellowColumn(zoneData, x) {
 	if (!zoneData) return false;
@@ -2140,8 +2140,8 @@ function scoreGreenData(zoneData) {
  * Eerste scorende bold-rij = 6pt
  * Volgende rijen: 8 + (n-1) * 2 (dus 8, 10, 12, 14, ...)
  */
-// Blue scoring tiers (onder → boven): +10, +15, +20, +25, +30, +35, top +40
-const BLUE_ROW_POINTS = [10, 15, 20, 25, 30, 35, 40];
+// Blue scoring: elke bold-rij geeft altijd +10 punten (vlak)
+const BLUE_ROW_POINTS = [10, 10, 10, 10, 10, 10, 10];
 
 function getBlueTierPoints(tierIndex, totalTiers) {
 	const fallback = [10, 15, 20, 25, 40];
